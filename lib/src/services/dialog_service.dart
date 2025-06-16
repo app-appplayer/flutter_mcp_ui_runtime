@@ -1,0 +1,431 @@
+import 'package:flutter/material.dart';
+import '../runtime/service_registry.dart';
+
+/// Service for managing dialogs, bottom sheets, and overlays
+class DialogService extends RuntimeService {
+  DialogService({super.enableDebugMode});
+
+  final List<OverlayEntry> _overlays = [];
+  bool _isShowingDialog = false;
+
+  /// Shows a dialog with custom content
+  Future<T?> show<T>({
+    required Widget content,
+    String? title,
+    List<DialogAction>? actions,
+    bool barrierDismissible = true,
+    DialogType type = DialogType.normal,
+  }) async {
+    if (_isShowingDialog) {
+      if (enableDebugMode) {
+        debugPrint('DialogService: Dialog already showing');
+      }
+      return null;
+    }
+
+    _isShowingDialog = true;
+
+    try {
+      final context = _getContext();
+      
+      Widget dialogContent = content;
+
+      // Wrap content based on type
+      switch (type) {
+        case DialogType.alert:
+          dialogContent = _buildAlertDialog(content, title, actions);
+          break;
+        case DialogType.confirm:
+          dialogContent = _buildConfirmDialog(content, title, actions);
+          break;
+        case DialogType.input:
+          dialogContent = _buildInputDialog(content, title, actions);
+          break;
+        case DialogType.custom:
+        case DialogType.normal:
+          if (title != null || actions != null) {
+            dialogContent = _buildStandardDialog(content, title, actions);
+          }
+          break;
+      }
+
+      final result = await showDialog<T>(
+        context: context,
+        barrierDismissible: barrierDismissible,
+        builder: (context) => dialogContent,
+      );
+
+      return result;
+    } finally {
+      _isShowingDialog = false;
+    }
+  }
+
+  /// Shows a simple alert dialog
+  Future<void> showAlert({
+    required String message,
+    String? title,
+    String confirmText = 'OK',
+  }) async {
+    await show(
+      content: Text(message),
+      title: title,
+      type: DialogType.alert,
+      actions: [
+        DialogAction(
+          text: confirmText,
+          onPressed: () => Navigator.of(_getContext()).pop(),
+        ),
+      ],
+    );
+  }
+
+  /// Shows a confirmation dialog
+  Future<bool> showConfirm({
+    required String message,
+    String? title,
+    String confirmText = 'Confirm',
+    String cancelText = 'Cancel',
+  }) async {
+    final result = await show<bool>(
+      content: Text(message),
+      title: title,
+      type: DialogType.confirm,
+      actions: [
+        DialogAction(
+          text: cancelText,
+          onPressed: () => Navigator.of(_getContext()).pop(false),
+          isDefault: false,
+        ),
+        DialogAction(
+          text: confirmText,
+          onPressed: () => Navigator.of(_getContext()).pop(true),
+          isDefault: true,
+        ),
+      ],
+    );
+
+    return result ?? false;
+  }
+
+  /// Shows an input dialog
+  Future<String?> showInput({
+    String? title,
+    String? hint,
+    String? initialValue,
+    String confirmText = 'OK',
+    String cancelText = 'Cancel',
+    TextInputType keyboardType = TextInputType.text,
+    int? maxLines = 1,
+  }) async {
+    final controller = TextEditingController(text: initialValue);
+    
+    final result = await show<String>(
+      content: TextField(
+        controller: controller,
+        decoration: InputDecoration(hintText: hint),
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        autofocus: true,
+      ),
+      title: title,
+      type: DialogType.input,
+      actions: [
+        DialogAction(
+          text: cancelText,
+          onPressed: () => Navigator.of(_getContext()).pop(),
+        ),
+        DialogAction(
+          text: confirmText,
+          onPressed: () => Navigator.of(_getContext()).pop(controller.text),
+          isDefault: true,
+        ),
+      ],
+    );
+
+    controller.dispose();
+    return result;
+  }
+
+  /// Shows a bottom sheet
+  Future<T?> showBottomSheet<T>({
+    required Widget content,
+    bool isDismissible = true,
+    bool enableDrag = true,
+    double? height,
+    Color? backgroundColor,
+    ShapeBorder? shape,
+  }) async {
+    final context = _getContext();
+
+    return await showModalBottomSheet<T>(
+      context: context,
+      isDismissible: isDismissible,
+      enableDrag: enableDrag,
+      backgroundColor: backgroundColor,
+      shape: shape ?? const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => height != null
+          ? SizedBox(height: height, child: content)
+          : content,
+    );
+  }
+
+  /// Shows a loading dialog
+  void showLoading({
+    String? message,
+    bool barrierDismissible = false,
+  }) {
+    show(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(),
+          if (message != null) ...[
+            const SizedBox(height: 16),
+            Text(message),
+          ],
+        ],
+      ),
+      barrierDismissible: barrierDismissible,
+    );
+  }
+
+  /// Hides the loading dialog
+  void hideLoading() {
+    if (_isShowingDialog) {
+      Navigator.of(_getContext()).pop();
+    }
+  }
+
+  /// Shows a snackbar
+  void showSnackbar({
+    required String message,
+    SnackbarType type = SnackbarType.info,
+    Duration duration = const Duration(seconds: 4),
+    SnackBarAction? action,
+  }) {
+    final context = _getContext();
+    
+    Color backgroundColor;
+    IconData? icon;
+
+    switch (type) {
+      case SnackbarType.success:
+        backgroundColor = Colors.green;
+        icon = Icons.check_circle;
+        break;
+      case SnackbarType.error:
+        backgroundColor = Colors.red;
+        icon = Icons.error;
+        break;
+      case SnackbarType.warning:
+        backgroundColor = Colors.orange;
+        icon = Icons.warning;
+        break;
+      case SnackbarType.info:
+        backgroundColor = Theme.of(context).colorScheme.inverseSurface;
+        icon = Icons.info;
+        break;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        duration: duration,
+        action: action,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  /// Shows a custom overlay
+  void showOverlay({
+    required WidgetBuilder builder,
+    bool opaque = false,
+    bool maintainState = false,
+  }) {
+    final context = _getContext();
+    final overlay = Overlay.of(context);
+
+    final entry = OverlayEntry(
+      opaque: opaque,
+      maintainState: maintainState,
+      builder: builder,
+    );
+
+    _overlays.add(entry);
+    overlay.insert(entry);
+
+    if (enableDebugMode) {
+      debugPrint('DialogService: Showed overlay');
+    }
+  }
+
+  /// Removes an overlay
+  void removeOverlay() {
+    if (_overlays.isNotEmpty) {
+      final entry = _overlays.removeLast();
+      entry.remove();
+
+      if (enableDebugMode) {
+        debugPrint('DialogService: Removed overlay');
+      }
+    }
+  }
+
+  /// Removes all overlays
+  void removeAllOverlays() {
+    for (final entry in _overlays) {
+      entry.remove();
+    }
+    _overlays.clear();
+
+    if (enableDebugMode) {
+      debugPrint('DialogService: Removed all overlays');
+    }
+  }
+
+  @override
+  Future<void> onInitialize(Map<String, dynamic> config) async {
+    if (enableDebugMode) {
+      debugPrint('DialogService: Initialized');
+    }
+  }
+
+  @override
+  Future<void> onDispose() async {
+    removeAllOverlays();
+  }
+
+  /// Gets the current build context
+  BuildContext _getContext() {
+    // This would typically get the context from a global navigator key
+    // or from the runtime engine
+    throw UnimplementedError('Context provider not implemented');
+  }
+
+  /// Builds a standard dialog layout
+  Widget _buildStandardDialog(
+    Widget content,
+    String? title,
+    List<DialogAction>? actions,
+  ) {
+    return AlertDialog(
+      title: title != null ? Text(title) : null,
+      content: content,
+      actions: actions?.map((action) => _buildDialogAction(action)).toList() ?? [],
+    );
+  }
+
+  /// Builds an alert dialog
+  Widget _buildAlertDialog(
+    Widget content,
+    String? title,
+    List<DialogAction>? actions,
+  ) {
+    return AlertDialog(
+      title: title != null ? Text(title) : null,
+      content: content,
+      actions: actions?.map((action) => _buildDialogAction(action)).toList() ?? [
+        TextButton(
+          onPressed: () => Navigator.of(_getContext()).pop(),
+          child: const Text('OK'),
+        ),
+      ],
+    );
+  }
+
+  /// Builds a confirmation dialog
+  Widget _buildConfirmDialog(
+    Widget content,
+    String? title,
+    List<DialogAction>? actions,
+  ) {
+    return AlertDialog(
+      title: title != null ? Text(title) : null,
+      content: content,
+      actions: actions?.map((action) => _buildDialogAction(action)).toList() ?? [],
+    );
+  }
+
+  /// Builds an input dialog
+  Widget _buildInputDialog(
+    Widget content,
+    String? title,
+    List<DialogAction>? actions,
+  ) {
+    return AlertDialog(
+      title: title != null ? Text(title) : null,
+      content: SingleChildScrollView(child: content),
+      actions: actions?.map((action) => _buildDialogAction(action)).toList() ?? [],
+    );
+  }
+
+  /// Builds a dialog action button
+  Widget _buildDialogAction(DialogAction action) {
+    final button = action.isDefault
+        ? ElevatedButton(
+            onPressed: action.onPressed,
+            child: Text(action.text),
+          )
+        : TextButton(
+            onPressed: action.onPressed,
+            child: Text(action.text),
+          );
+
+    return action.isDestructive
+        ? Theme(
+            data: ThemeData(
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+              ),
+              elevatedButtonTheme: ElevatedButtonThemeData(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              ),
+            ),
+            child: button,
+          )
+        : button;
+  }
+}
+
+/// Types of dialogs
+enum DialogType {
+  normal,
+  alert,
+  confirm,
+  input,
+  custom,
+}
+
+/// Types of snackbars
+enum SnackbarType {
+  info,
+  success,
+  error,
+  warning,
+}
+
+/// Represents an action in a dialog
+class DialogAction {
+  const DialogAction({
+    required this.text,
+    required this.onPressed,
+    this.isDefault = false,
+    this.isDestructive = false,
+  });
+
+  final String text;
+  final VoidCallback onPressed;
+  final bool isDefault;
+  final bool isDestructive;
+}

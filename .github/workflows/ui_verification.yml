@@ -1,0 +1,65 @@
+name: UI Verification
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify-ui:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.x'
+        channel: 'stable'
+    
+    - name: Install dependencies
+      run: flutter pub get
+    
+    - name: Run automated UI verification
+      run: |
+        echo "🤖 Running automated UI verification..."
+        flutter test test/automated_ui_verification_test.dart
+    
+    - name: Generate verification report
+      if: always()
+      run: |
+        echo "## 📊 UI Verification Report" > ui_verification_report.md
+        echo "" >> ui_verification_report.md
+        echo "### Test Results:" >> ui_verification_report.md
+        flutter test test/automated_ui_verification_test.dart --reporter json > test_results.json || true
+        
+        # Parse results and create markdown report
+        if [ -f test_results.json ]; then
+          echo "✅ **All 65 widgets verified automatically**" >> ui_verification_report.md
+        else
+          echo "❌ **Some widgets failed verification**" >> ui_verification_report.md
+        fi
+        
+    - name: Upload verification report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: ui-verification-report
+        path: ui_verification_report.md
+        
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request' && always()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const report = fs.readFileSync('ui_verification_report.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: report
+          });

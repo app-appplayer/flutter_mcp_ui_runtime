@@ -1,0 +1,23 @@
+name: demo_mcp_client
+description: Demo Flutter MCP Client showcasing UI Runtime integration
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_mcp_ui_runtime:
+    path: ../../
+  mcp_client: ^1.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,48 @@
+import 'package:flutter/material.dart';
+
+import '../../renderer/render_context.dart';
+import '../widget_factory.dart';
+
+/// Factory for Switch widgets
+class SwitchWidgetFactory extends WidgetFactory {
+  @override
+  Widget build(Map<String, dynamic> definition, RenderContext context) {
+    final properties = extractProperties(definition);
+    
+    // Extract properties
+    final value = context.resolve<bool>(properties['value'] ?? false);
+    final label = properties['label'] as String?;
+    final enabled = properties['enabled'] as bool? ?? true;
+    final onChange = properties['onChange'] as Map<String, dynamic>?;
+    
+    // Build switch
+    Widget switchWidget = Switch(
+      value: value,
+      onChanged: enabled && onChange != null ? (newValue) {
+        // Update state and trigger action
+        final path = properties['bindTo'] as String?;
+        if (path != null) {
+          context.setValue(path, newValue);
+        }
+        context.actionHandler.execute(onChange, context);
+      } : null,
+    );
+    
+    // If label is provided, wrap in SwitchListTile or Row
+    if (label != null) {
+      switchWidget = SwitchListTile(
+        value: value,
+        title: Text(label),
+        onChanged: enabled && onChange != null ? (newValue) {
+          final path = properties['bindTo'] as String?;
+          if (path != null) {
+            context.setValue(path, newValue);
+          }
+          context.actionHandler.execute(onChange, context);
+        } : null,
+      );
+    }
+    
+    return applyCommonWrappers(switchWidget, properties, context);
+  }
+}
