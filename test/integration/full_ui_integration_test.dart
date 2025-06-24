@@ -18,10 +18,11 @@ void main() {
       final counterDemo = {
         'type': 'page',
         'content': {
-          'type': 'container',
+          'type': 'box',
           'padding': {'all': 16},
           'child': {
-            'type': 'column',
+            'type': 'linear',
+            'direction': 'vertical',
             'children': [
               {
                 'type': 'text',
@@ -29,37 +30,38 @@ void main() {
                 'style': {'fontSize': 18},
               },
               {
-                'type': 'row',
+                'type': 'linear',
+                'direction': 'horizontal',
                 'mainAxisAlignment': 'center',
                 'children': [
                   {
                     'type': 'button',
                     'label': '-',
-                    'style': 'elevated',
-                    'onTap': {
+                    'variant': 'elevated',
+                    'click': {
                       'type': 'tool',
                       'tool': 'decrement',
-                      'args': {},
+                      'params': {},
                     },
                   },
                   {
                     'type': 'button',
                     'label': '+',
-                    'style': 'elevated',
-                    'onTap': {
+                    'variant': 'elevated',
+                    'click': {
                       'type': 'tool',
                       'tool': 'increment',
-                      'args': {},
+                      'params': {},
                     },
                   },
                   {
                     'type': 'button',
                     'label': 'Reset',
-                    'style': 'outlined',
-                    'onTap': {
+                    'variant': 'outlined',
+                    'click': {
                       'type': 'tool',
                       'tool': 'reset',
-                      'args': {},
+                      'params': {},
                     },
                   },
                 ],
@@ -165,10 +167,10 @@ void main() {
             {
               'type': 'button',
               'label': 'Update User',
-              'onTap': {
+              'click': {
                 'type': 'tool',
                 'tool': 'updateUser',
-                'args': {'name': 'John Doe', 'status': 'active'},
+                'params': {'name': 'John Doe', 'status': 'active'},
               },
             },
           ],
@@ -226,23 +228,26 @@ void main() {
       final complexDemo = {
         'type': 'page',
         'content': {
-          'type': 'container',
+          'type': 'box',
           'padding': {'all': 16},
           'child': {
-            'type': 'column',
+            'type': 'linear',
+            'direction': 'vertical',
             'children': [
               {
                 'type': 'card',
                 'child': {
-                  'type': 'container',
+                  'type': 'box',
                   'padding': {'all': 16},
                   'child': {
-                    'type': 'row',
+                    'type': 'linear',
+                'direction': 'horizontal',
                     'children': [
                       {
                         'type': 'expanded',
                         'child': {
-                          'type': 'column',
+                          'type': 'linear',
+            'direction': 'vertical',
                           'crossAxisAlignment': 'start',
                           'children': [
                             {
@@ -260,10 +265,10 @@ void main() {
                       {
                         'type': 'button',
                         'label': 'Action',
-                        'onTap': {
+                        'click': {
                           'type': 'tool',
                           'tool': 'cardAction',
-                          'args': {'card': 'first'},
+                          'params': {'card': 'first'},
                         },
                       },
                     ],
@@ -271,7 +276,8 @@ void main() {
                 },
               },
               {
-                'type': 'column',
+                'type': 'linear',
+            'direction': 'vertical',
                 'children': [
                   {
                     'type': 'listTile',
@@ -341,10 +347,10 @@ void main() {
             {
               'type': 'button',
               'label': 'Cause Error',
-              'onTap': {
+              'click': {
                 'type': 'tool',
                 'tool': 'errorTool',
-                'args': {},
+                'params': {},
               },
             },
           ],
@@ -396,7 +402,7 @@ void main() {
             
             // RichText widget with proper structure
             {
-              'type': 'richtext',
+              'type': 'richText',
               'spans': [
                 {'text': 'Rich ', 'style': {'fontWeight': 'bold'}},
                 {'text': 'text'}
@@ -407,7 +413,7 @@ void main() {
             {'type': 'checkbox', 'value': true, 'label': 'Check me'},
             
             // Switch widget  
-            {'type': 'switch', 'value': false, 'label': 'Switch me'},
+            {'type': 'toggle', 'value': false, 'label': 'Switch me'},
           ],
         },
       };
@@ -453,9 +459,10 @@ void main() {
       final performanceDemo = {
         'type': 'page',
         'content': {
-          'type': 'singlechildscrollview',
+          'type': 'singleChildScrollView',
           'child': {
-            'type': 'column',
+            'type': 'linear',
+            'direction': 'vertical',
             'children': items,
           },
         },

@@ -12,9 +12,7 @@ class TextWidgetFactory extends WidgetFactory {
     
     // Extract and resolve text value  
     final content = properties[core.PropertyKeys.content] ?? properties[core.PropertyKeys.value] ?? '';
-    print('TextWidgetFactory: content = $content');
     final value = context.resolve<String>(content);
-    print('TextWidgetFactory: resolved value = $value');
     
     // Build text widget
     Widget text = Text(
@@ -28,6 +26,8 @@ class TextWidgetFactory extends WidgetFactory {
       textScaler: properties['textScaleFactor'] != null 
           ? TextScaler.linear(context.resolve(properties['textScaleFactor'])?.toDouble())
           : null,
+      semanticsLabel: context.resolve(properties['semanticsLabel']) as String? ?? 
+                      context.resolve(properties['aria-label']) as String?,
     );
     
     return applyCommonWrappers(text, properties, context);
@@ -37,18 +37,24 @@ class TextWidgetFactory extends WidgetFactory {
     if (style == null) return null;
     
     if (style is Map<String, dynamic>) {
+      final colorValue = style[core.PropertyKeys.color];
+      final resolvedColor = context.resolve(colorValue);
+      final parsedColor = parseColor(resolvedColor);
+      
       return TextStyle(
         fontSize: context.resolve(style[core.PropertyKeys.fontSize])?.toDouble(),
         fontWeight: _parseFontWeight(context.resolve(style[core.PropertyKeys.fontWeight])),
         fontStyle: _parseFontStyle(context.resolve(style['fontStyle'])),
-        color: parseColor(context.resolve(style[core.PropertyKeys.color])),
+        color: parsedColor,
         letterSpacing: context.resolve(style['letterSpacing'])?.toDouble(),
         wordSpacing: context.resolve(style['wordSpacing'])?.toDouble(),
         height: context.resolve(style['height'])?.toDouble(),
         decoration: _parseTextDecoration(context.resolve(style['decoration'])),
         decorationColor: parseColor(context.resolve(style['decorationColor'])),
         decorationStyle: _parseTextDecorationStyle(context.resolve(style['decorationStyle'])),
+        decorationThickness: context.resolve(style['decorationThickness'])?.toDouble(),
         fontFamily: context.resolve(style[core.PropertyKeys.fontFamily]) as String?,
+        shadows: _parseShadows(style['shadows'], context),
       );
     }
     
@@ -189,5 +195,26 @@ class TextWidgetFactory extends WidgetFactory {
       default:
         return null;
     }
+  }
+  
+  List<Shadow>? _parseShadows(dynamic shadows, RenderContext context) {
+    if (shadows == null || shadows is! List) return null;
+    
+    return shadows.map((shadow) {
+      if (shadow is Map<String, dynamic>) {
+        final offset = shadow['offset'] as Map<String, dynamic>?;
+        return Shadow(
+          color: parseColor(context.resolve(shadow['color'])) ?? Colors.black,
+          offset: offset != null 
+              ? Offset(
+                  context.resolve(offset['x'])?.toDouble() ?? 0,
+                  context.resolve(offset['y'])?.toDouble() ?? 0,
+                )
+              : Offset.zero,
+          blurRadius: context.resolve(shadow['blurRadius'])?.toDouble() ?? 0,
+        );
+      }
+      return const Shadow();
+    }).toList();
   }
 }

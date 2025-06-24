@@ -40,7 +40,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  flutter_mcp_ui_runtime: ^0.1.0
+  flutter_mcp_ui_runtime: ^0.2.0
 ```
 
 ## Quick Start
@@ -48,106 +48,178 @@ dependencies:
 ### Basic Usage
 
 ```dart
-import 'package:flutter_mcp_ui_renderer/flutter_mcp_ui_renderer.dart';
+import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
 
 // Define your UI in JSON
 final uiDefinition = {
-  "layout": {
-    "type": "column",
+  "type": "page",
+  "content": {
+    "type": "linear",
+    "direction": "vertical",
+    "padding": {"all": 20},
     "children": [
       {
         "type": "text",
-        "properties": {
-          "content": "Hello {{name}}!",
-          "style": {"fontSize": 24}
+        "content": "Hello {{name}}!",
+        "style": {
+          "fontSize": 24,
+          "fontWeight": "bold"
         }
       },
+      {"type": "box", "height": 16},
       {
         "type": "button",
-        "properties": {
-          "label": "Click me",
-          "onTap": {
-            "type": "state",
-            "action": "set",
-            "path": "name",
-            "value": "World"
-          }
+        "label": "Click me",
+        "variant": "elevated",
+        "click": {
+          "type": "state",
+          "action": "set",
+          "binding": "name",
+          "value": "World"
         }
       }
     ]
+  },
+  "state": {
+    "initial": {
+      "name": "Flutter"
+    }
   }
 };
 
-// Render the UI
-Widget ui = MCPUIRenderer.instance.render(
-  uiDefinition,
-  initialState: {"name": "Flutter"},
-);
+// Create and initialize runtime
+final runtime = MCPUIRuntime();
+await runtime.initialize(uiDefinition);
+
+// Build the UI
+Widget ui = runtime.buildUI();
+```
+
+### Full Application Example
+
+```dart
+// Define a complete application with navigation and theme
+final appDefinition = {
+  "type": "application",
+  "title": "My MCP App",
+  "version": "1.0.0",
+  "theme": {
+    "mode": "light",
+    "colors": {
+      "primary": "#2196F3",
+      "secondary": "#FF4081",
+      "background": "#FFFFFF",
+      "surface": "#F5F5F5"
+    },
+    "typography": {
+      "h1": {"fontSize": 32, "fontWeight": "bold"},
+      "body1": {"fontSize": 16}
+    },
+    "spacing": {
+      "sm": 8,
+      "md": 16,
+      "lg": 24
+    }
+  },
+  "navigation": {
+    "type": "drawer",
+    "items": [
+      {"title": "Home", "icon": "home", "route": "/home"},
+      {"title": "Settings", "icon": "settings", "route": "/settings"}
+    ]
+  },
+  "routes": {
+    "/home": "ui://pages/home",
+    "/settings": "ui://pages/settings"
+  },
+  "initialRoute": "/home",
+  "state": {
+    "initial": {
+      "user": {"name": "Guest", "isAuthenticated": false}
+    }
+  }
+};
+
+// Initialize and run the application
+final runtime = MCPUIRuntime();
+await runtime.initialize(appDefinition);
+Widget app = runtime.buildUI();
 ```
 
 ### Multiple MCP Servers
 
 ```dart
-// Create separate renderer instances for different MCP servers
-final tradingRenderer = MCPUIRenderer.forServer('trading-server');
-final analyticsRenderer = MCPUIRenderer.forServer('analytics-server');
+// Create separate runtime instances for different MCP servers
+final tradingRuntime = MCPUIRuntime(debugMode: true);
+final analyticsRuntime = MCPUIRuntime(debugMode: true);
 
-// Each renderer maintains independent state and configuration
-final tradingUI = tradingRenderer.render(tradingDefinition);
-final analyticsUI = analyticsRenderer.render(analyticsDefinition);
+// Initialize each runtime with their definitions
+await tradingRuntime.initialize(tradingDefinition);
+await analyticsRuntime.initialize(analyticsDefinition);
+
+// Each runtime maintains independent state and configuration
+final tradingUI = tradingRuntime.buildUI();
+final analyticsUI = analyticsRuntime.buildUI();
 ```
 
 ### With Tool Executors
 
 ```dart
 // Define tool executors for external API calls
-final toolExecutors = <String, Function>{
-  'getCurrentTime': (Map<String, dynamic> args) async {
-    return DateTime.now().toString();
-  },
-  'fetchUserData': (Map<String, dynamic> args) async {
-    final userId = args['userId'];
-    // Make API call here
-    return {"name": "John", "email": "john@example.com"};
-  },
-};
+final runtime = MCPUIRuntime();
+
+// Register tool executors
+runtime.registerToolExecutor('getCurrentTime', (Map<String, dynamic> args) async {
+  return DateTime.now().toString();
+});
+
+runtime.registerToolExecutor('fetchUserData', (Map<String, dynamic> args) async {
+  final userId = args['userId'];
+  // Make API call here
+  return {"name": "John", "email": "john@example.com"};
+});
 
 // UI definition with tool actions
 final uiDefinition = {
-  "layout": {
-    "type": "column",
+  "type": "page",
+  "content": {
+    "type": "linear",
+    "direction": "vertical",
+    "padding": {"all": 20},
     "children": [
       {
         "type": "text",
-        "properties": {
-          "content": "Time: {{currentTime}}"
-        }
+        "content": "Time: {{currentTime}}",
+        "style": {"fontSize": 18}
       },
+      {"type": "box", "height": 16},
       {
         "type": "button",
-        "properties": {
-          "label": "Get Time",
-          "onTap": {
-            "type": "tool",
-            "tool": "getCurrentTime",
-            "bindResult": "currentTime"
-          }
+        "label": "Get Time",
+        "variant": "elevated",
+        "click": {
+          "type": "tool",
+          "tool": "getCurrentTime",
+          "bindTo": "currentTime"
         }
       }
     ]
+  },
+  "state": {
+    "initial": {
+      "currentTime": "Not loaded"
+    }
   }
 };
 
-Widget ui = MCPUIRenderer.instance.render(
-  uiDefinition,
-  initialState: {"currentTime": "Not loaded"},
-  toolExecutors: toolExecutors,
-);
+// Initialize and build UI
+await runtime.initialize(uiDefinition);
+Widget ui = runtime.buildUI();
 ```
 
-## Supported Widgets (65+)
+## Supported Widgets (77+)
 
-The Flutter MCP UI Renderer supports **65 standard widgets** across 8 categories:
+The Flutter MCP UI Runtime supports **77+ widgets** across 9 categories:
 
 ### Layout Widgets (19)
 - `container`, `row`, `column`, `stack`, `positioned`
@@ -205,8 +277,10 @@ The renderer supports dynamic data binding using double curly braces:
 ```json
 {
   "type": "text",
-  "properties": {
-    "content": "{{user.name}}"
+  "content": "{{user.name}}",
+  "style": {
+    "fontSize": 16,
+    "color": "{{theme.colors.onBackground}}"
   }
 }
 ```
@@ -234,7 +308,7 @@ The renderer supports dynamic data binding using double curly braces:
 {
   "type": "state",
   "action": "set",
-  "path": "counter",
+  "binding": "counter",
   "value": 42
 }
 ```
@@ -246,8 +320,8 @@ Actions: `set`, `increment`, `decrement`, `toggle`, `append`, `remove`
 {
   "type": "tool",
   "tool": "fetchData",
-  "args": {"id": "{{userId}}"},
-  "bindResult": "userData"
+  "params": {"id": "{{userId}}"},
+  "bindTo": "userData"
 }
 ```
 
@@ -257,8 +331,8 @@ Actions: `set`, `increment`, `decrement`, `toggle`, `append`, `remove`
   "type": "batch",
   "parallel": true,
   "actions": [
-    {"type": "state", "action": "set", "path": "loading", "value": true},
-    {"type": "tool", "tool": "fetchData", "bindResult": "data"}
+    {"type": "state", "action": "set", "binding": "loading", "value": true},
+    {"type": "tool", "tool": "fetchData", "bindTo": "data"}
   ]
 }
 ```
@@ -268,8 +342,8 @@ Actions: `set`, `increment`, `decrement`, `toggle`, `append`, `remove`
 {
   "type": "conditional",
   "condition": "{{count > 0}}",
-  "then": {"type": "state", "action": "set", "path": "message", "value": "Has data"},
-  "else": {"type": "state", "action": "set", "path": "message", "value": "No data"}
+  "then": {"type": "state", "action": "set", "binding": "message", "value": "Has data"},
+  "else": {"type": "state", "action": "set", "binding": "message", "value": "No data"}
 }
 ```
 

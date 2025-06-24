@@ -11,7 +11,7 @@ void main() {
           'title': 'Test Page',
         },
         'content': {
-          'type': 'container',
+          'type': 'box',
           'child': {
             'type': 'text',
             'content': 'Test Content'
@@ -93,7 +93,7 @@ void main() {
           'title': 'UI Test Page',
         },
         'content': {
-          'type': 'container',
+          'type': 'box',
           'child': {
             'type': 'text',
             'content': 'UI Test'
@@ -146,7 +146,7 @@ void main() {
           'title': 'Container Test',
         },
         'content': {
-          'type': 'container',
+          'type': 'box',
           'child': {
             'type': 'text',
             'content': 'Container Test'
@@ -225,7 +225,7 @@ void main() {
         'type': 'page',
         'title': 'Test Page',
         'content': {
-          'type': 'container',
+          'type': 'box',
           'child': {
             'type': 'text',
             'content': 'Engine Test',
@@ -263,10 +263,10 @@ void main() {
           'child': {
             'type': 'button',
             'label': 'Call Tool',
-            'onTap': {
+            'click': {
               'type': 'tool',
               'tool': 'test_tool',
-              'args': {'param': 'value'}
+              'params': {'param': 'value'}
             }
           }
         }

@@ -101,12 +101,12 @@ void main() {
     });
 
     group('Context Provider', () {
-      test('should throw UnimplementedError when getting context', () {
-        // The service requires a context provider to be implemented
+      test('should throw StateError when getting context without navigator', () {
+        // The service requires a navigatorKey to be set in MaterialApp
         // This test verifies the expected behavior when it's not provided
         expect(
           () => dialogService.showAlert(message: 'Test'),
-          throwsA(isA<UnimplementedError>()),
+          throwsA(isA<StateError>()),
         );
       });
     });

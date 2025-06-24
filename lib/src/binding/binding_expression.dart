@@ -46,127 +46,183 @@ class BindingExpression {
       }
     }
     
+    // Remove outer parentheses if they wrap the entire expression
+    if (baseExpr.startsWith('(') && baseExpr.endsWith(')')) {
+      // Check if these parentheses are balanced and wrap the entire expression
+      int depth = 0;
+      bool wrapsEntireExpression = true;
+      for (int i = 0; i < baseExpr.length - 1; i++) {
+        if (baseExpr[i] == '(') depth++;
+        else if (baseExpr[i] == ')') depth--;
+        if (depth == 0 && i < baseExpr.length - 2) {
+          wrapsEntireExpression = false;
+          break;
+        }
+      }
+      if (wrapsEntireExpression) {
+        baseExpr = baseExpr.substring(1, baseExpr.length - 1).trim();
+      }
+    }
+    
+    
     // Check for ternary operator
     final questionIndex = baseExpr.indexOf('?');
     if (questionIndex != -1) {
-      final colonIndex = baseExpr.indexOf(':', questionIndex);
+      // Find matching colon for this question mark (handle nested ternaries, parentheses, and strings)
+      int colonIndex = -1;
+      int depth = 0;
+      int parenDepth = 0;
+      bool inString = false;
+      String? stringDelimiter;
+      
+      for (int i = questionIndex + 1; i < baseExpr.length; i++) {
+        final char = baseExpr[i];
+        
+        // Handle string delimiters
+        if ((char == '"' || char == "'") && (i == 0 || baseExpr[i-1] != '\\')) {
+          if (!inString) {
+            inString = true;
+            stringDelimiter = char;
+          } else if (char == stringDelimiter) {
+            inString = false;
+            stringDelimiter = null;
+          }
+        }
+        
+        // Skip characters inside strings
+        if (inString) continue;
+        
+        if (char == '(') {
+          parenDepth++;
+        } else if (char == ')') {
+          parenDepth--;
+        } else if (parenDepth == 0) {
+          if (char == '?') {
+            depth++;
+          } else if (char == ':') {
+            if (depth == 0) {
+              colonIndex = i;
+              break;
+            }
+            depth--;
+          }
+        }
+      }
+      
       if (colonIndex != -1) {
         final condition = baseExpr.substring(0, questionIndex).trim();
         final trueVal = baseExpr.substring(questionIndex + 1, colonIndex).trim();
         final falseVal = baseExpr.substring(colonIndex + 1).trim();
         
+        
         return BindingExpression(
           type: ExpressionType.conditional,
           path: '',
           left: parse(condition),
-          trueValue: _parseValue(trueVal),
-          falseValue: _parseValue(falseVal),
+          trueValue: parse(trueVal), // Parse both values recursively
+          falseValue: parse(falseVal), // Parse recursively to handle nested expressions
           transform: transform,
         );
       }
     }
     
-    // Check for null coalescing (lowest precedence)
-    final nullCoalescingIndex = baseExpr.indexOf('??');
-    if (nullCoalescingIndex != -1) {
-      final left = baseExpr.substring(0, nullCoalescingIndex).trim();
-      final right = baseExpr.substring(nullCoalescingIndex + 2).trim();
+    
+    // Find operators respecting parentheses and precedence
+    // First, find the operator with lowest precedence outside parentheses
+    int? lowestPrecedenceOpIndex;
+    String? lowestPrecedenceOp;
+    int lowestPrecedence = 999;
+    
+    // Map of operator precedence (lower number = lower precedence)
+    final precedenceMap = {
+      '??': 0,  // Null coalescing has lowest precedence
+      '||': 1,
+      '&&': 2,
+      '==': 3, '!=': 3, '>': 3, '<': 3, '>=': 3, '<=': 3,
+      '+': 4, '-': 4,
+      '*': 5, '/': 5, '%': 5,
+    };
+    
+    // Scan for operators outside parentheses and strings
+    int parenDepth = 0;
+    bool inString = false;
+    String? stringDelimiter;
+    
+    for (int i = 0; i < baseExpr.length; i++) {
+      final char = baseExpr[i];
+      
+      // Handle string delimiters
+      if ((char == '"' || char == "'") && (i == 0 || baseExpr[i-1] != '\\')) {
+        if (!inString) {
+          inString = true;
+          stringDelimiter = char;
+        } else if (char == stringDelimiter) {
+          inString = false;
+          stringDelimiter = null;
+        }
+      }
+      
+      // Skip characters inside strings
+      if (inString) continue;
+      
+      if (char == '(') {
+        parenDepth++;
+      } else if (char == ')') {
+        parenDepth--;
+      } else if (parenDepth == 0) {
+        // Check for two-character operators first
+        if (i < baseExpr.length - 1) {
+          final twoChar = baseExpr.substring(i, i + 2);
+          if (precedenceMap.containsKey(twoChar)) {
+            final precedence = precedenceMap[twoChar]!;
+            if (precedence < lowestPrecedence) {
+              lowestPrecedence = precedence;
+              lowestPrecedenceOp = twoChar;
+              lowestPrecedenceOpIndex = i;
+            }
+            i++; // Skip next character
+            continue;
+          }
+        }
+        
+        // Check for single-character operators
+        final oneChar = baseExpr[i];
+        if (precedenceMap.containsKey(oneChar)) {
+          final precedence = precedenceMap[oneChar]!;
+          if (precedence <= lowestPrecedence) { // Use <= for right-to-left associativity
+            lowestPrecedence = precedence;
+            lowestPrecedenceOp = oneChar;
+            lowestPrecedenceOpIndex = i;
+          }
+        }
+      }
+    }
+    
+    // If we found an operator, split and parse recursively
+    if (lowestPrecedenceOpIndex != null && lowestPrecedenceOp != null) {
+      final left = baseExpr.substring(0, lowestPrecedenceOpIndex).trim();
+      final right = baseExpr.substring(lowestPrecedenceOpIndex + lowestPrecedenceOp.length).trim();
+      
+      // Determine expression type based on operator
+      ExpressionType exprType;
+      if (lowestPrecedenceOp == '??') {
+        exprType = ExpressionType.nullCoalescing;
+      } else if (lowestPrecedenceOp == '||' || lowestPrecedenceOp == '&&') {
+        exprType = ExpressionType.logical;
+      } else if (['+', '-', '*', '/', '%'].contains(lowestPrecedenceOp)) {
+        exprType = ExpressionType.arithmetic;
+      } else {
+        exprType = ExpressionType.comparison;
+      }
       
       return BindingExpression(
-        type: ExpressionType.nullCoalescing,
+        type: exprType,
         path: '',
-        operator: '??',
+        operator: lowestPrecedenceOp,
         left: parse(left),
-        right: _parseValue(right),
-        transform: transform,
-      );
-    }
-    
-    // Check for logical OR (second lowest precedence)
-    final orIndex = baseExpr.indexOf('||');
-    if (orIndex != -1) {
-      final left = baseExpr.substring(0, orIndex).trim();
-      final right = baseExpr.substring(orIndex + 2).trim();
-      
-      return BindingExpression(
-        type: ExpressionType.logical,
-        path: '',
-        operator: '||',
-        left: parse(left), // Recursive parse for complex expressions
         right: parse(right),
         transform: transform,
       );
-    }
-    
-    // Check for logical AND (medium precedence)
-    final andIndex = baseExpr.indexOf('&&');
-    if (andIndex != -1) {
-      final left = baseExpr.substring(0, andIndex).trim();
-      final right = baseExpr.substring(andIndex + 2).trim();
-      
-      return BindingExpression(
-        type: ExpressionType.logical,
-        path: '',
-        operator: '&&',
-        left: parse(left), // Recursive parse for complex expressions
-        right: parse(right),
-        transform: transform,
-      );
-    }
-    
-    // Check for comparison operators
-    for (final op in ['==', '!=', '>=', '<=', '>', '<']) {
-      final opIndex = baseExpr.indexOf(op);
-      if (opIndex != -1) {
-        final left = baseExpr.substring(0, opIndex).trim();
-        final right = baseExpr.substring(opIndex + op.length).trim();
-        
-        return BindingExpression(
-          type: ExpressionType.comparison,
-          path: '',
-          operator: op,
-          left: _parseValue(left),
-          right: _parseValue(right),
-          transform: transform,
-        );
-      }
-    }
-    
-    // Check for arithmetic operators (lower precedence: +, -)
-    // Use lastIndexOf for proper left-to-right evaluation (a + b + c) = ((a + b) + c)
-    for (final op in ['+', '-']) {
-      final opIndex = baseExpr.lastIndexOf(op);
-      if (opIndex > 0 && opIndex < baseExpr.length - 1) {
-        final left = baseExpr.substring(0, opIndex).trim();
-        final right = baseExpr.substring(opIndex + 1).trim();
-        
-        return BindingExpression(
-          type: ExpressionType.arithmetic,
-          path: '',
-          operator: op,
-          left: parse(left), // Recursive parse to handle left side properly
-          right: _parseValue(right),
-          transform: transform,
-        );
-      }
-    }
-    
-    // Check for arithmetic operators (higher precedence: *, /, %)
-    for (final op in ['*', '/', '%']) {
-      final opIndex = baseExpr.lastIndexOf(op);
-      if (opIndex > 0 && opIndex < baseExpr.length - 1) {
-        final left = baseExpr.substring(0, opIndex).trim();
-        final right = baseExpr.substring(opIndex + 1).trim();
-        
-        return BindingExpression(
-          type: ExpressionType.arithmetic,
-          path: '',
-          operator: op,
-          left: _parseValue(left),
-          right: _parseValue(right),
-          transform: transform,
-        );
-      }
     }
     
     // Check for unary logical operators (highest precedence)
@@ -214,6 +270,38 @@ class BindingExpression {
           transform: transform,
         );
       }
+    }
+    
+    // Check for string literal
+    if ((baseExpr.startsWith("'") && baseExpr.endsWith("'")) ||
+        (baseExpr.startsWith('"') && baseExpr.endsWith('"'))) {
+      return BindingExpression(
+        type: ExpressionType.simple,
+        path: '',
+        value: baseExpr.substring(1, baseExpr.length - 1),
+        transform: transform,
+      );
+    }
+    
+    // Check for number literal
+    final num? number = num.tryParse(baseExpr);
+    if (number != null) {
+      return BindingExpression(
+        type: ExpressionType.simple,
+        path: '',
+        value: number,
+        transform: transform,
+      );
+    }
+    
+    // Check for boolean literal
+    if (baseExpr == 'true' || baseExpr == 'false') {
+      return BindingExpression(
+        type: ExpressionType.simple,
+        path: '',
+        value: baseExpr == 'true',
+        transform: transform,
+      );
     }
     
     // Simple path expression

@@ -19,6 +19,16 @@ class LifecycleManager {
 
   final bool enableDebugMode;
   final Map<LifecycleEvent, List<Function>> _eventListeners = {};
+  
+  // Action handler for executing lifecycle hooks
+  dynamic _actionHandler;
+  dynamic _renderContext;
+  
+  /// Sets the action handler for executing lifecycle hooks
+  void setActionHandler(dynamic actionHandler, dynamic renderContext) {
+    _actionHandler = actionHandler;
+    _renderContext = renderContext;
+  }
 
   /// Registers a listener for a specific lifecycle event
   void addListener(LifecycleEvent event, Function listener) {
@@ -165,10 +175,23 @@ class LifecycleManager {
 
   /// Executes a tool-related lifecycle hook
   Future<void> _executeToolHook(Map<String, dynamic> hook) async {
-    // Placeholder implementation
-    // This would interact with the tool executor
     if (enableDebugMode) {
       debugPrint('LifecycleManager: Executing tool hook: ${hook['tool']}');
+    }
+    
+    // Execute the tool action using ActionHandler if available
+    if (_actionHandler != null && _renderContext != null) {
+      try {
+        await _actionHandler.execute(hook, _renderContext);
+      } catch (e) {
+        if (enableDebugMode) {
+          debugPrint('LifecycleManager: Error executing tool hook: $e');
+        }
+      }
+    } else {
+      if (enableDebugMode) {
+        debugPrint('LifecycleManager: ActionHandler not available for tool execution');
+      }
     }
   }
 

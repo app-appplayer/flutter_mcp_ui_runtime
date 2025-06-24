@@ -112,7 +112,7 @@ void main() {
       final toolAction = {
         'type': 'tool',
         'tool': 'increment',
-        'args': {},
+        'params': {},
       };
 
       final navigationAction = {

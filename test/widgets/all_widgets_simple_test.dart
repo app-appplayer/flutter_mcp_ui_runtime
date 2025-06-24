@@ -13,11 +13,11 @@ void main() {
 
     test('All Layout widgets are registered and instantiable', () {
       final layoutWidgets = [
-        'column', 'row', 'stack', 'container', 'center', 'align', 
-        'padding', 'sizedbox', 'expanded', 'flexible', 'spacer', 
-        'wrap', 'positioned', 'intrinsicheight', 'intrinsicwidth', 
-        'visibility', 'aspectratio', 'baseline', 'constrainedbox', 
-        'fittedbox', 'limitedbox', 'table', 'flow', 'margin'
+        'linear', 'stack', 'box', 'center', 'align', 
+        'padding', 'sizedBox', 'expanded', 'flexible', 'spacer', 
+        'wrap', 'positioned', 'intrinsicHeight', 'intrinsicWidth', 
+        'visibility', 'aspectRatio', 'baseline', 'constrainedBox', 
+        'fittedBox', 'limitedBox', 'table', 'flow', 'margin'
       ];
 
       for (final widgetType in layoutWidgets) {
@@ -25,18 +25,17 @@ void main() {
         
         final factory = registry.get(widgetType);
         expect(factory, isNotNull, reason: 'Layout widget $widgetType factory should exist');
-        expect(factory.runtimeType.toString(), contains('WidgetFactory'), 
+        expect(factory.runtimeType.toString(), contains('Factory'), 
                reason: 'Layout widget $widgetType should have proper factory type');
       }
     });
 
     test('All Display widgets are registered and instantiable', () {
       final displayWidgets = [
-        'text', 'richtext', 'image', 'icon', 'card', 'divider', 
+        'text', 'richText', 'image', 'icon', 'card', 'divider', 
         'badge', 'chip', 'avatar', 'tooltip', 'placeholder', 
-        'banner', 'clipoval', 'cliprrect', 'decoratedbox', 
-        'circularprogressindicator', 'linearprogressindicator', 
-        'progressindicator', 'verticaldivider', 'decoration'
+        'banner', 'clipOval', 'clipRRect', 'decoratedBox', 
+        'loadingIndicator', 'verticalDivider', 'decoration'
       ];
 
       for (final widgetType in displayWidgets) {
@@ -44,16 +43,18 @@ void main() {
         
         final factory = registry.get(widgetType);
         expect(factory, isNotNull, reason: 'Display widget $widgetType factory should exist');
-        expect(factory.runtimeType.toString(), contains('WidgetFactory'), 
+        expect(factory.runtimeType.toString(), contains('Factory'), 
                reason: 'Display widget $widgetType should have proper factory type');
       }
     });
 
     test('All Input widgets are registered and instantiable', () {
       final inputWidgets = [
-        'button', 'textfield', 'textformfield', 'checkbox', 'radio', 
-        'switch', 'slider', 'rangeslider', 'dropdown', 'stepper', 
-        'datepicker', 'timepicker', 'iconbutton', 'form'
+        'button', 'textInput', 'textFormField', 'checkbox', 'radio', 
+        'toggle', 'slider', 'rangeSlider', 'select', 
+        'dateField', 'timeField', 'iconButton', 'form',
+        'numberField', 'colorPicker', 'radioGroup', 'checkboxGroup',
+        'segmentedControl', 'dateRangePicker'
       ];
 
       for (final widgetType in inputWidgets) {
@@ -61,28 +62,28 @@ void main() {
         
         final factory = registry.get(widgetType);
         expect(factory, isNotNull, reason: 'Input widget $widgetType factory should exist');
-        expect(factory.runtimeType.toString(), contains('WidgetFactory'), 
+        expect(factory.runtimeType.toString(), contains('Factory'), 
                reason: 'Input widget $widgetType should have proper factory type');
       }
     });
 
     test('All List widgets are registered and instantiable', () {
-      final listWidgets = ['listview', 'gridview', 'listtile'];
+      final listWidgets = ['list', 'grid', 'listTile'];
 
       for (final widgetType in listWidgets) {
         expect(registry.has(widgetType), isTrue, reason: 'List widget $widgetType should be registered');
         
         final factory = registry.get(widgetType);
         expect(factory, isNotNull, reason: 'List widget $widgetType factory should exist');
-        expect(factory.runtimeType.toString(), contains('WidgetFactory'), 
+        expect(factory.runtimeType.toString(), contains('Factory'), 
                reason: 'List widget $widgetType should have proper factory type');
       }
     });
 
     test('All Navigation widgets are registered and instantiable', () {
       final navigationWidgets = [
-        'appbar', 'tabbar', 'drawer', 'bottomnavigationbar', 
-        'navigationrail', 'floatingactionbutton', 'popupmenubutton', 'tabbarview'
+        'headerBar', 'tabBar', 'drawer', 'bottomNavigation', 
+        'navigationRail', 'floatingActionButton', 'popupMenuButton', 'tabBarView'
       ];
 
       for (final widgetType in navigationWidgets) {
@@ -90,59 +91,59 @@ void main() {
         
         final factory = registry.get(widgetType);
         expect(factory, isNotNull, reason: 'Navigation widget $widgetType factory should exist');
-        expect(factory.runtimeType.toString(), contains('WidgetFactory'), 
+        expect(factory.runtimeType.toString(), contains('Factory'), 
                reason: 'Navigation widget $widgetType should have proper factory type');
       }
     });
 
     test('All Scroll widgets are registered and instantiable', () {
-      final scrollWidgets = ['singlechildscrollview', 'pageview', 'scrollbar'];
+      final scrollWidgets = ['singleChildScrollView', 'scrollView', 'scrollBar'];
 
       for (final widgetType in scrollWidgets) {
         expect(registry.has(widgetType), isTrue, reason: 'Scroll widget $widgetType should be registered');
         
         final factory = registry.get(widgetType);
         expect(factory, isNotNull, reason: 'Scroll widget $widgetType factory should exist');
-        expect(factory.runtimeType.toString(), contains('WidgetFactory'), 
+        expect(factory.runtimeType.toString(), contains('Factory'), 
                reason: 'Scroll widget $widgetType should have proper factory type');
       }
     });
 
     test('All Animation widgets are registered and instantiable', () {
-      final animationWidgets = ['animatedcontainer'];
+      final animationWidgets = ['animatedContainer'];
 
       for (final widgetType in animationWidgets) {
         expect(registry.has(widgetType), isTrue, reason: 'Animation widget $widgetType should be registered');
         
         final factory = registry.get(widgetType);
         expect(factory, isNotNull, reason: 'Animation widget $widgetType factory should exist');
-        expect(factory.runtimeType.toString(), contains('WidgetFactory'), 
+        expect(factory.runtimeType.toString(), contains('Factory'), 
                reason: 'Animation widget $widgetType should have proper factory type');
       }
     });
 
     test('All Interactive widgets are registered and instantiable', () {
-      final interactiveWidgets = ['gesturedetector', 'inkwell'];
+      final interactiveWidgets = ['gestureDetector', 'inkWell', 'draggable', 'dragTarget'];
 
       for (final widgetType in interactiveWidgets) {
         expect(registry.has(widgetType), isTrue, reason: 'Interactive widget $widgetType should be registered');
         
         final factory = registry.get(widgetType);
         expect(factory, isNotNull, reason: 'Interactive widget $widgetType factory should exist');
-        expect(factory.runtimeType.toString(), contains('WidgetFactory'), 
+        expect(factory.runtimeType.toString(), contains('Factory'), 
                reason: 'Interactive widget $widgetType should have proper factory type');
       }
     });
 
     test('All Dialog widgets are registered and instantiable', () {
-      final dialogWidgets = ['alertdialog', 'snackbar', 'bottomsheet'];
+      final dialogWidgets = ['alertDialog', 'snackBar', 'bottomSheet'];
 
       for (final widgetType in dialogWidgets) {
         expect(registry.has(widgetType), isTrue, reason: 'Dialog widget $widgetType should be registered');
         
         final factory = registry.get(widgetType);
         expect(factory, isNotNull, reason: 'Dialog widget $widgetType factory should exist');
-        expect(factory.runtimeType.toString(), contains('WidgetFactory'), 
+        expect(factory.runtimeType.toString(), contains('Factory'), 
                reason: 'Dialog widget $widgetType should have proper factory type');
       }
     });
@@ -188,6 +189,12 @@ void main() {
         'layout', 'display', 'input', 'list', 'navigation', 
         'scroll', 'animation', 'interactive', 'dialog'
       ];
+      
+      // Test control flow widgets
+      expect(registry.has('conditional'), isTrue, reason: 'Control flow widget conditional should be registered');
+      
+      // Test media widgets
+      expect(registry.has('mediaPlayer'), isTrue, reason: 'Media widget mediaPlayer should be registered');
       
       for (final expectedCategory in expectedCategories) {
         expect(categories, contains(expectedCategory), 

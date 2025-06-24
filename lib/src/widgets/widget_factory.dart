@@ -19,7 +19,7 @@ abstract class WidgetFactory {
     return properties;
   }
 
-  /// Apply common widget wrappers (visibility, tooltip, etc.)
+  /// Apply common widget wrappers (visibility, tooltip, accessibility, etc.)
   Widget applyCommonWrappers(
     Widget widget,
     Map<String, dynamic> properties,
@@ -40,17 +40,84 @@ abstract class WidgetFactory {
       );
     }
 
-    // Handle enabled state
-    final enabled = context.resolve<bool>(properties['enabled'] ?? true);
-    if (!enabled) {
-      widget = IgnorePointer(
-        child: Opacity(
-          opacity: 0.6,
-          child: widget,
-        ),
-      );
+    // Handle enabled state - skip for widgets that handle it internally
+    // Button widgets handle enabled state by setting onPressed to null
+    final isButtonWidget = widget is ElevatedButton || 
+                          widget is TextButton || 
+                          widget is OutlinedButton || 
+                          widget is FilledButton ||
+                          widget is IconButton ||
+                          widget is GestureDetector ||
+                          widget is SizedBox && (
+                            widget.child is ElevatedButton ||
+                            widget.child is TextButton ||
+                            widget.child is OutlinedButton ||
+                            widget.child is FilledButton ||
+                            widget.child is IconButton
+                          );
+    
+    if (!isButtonWidget) {
+      final enabled = context.resolve<bool>(properties['enabled'] ?? true);
+      if (!enabled) {
+        widget = IgnorePointer(
+          child: Opacity(
+            opacity: 0.6,
+            child: widget,
+          ),
+        );
+      }
     }
 
+    // Handle accessibility (MCP UI DSL v1.0)
+    widget = _applyAccessibility(widget, properties, context);
+
+    return widget;
+  }
+
+  /// Apply accessibility properties to widget
+  Widget _applyAccessibility(
+    Widget widget,
+    Map<String, dynamic> properties,
+    RenderContext context,
+  ) {
+    // Get accessibility properties
+    final ariaLabel = context.resolve<String?>(properties['aria-label']);
+    final ariaHidden = context.resolve<bool>(properties['aria-hidden'] ?? false);
+    final ariaRole = context.resolve<String?>(properties['aria-role']);
+    final ariaDescription = context.resolve<String?>(properties['aria-description']);
+    final ariaLiveRegion = context.resolve<String?>(properties['aria-live']);
+    
+    // If aria-hidden is true, exclude from semantics tree
+    if (ariaHidden) {
+      return ExcludeSemantics(
+        child: widget,
+      );
+    }
+    
+    // Apply semantic properties if any are specified
+    if (ariaLabel != null || ariaRole != null || ariaDescription != null || ariaLiveRegion != null) {
+      // Convert aria-live to Flutter's liveness
+      bool? isLiveRegion;
+      if (ariaLiveRegion != null) {
+        isLiveRegion = ariaLiveRegion == 'polite' || ariaLiveRegion == 'assertive';
+      }
+      
+      widget = Semantics(
+        label: ariaLabel,
+        hint: ariaDescription,
+        liveRegion: isLiveRegion,
+        // Map common ARIA roles to Flutter semantic properties
+        button: ariaRole == 'button',
+        link: ariaRole == 'link',
+        header: ariaRole == 'heading',
+        textField: ariaRole == 'textbox',
+        image: ariaRole == 'img',
+        slider: ariaRole == 'slider',
+        checked: ariaRole == 'checkbox' ? null : null, // Checkbox state handled by widget itself
+        child: widget,
+      );
+    }
+    
     return widget;
   }
 
@@ -100,13 +167,34 @@ abstract class WidgetFactory {
     return parseAlignment(value);
   }
 
-  /// Parse Color
+  /// Parse Color - supports 6-digit (#RRGGBB) and 8-digit (#AARRGGBB) hex formats
   Color? parseColor(dynamic value) {
     if (value == null) return null;
     
     if (value is String) {
       if (value.startsWith('#')) {
-        return Color(int.parse(value.substring(1), radix: 16) + 0xFF000000);
+        String hex = value.substring(1);
+        
+        try {
+          // 8자리 AARRGGBB 형식
+          if (hex.length == 8) {
+            return Color(int.parse(hex, radix: 16));
+          }
+          // 6자리 RRGGBB 형식 (알파 채널 FF 추가)
+          else if (hex.length == 6) {
+            return Color(int.parse('FF$hex', radix: 16));
+          }
+          // 3자리 RGB 축약형 지원
+          else if (hex.length == 3) {
+            String expanded = hex.split('').map((c) => '$c$c').join();
+            return Color(int.parse('FF$expanded', radix: 16));
+          }
+        } catch (e) {
+          // 잘못된 hex 문자가 있는 경우 null 반환
+          return null;
+        }
+        
+        return null;
       }
       
       // Named colors

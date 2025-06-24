@@ -11,7 +11,8 @@ void main() {
       final uiDefinition = {
         'type': 'page',
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'text',
@@ -20,7 +21,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Subscribe to CPU',
-              'onTap': {
+              'click': {
                 'type': 'resource',
                 'action': 'subscribe',
                 'uri': 'mcp://server/metrics/cpu',
@@ -30,7 +31,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Unsubscribe',
-              'onTap': {
+              'click': {
                 'type': 'resource',
                 'action': 'unsubscribe',
                 'uri': 'mcp://server/metrics/cpu',
@@ -84,7 +85,8 @@ void main() {
       final uiDefinition = {
         'type': 'page',
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'text',
@@ -177,7 +179,7 @@ void main() {
           },
         },
         'content': {
-          'type': 'container',
+          'type': 'box',
           'child': {
             'type': 'text',
             'content': '{{serverStatus}}',
@@ -235,7 +237,8 @@ void main() {
       final uiDefinition = {
         'type': 'page',
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'checkbox',

@@ -11,6 +11,7 @@ class WidgetRegistry {
 
   /// Register a widget factory
   void register(String type, WidgetFactory factory) {
+    // Store with exact case for primary registration
     _factories[type] = factory;
     
     // Add to categorized types
@@ -25,11 +26,13 @@ class WidgetRegistry {
 
   /// Get a widget factory by type
   WidgetFactory? get(String type) {
+    // Look up with exact case for case-sensitive matching (MCP UI DSL v1.0)
     return _factories[type];
   }
 
   /// Check if a widget type is registered
   bool has(String type) {
+    // Check with exact case for case-sensitive matching (MCP UI DSL v1.0)
     return _factories.containsKey(type);
   }
 

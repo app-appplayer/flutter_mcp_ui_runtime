@@ -17,7 +17,8 @@ class InkWellWidgetFactory extends WidgetFactory {
     final overlayColor = properties['overlayColor'] != null 
         ? WidgetStateProperty.all(parseColor(context.resolve(properties['overlayColor'])))
         : null;
-    // final splashRadius = properties['splashRadius']?.toDouble(); // TODO: Use this property
+    // splashRadius is not available in current Flutter stable version
+    // final splashRadius = context.resolve<num?>(properties['splashRadius'])?.toDouble();
     final borderRadius = _parseBorderRadius(properties['borderRadius']);
     final customBorder = _parseShapeBorder(properties['customBorder']);
     final enableFeedback = properties['enableFeedback'] as bool? ?? true;
@@ -95,7 +96,8 @@ class InkWellWidgetFactory extends WidgetFactory {
       hoverColor: hoverColor,
       focusColor: focusColor,
       overlayColor: overlayColor,
-      // splashRadius: splashRadius, // Not available in current Flutter version
+      // Note: splashRadius is not available in current Flutter stable version
+      // It will be available in future releases
       borderRadius: borderRadius,
       customBorder: customBorder,
       enableFeedback: enableFeedback,

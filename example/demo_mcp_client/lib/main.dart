@@ -6,10 +6,24 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
 import 'package:mcp_client/mcp_client.dart';
 
+/// Demo MCP Client Application
+/// 
+/// This example demonstrates how to create a Flutter application that:
+/// 1. Connects to an MCP server via STDIO transport
+/// 2. Loads UI definitions from the server
+/// 3. Renders dynamic UI using flutter_mcp_ui_runtime
+/// 4. Handles tool calls and resource subscriptions
+/// 
+/// The client is completely UI-agnostic - it doesn't know anything about
+/// the specific UI structure, just renders what the server provides.
 void main() {
   runApp(const MCPClientApp());
 }
 
+/// Root widget for the MCP Client app
+/// 
+/// Provides the basic Material app wrapper for the demo.
+/// The actual MCP functionality is handled by MCPClientDemo.
 class MCPClientApp extends StatelessWidget {
   const MCPClientApp({super.key});
 
@@ -27,6 +41,13 @@ class MCPClientApp extends StatelessWidget {
   }
 }
 
+/// Main demo widget that handles MCP client connection and UI rendering
+/// 
+/// This widget demonstrates the complete lifecycle of an MCP UI client:
+/// - Connecting to an MCP server
+/// - Loading application definitions
+/// - Rendering dynamic UI
+/// - Handling user interactions
 class MCPClientDemo extends StatefulWidget {
   const MCPClientDemo({super.key});
 
@@ -35,14 +56,17 @@ class MCPClientDemo extends StatefulWidget {
 }
 
 class _MCPClientDemoState extends State<MCPClientDemo> {
+  /// MCP client instance for server communication
   Client? _mcpClient;
+  
+  /// Runtime instance that renders the UI
   MCPUIRuntime? _runtime;
-  bool _isConnected = false;
-  bool _isConnecting = false;
-  String _connectionError = '';
   
-  Map<String, dynamic>? _currentDefinition;
+  /// Error message if connection fails
+  String? _error;
   
+  /// Helper method to log debug messages to stderr
+  /// (stdout is reserved for MCP protocol communication)
   void _log(String message) {
     if (kDebugMode) {
       stderr.writeln('[demo_mcp_client] $message');
@@ -62,23 +86,28 @@ class _MCPClientDemoState extends State<MCPClientDemo> {
     super.dispose();
   }
   
+  /// Connects to the MCP server and initializes the client
+  /// 
+  /// This method:
+  /// 1. Creates an MCP client with STDIO transport
+  /// 2. Launches the server process (dart run bin/server.dart)
+  /// 3. Establishes the MCP connection
+  /// 4. Sets up notification handlers for real-time updates
+  /// 5. Loads the application UI definition
   Future<void> _connectToMCPServer() async {
-    setState(() {
-      _isConnecting = true;
-      _connectionError = '';
-    });
-    
     try {
       _log('Connecting to MCP server...');
       
       // Create client configuration
+      // The client identifies itself to the server with a name and version
       final config = McpClient.simpleConfig(
         name: 'Flutter Counter Demo Client',
         version: '1.0.0',
         enableDebugLogging: kDebugMode,
       );
       
-      // Create STDIO transport
+      // Create STDIO transport configuration
+      // This launches the server process and communicates via stdin/stdout
       final transportConfig = TransportConfig.stdio(
         command: 'dart',
         arguments: ['run', 'bin/server.dart'],
@@ -96,36 +125,42 @@ class _MCPClientDemoState extends State<MCPClientDemo> {
       }
       
       _mcpClient = clientResult.get();
-      
-      setState(() {
-        _isConnected = true;
-        _isConnecting = false;
-      });
-      
       _log('Connected successfully!');
       
-      // Setup notification handlers
+      // Setup notification handlers for resource updates
       _setupNotificationHandlers();
       
-      // Load application
+      // Load the application UI definition from the server
       await _loadApplication();
       
-    } catch (e) {
+    } catch (e, stack) {
       _log('Failed to connect: $e');
+      _log('Stack trace: $stack');
       setState(() {
-        _isConnecting = false;
-        _connectionError = e.toString();
+        _error = e.toString();
       });
     }
   }
   
+  /// Loads the application UI definition from the server
+  /// 
+  /// This method:
+  /// 1. Reads the 'ui://app' resource which contains the main application definition
+  /// 2. Parses the JSON response
+  /// 3. Initializes the MCP UI Runtime with the definition
+  /// 4. Provides a pageLoader callback for loading individual pages
+  /// 
+  /// The runtime handles all UI rendering - this client just provides
+  /// the data and callbacks.
   Future<void> _loadApplication() async {
     if (_mcpClient == null) return;
     
     try {
       _log('Loading application...');
       
-      // Read application resource
+      // Read the main application resource from the server
+      // The 'ui://app' resource contains the application structure,
+      // theme, navigation, and routes
       final resource = await _mcpClient!.readResource('ui://app');
       final content = resource.contents.first;
       final text = content.text;
@@ -134,13 +169,18 @@ class _MCPClientDemoState extends State<MCPClientDemo> {
         throw Exception('No text content in resource');
       }
       
+      // Parse the application definition
       final definition = jsonDecode(text) as Map<String, dynamic>;
       _log('Application definition loaded: ${definition['type']}');
       
-      // Initialize runtime with page loader and disable cache
+      // Initialize the MCP UI Runtime
+      // The runtime will handle all UI rendering based on the definition
       _runtime = MCPUIRuntime(enableDebugMode: true);
+      
       await _runtime!.initialize(
         definition,
+        // Provide a page loader callback
+        // This is called when the runtime needs to load a page
         pageLoader: (uri) async {
           _log('Loading page: $uri');
           final pageResource = await _mcpClient!.readResource(uri);
@@ -148,49 +188,63 @@ class _MCPClientDemoState extends State<MCPClientDemo> {
           final text = pageContent.text ?? '{}';
           return jsonDecode(text);
         },
-        useCache: false,  // Disable caching to ensure real-time updates
       );
       
-      
-      setState(() {
-        _currentDefinition = definition;
-      });
-      
       _log('Application loaded successfully!');
+      
+      // Update UI to show the loaded application
+      setState(() {});
       
     } catch (e) {
       _log('Failed to load application: $e');
       setState(() {
-        _connectionError = 'Failed to load application: $e';
+        _error = 'Failed to load application: $e';
       });
     }
   }
 
-  Future<void> _handleToolCall(String tool, Map<String, dynamic> args) async {
-    _log('Tool call: $tool with args: $args');
+  /// Handles tool calls from the UI
+  /// 
+  /// When a user interacts with the UI (e.g., clicks a button), the runtime
+  /// may trigger a tool call. This method:
+  /// 1. Sends the tool call to the MCP server
+  /// 2. Receives the response
+  /// 3. Updates the UI state with any changes
+  /// 
+  /// For example, clicking an "increment" button calls the "increment" tool,
+  /// which returns the new counter value.
+  Future<void> _handleToolCall(String tool, Map<String, dynamic> params) async {
+    _log('Tool call: $tool with params: $params');
     
-    if (!_isConnected || _mcpClient == null) {
+    if (_mcpClient == null) {
       _log('Cannot execute tool: not connected');
       return;
     }
     
     try {
-      // Call tool on MCP server
-      final result = await _mcpClient!.callTool(tool, args);
+      // Call the tool on the MCP server
+      // The server executes the tool and returns the result
+      final result = await _mcpClient!.callTool(tool, params);
       _log('Tool result: ${result.content.length} content items');
       
       if (result.content.isNotEmpty) {
         final firstContent = result.content.first;
         if (firstContent is TextContent) {
           try {
-            // Parse JSON response
+            // Parse the JSON response from the server
+            // The response typically contains state updates
             final responseData = jsonDecode(firstContent.text) as Map<String, dynamic>;
             _log('Parsed response: $responseData');
             
-            // Update runtime state with server response
-            if (_runtime?.isInitialized == true && responseData.containsKey('counter')) {
-              _runtime!.stateManager.set('counter', responseData['counter']);
-              _log('Updated counter state to: ${responseData['counter']}');
+            // Update the runtime state with the server response
+            // This automatically triggers UI updates through the runtime's
+            // binding system
+            if (_runtime?.isInitialized == true) {
+              // Update any state keys returned by the tool
+              responseData.forEach((key, value) {
+                _runtime!.stateManager.set(key, value);
+                _log('Updated $key state to: $value');
+              });
             }
             
           } catch (e) {
@@ -201,6 +255,7 @@ class _MCPClientDemoState extends State<MCPClientDemo> {
       
     } catch (e) {
       _log('Tool execution failed: $e');
+      // Show error to user
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -212,98 +267,125 @@ class _MCPClientDemoState extends State<MCPClientDemo> {
     }
   }
   
-  Future<void> _handleResourceSubscribe(String uri, String binding) async {
-    _log('Resource subscribe called: $uri -> $binding');
+  /// Handles resource subscription actions from the UI
+  /// 
+  /// Resources in MCP can be subscribed to for real-time updates.
+  /// This method handles:
+  /// - subscribe: Start receiving updates when a resource changes
+  /// - unsubscribe: Stop receiving updates
+  /// 
+  /// When subscribed, the server will send notifications whenever the
+  /// resource data changes, which are handled by _setupNotificationHandlers.
+  /// 
+  /// @param action The action to perform ('subscribe' or 'unsubscribe')
+  /// @param resource The resource URI to subscribe to (e.g., 'data://temperature')
+  /// @param binding The state key to bind the resource data to
+  Future<void> _handleResourceAction(String action, String resource, [String? binding]) async {
+    _log('Resource $action called: $resource${binding != null ? ' -> $binding' : ''}');
     
-    if (!_isConnected || _mcpClient == null) {
-      _log('Cannot subscribe: not connected');
+    if (_mcpClient == null) {
+      _log('Cannot execute resource action: not connected');
       return;
     }
     
     try {
-      // Subscribe to resource via MCP
-      _log('Calling MCP subscribeResource for: $uri');
-      await _mcpClient!.subscribeResource(uri);
-      _log('Successfully subscribed to: $uri');
-      
-      // Update subscription status in UI
-      if (_runtime?.isInitialized == true) {
-        _runtime!.stateManager.set('subscriptionStatus', 'Subscribed');
-        _runtime!.stateManager.set('notificationCount', 0);
-        _log('Updated subscription status to: Subscribed');
+      if (action == 'subscribe') {
+        // Subscribe to the resource via MCP protocol
+        _log('Calling MCP subscribeResource for: $resource');
+        await _mcpClient!.subscribeResource(resource);
+        _log('Successfully subscribed to: $resource');
         
-        // Request initial temperature value to verify connection
-        try {
-          final resource = await _mcpClient!.readResource('data://temperature');
-          final content = resource.contents.first;
-          final text = content.text;
-          if (text != null) {
-            final data = jsonDecode(text);
-            _log('Initial temperature data: $data');
-            _runtime!.stateManager.set('temperature', data['temperature']);
+        // Register the subscription with the runtime
+        // This tells the runtime which state key to update when
+        // notifications are received for this resource
+        if (binding != null && _runtime?.isInitialized == true) {
+          _runtime!.registerResourceSubscription(resource, binding);
+          _log('Registered subscription mapping: $resource -> $binding');
+        }
+        
+        // Update UI to show subscription status
+        if (_runtime?.isInitialized == true) {
+          _runtime!.stateManager.set('subscriptionStatus', 'Subscribed');
+          _runtime!.stateManager.set('notificationCount', 0);
+          _log('Updated subscription status to: Subscribed');
+          
+          // Read initial data from the resource
+          // This ensures the UI shows current data immediately
+          try {
+            final resourceData = await _mcpClient!.readResource(resource);
+            final content = resourceData.contents.first;
+            final text = content.text;
+            if (text != null) {
+              final data = jsonDecode(text);
+              _log('Initial resource data: $data');
+              // Update state with resource data
+              data.forEach((key, value) {
+                _runtime!.stateManager.set(key, value);
+              });
+            }
+          } catch (e) {
+            _log('Failed to read initial resource data: $e');
           }
-        } catch (e) {
-          _log('Failed to read initial temperature: $e');
+        }
+      } else if (action == 'unsubscribe') {
+        // Unsubscribe from the resource
+        _log('Calling MCP unsubscribeResource for: $resource');
+        await _mcpClient!.unsubscribeResource(resource);
+        _log('Successfully unsubscribed from: $resource');
+        
+        // Remove the subscription from the runtime
+        if (_runtime?.isInitialized == true) {
+          _runtime!.unregisterResourceSubscription(resource);
+          _log('Unregistered subscription mapping for: $resource');
+        }
+        
+        // Update UI to show unsubscribed status
+        if (_runtime?.isInitialized == true) {
+          _runtime!.stateManager.set('subscriptionStatus', 'Not subscribed');
+          _log('Updated subscription status to: Not subscribed');
         }
       }
       
     } catch (e) {
-      _log('Subscribe failed: $e');
+      _log('Resource $action failed: $e');
     }
   }
   
-  Future<void> _handleResourceUnsubscribe(String uri) async {
-    _log('Resource unsubscribe called: $uri');
-    
-    if (!_isConnected || _mcpClient == null) {
-      _log('Cannot unsubscribe: not connected');
-      return;
-    }
-    
-    try {
-      // Unsubscribe from resource via MCP
-      _log('Calling MCP unsubscribeResource for: $uri');
-      await _mcpClient!.unsubscribeResource(uri);
-      _log('Successfully unsubscribed from: $uri');
-      
-      // Update subscription status in UI
-      if (_runtime?.isInitialized == true) {
-        _runtime!.stateManager.set('subscriptionStatus', 'Not subscribed');
-        _log('Updated subscription status to: Not subscribed');
-      }
-      
-    } catch (e) {
-      _log('Unsubscribe failed: $e');
-    }
-  }
-  
+  /// Sets up handlers for MCP notifications
+  /// 
+  /// The MCP protocol supports notifications for real-time updates.
+  /// This method registers a handler for resource update notifications.
+  /// 
+  /// When a subscribed resource changes on the server, it sends a
+  /// 'notifications/resources/updated' notification. The runtime then:
+  /// 1. Identifies which state key is bound to the resource
+  /// 2. Updates the state with the new data
+  /// 3. Triggers UI updates automatically
   void _setupNotificationHandlers() {
     if (_mcpClient == null) return;
     
     _log('Setting up notification handlers...');
     
-    // Set up a single notification handler that passes all notifications to runtime
-    // Runtime will internally handle different notification types
-    final notificationHandler = (String method, Function(Map<String, dynamic>) handler) {
-      _mcpClient!.onNotification(method, handler);
-    };
-    
-    // For now, we need to register for specific notification types we care about
-    notificationHandler('notifications/resources/updated', (params) async {
+    // Register handler for resource update notifications
+    // This is called whenever a subscribed resource changes on the server
+    _mcpClient!.onNotification('notifications/resources/updated', (params) async {
       _log('=== NOTIFICATION RECEIVED ===');
       _log('Method: notifications/resources/updated');
       _log('Params: $params');
       
       if (_runtime?.isInitialized == true) {
-        // Create notification object as per spec
-        final notification = {
-          'method': 'notifications/resources/updated',
-          'params': params,
-        };
-        
-        // Pass to runtime with resource reader
+        // Pass the notification to the runtime for processing
+        // The runtime will:
+        // 1. Extract the resource URI from the notification
+        // 2. Find the state binding for that resource
+        // 3. Update the state with the new data
         await _runtime!.handleNotification(
-          notification,
+          {
+            'method': 'notifications/resources/updated',
+            'params': params,
+          },
+          // Provide a resource reader callback for standard mode
+          // (when the notification doesn't include the data)
           resourceReader: (uri) async {
             final resource = await _mcpClient!.readResource(uri);
             return resource.contents.first.text ?? '{}';
@@ -320,163 +402,39 @@ class _MCPClientDemoState extends State<MCPClientDemo> {
 
   @override
   Widget build(BuildContext context) {
-    // If we have an application loaded, let the runtime handle the UI
-    if (_currentDefinition != null && _runtime?.isInitialized == true) {
-      try {
-        return _runtime!.buildUI(
-          context: context,
-          onToolCall: _handleToolCall,
-          onResourceSubscribe: _handleResourceSubscribe,
-          onResourceUnsubscribe: _handleResourceUnsubscribe,
-        );
-      } catch (e) {
-        return _buildErrorScaffold(e);
-      }
+    // The build method is simple - it delegates all UI rendering to the runtime
+    
+    // If runtime is initialized, let it handle all UI rendering
+    if (_runtime?.isInitialized == true) {
+      return _runtime!.buildUI(
+        context: context,
+        // Provide callbacks for user interactions
+        onToolCall: _handleToolCall,
+        onResourceSubscribe: (uri, binding) async {
+          await _handleResourceAction('subscribe', uri, binding);
+        },
+        onResourceUnsubscribe: (uri) async {
+          await _handleResourceAction('unsubscribe', uri);
+        },
+      );
     }
     
-    // Otherwise show connection status
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('MCP Client'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _isConnecting ? null : _connectToMCPServer,
-            tooltip: 'Reconnect',
+    // Show error state if connection failed
+    if (_error != null) {
+      return MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Text('Error: $_error'),
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildStatusBar(),
-          Expanded(child: _buildBody()),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildStatusBar() {
-    Color backgroundColor;
-    String statusText;
-    IconData icon;
-    
-    if (_isConnecting) {
-      backgroundColor = Colors.blue.shade50;
-      statusText = 'Connecting to MCP server...';
-      icon = Icons.sync;
-    } else if (_isConnected) {
-      backgroundColor = Colors.green.shade50;
-      statusText = 'Connected - Application Ready';
-      icon = Icons.check_circle;
-    } else {
-      backgroundColor = Colors.red.shade50;
-      statusText = 'Disconnected - $_connectionError';
-      icon = Icons.error;
-    }
-    
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(8),
-      color: backgroundColor,
-      child: Row(
-        children: [
-          Icon(icon, size: 16),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              statusText,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildBody() {
-    if (_isConnecting) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Connecting to MCP server...'),
-          ],
         ),
       );
     }
     
-    if (_currentDefinition != null && _runtime?.isInitialized == true) {
-      return const Center(
-        child: Text('Application is rendering above'),
-      );
-    }
-    
-    if (!_isConnected) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.cloud_off, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            const Text(
-              'Failed to connect to MCP server',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _connectionError,
-              style: const TextStyle(color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _connectToMCPServer,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry Connection'),
-            ),
-          ],
-        ),
-      );
-    }
-    
-    return const Center(
-      child: CircularProgressIndicator(),
-    );
-  }
-  
-  Widget _buildErrorScaffold(dynamic error) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('MCP Client - Error'),
-        backgroundColor: Colors.red,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            const Text(
-              'Error rendering application',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              error.toString(),
-              style: const TextStyle(color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _connectToMCPServer,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Reconnect'),
-            ),
-          ],
+    // Show loading state while connecting
+    return const MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
         ),
       ),
     );

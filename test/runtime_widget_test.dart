@@ -35,7 +35,8 @@ void main() {
           'title': 'Test Page',
         },
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'text',
@@ -79,10 +80,10 @@ void main() {
           'child': {
             'type': 'button',
             'label': 'Click Me',
-            'onTap': {
+            'click': {
               'type': 'tool',
               'tool': 'testClick',
-              'args': {},
+              'params': {},
             },
           },
         },
@@ -130,7 +131,8 @@ void main() {
         'content': {
           'type': 'center',
           'child': {
-            'type': 'column',
+            'type': 'linear',
+          'direction': 'vertical',
             'mainAxisAlignment': 'center',
             'children': [
               {
@@ -180,11 +182,11 @@ void main() {
           },
         },
         'content': {
-          'type': 'listview',
+          'type': 'list',
           'shrinkWrap': true,
           'itemCount': '{{items.length}}',
           'itemBuilder': {
-            'type': 'listtile',
+            'type': 'listTile',
             'title': {
               'type': 'text',
               'content': '{{items[index].name}}',

@@ -37,7 +37,7 @@ void main() {
       await engine.initialize(definition: definition);
 
       expect(engine.isInitialized, isTrue);
-      expect(engine.isReady, isFalse);
+      expect(engine.isReady, isTrue);
       expect(engine.runtimeConfig, isNotNull);
       expect(engine.uiDefinition, isNotNull);
     });
@@ -229,7 +229,7 @@ void main() {
       expect(engine.uiDefinition, isNull);
     });
 
-    group('Offline Mode Tests', skip: 'Offline mode not yet implemented', () {
+    group('Offline Mode Tests', () {
       test('detects offline mode support correctly', () async {
         final definition = {
           'type': 'page',
@@ -306,7 +306,7 @@ void main() {
       });
     });
 
-    group('Cache Integration Tests', skip: 'Cache features partially implemented', () {
+    group('Cache Integration Tests', () {
       test('attempts to load from cache when enabled', () async {
         final definition = {
           'type': 'page',

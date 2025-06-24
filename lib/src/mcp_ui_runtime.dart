@@ -1,13 +1,46 @@
+/// MCP UI Runtime - Core runtime implementation
+/// 
+/// ## Navigation System Overview
+/// 
+/// The runtime supports two navigation paradigms that work together:
+/// 
+/// ### 1. Route-based Navigation (Traditional Flutter)
+/// - Used when navigationDefinition is null
+/// - Creates MaterialApp with named routes
+/// - Navigation actions use route names directly
+/// - Works with standard Flutter Navigator
+/// 
+/// ### 2. Index-based Navigation (ApplicationShell)
+/// - Used when navigationDefinition exists (drawer/tabs/bottom)
+/// - Creates MaterialApp with home widget (ApplicationShell)
+/// - Navigation is managed by index internally
+/// - Navigation actions are converted from routes to indices
+/// 
+/// ### How Navigation Actions Work
+/// 
+/// When a button triggers a navigation action:
+/// 1. NavigationActionExecutor receives the action
+/// 2. It checks for navigation handlers in order:
+///    - Context handler (highest priority)
+///    - Renderer handler
+///    - Global handler (set by ApplicationShell)
+/// 3. ApplicationShell's handler converts route to index
+/// 4. The UI updates to show the new page
+/// 
+/// This design allows navigation actions to work consistently
+/// regardless of the navigation type (drawer/tabs/bottom/routes).
+library mcp_ui_runtime;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'runtime/runtime_engine.dart';
 import 'state/state_manager.dart';
-import 'services/state_service.dart';
 import 'renderer/render_context.dart';
 import 'routing/page_state_scope.dart';
 import 'theme/theme_manager.dart';
 import 'utils/mcp_logger.dart';
 import 'models/ui_definition.dart';
+import 'services/navigation_service.dart';
 
 /// Main MCP UI Runtime class that provides the entry point for using the runtime
 class MCPUIRuntime {
@@ -209,16 +242,10 @@ class MCPRuntimeWidget extends StatefulWidget {
 }
 
 class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBindingObserver {
-  String? _currentRoute;
   
   @override
   void initState() {
     super.initState();
-    
-    // Initialize current route for applications
-    if (widget.engine.isApplication) {
-      _currentRoute = widget.engine.routeManager?.initialRoute;
-    }
     
     // Add lifecycle observer
     WidgetsBinding.instance.addObserver(this);
@@ -291,8 +318,16 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBinding
             
             if (appDefinition.navigationDefinition != null) {
               // Build with navigation wrapper
+              final navKey = NavigationService.instance.navigatorKey;
+              MCPLogger('MCPRuntimeWidget').debug('Creating MaterialApp with navigatorKey for ApplicationShell: $navKey');
+              
               return MaterialApp(
+                navigatorKey: navKey,  // Essential for dialogs and navigation to work
                 title: appDefinition.title,
+                theme: widget.engine.themeManager.toFlutterTheme(),
+                darkTheme: widget.engine.themeManager.toFlutterTheme(isDark: true),
+                themeMode: widget.engine.themeManager.flutterThemeMode,
+                debugShowCheckedModeBanner: false,
                 home: _ApplicationShell(
                   engine: widget.engine,
                   appDefinition: appDefinition,
@@ -303,8 +338,16 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBinding
               );
             } else {
               // Build simple routing without navigation wrapper
+              final navKey = NavigationService.instance.navigatorKey;
+              MCPLogger('MCPRuntimeWidget').debug('Creating MaterialApp with navigatorKey for routing: $navKey');
+              
               return MaterialApp(
+                navigatorKey: navKey,  // Essential for dialogs and navigation to work
                 title: appDefinition.title,
+                theme: widget.engine.themeManager.toFlutterTheme(),
+                darkTheme: widget.engine.themeManager.toFlutterTheme(isDark: true),
+                themeMode: widget.engine.themeManager.flutterThemeMode,
+                debugShowCheckedModeBanner: false,
                 initialRoute: widget.engine.routeManager!.initialRoute,
                 routes: widget.engine.routeManager!.generateRoutes(context),
               );
@@ -317,9 +360,10 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBinding
             
             if (hasAppBar || hasBody) {
               // Auto-create scaffold for platform-independent UI definitions
+              final renderContext = _createRenderContext();
               return Scaffold(
-                appBar: hasAppBar ? _buildAppBar(widget.uiDefinition['appBar'] as Map<String, dynamic>) : null,
-                body: hasBody ? widget.engine.renderer.renderWidget(widget.uiDefinition['body'], _createRenderContext()) : Container(),
+                appBar: hasAppBar ? widget.engine.renderer.renderWidget(widget.uiDefinition['appBar'], renderContext) as AppBar? : null,
+                body: hasBody ? widget.engine.renderer.renderWidget(widget.uiDefinition['body'], renderContext) : Container(),
               );
             } else {
               // Use modern renderer for page content
@@ -355,223 +399,30 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBinding
     );
   }
 
-  /// LEGACY CODE REMOVED - Now using modern renderer system
-  /// All widget rendering is handled by the new Renderer class with WidgetFactory pattern
-
-  /// Resolve a value that might be a binding or literal
-  dynamic _resolveValue(dynamic value) {
-    return _resolveValueWithIndex(value, null);
-  }
-
-  /// Resolve a value with index context for list items
-  dynamic _resolveValueWithIndex(dynamic value, int? index) {
-    if (value is Map<String, dynamic> && value.containsKey('binding')) {
-      final binding = value['binding'] as String;
-      return _evaluateBindingWithIndex(binding, index);
-    }
-    return value;
-  }
-
-  /// Evaluate a binding expression with index context
-  dynamic _evaluateBindingWithIndex(String binding, int? index) {
-    final stateService = widget.engine.services.get<StateService>('state');
-    if (stateService == null) return '';
-
-    final state = stateService.state;
-
-    // Handle simple expressions like "Count: " + state.count
-    if (binding.contains(' + ')) {
-      final parts = binding.split(' + ');
-      final result = StringBuffer();
-      
-      for (final part in parts) {
-        final trimmed = part.trim();
-        if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-          // String literal
-          result.write(trimmed.substring(1, trimmed.length - 1));
-        } else if (trimmed.startsWith('state.')) {
-          // State reference
-          final path = trimmed.replaceFirst('state.', '');
-          final value = _getValueFromStateWithIndex(state, path, index);
-          result.write(value?.toString() ?? '');
-        } else {
-          result.write(trimmed);
-        }
-      }
-      
-      return result.toString();
-    }
-
-    // Handle simple state references like "state.message"
-    if (binding.startsWith('state.')) {
-      final path = binding.replaceFirst('state.', '');
-      return _getValueFromStateWithIndex(state, path, index);
-    }
-
-    return binding;
-  }
-
-  /// Get value from state using simple path
-  dynamic _getValueFromState(Map<String, dynamic> state, String path) {
-    return _getValueFromStateWithIndex(state, path, null);
-  }
-
-  /// Get value from state using simple path with index context
-  dynamic _getValueFromStateWithIndex(Map<String, dynamic> state, String path, int? index) {
-    // Handle array indexing like "items[index].name"
-    if (path.contains('[') && path.contains(']')) {
-      // Replace [index] with actual index value if provided
-      final actualPath = index != null 
-          ? path.replaceAll('[index]', '[$index]')
-          : path.replaceAll('[index]', '[0]'); // fallback to 0
-      return _evaluateArrayPath(state, actualPath);
-    }
-    
-    final parts = path.split('.');
-    dynamic current = state;
-    
-    for (final part in parts) {
-      if (current is Map<String, dynamic> && current.containsKey(part)) {
-        current = current[part];
-      } else if (current is List && part == 'length') {
-        return current.length;
-      } else {
-        return null;
-      }
-    }
-    
-    return current;
-  }
-
-  /// Evaluate array path like "items[0].name"
-  dynamic _evaluateArrayPath(Map<String, dynamic> state, String path) {
-    // Simple parser for array access
-    final regex = RegExp(r'(\w+)\[(\d+)\](.*)');
-    final match = regex.firstMatch(path);
-    
-    if (match != null) {
-      final arrayName = match.group(1)!;
-      final index = int.parse(match.group(2)!);
-      final remaining = match.group(3)!;
-      
-      final array = state[arrayName];
-      if (array is List && index < array.length) {
-        final item = array[index];
-        if (remaining.startsWith('.')) {
-          final propertyPath = remaining.substring(1);
-          if (item is Map<String, dynamic>) {
-            return _getValueFromState(item, propertyPath);
-          }
-        } else if (remaining.isEmpty) {
-          return item;
-        }
-      }
-    }
-    
-    return null;
-  }
-
-  /// Build AppBar from definition
-  AppBar _buildAppBar(Map<String, dynamic> definition) {
-    final properties = definition['properties'] as Map<String, dynamic>? ?? {};
-    final renderContext = _createRenderContext();
-    
-    return AppBar(
-      title: properties['title'] != null
-          ? widget.engine.renderer.renderWidget(properties['title'] as Map<String, dynamic>, renderContext)
-          : null,
-      actions: (properties['actions'] as List<dynamic>?)
-          ?.map((action) => widget.engine.renderer.renderWidget(action as Map<String, dynamic>, renderContext))
-          .toList(),
-    );
-  }
-
-  /// Build TextStyle from properties
-  TextStyle? _buildTextStyle(dynamic style) {
-    if (style is! Map<String, dynamic>) return null;
-    
-    return TextStyle(
-      fontSize: style['fontSize']?.toDouble(),
-      fontWeight: style['fontWeight'] == 'bold' ? FontWeight.bold : null,
-      color: style['color'] != null ? Color(style['color'] as int) : null,
-    );
-  }
-
-  /// Parse MainAxisAlignment
-  MainAxisAlignment _parseMainAxisAlignment(String? value) {
-    switch (value) {
-      case 'center':
-        return MainAxisAlignment.center;
-      case 'start':
-        return MainAxisAlignment.start;
-      case 'end':
-        return MainAxisAlignment.end;
-      case 'spaceBetween':
-        return MainAxisAlignment.spaceBetween;
-      case 'spaceAround':
-        return MainAxisAlignment.spaceAround;
-      case 'spaceEvenly':
-        return MainAxisAlignment.spaceEvenly;
-      default:
-        return MainAxisAlignment.start;
-    }
-  }
-
-  /// Parse CrossAxisAlignment
-  CrossAxisAlignment _parseCrossAxisAlignment(String? value) {
-    switch (value) {
-      case 'center':
-        return CrossAxisAlignment.center;
-      case 'start':
-        return CrossAxisAlignment.start;
-      case 'end':
-        return CrossAxisAlignment.end;
-      case 'stretch':
-        return CrossAxisAlignment.stretch;
-      default:
-        return CrossAxisAlignment.center;
-    }
-  }
-
-  /// Parse EdgeInsets
-  EdgeInsets? _parseEdgeInsets(dynamic value) {
-    if (value is num) {
-      return EdgeInsets.all(value.toDouble());
-    }
-    return null;
-  }
-
-  /// Handle action execution
-  void _handleAction(dynamic action) {
-    if (action is List) {
-      for (final act in action) {
-        _handleSingleAction(act);
-      }
-    } else {
-      _handleSingleAction(action);
-    }
-  }
-
-  /// Handle a single action
-  void _handleSingleAction(dynamic action) {
-    if (action is Map<String, dynamic>) {
-      final type = action['type'] as String?;
-      switch (type) {
-        case 'tool':
-          final tool = action['tool'] as String?;
-          if (tool != null && widget.onToolCall != null) {
-            widget.onToolCall!(tool, action['args'] as Map<String, dynamic>? ?? {});
-          }
-          break;
-        default:
-          // Handle other action types
-          break;
-      }
-    }
-  }
+  /// Creates a render context for the modern renderer
 }
 
 /// Application shell widget that handles navigation
+/// 
+/// This widget manages navigation for applications with drawer, tabs, or bottom navigation.
+/// It bridges two navigation systems:
+/// 
+/// 1. **Index-based navigation**: Used internally by drawer/tabs/bottom navigation
+///    - Tracks current page by index (_currentIndex)
+///    - Updates UI by changing the displayed page widget
+/// 
+/// 2. **Route-based navigation**: Used by navigation actions from buttons
+///    - Uses route names (e.g., '/home', '/settings')
+///    - Handled through NavigationActionExecutor
+/// 
+/// The bridge works as follows:
+/// - When the app starts, a navigation handler is registered
+/// - This handler intercepts route-based navigation actions
+/// - It converts route names to indices and updates _currentIndex
+/// - The UI rebuilds to show the new page
+/// 
+/// This allows buttons with navigation actions to work seamlessly with
+/// drawer/tab/bottom navigation, even though they use different systems.
 class _ApplicationShell extends StatefulWidget {
   final RuntimeEngine engine;
   final ApplicationDefinition appDefinition;
@@ -594,13 +445,12 @@ class _ApplicationShell extends StatefulWidget {
 class _ApplicationShellState extends State<_ApplicationShell> {
   int _currentIndex = 0;
   final Map<String, PageDefinition> _pageDefinitionCache = {};
-  bool _isLoading = false;
-  String? _loadError;
 
   @override
   void initState() {
     super.initState();
-    // Find initial route index
+    
+    // Find initial route index based on the application's initial route
     if (widget.appDefinition.navigationDefinition != null) {
       final initialRoute = widget.appDefinition.initialRoute;
       final index = widget.appDefinition.navigationDefinition!.items
@@ -609,6 +459,11 @@ class _ApplicationShellState extends State<_ApplicationShell> {
         _currentIndex = index;
       }
     }
+    
+    // Register a navigation handler that converts route-based navigation to index-based
+    // This allows navigation actions from buttons to work with the ApplicationShell's
+    // index-based navigation system
+    _registerNavigationHandler();
   }
 
   Future<PageDefinition> _loadPageDefinition(String route) async {
@@ -617,10 +472,6 @@ class _ApplicationShellState extends State<_ApplicationShell> {
       return _pageDefinitionCache[route]!;
     }
 
-    setState(() {
-      _isLoading = true;
-      _loadError = null;
-    });
 
     try {
       // Get page URI from route
@@ -637,19 +488,51 @@ class _ApplicationShellState extends State<_ApplicationShell> {
       // Cache the page definition only
       _pageDefinitionCache[route] = pageDefinition;
       
-      setState(() {
-        _isLoading = false;
-      });
       
       return pageDefinition;
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _loadError = e.toString();
-      });
       
       throw Exception('Error loading page: $e');
     }
+  }
+  
+  /// Registers a navigation handler that bridges route-based navigation actions
+  /// with the ApplicationShell's index-based navigation system
+  void _registerNavigationHandler() {
+    // Create a navigation handler that converts routes to indices
+    bool navigationHandler(String action, String route, Map<String, dynamic> params) {
+      // Only handle navigation actions for this ApplicationShell
+      if (action != 'push' && action != 'replace') {
+        return false; // Let other handlers process this
+      }
+      
+      // Find the index for the given route
+      final navItems = widget.appDefinition.navigationDefinition?.items ?? [];
+      final targetIndex = navItems.indexWhere((item) => item.route == route);
+      
+      if (targetIndex >= 0) {
+        // Route found, update the current index to navigate
+        if (mounted) {
+          setState(() {
+            _currentIndex = targetIndex;
+          });
+        }
+        return true; // Navigation handled successfully
+      }
+      
+      // Route not found in navigation items
+      return false;
+    }
+    
+    // Register the handler with the action handler
+    widget.engine.actionHandler.registerNavigationHandler(navigationHandler);
+  }
+  
+  @override
+  void dispose() {
+    // Clean up page definition cache when disposing
+    _pageDefinitionCache.clear();
+    super.dispose();
   }
 
   @override
@@ -697,34 +580,34 @@ class _ApplicationShellState extends State<_ApplicationShell> {
                   text: item.title,
                   icon: item.icon != null ? Icon(_getIconData(item.icon!)) : null,
                 )).toList(),
-                onTap: (index) {
-                  setState(() {
-                    _currentIndex = index;
-                  });
-                },
               ),
             ),
-            body: FutureBuilder<PageDefinition>(
-              key: ValueKey(currentRoute),
-              future: _loadPageDefinition(currentRoute),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  // Wrap in AnimatedBuilder to listen to StateManager changes
-                  return AnimatedBuilder(
-                    animation: widget.engine.stateManager,
-                    builder: (context, child) {
-                      return MCPPageWidget(
-                        pageDefinition: snapshot.data!,
-                        runtimeEngine: widget.engine,
+            body: TabBarView(
+              children: navigation.items.map((navItem) {
+                final route = navItem.route;
+                return FutureBuilder<PageDefinition>(
+                  key: ValueKey(route),
+                  future: _loadPageDefinition(route),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      // Wrap in AnimatedBuilder to listen to StateManager changes
+                      return AnimatedBuilder(
+                        animation: widget.engine.stateManager,
+                        builder: (context, child) {
+                          return MCPPageWidget(
+                            pageDefinition: snapshot.data!,
+                            runtimeEngine: widget.engine,
+                          );
+                        },
                       );
-                    },
-                  );
-                } else if (snapshot.hasError) {
-                  return _buildErrorPage(snapshot.error);
-                } else {
-                  return _buildLoadingPage();
-                }
-              },
+                    } else if (snapshot.hasError) {
+                      return _buildErrorPage(snapshot.error);
+                    } else {
+                      return _buildLoadingPage();
+                    }
+                  },
+                );
+              }).toList(),
             ),
           ),
         );
@@ -882,6 +765,8 @@ class _ApplicationShellState extends State<_ApplicationShell> {
       case 'thermostat':
       case 'temperature':
         return Icons.thermostat;
+      case 'speed':
+        return Icons.speed;
       default:
         return Icons.circle;
     }

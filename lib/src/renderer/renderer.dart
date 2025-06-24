@@ -6,6 +6,7 @@ import '../binding/binding_engine.dart';
 import '../actions/action_handler.dart';
 import '../state/state_manager.dart';
 import '../theme/theme_manager.dart';
+import '../optimization/widget_cache.dart';
 import '../utils/mcp_logger.dart';
 import 'render_context.dart';
 
@@ -15,8 +16,11 @@ class Renderer {
   final BindingEngine bindingEngine;
   final ActionHandler actionHandler;
   final StateManager stateManager;
+  final WidgetCache _widgetCache = WidgetCache.instance;
   final MCPLogger _logger = MCPLogger('Renderer');
   dynamic engine;
+  bool Function(String action, String route, Map<String, dynamic> params)? navigationHandler;
+  Future<dynamic> Function(String resource, String method, String target, dynamic data)? resourceHandler;
 
   Renderer({
     required this.widgetRegistry,
@@ -141,9 +145,17 @@ class Renderer {
       return _errorWidget('Widget type is required', definition);
     }
 
-    // Convert to lowercase for case-insensitive matching
-    final normalizedType = type.toLowerCase();
-    final factory = widgetRegistry.get(normalizedType);
+    // Check cache first if caching is enabled and widget is cacheable
+    if (_widgetCache.enabled && _isCacheable(definition, type)) {
+      final contextData = _extractCacheableContext(context);
+      final cachedWidget = _widgetCache.get(definition, contextData);
+      if (cachedWidget != null) {
+        return cachedWidget;
+      }
+    }
+
+    // Use exact case for case-sensitive matching (MCP UI DSL v1.0)
+    final factory = widgetRegistry.get(type);
     if (factory == null) {
       if (kDebugMode) {
         _logger.warning('Widget factory not found for type: $type');
@@ -152,7 +164,15 @@ class Renderer {
     }
 
     try {
-      return factory.build(definition, context);
+      final widget = factory.build(definition, context);
+      
+      // Cache the widget if caching is enabled and it's cacheable
+      if (_widgetCache.enabled && _isCacheable(definition, type)) {
+        final contextData = _extractCacheableContext(context);
+        _widgetCache.put(definition, contextData, widget);
+      }
+      
+      return widget;
     } catch (e, stackTrace) {
       if (kDebugMode) {
         _logger.error('Error rendering widget $type', e, stackTrace);
@@ -163,6 +183,7 @@ class Renderer {
 
   /// Create root render context
   RenderContext createRootContext(BuildContext? context) {
+    _logger.debug('Creating root context with navigationHandler: ${navigationHandler != null}');
     return RenderContext(
       renderer: this,
       stateManager: stateManager,
@@ -171,6 +192,8 @@ class Renderer {
       themeManager: ThemeManager.instance,
       buildContext: context,
       engine: engine,
+      navigationHandler: navigationHandler,
+      resourceHandler: resourceHandler,
     );
   }
 
@@ -554,6 +577,113 @@ class Renderer {
       }
     }
     return Icons.help_outline; // Default fallback
+  }
+
+  /// Extract cacheable context data for widget caching
+  Map<String, dynamic>? _extractCacheableContext(RenderContext context) {
+    // Extract only relevant state data for caching key generation
+    // We exclude non-deterministic data like BuildContext
+    
+    // Filter out non-serializable local variables
+    final cleanVariables = <String, dynamic>{};
+    context.localVariables.forEach((key, value) {
+      // Skip internal keys and non-serializable objects
+      if (!key.startsWith('_') && _isSerializable(value)) {
+        cleanVariables[key] = value;
+      }
+    });
+    
+    return {
+      'stateData': context.stateManager.getState(),
+      'themeData': {
+        'mode': context.themeManager.themeMode,
+        'primaryColor': context.themeManager.getThemeValue('colors.primary'),
+      },
+      // Include only serializable context variables
+      'variables': cleanVariables,
+    };
+  }
+  
+  /// Check if a value is JSON serializable
+  bool _isSerializable(dynamic value) {
+    if (value == null || value is num || value is String || value is bool) {
+      return true;
+    }
+    if (value is List) {
+      return value.every(_isSerializable);
+    }
+    if (value is Map) {
+      return value.values.every(_isSerializable);
+    }
+    // Exclude Flutter framework objects and other non-serializable types
+    return false;
+  }
+
+  /// Check if a widget type is cacheable
+  bool _isCacheable(Map<String, dynamic> definition, String type) {
+    // Don't cache widgets with event handlers or dynamic content
+    final properties = definition;
+    
+    // Skip caching for widgets with event handlers
+    if (_hasEventHandlers(properties)) {
+      return false;
+    }
+    
+    // Skip caching for certain widget types that are typically dynamic
+    const nonCacheableTypes = {
+      'textField', 'TextField',
+      'textFormField', 'TextFormField', 
+      'form', 'Form',
+      'timer', 'Timer',
+      'animatedContainer', 'AnimatedContainer',
+      'hero', 'Hero',
+      'gestureDetector', 'GestureDetector',
+      'inkWell', 'InkWell',
+      'listener', 'Listener',
+      // Additional non-cacheable widgets
+      'textInput', 'TextInput',
+      'numberField', 'NumberField',
+      'dateField', 'DateField',
+      'timeField', 'TimeField',
+      'colorPicker', 'ColorPicker',
+    };
+    
+    if (nonCacheableTypes.contains(type)) {
+      return false;
+    }
+    
+    return true;
+  }
+
+  /// Check if properties contain event handlers
+  bool _hasEventHandlers(Map<String, dynamic> properties) {
+    const eventHandlers = {
+      'onPressed', 'onTap', 'onLongPress', 'onDoubleTap',
+      'change', 'submit', 'focus', 'blur',
+      'onChanged', 'onSubmitted', 'onEditingComplete',
+      'onHover', 'onEnter', 'onExit',
+    };
+    
+    return properties.keys.any((key) => eventHandlers.contains(key));
+  }
+
+  /// Get widget cache statistics
+  Map<String, dynamic> getCacheStatistics() {
+    return _widgetCache.getStatistics();
+  }
+
+  /// Clear widget cache
+  void clearCache() {
+    _widgetCache.clear();
+  }
+
+  /// Enable or disable widget caching
+  void setCacheEnabled(bool enabled) {
+    if (enabled) {
+      _widgetCache.enable();
+    } else {
+      _widgetCache.disable();
+    }
   }
 
   Widget _errorWidget(String message, Map<String, dynamic> definition) {

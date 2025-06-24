@@ -14,19 +14,29 @@ class CheckboxWidgetFactory extends WidgetFactory {
     final label = properties['label'] as String?;
     final enabled = properties['enabled'] as bool? ?? true;
     final tristate = properties['tristate'] as bool? ?? false;
-    final onChange = properties['onChange'] as Map<String, dynamic>?;
+    // MCP UI DSL v1.0 spec
+    final onChange = properties['change'] as Map<String, dynamic>?;
     
     // Build checkbox
     Widget checkbox = Checkbox(
       value: value,
       tristate: tristate,
       onChanged: enabled && onChange != null ? (newValue) {
-        // Update state and trigger action
-        final path = properties['bindTo'] as String?;
+        // Update state if binding is specified
+        final path = properties['binding'] as String? ?? properties['bindTo'] as String?;
         if (path != null) {
           context.setValue(path, newValue);
         }
-        context.actionHandler.execute(onChange, context);
+        // Create event context with event.value
+        final eventContext = context.createChildContext(
+          variables: {
+            'event': {
+              'value': newValue,
+              'type': 'change',
+            },
+          },
+        );
+        context.actionHandler.execute(onChange, eventContext);
       } : null,
     );
     
@@ -37,11 +47,21 @@ class CheckboxWidgetFactory extends WidgetFactory {
         title: Text(label),
         tristate: tristate,
         onChanged: enabled && onChange != null ? (newValue) {
-          final path = properties['bindTo'] as String?;
+          // Update state if binding is specified
+          final path = properties['binding'] as String? ?? properties['bindTo'] as String?;
           if (path != null) {
             context.setValue(path, newValue);
           }
-          context.actionHandler.execute(onChange, context);
+          // Create event context with event.value
+          final eventContext = context.createChildContext(
+            variables: {
+              'event': {
+                'value': newValue,
+                'type': 'change',
+              },
+            },
+          );
+          context.actionHandler.execute(onChange, eventContext);
         } : null,
       );
     }

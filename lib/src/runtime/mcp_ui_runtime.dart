@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'runtime_engine.dart';
@@ -7,7 +6,10 @@ import 'widget_registry.dart';
 import '../renderer/renderer.dart';
 import '../actions/action_handler.dart';
 import '../state/state_manager.dart';
+import '../theme/theme_manager.dart';
+import '../i18n/i18n_manager.dart';
 import '../utils/mcp_logger.dart';
+import '../services/navigation_service.dart';
 
 /// Main MCP UI Runtime class that provides the entry point for using the runtime
 class MCPUIRuntime {
@@ -27,6 +29,8 @@ class MCPUIRuntime {
   late final StateManager _stateManager;
 
   bool _isInitialized = false;
+  bool Function(String action, String route, Map<String, dynamic> params)? _navigationHandler;
+  final Map<String, Future<dynamic> Function(String method, String target, dynamic data)> _resourceHandlers = {};
 
   /// Initialize the runtime
   void _initialize() {
@@ -89,6 +93,17 @@ class MCPUIRuntime {
     );
     
     _isInitialized = true;
+    
+    // Pass navigation handler to renderer and action handler if already registered
+    if (_navigationHandler != null) {
+      _engine.renderer.navigationHandler = _navigationHandler;
+      _engine.actionHandler.registerNavigationHandler(_navigationHandler!);
+    }
+    
+    // Pass resource handler to renderer if any registered
+    if (_resourceHandlers.isNotEmpty) {
+      _engine.renderer.resourceHandler = _createResourceHandlerWrapper();
+    }
 
     _logger.info('Initialized successfully');
   }
@@ -113,9 +128,14 @@ class MCPUIRuntime {
       _stateManager.setState(initialState);
     }
 
-    // Register tool call handler
+    // Register tool call handler as a default fallback
     if (onToolCall != null) {
-      _actionHandler.registerToolExecutor('default', onToolCall);
+      _actionHandler.registerToolExecutor('default', (tool, params) async {
+        // Call the user's callback with tool name and params
+        onToolCall(tool, params);
+        // Return empty success response
+        return {'success': true};
+      });
     }
 
     return MCPRuntimeWidget(
@@ -136,10 +156,78 @@ class MCPUIRuntime {
     return _engine.stateManager.get<T>(key);
   }
   
+  /// Execute an action directly (primarily for testing purposes)
+  Future<void> executeAction(Map<String, dynamic> action) async {
+    if (!_isInitialized) {
+      throw StateError('Runtime must be initialized before executing actions');
+    }
+    
+    // Create a minimal render context for action execution
+    final context = _engine.renderer.createRootContext(null);
+    await _engine.actionHandler.execute(action, context);
+  }
+
+  /// Register a resource handler
+  void registerResourceHandler(String resource, Future<dynamic> Function(String method, String target, dynamic data) handler) {
+    _resourceHandlers[resource] = handler;
+    
+    // Pass to renderer if initialized
+    if (_isInitialized) {
+      _engine.renderer.resourceHandler = _createResourceHandlerWrapper();
+    }
+    
+    _logger.debug('Resource handler registered for: $resource');
+  }
+  
+  /// Create a wrapper function that routes to the appropriate resource handler
+  Future<dynamic> Function(String resource, String method, String target, dynamic data) _createResourceHandlerWrapper() {
+    return (String resource, String method, String target, dynamic data) async {
+      final handler = _resourceHandlers[resource];
+      if (handler != null) {
+        return await handler(method, target, data);
+      }
+      throw Exception('No handler registered for resource: $resource');
+    };
+  }
+
+  /// Register a navigation handler  
+  void registerNavigationHandler(bool Function(String action, String route, Map<String, dynamic> params) handler) {
+    _logger.info('registerNavigationHandler called, isInitialized=$_isInitialized');
+    _navigationHandler = handler;
+    
+    // Set global handler for navigation actions in ActionHandler
+    if (_isInitialized) {
+      _logger.info('Calling engine.actionHandler.registerNavigationHandler');
+      _engine.actionHandler.registerNavigationHandler(handler);
+      _logger.info('engine.actionHandler.registerNavigationHandler called');
+    } else {
+      _logger.info('Runtime not initialized, storing handler for later');
+    }
+    
+    // Pass to renderer if initialized
+    if (_isInitialized) {
+      _logger.info('Setting navigation handler on renderer (was ${_engine.renderer.navigationHandler != null})');
+      _engine.renderer.navigationHandler = handler;
+      _logger.info('Navigation handler set on renderer (now ${_engine.renderer.navigationHandler != null})');
+      // Force rebuild to pick up new handler by triggering a state change
+      _stateManager.set('_internal_handler_update', DateTime.now().millisecondsSinceEpoch);
+    }
+    _logger.info('Navigation handler registered');
+  }
+
   /// Destroys the runtime and cleans up resources
   Future<void> destroy() async {
     await _engine.destroy();
     _isInitialized = false;
+    
+    // Clear global navigation handler to prevent state leaking between tests
+    NavigationActionExecutor.clearGlobalNavigationHandler();
+    
+    // Reset theme manager singleton
+    ThemeManager.instance.reset();
+    
+    // Clear i18n manager
+    I18nManager.instance.clear();
 
     _logger.info('Destroyed');
   }
@@ -172,24 +260,20 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBinding
     // Add lifecycle observer
     WidgetsBinding.instance.addObserver(this);
     
-    // Listen to state changes
-    widget.engine.stateManager.addListener(_onStateChanged);
+    // Don't listen to state changes directly - AnimatedBuilder already listens to engine
+    // which forwards state changes from StateManager
 
-    // Mark runtime as ready
+    // Mark runtime as ready if not already marked
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.engine.markReady();
+      if (!widget.engine.isReady) {
+        widget.engine.markReady();
+      }
     });
-  }
-  
-  void _onStateChanged() {
-    if (mounted) {
-      setState(() {});
-    }
   }
 
   @override
   void dispose() {
-    widget.engine.stateManager.removeListener(_onStateChanged);
+    // No need to remove state listener since we're not adding one
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -231,15 +315,27 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBinding
             if (appDefinition.navigation != null) {
               // Build with navigation wrapper
               // TODO: Implement NavigationBuilder
+              final navKey = NavigationService.instance.navigatorKey;
+              widget.runtime._logger.debug('Creating MaterialApp with navigatorKey: $navKey');
+              widget.runtime._logger.debug('NavigatorKey hashCode: ${navKey.hashCode}');
+              
               return MaterialApp(
+                navigatorKey: navKey,
                 title: appDefinition.title,
+                theme: widget.engine.themeManager.currentTheme,
                 initialRoute: widget.engine.routeManager!.initialRoute,
                 routes: widget.engine.routeManager!.generateRoutes(context),
               );
             } else {
               // Build simple routing without navigation wrapper
+              final navKey = NavigationService.instance.navigatorKey;
+              widget.runtime._logger.debug('Creating MaterialApp with navigatorKey: $navKey');
+              widget.runtime._logger.debug('NavigatorKey hashCode: ${navKey.hashCode}');
+              
               return MaterialApp(
+                navigatorKey: navKey,
                 title: appDefinition.title,
+                theme: widget.engine.themeManager.currentTheme,
                 initialRoute: widget.engine.routeManager!.initialRoute,
                 routes: widget.engine.routeManager!.generateRoutes(context),
               );
@@ -264,10 +360,8 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBinding
 
   /// Render a page using the unified renderer
   Widget _renderPage(Map<String, dynamic> definition) {
-    // Use stderr for debugging to avoid interfering with MCP STDIO
-    stderr.writeln('[MCPUIRuntime] _renderPage called with definition: ${jsonEncode(definition)}');
-    
     if (widget.runtime.enableDebugMode) {
+      widget.runtime._logger.debug('_renderPage called with definition: ${jsonEncode(definition)}');
       widget.runtime._logger.debug('_renderPage called with definition type: ${definition['type']}');
       widget.runtime._logger.debug('_renderPage definition keys: ${definition.keys.toList()}');
     }

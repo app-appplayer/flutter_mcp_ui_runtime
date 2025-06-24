@@ -10,11 +10,20 @@ class FormWidgetFactory extends WidgetFactory {
     final children = definition['children'] as List<dynamic>? ?? [];
     final actions = definition['actions'] as Map<String, dynamic>?;
     
+    // MCP UI DSL v1.0 spec
+    final submitAction = properties['submit'] as Map<String, dynamic>? ?? 
+                        actions?['submit'] as Map<String, dynamic>?;
+    
     // Create a unique form key for this form
     final formKey = GlobalKey<FormState>();
     
     // Store form key in context for validation
     context.setLocal('_formKey', formKey);
+    
+    // Store submit action in context for submit buttons
+    if (submitAction != null) {
+      context.setLocal('_formSubmitAction', submitAction);
+    }
     
     Widget form = Form(
       key: formKey,
@@ -22,11 +31,13 @@ class FormWidgetFactory extends WidgetFactory {
       onChanged: actions?['onChange'] != null
           ? () => context.handleAction(actions!['onChange'])
           : null,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: children
-            .map((child) => context.buildWidget(child as Map<String, dynamic>))
-            .toList(),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children
+              .map((child) => context.buildWidget(child as Map<String, dynamic>))
+              .toList(),
+        ),
       ),
     );
     

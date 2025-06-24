@@ -324,7 +324,7 @@ void main() {
         expect(((data['users'] as List)[0] as Map).containsKey('age'), isTrue);
         expect((data['users'] as List)[0]['name'], equals('Alice'));
         expect((data['users'] as List)[1]['age'], equals(30));
-      }, skip: 'JsonPath delete for array element properties needs to be fixed');
+      });
 
       test('does nothing for non-existent paths', () {
         final data = {

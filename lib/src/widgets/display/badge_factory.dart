@@ -13,7 +13,7 @@ class BadgeWidgetFactory extends WidgetFactory {
     final label = context.resolve<String?>(properties['label']);
     final backgroundColor = parseColor(context.resolve(properties['backgroundColor']));
     final textColor = parseColor(context.resolve(properties['textColor']));
-    // final smallSize = properties['smallSize'] as bool? ?? false; // TODO: Use this property
+    final smallSize = properties['smallSize'] as bool? ?? false;
     final isLabelVisible = properties['isLabelVisible'] as bool? ?? true;
     final offset = _parseOffset(properties['offset']);
     final alignment = parseAlignment(properties['alignment']);
@@ -30,7 +30,10 @@ class BadgeWidgetFactory extends WidgetFactory {
     if (label != null && label.isNotEmpty) {
       labelWidget = Text(
         label,
-        style: TextStyle(color: textColor),
+        style: TextStyle(
+          color: textColor,
+          fontSize: smallSize ? 10.0 : null,
+        ),
       );
     }
     
@@ -38,6 +41,7 @@ class BadgeWidgetFactory extends WidgetFactory {
       label: labelWidget,
       backgroundColor: backgroundColor,
       textColor: textColor,
+      smallSize: smallSize ? 6.0 : null,
       isLabelVisible: isLabelVisible,
       offset: offset,
       alignment: alignment,

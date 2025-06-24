@@ -17,7 +17,8 @@ void main() {
       final counterDemo = {
         'type': 'page',
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'text',
@@ -26,19 +27,19 @@ void main() {
             {
               'type': 'button',
               'label': 'Increment',
-              'onTap': {
+              'click': {
                 'type': 'tool',
                 'tool': 'increment',
-                'args': {},
+                'params': {},
               },
             },
             {
               'type': 'button',
               'label': 'Decrement',
-              'onTap': {
+              'click': {
                 'type': 'tool',
                 'tool': 'decrement',
-                'args': {},
+                'params': {},
               },
             },
           ],
@@ -104,24 +105,25 @@ void main() {
       final debugDemo = {
         'type': 'page',
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'button',
               'label': 'Runtime Tool',
-              'onTap': {
+              'click': {
                 'type': 'tool',
                 'tool': 'test_runtime_tool',
-                'args': {'test': 'data'},
+                'params': {'test': 'data'},
               },
             },
             {
               'type': 'button',
               'label': 'Callback Tool',
-              'onTap': {
+              'click': {
                 'type': 'tool',
                 'tool': 'test_callback_tool',
-                'args': {'test': 'callback'},
+                'params': {'test': 'callback'},
               },
             },
           ],
@@ -182,10 +184,10 @@ void main() {
         'content': {
           'type': 'button',
           'label': 'Test Button',
-          'onTap': {
+          'click': {
             'type': 'tool',
             'tool': 'button_test',
-            'args': {'button': 'test'},
+            'params': {'button': 'test'},
           },
         },
       };

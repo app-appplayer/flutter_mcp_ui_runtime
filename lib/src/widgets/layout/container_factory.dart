@@ -24,10 +24,12 @@ class ContainerWidgetFactory extends WidgetFactory {
     final height = context.resolve(properties[core.PropertyKeys.height])?.toDouble();
     
     // Check for direct color and borderRadius properties (not in decoration)
-    final directColor = properties[core.PropertyKeys.color];
+    // Support both 'color' and 'backgroundColor' for v1.0 spec
+    final directColor = properties[core.PropertyKeys.color] ?? properties['backgroundColor'];
     final directBorderRadius = properties[core.PropertyKeys.borderRadius];
     final directBorder = properties[core.PropertyKeys.border];
-    final directBoxShadow = properties['boxShadow'];
+    // MCP UI DSL v1.0 spec uses 'shadow' property
+    final directBoxShadow = properties['shadow'];
     
     BoxDecoration? decoration;
     if (properties[core.PropertyKeys.decoration] != null) {

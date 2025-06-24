@@ -1,14 +1,20 @@
 import 'package:flutter/foundation.dart';
 import '../utils/json_path.dart';
+import '../utils/mcp_logger.dart';
 
 /// Represents a computed property that derives its value from other state
+/// according to MCP UI DSL v1.0 specification
 class ComputedProperty {
   ComputedProperty({
+    required this.name,
     required this.expression,
     required this.compute,
     this.dependencies = const [],
     this.enableDebugMode = kDebugMode,
-  });
+  }) : _logger = MCPLogger('ComputedProperty[$name]', enableLogging: enableDebugMode);
+
+  /// The name/path of this computed property
+  final String name;
 
   /// The expression string used to compute this property
   final String expression;
@@ -22,8 +28,12 @@ class ComputedProperty {
   /// Whether debug mode is enabled
   final bool enableDebugMode;
 
+  /// Logger instance
+  final MCPLogger _logger;
+
   dynamic _cachedValue;
   bool _isInitialized = false;
+  bool _isComputing = false;
 
   /// Gets the cached value if available
   dynamic get cachedValue => _cachedValue;
@@ -33,20 +43,24 @@ class ComputedProperty {
 
   /// Computes and caches the property value
   dynamic computeAndCache(Map<String, dynamic> state) {
+    if (_isComputing) {
+      _logger.error('Circular dependency detected in computed property: $name');
+      throw StateError('Circular dependency detected in computed property: $name');
+    }
+
     try {
+      _isComputing = true;
       _cachedValue = compute(state);
       _isInitialized = true;
       
-      if (enableDebugMode) {
-        debugPrint('ComputedProperty: Computed "$expression" = $_cachedValue');
-      }
+      _logger.debug('Computed property "$name" = $_cachedValue');
       
       return _cachedValue;
     } catch (error) {
-      if (enableDebugMode) {
-        debugPrint('ComputedProperty: Error computing "$expression": $error');
-      }
+      _logger.error('Error computing property "$name": $error');
       rethrow;
+    } finally {
+      _isComputing = false;
     }
   }
 
@@ -55,9 +69,7 @@ class ComputedProperty {
     _cachedValue = null;
     _isInitialized = false;
     
-    if (enableDebugMode) {
-      debugPrint('ComputedProperty: Invalidated "$expression"');
-    }
+    _logger.debug('Invalidated computed property "$name"');
   }
 
   /// Checks if any of the dependencies have changed
@@ -78,8 +90,9 @@ class ComputedProperty {
   }
 
   /// Creates a computed property from an expression string
-  static ComputedProperty fromExpression(String expression, {List<String>? dependencies}) {
+  static ComputedProperty fromExpression(String name, String expression, {List<String>? dependencies}) {
     return ComputedProperty(
+      name: name,
       expression: expression,
       dependencies: dependencies ?? _extractDependencies(expression),
       compute: (state) => _evaluateExpression(expression, state),

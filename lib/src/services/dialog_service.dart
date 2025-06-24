@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../runtime/service_registry.dart';
+import '../actions/action_handler.dart';
 
 /// Service for managing dialogs, bottom sheets, and overlays
 class DialogService extends RuntimeService {
@@ -7,6 +8,10 @@ class DialogService extends RuntimeService {
 
   final List<OverlayEntry> _overlays = [];
   bool _isShowingDialog = false;
+  
+  // Use the same navigator key as NavigationActionExecutor
+  static GlobalKey<NavigatorState> get navigatorKey => 
+      NavigationActionExecutor.navigatorKey;
 
   /// Shows a dialog with custom content
   Future<T?> show<T>({
@@ -307,10 +312,27 @@ class DialogService extends RuntimeService {
   }
 
   /// Gets the current build context
+  /// Uses the navigator's overlay context to ensure dialogs work properly
+  /// even when the navigator state might be in transition
   BuildContext _getContext() {
-    // This would typically get the context from a global navigator key
-    // or from the runtime engine
-    throw UnimplementedError('Context provider not implemented');
+    final navigatorState = navigatorKey.currentState;
+    if (navigatorState == null) {
+      throw StateError('Navigator not initialized. Make sure navigatorKey is set in MaterialApp');
+    }
+    
+    // Use the overlay context which is more stable than currentContext
+    // This ensures dialogs can be shown even during navigation transitions
+    final overlayContext = navigatorState.overlay?.context;
+    if (overlayContext == null) {
+      // Fallback to current context if overlay is not available
+      final context = navigatorKey.currentContext;
+      if (context == null) {
+        throw StateError('No context available. Navigator might not be ready');
+      }
+      return context;
+    }
+    
+    return overlayContext;
   }
 
   /// Builds a standard dialog layout

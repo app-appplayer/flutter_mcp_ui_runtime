@@ -3,7 +3,19 @@ import '../runtime/service_registry.dart';
 
 /// Navigation service for managing app navigation
 class NavigationService extends RuntimeService {
-  NavigationService({super.enableDebugMode});
+  // Singleton instance
+  static NavigationService? _instance;
+  static NavigationService get instance {
+    _instance ??= NavigationService._internal();
+    return _instance!;
+  }
+  
+  NavigationService._internal({super.enableDebugMode});
+  
+  // Factory constructor returns singleton instance
+  factory NavigationService({bool enableDebugMode = false}) {
+    return instance;
+  }
 
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   final List<Route<dynamic>> _routeStack = [];
@@ -319,6 +331,13 @@ class NavigationService extends RuntimeService {
     _routes.clear();
     _routeGuards.clear();
     _routeStack.clear();
+    _preventNavigation = false;
+  }
+  
+  /// Reset singleton instance (for testing only)
+  @visibleForTesting
+  static void resetInstance() {
+    _instance = null;
   }
 
   /// Checks if a route guard allows navigation

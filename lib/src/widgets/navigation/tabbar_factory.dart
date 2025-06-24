@@ -15,7 +15,7 @@ class TabBarWidgetFactory extends WidgetFactory {
     final tabs = tabsData.map<Tab>((tab) {
       if (tab is Map<String, dynamic>) {
         return Tab(
-          text: tab['text'] as String?,
+          text: (tab['text'] ?? tab['label']) as String?,
           icon: tab['icon'] != null ? Icon(_parseIconData(tab['icon'])) : null,
           iconMargin: parseEdgeInsets(tab['iconMargin']) ?? const EdgeInsets.only(bottom: 10),
           height: tab['height']?.toDouble(),

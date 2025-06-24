@@ -1,6 +1,6 @@
 name: flutter_mcp_ui_runtime
 description: Flutter MCP UI Runtime - Comprehensive runtime environment for building dynamic, reactive user interfaces through JSON specifications with lifecycle management, services, and notifications.
-version: 0.1.0
+version: 0.2.0
 homepage: https://github.com/app-appplayer/flutter_mcp_ui_runtime
 repository: https://github.com/app-appplayer/flutter_mcp_ui_runtime
 documentation: https://pub.dev/documentation/flutter_mcp_ui_runtime/latest/
@@ -11,9 +11,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_mcp_ui_core: ^0.1.0
+  flutter_mcp_ui_core:
+    path: ../flutter_mcp_ui_core
   provider: ^6.1.1
   collection: ^1.18.0
+  crypto: ^3.0.3
+  http: ^1.1.0
 
 dev_dependencies:
   flutter_test:

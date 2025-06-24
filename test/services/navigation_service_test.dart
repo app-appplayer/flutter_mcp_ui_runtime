@@ -12,6 +12,7 @@ void main() {
 
     tearDown(() {
       navigationService.onDispose();
+      NavigationService.resetInstance();
     });
 
     group('Initialization', () {

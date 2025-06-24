@@ -70,7 +70,8 @@ void main() {
           'title': 'Dashboard',
           'route': '/dashboard',
           'content': {
-            'type': 'column',
+            'type': 'linear',
+            'direction': 'vertical',
             'children': [
               {
                 'type': 'text',
@@ -89,12 +90,13 @@ void main() {
         final definition = {
           'type': 'page',
           'content': {
-            'type': 'column',
+            'type': 'linear',
+            'direction': 'vertical',
             'children': [
               {
                 'type': 'button',
                 'label': 'Navigate',
-                'onTap': {
+                'click': {
                   'type': 'navigation',
                   'action': 'push',
                   'route': '/profile',
@@ -144,7 +146,8 @@ void main() {
         final definition = {
           'type': 'page',
           'content': {
-            'type': 'column',
+            'type': 'linear',
+            'direction': 'vertical',
             'children': [
               {
                 'type': 'text',
@@ -157,7 +160,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Update Global',
-                'onTap': {
+                'click': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'app.user.name',
@@ -167,7 +170,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Update Local',
-                'onTap': {
+                'click': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'localCounter',
@@ -219,10 +222,11 @@ void main() {
         final definition = {
           'type': 'page',
           'content': {
-            'type': 'column',
+            'type': 'linear',
+            'direction': 'vertical',
             'children': [
               {
-                'type': 'textfield',
+                'type': 'textInput',
                 'value': '{{email}}',
                 'onChange': {
                   'type': 'state',
@@ -234,7 +238,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Submit',
-                'onTap': {
+                'click': {
                   'type': 'conditional',
                   'condition': '{{email}}',
                   'then': {
@@ -524,40 +528,45 @@ void main() {
         final layoutWidgets = [
           'container', 'column', 'row', 'stack', 'center', 'expanded', 
           'flexible', 'padding', 'margin', 'align', 'positioned', 
-          'aspectratio', 'constrainedbox', 'fittedbox', 'limitedbox',
-          'sizedbox', 'spacer', 'wrap', 'table', 'flow', 'intrinsicheight',
-          'intrinsicwidth', 'baseline', 'visibility'
+          'aspectRatio', 'constrainedBox', 'fittedBox', 'limitedBox',
+          'sizedBox', 'spacer', 'wrap', 'table', 'flow', 'intrinsicHeight',
+          'intrinsicWidth', 'baseline', 'visibility'
         ];
 
         final displayWidgets = [
           'text', 'image', 'icon', 'divider', 'card', 'avatar',
           'badge', 'banner', 'chip', 'tooltip', 'progress',
-          'placeholder', 'richtext', 'decoratedbox', 'cliprrect',
-          'clipoval', 'circularprogressindicator', 'linearprogressindicator',
-          'verticaldivider', 'decoration'
+          'placeholder', 'richText', 'decoratedBox', 'clipRRect',
+          'clipOval', 'loadingIndicator',
+          'verticalDivider', 'decoration'
         ];
 
         final inputWidgets = [
-          'button', 'textfield', 'checkbox', 'switch', 'slider',
-          'radio', 'dropdown', 'datepicker', 'timepicker', 'form',
-          'textformfield', 'iconbutton', 'rangeslider', 'stepper'
+          'button', 'textInput', 'checkbox', 'toggle', 'slider',
+          'radio', 'select', 'dateField', 'timeField', 'form',
+          'textFormField', 'iconButton', 'rangeSlider', 'numberField',
+          'colorPicker', 'radioGroup', 'checkboxGroup', 'segmentedControl',
+          'dateRangePicker'
         ];
 
-        final listWidgets = ['listview', 'gridview', 'listtile'];
+        final listWidgets = ['list', 'grid', 'listTile'];
         final navigationWidgets = [
-          'appbar', 'bottomnavigationbar', 'drawer', 'tabbar',
-          'tabbarview', 'navigationrail', 'floatingactionbutton', 'popupmenubutton'
+          'headerBar', 'bottomNavigation', 'drawer', 'tabBar',
+          'tabBarView', 'navigationRail', 'floatingActionButton', 'popupMenuButton'
         ];
-        final scrollWidgets = ['singlechildscrollview', 'pageview', 'scrollbar'];
-        final interactiveWidgets = ['gesturedetector', 'inkwell'];
-        final dialogWidgets = ['alertdialog', 'bottomsheet', 'snackbar'];
-        final animationWidgets = ['animatedcontainer'];
+        final scrollWidgets = ['singleChildScrollView', 'scrollView', 'scrollBar'];
+        final interactiveWidgets = ['gestureDetector', 'inkWell', 'draggable', 'dragTarget'];
+        final dialogWidgets = ['alertDialog', 'bottomSheet', 'snackBar'];
+        final animationWidgets = ['animatedContainer'];
+        final controlFlowWidgets = ['conditional'];
+        final mediaWidgets = ['mediaPlayer'];
 
         final totalWidgets = layoutWidgets.length + displayWidgets.length + 
                            inputWidgets.length + listWidgets.length + 
                            navigationWidgets.length + scrollWidgets.length +
                            interactiveWidgets.length + dialogWidgets.length +
-                           animationWidgets.length;
+                           animationWidgets.length + controlFlowWidgets.length +
+                           mediaWidgets.length;
 
         expect(totalWidgets, greaterThanOrEqualTo(65)); // At least 65 widgets
       });
@@ -568,7 +577,8 @@ void main() {
         final definition = {
           'type': 'page',
           'content': {
-            'type': 'column',
+            'type': 'linear',
+            'direction': 'vertical',
             'children': [
               // Simple binding
               {'type': 'text', 'value': '{{count}}'},
@@ -606,7 +616,7 @@ void main() {
         final definition = {
           'type': 'page',
           'content': {
-            'type': 'listview',
+            'type': 'list',
             'dataBinding': {
               'type': 'stream',
               'tool': 'subscribeToUpdates',
@@ -629,7 +639,7 @@ void main() {
         final definition = {
           'type': 'page',
           'content': {
-            'type': 'textfield',
+            'type': 'textInput',
             'value': '{{email}}',
             'validation': [
               {

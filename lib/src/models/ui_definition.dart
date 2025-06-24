@@ -381,9 +381,14 @@ class BackgroundServiceDefinition {
   final int? interval; // for periodic
   final String? schedule; // for scheduled
   final List<String>? events; // for event-based
+  final String? event; // single event pattern for event-based
   final Map<String, dynamic>? constraints;
   final bool runInBackground;
   final String priority;
+  final String? resultPath; // path to store result in state
+  final bool? retryOnError; // retry on error
+  final int? retryDelay; // delay between retries in ms
+  final bool? stopOnError; // stop service on persistent error
 
   BackgroundServiceDefinition({
     required this.id,
@@ -393,9 +398,14 @@ class BackgroundServiceDefinition {
     this.interval,
     this.schedule,
     this.events,
+    this.event,
     this.constraints,
     this.runInBackground = true,
     this.priority = 'normal',
+    this.resultPath,
+    this.retryOnError,
+    this.retryDelay,
+    this.stopOnError,
   });
 
   factory BackgroundServiceDefinition.fromJson(String id, Map<String, dynamic> json) {
@@ -430,9 +440,14 @@ class BackgroundServiceDefinition {
       interval: json['interval'] as int?,
       schedule: json['schedule'] as String?,
       events: (json['events'] as List<dynamic>?)?.cast<String>(),
+      event: json['event'] as String?,
       constraints: json['constraints'] as Map<String, dynamic>?,
       runInBackground: json['runInBackground'] as bool? ?? true,
       priority: json['priority'] as String? ?? 'normal',
+      resultPath: json['resultPath'] as String?,
+      retryOnError: json['retryOnError'] as bool?,
+      retryDelay: json['retryDelay'] as int?,
+      stopOnError: json['stopOnError'] as bool?,
     );
   }
 }

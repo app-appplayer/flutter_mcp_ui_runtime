@@ -18,7 +18,7 @@ class ConditionalFactory extends WidgetFactory {
     
     // Get then and else widgets
     final thenWidget = definition['then'];
-    final elseWidget = definition['else'];
+    final elseWidget = definition['orElse'] ?? definition['else']; // Support both 'orElse' (v1.0) and 'else'
     
     if (isTrue && thenWidget != null) {
       return context.renderer.renderWidget(thenWidget, context);

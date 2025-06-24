@@ -6,6 +6,7 @@ void main() {
     group('Basic Functionality', () {
       test('should create computed property with expression', () {
         final computed = ComputedProperty(
+          name: 'total',
           expression: 'total',
           compute: (state) => (state['price'] ?? 0) * (state['quantity'] ?? 0),
           dependencies: ['price', 'quantity'],
@@ -18,6 +19,7 @@ void main() {
 
       test('should compute and cache value', () {
         final computed = ComputedProperty(
+          name: 'fullName',
           expression: 'fullName',
           compute: (state) => '${state['firstName']} ${state['lastName']}',
           dependencies: ['firstName', 'lastName'],
@@ -36,6 +38,7 @@ void main() {
 
       test('should invalidate cached value', () {
         final computed = ComputedProperty(
+          name: 'sum',
           expression: 'sum',
           compute: (state) => state['a'] + state['b'],
           dependencies: ['a', 'b'],
@@ -51,6 +54,7 @@ void main() {
 
       test('should handle compute errors', () {
         final computed = ComputedProperty(
+          name: 'error',
           expression: 'error',
           compute: (state) => throw Exception('Compute error'),
           dependencies: [],
@@ -66,6 +70,7 @@ void main() {
     group('Dependency Detection', () {
       test('should detect when dependencies change', () {
         final computed = ComputedProperty(
+          name: 'value',
           expression: 'value',
           compute: (state) => state['value'],
           dependencies: ['user.name', 'user.age', 'settings.theme'],
@@ -79,6 +84,7 @@ void main() {
 
       test('should detect nested path changes', () {
         final computed = ComputedProperty(
+          name: 'userInfo',
           expression: 'userInfo',
           compute: (state) => state['user'],
           dependencies: ['user'],
@@ -94,6 +100,7 @@ void main() {
 
       test('should detect parent path changes', () {
         final computed = ComputedProperty(
+          name: 'userName',
           expression: 'userName',
           compute: (state) => state['user']?['name'],
           dependencies: ['user.name'],
@@ -111,6 +118,7 @@ void main() {
     group('Factory Method', () {
       test('should create from expression', () {
         final computed = ComputedProperty.fromExpression(
+          'fullName',
           '{{firstName}} {{lastName}}',
         );
 
@@ -129,6 +137,7 @@ void main() {
 
       test('should create with complex expression', () {
         final computed = ComputedProperty.fromExpression(
+          'itemStatus',
           '{{items.length > 0 ? "Has items" : "Empty"}}',
         );
 
@@ -147,6 +156,7 @@ void main() {
       test('should handle complex expressions through fromExpression', () {
         // Test string concatenation
         final computed1 = ComputedProperty.fromExpression(
+          'fullName',
           '{{firstName + " " + lastName}}',
         );
         
@@ -159,6 +169,7 @@ void main() {
 
         // Test with array length
         final computed2 = ComputedProperty.fromExpression(
+          'itemCount',
           '{{items.length}}',
         );
         
@@ -171,6 +182,7 @@ void main() {
 
       test('toString should provide useful debug info', () {
         final computed = ComputedProperty(
+          name: 'test',
           expression: 'test',
           compute: (state) => 'value',
           dependencies: ['a', 'b'],

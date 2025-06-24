@@ -20,32 +20,82 @@ class DragTargetFactory extends WidgetFactory {
     
     return DragTarget<Object>(
       builder: (BuildContext dragContext, List<Object?> candidateData, List<dynamic> rejectedData) {
-        // For now, just render the builder without special context
-        // TODO: Add support for drag context variables
-        return context.renderer.renderWidget(builderDef, context);
+        // Create context with drag state variables
+        final dragContext = context.createChildContext(
+          variables: {
+            'dragData': {
+              'candidateData': candidateData,
+              'rejectedData': rejectedData,
+              'hasCandidates': candidateData.isNotEmpty,
+            },
+          },
+        );
+        return context.renderer.renderWidget(builderDef, dragContext);
       },
       onWillAcceptWithDetails: (details) {
         if (onWillAccept != null) {
-          // TODO: Pass drag data to action
-          context.actionHandler.execute(onWillAccept, context);
+          // Create context with drag data
+          final eventContext = context.createChildContext(
+            variables: {
+              'event': {
+                'data': details.data,
+                'offset': {
+                  'dx': details.offset.dx,
+                  'dy': details.offset.dy,
+                },
+              },
+            },
+          );
+          context.actionHandler.execute(onWillAccept, eventContext);
           return true;
         }
         return true;
       },
       onAcceptWithDetails: (details) {
         if (onAccept != null) {
-          // TODO: Pass drag data to action
-          context.actionHandler.execute(onAccept, context);
+          // Create context with drag data
+          final eventContext = context.createChildContext(
+            variables: {
+              'event': {
+                'data': details.data,
+                'offset': {
+                  'dx': details.offset.dx,
+                  'dy': details.offset.dy,
+                },
+              },
+            },
+          );
+          context.actionHandler.execute(onAccept, eventContext);
         }
       },
       onLeave: (data) {
         if (onLeave != null) {
-          context.actionHandler.execute(onLeave, context);
+          // Create context with leaving data
+          final eventContext = context.createChildContext(
+            variables: {
+              'event': {
+                'data': data,
+              },
+            },
+          );
+          context.actionHandler.execute(onLeave, eventContext);
         }
       },
       onMove: (details) {
         if (onMove != null) {
-          context.actionHandler.execute(onMove, context);
+          // Create context with move details
+          final eventContext = context.createChildContext(
+            variables: {
+              'event': {
+                'data': details.data,
+                'offset': {
+                  'dx': details.offset.dx,
+                  'dy': details.offset.dy,
+                },
+              },
+            },
+          );
+          context.actionHandler.execute(onMove, eventContext);
         }
       },
     );

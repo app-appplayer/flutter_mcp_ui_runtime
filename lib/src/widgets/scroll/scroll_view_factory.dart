@@ -27,13 +27,34 @@ class ScrollViewFactory extends WidgetFactory {
       child = context.renderer.renderWidget(childDef, context);
     }
     
-    return SingleChildScrollView(
+    final scrollView = SingleChildScrollView(
       scrollDirection: scrollDirection,
       reverse: reverse,
       padding: padding,
       primary: primary,
       physics: physics,
       child: child,
+    );
+    
+    // Ensure scrollview has proper constraints in test environment
+    // This prevents viewport assertion errors during widget tree construction
+    if (primary != false) {
+      return scrollView;
+    }
+    
+    // Wrap in a constrained box to ensure stable rendering
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.hasBoundedHeight && constraints.hasBoundedWidth) {
+          return scrollView;
+        }
+        // Provide default constraints for unbounded contexts
+        return SizedBox(
+          width: constraints.hasBoundedWidth ? null : double.infinity,
+          height: constraints.hasBoundedHeight ? null : MediaQuery.of(context).size.height,
+          child: scrollView,
+        );
+      },
     );
   }
   

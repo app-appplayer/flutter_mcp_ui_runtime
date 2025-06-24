@@ -41,10 +41,11 @@ void main() {
           'title': 'Container Test',
         },
         'content': {
-          'type': 'container',
+          'type': 'box',
           'padding': {'all': 20},
           'child': {
-            'type': 'column',
+            'type': 'linear',
+            'direction': 'vertical',
             'children': [
               {
                 'type': 'text',
@@ -84,10 +85,10 @@ void main() {
           'type': 'button',
           'label': 'Click Me',
           'style': 'elevated',
-          'onTap': {
+          'click': {
             'type': 'tool',
             'tool': 'test_action',
-            'args': {'test': 'value'},
+            'params': {'test': 'value'},
           },
         },
       };

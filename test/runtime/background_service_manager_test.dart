@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
+import 'package:flutter_mcp_ui_runtime/src/models/ui_definition.dart' show BackgroundServiceType;
 
 void main() {
   group('BackgroundServiceManager Tests', () {

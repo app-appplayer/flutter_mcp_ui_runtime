@@ -14,6 +14,9 @@ class ThemeManager {
   
   // Current theme data
   Map<String, dynamic> _themeData = _defaultTheme;
+  
+  // Theme mode (light, dark, system)
+  String _themeMode = 'light';
 
   // Default theme
   static final Map<String, dynamic> _defaultTheme = {
@@ -23,11 +26,18 @@ class ThemeManager {
       'background': '#ffffff',
       'surface': '#f5f5f5',
       'error': '#f44336',
+      // Legacy Flutter naming (backward compatibility)
       'onPrimary': '#ffffff',
       'onSecondary': '#000000',
       'onBackground': '#000000',
       'onSurface': '#000000',
       'onError': '#ffffff',
+      // MCP UI DSL v1.0 naming
+      'textOnPrimary': '#ffffff',
+      'textOnSecondary': '#000000',
+      'textOnBackground': '#000000',
+      'textOnSurface': '#000000',
+      'textOnError': '#ffffff',
     },
     'typography': {
       'h1': {
@@ -109,17 +119,49 @@ class ThemeManager {
   /// Get current theme
   Map<String, dynamic> get theme => _themeData;
   
+  /// Get current theme mode
+  String get themeMode => _themeMode;
+  
+  /// Set theme mode ('light', 'dark', 'system')
+  void setThemeMode(String mode) {
+    if (['light', 'dark', 'system'].contains(mode)) {
+      _themeMode = mode;
+    } else {
+      throw ArgumentError('Invalid theme mode: $mode. Use "light", "dark", or "system".');
+    }
+  }
+  
+  /// Get Flutter ThemeMode
+  ThemeMode get flutterThemeMode {
+    final currentMode = getThemeValue('mode') as String? ?? _themeMode;
+    switch (currentMode) {
+      case 'dark':
+        return ThemeMode.dark;
+      case 'system':
+        return ThemeMode.system;
+      case 'light':
+      default:
+        return ThemeMode.light;
+    }
+  }
+  
   /// Get current theme as Flutter ThemeData
   ThemeData get currentTheme => _buildThemeData();
 
   /// Set custom theme
   void setTheme(Map<String, dynamic> theme) {
     _themeData = _mergeTheme(_defaultTheme, theme);
+    
+    // Check if theme mode is specified in the theme configuration
+    if (theme.containsKey('mode')) {
+      setThemeMode(theme['mode'] as String);
+    }
   }
 
   /// Reset to default theme
   void resetTheme() {
     _themeData = _defaultTheme;
+    _themeMode = 'light';
   }
 
   /// Set the state manager for accessing custom theme values
@@ -129,6 +171,18 @@ class ThemeManager {
   
   /// Get theme value by path (e.g., 'colors.primary')
   dynamic getThemeValue(String path) {
+    // Handle special case for theme mode
+    if (path == 'mode') {
+      // First check state manager for dynamic theme mode
+      if (_stateManager != null) {
+        final stateMode = _stateManager!.get<String>('theme.mode');
+        if (stateMode != null && ['light', 'dark', 'system'].contains(stateMode)) {
+          return stateMode;
+        }
+      }
+      return _themeMode;
+    }
+    
     // First check if there's a custom theme value in state
     if (_stateManager != null) {
       // Check for theme.{path} in state (e.g., theme.colors.primary)
@@ -171,13 +225,17 @@ class ThemeManager {
       colorScheme: ColorScheme(
         brightness: isDark ? Brightness.dark : Brightness.light,
         primary: _parseColor(colors['primary']) ?? Colors.blue,
-        onPrimary: _parseColor(colors['onPrimary']) ?? Colors.white,
+        // Use v1.0 textOnPrimary if available, fallback to onPrimary
+        onPrimary: _parseColor(colors['textOnPrimary'] ?? colors['onPrimary']) ?? Colors.white,
         secondary: _parseColor(colors['secondary']) ?? Colors.pink,
-        onSecondary: _parseColor(colors['onSecondary']) ?? Colors.black,
+        // Use v1.0 textOnSecondary if available, fallback to onSecondary
+        onSecondary: _parseColor(colors['textOnSecondary'] ?? colors['onSecondary']) ?? Colors.black,
         error: _parseColor(colors['error']) ?? Colors.red,
-        onError: _parseColor(colors['onError']) ?? Colors.white,
+        // Use v1.0 textOnError if available, fallback to onError
+        onError: _parseColor(colors['textOnError'] ?? colors['onError']) ?? Colors.white,
         surface: _parseColor(colors['surface']) ?? Colors.grey[100]!,
-        onSurface: _parseColor(colors['onSurface']) ?? Colors.black,
+        // Use v1.0 textOnSurface if available, fallback to onSurface
+        onSurface: _parseColor(colors['textOnSurface'] ?? colors['onSurface']) ?? Colors.black,
         // Note: background is deprecated, using surface instead
       ),
       textTheme: _buildTextTheme(),
@@ -202,11 +260,13 @@ class ThemeManager {
         secondary: _parseColor(colors['secondary']) ?? Colors.pink,
         surface: _parseColor(colors['surface']) ?? Colors.grey[100]!,
         error: _parseColor(colors['error']) ?? Colors.red,
-        onPrimary: _parseColor(colors['onPrimary']) ?? Colors.white,
-        onSecondary: _parseColor(colors['onSecondary']) ?? Colors.black,
-        onSurface: _parseColor(colors['onSurface']) ?? Colors.black,
-        onError: _parseColor(colors['onError']) ?? Colors.white,
+        // Use v1.0 textOn* if available, fallback to on* for backward compatibility
+        onPrimary: _parseColor(colors['textOnPrimary'] ?? colors['onPrimary']) ?? Colors.white,
+        onSecondary: _parseColor(colors['textOnSecondary'] ?? colors['onSecondary']) ?? Colors.black,
+        onSurface: _parseColor(colors['textOnSurface'] ?? colors['onSurface']) ?? Colors.black,
+        onError: _parseColor(colors['textOnError'] ?? colors['onError']) ?? Colors.white,
       ),
+      scaffoldBackgroundColor: _parseColor(colors['background']) ?? Colors.white,
       textTheme: _buildTextTheme(),
     );
   }
@@ -245,7 +305,16 @@ class ThemeManager {
     if (value == null) return null;
     
     if (value is String && value.startsWith('#')) {
-      return Color(int.parse(value.substring(1), radix: 16) + 0xFF000000);
+      String hex = value.substring(1);
+      
+      // Handle both 6-digit (RGB) and 8-digit (ARGB) hex colors
+      if (hex.length == 6) {
+        // Add full opacity for 6-digit colors
+        return Color(int.parse('FF$hex', radix: 16));
+      } else if (hex.length == 8) {
+        // Parse 8-digit ARGB colors directly
+        return Color(int.parse(hex, radix: 16));
+      }
     }
     
     return null;
@@ -287,5 +356,12 @@ class ThemeManager {
     });
     
     return result;
+  }
+  
+  /// Reset theme to defaults (for testing)
+  void reset() {
+    _themeData = Map<String, dynamic>.from(_defaultTheme);
+    _themeMode = 'light';
+    _stateManager = null;
   }
 }

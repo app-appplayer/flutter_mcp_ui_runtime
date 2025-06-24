@@ -29,7 +29,8 @@ void main() {
           }
         },
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'text',
@@ -73,7 +74,8 @@ void main() {
           }
         },
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'text',
@@ -82,21 +84,17 @@ void main() {
             {
               'type': 'button',
               'label': 'Increment',
-              'onTap': {
-                'type': 'tool',
-                'tool': 'increment',
-                'args': {}
+              'click': {
+                'type': 'state',
+                'action': 'increment',
+                'path': 'counter'
               }
             }
           ]
         }
       });
       
-      // Register increment tool after initialization
-      runtime.registerToolExecutor('increment', (args) async {
-        final currentValue = runtime.stateManager.get('counter') ?? 0;
-        runtime.stateManager.set('counter', currentValue + 1);
-      });
+      // No need to register tool - using state action
       
       // Build widget
       await tester.pumpWidget(
@@ -146,7 +144,8 @@ void main() {
           }
         },
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'text',
@@ -155,21 +154,17 @@ void main() {
             {
               'type': 'button',
               'label': 'Decrement',
-              'onTap': {
-                'type': 'tool',
-                'tool': 'decrement',
-                'args': {}
+              'click': {
+                'type': 'state',
+                'action': 'decrement',
+                'path': 'counter'
               }
             }
           ]
         }
       });
       
-      // Register decrement tool after initialization
-      runtime.registerToolExecutor('decrement', (args) async {
-        final currentValue = runtime.stateManager.get('counter') ?? 0;
-        runtime.stateManager.set('counter', currentValue - 1);
-      });
+      // No need to register tool - using state action
       
       // Build widget
       await tester.pumpWidget(
@@ -208,40 +203,43 @@ void main() {
           }
         },
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'text',
               'content': 'Counter: {{counter}}'
             },
             {
-              'type': 'row',
+              'type': 'linear',
+              'direction': 'horizontal',
               'children': [
                 {
                   'type': 'button',
                   'label': '-',
-                  'onTap': {
-                    'type': 'tool',
-                    'tool': 'decrement',
-                    'args': {}
+                  'click': {
+                    'type': 'state',
+                    'action': 'decrement',
+                    'path': 'counter'
                   }
                 },
                 {
                   'type': 'button',
                   'label': '+',
-                  'onTap': {
-                    'type': 'tool',
-                    'tool': 'increment',
-                    'args': {}
+                  'click': {
+                    'type': 'state',
+                    'action': 'increment',
+                    'path': 'counter'
                   }
                 },
                 {
                   'type': 'button',
                   'label': 'Reset',
-                  'onTap': {
-                    'type': 'tool',
-                    'tool': 'reset',
-                    'args': {}
+                  'click': {
+                    'type': 'state',
+                    'action': 'set',
+                    'path': 'counter',
+                    'value': 0
                   }
                 }
               ]
@@ -250,20 +248,7 @@ void main() {
         }
       });
       
-      // Register tools after initialization
-      runtime.registerToolExecutor('increment', (args) async {
-        final currentValue = runtime.stateManager.get('counter') ?? 0;
-        runtime.stateManager.set('counter', currentValue + 1);
-      });
-      
-      runtime.registerToolExecutor('decrement', (args) async {
-        final currentValue = runtime.stateManager.get('counter') ?? 0;
-        runtime.stateManager.set('counter', currentValue - 1);
-      });
-      
-      runtime.registerToolExecutor('reset', (args) async {
-        runtime.stateManager.set('counter', 0);
-      });
+      // No need to register tools - using state actions
       
       // Build widget
       await tester.pumpWidget(

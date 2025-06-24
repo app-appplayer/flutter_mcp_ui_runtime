@@ -12,6 +12,7 @@ class ListViewWidgetFactory extends WidgetFactory {
     // Extract properties
     final scrollDirection = _parseAxis(properties['scrollDirection']);
     final reverse = properties['reverse'] as bool? ?? false;
+    // Follow MCP UI DSL v1.0 spec: shrinkWrap defaults to false
     final shrinkWrap = properties['shrinkWrap'] as bool? ?? false;
     final physics = _parseScrollPhysics(properties['physics']);
     final padding = parseEdgeInsets(properties['padding']);
@@ -22,7 +23,11 @@ class ListViewWidgetFactory extends WidgetFactory {
     final resolvedChildren = context.resolve(childrenProp);
     final staticChildren = resolvedChildren is List<dynamic> ? resolvedChildren : null;
     
-    final itemsPath = properties['items'] as String?;
+    // Support both direct list and path-based items
+    final itemsProp = properties['items'];
+    final resolvedItems = context.resolve(itemsProp);
+    final directItems = itemsProp is List ? itemsProp : null;
+    final itemsPath = itemsProp is String ? itemsProp : null;
     final itemTemplate = properties['itemTemplate'] as Map<String, dynamic>?;
     
     // Also support itemCount/itemBuilder pattern
@@ -62,9 +67,9 @@ class ListViewWidgetFactory extends WidgetFactory {
           return context.renderer.renderWidget(itemBuilder, childContext);
         },
       );
-    } else if (itemsPath != null && itemTemplate != null) {
+    } else if ((itemsPath != null || resolvedItems != null) && itemTemplate != null) {
       // Dynamic list with data binding
-      final items = context.resolve<List<dynamic>>(properties['items']) as List<dynamic>? ?? [];
+      final items = resolvedItems as List<dynamic>? ?? [];
       
       listView = ListView.separated(
         scrollDirection: scrollDirection,
@@ -92,6 +97,27 @@ class ListViewWidgetFactory extends WidgetFactory {
           );
           
           return context.renderer.renderWidget(itemTemplate, childContext);
+        },
+      );
+    } else if (directItems != null && directItems.isNotEmpty) {
+      // Direct items list (like in showcase_definition.dart)
+      final items = directItems;
+      
+      listView = ListView.separated(
+        scrollDirection: scrollDirection,
+        reverse: reverse,
+        shrinkWrap: shrinkWrap,
+        physics: physics,
+        padding: padding,
+        itemCount: items.length,
+        separatorBuilder: itemSpacing > 0 
+            ? (buildContext, index) => scrollDirection == Axis.horizontal
+                ? SizedBox(width: itemSpacing)
+                : SizedBox(height: itemSpacing)
+            : (buildContext, index) => Container(),
+        itemBuilder: (buildContext, index) {
+          // Render each item directly as a widget
+          return context.renderer.renderWidget(items[index], context);
         },
       );
     } else if (staticChildren != null && staticChildren.isNotEmpty) {
@@ -134,7 +160,34 @@ class ListViewWidgetFactory extends WidgetFactory {
       );
     }
     
-    return applyCommonWrappers(listView, properties, context);
+    // Ensure ListView has proper constraints for stability
+    final wrappedListView = _ensureStableConstraints(listView, shrinkWrap);
+    
+    return applyCommonWrappers(wrappedListView, properties, context);
+  }
+  
+  Widget _ensureStableConstraints(Widget listView, bool shrinkWrap) {
+    // If shrinkWrap is true, the ListView handles its own constraints
+    if (shrinkWrap) {
+      return listView;
+    }
+    
+    // For non-shrinkWrap ListViews, ensure they have bounded constraints
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // If constraints are already bounded, use them as-is
+        if (constraints.hasBoundedHeight) {
+          return listView;
+        }
+        
+        // Provide a default height for unbounded contexts
+        // This prevents viewport assertion errors in tests
+        return SizedBox(
+          height: MediaQuery.of(context).size.height,
+          child: listView,
+        );
+      },
+    );
   }
 
   Axis _parseAxis(String? value) {

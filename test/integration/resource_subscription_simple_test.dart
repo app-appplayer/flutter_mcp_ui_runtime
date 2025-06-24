@@ -11,7 +11,8 @@ void main() {
       final uiDefinition = {
         'type': 'page',
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'text',
@@ -20,7 +21,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Subscribe',
-              'onTap': {
+              'click': {
                 'type': 'resource',
                 'action': 'subscribe',
                 'uri': 'mcp://server/cpu',
@@ -107,6 +108,9 @@ void main() {
       
       // Updated state
       expect(find.text('CPU: 75%'), findsOneWidget);
+      
+      // Clean up
+      await runtime.destroy();
     });
   });
 }

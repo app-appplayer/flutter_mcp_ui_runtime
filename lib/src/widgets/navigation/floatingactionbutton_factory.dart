@@ -56,7 +56,7 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
     
     // Extract action handler
     final onPressed = properties['onPressed'] as Map<String, dynamic>?;
-    // final onLongPress = properties['onLongPress'] as Map<String, dynamic>?; // TODO: Use this property
+    final onLongPress = properties['onLongPress'] as Map<String, dynamic>?;
     
     Widget fab;
     
@@ -108,6 +108,16 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
         autofocus: autofocus,
         materialTapTargetSize: materialTapTargetSize,
         child: child,
+      );
+    }
+    
+    // Wrap with GestureDetector if onLongPress is specified
+    if (onLongPress != null) {
+      fab = GestureDetector(
+        onLongPress: () {
+          context.actionHandler.execute(onLongPress, context);
+        },
+        child: fab,
       );
     }
     

@@ -12,14 +12,37 @@ class ButtonWidgetFactory extends WidgetFactory {
     
     // Extract button properties
     final label = context.resolve<String>(properties[core.PropertyKeys.label] ?? '');
-    final icon = properties[core.PropertyKeys.icon] as String?;
-    final iconPosition = properties['iconPosition'] as String? ?? 'start';
-    final style = properties[core.PropertyKeys.style] as String? ?? 'elevated';
-    final size = properties['size'] as String? ?? 'medium';
-    final fullWidth = properties['fullWidth'] as bool? ?? false;
+    final iconValue = properties[core.PropertyKeys.icon];
+    final icon = iconValue is String ? iconValue : null;
+    final iconPosValue = properties['iconPosition'];
+    final iconPosition = iconPosValue is String ? iconPosValue : 'start';
+    
+    // MCP UI DSL v1.0 uses 'variant' property for button styles
+    final variantValue = properties['variant'];
+    final variant = variantValue is String ? variantValue : 'elevated';
+    
+    final sizeValue = properties['size'];
+    final size = sizeValue is String ? sizeValue : 'medium';
+    final fullWidthValue = properties['fullWidth'];
+    final fullWidth = fullWidthValue is bool ? fullWidthValue : false;
     final loading = context.resolve<bool>(properties['loading'] ?? false);
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
-    final onTap = properties[core.PropertyKeys.onTap] as Map<String, dynamic>?;
+    
+    // Extract style properties from the properties directly
+    final backgroundColor = properties['backgroundColor'];
+    final foregroundColor = properties['foregroundColor'];
+    final elevation = properties['elevation'];
+    final borderColor = properties['borderColor'];
+    final borderWidth = properties['borderWidth'];
+    
+    // MCP UI DSL v1.0 event handlers
+    final onClick = properties[core.PropertyKeys.click] as Map<String, dynamic>?;
+    final onDoubleClick = properties[core.PropertyKeys.doubleClick] as Map<String, dynamic>?;
+    final onLongPress = properties[core.PropertyKeys.longPress] as Map<String, dynamic>?;
+    final submit = properties['submit'] as Map<String, dynamic>?;
+    
+    // Use click or submit action
+    final primaryAction = onClick ?? submit;
     
     // Build button content
     Widget buttonChild;
@@ -31,15 +54,80 @@ class ButtonWidgetFactory extends WidgetFactory {
       buttonChild = Text(label);
     }
     
+    // Get aria-label for semantic override
+    final ariaLabel = context.resolve<String?>(properties['aria-label']);
+    
     // Build button
-    Widget button = _buildButton(
-      style: style,
-      child: buttonChild,
-      onPressed: onTap != null && !loading && enabled
-          ? () async => await context.actionHandler.execute(onTap, context)
-          : null,
-      size: size,
-    );
+    Widget button;
+    
+    // Special case for icon variant - create IconButton
+    if (variant == 'icon' && icon != null) {
+      button = IconButton(
+        icon: Icon(_parseIcon(icon)),
+        onPressed: !loading && enabled
+            ? (primaryAction != null
+                ? () async {
+                    await context.handleAction(primaryAction);
+                  }
+                : () {}) // Empty handler when no action but enabled
+            : null,
+        color: foregroundColor != null ? parseColor(foregroundColor) : null,
+        iconSize: _getIconSize(size),
+        tooltip: ariaLabel ?? label,
+      );
+    } else {
+      button = _buildButton(
+        style: variant,
+        child: buttonChild,
+        onPressed: !loading && enabled
+            ? (primaryAction != null 
+                ? () async {
+                    // Handle special submit action
+                    if (primaryAction['type'] == 'submit') {
+                      // Look for form key and submit action in parent context
+                      final formKey = context.getValue<GlobalKey<FormState>>('_formKey');
+                      final submitAction = context.getValue<Map<String, dynamic>>('_formSubmitAction');
+                      
+                      if (formKey != null && formKey.currentState != null) {
+                        final formState = formKey.currentState!;
+                        if (formState.validate()) {
+                          formState.save();
+                          // Execute the form's submit action if available
+                          if (submitAction != null) {
+                            await context.handleAction(submitAction);
+                          }
+                        }
+                      }
+                    } else {
+                      // Regular action
+                      // Regular action - use existing context
+                      await context.handleAction(primaryAction);
+                    }
+                  }
+                : () {}) // Empty handler when no action but enabled
+            : null,
+        size: size,
+        semanticLabel: ariaLabel,
+        backgroundColor: backgroundColor,
+        foregroundColor: foregroundColor,
+        elevation: elevation,
+        borderColor: borderColor,
+        borderWidth: borderWidth,
+      );
+    }
+    
+    // Wrap with gesture detector for additional events
+    if (onDoubleClick != null || onLongPress != null) {
+      button = GestureDetector(
+        onDoubleTap: onDoubleClick != null && !loading && enabled
+            ? () async => await context.handleAction(onDoubleClick)
+            : null,
+        onLongPress: onLongPress != null && !loading && enabled
+            ? () async => await context.handleAction(onLongPress)
+            : null,
+        child: button,
+      );
+    }
     
     // Apply full width if needed
     if (fullWidth) {
@@ -49,7 +137,12 @@ class ButtonWidgetFactory extends WidgetFactory {
       );
     }
     
-    return applyCommonWrappers(button, properties, context);
+    // If aria-label was already applied, remove it from properties to avoid double application
+    final propsForWrapper = ariaLabel != null 
+        ? (Map<String, dynamic>.from(properties)..remove('aria-label'))
+        : properties;
+    
+    return applyCommonWrappers(button, propsForWrapper, context);
   }
 
   Widget _buildButton({
@@ -57,54 +150,140 @@ class ButtonWidgetFactory extends WidgetFactory {
     required Widget child,
     required VoidCallback? onPressed,
     required String size,
+    String? semanticLabel,
+    dynamic backgroundColor,
+    dynamic foregroundColor,
+    dynamic elevation,
+    dynamic borderColor,
+    dynamic borderWidth,
   }) {
     final padding = _getButtonPadding(size);
     
     switch (style) {
       case 'elevated':
-        return ElevatedButton(
+        final button = ElevatedButton(
           onPressed: onPressed,
           style: ElevatedButton.styleFrom(
             padding: padding,
+            backgroundColor: backgroundColor != null ? parseColor(backgroundColor) : null,
+            foregroundColor: foregroundColor != null ? parseColor(foregroundColor) : null,
+            elevation: elevation?.toDouble(),
+            side: borderColor != null || borderWidth != null
+                ? BorderSide(
+                    color: borderColor != null ? parseColor(borderColor)! : Colors.transparent,
+                    width: borderWidth?.toDouble() ?? 1.0,
+                  )
+                : null,
           ),
           child: child,
         );
+        return semanticLabel != null
+            ? Semantics(
+                label: semanticLabel,
+                button: true,
+                child: ExcludeSemantics(child: button),
+              )
+            : button;
       
       case 'filled':
-        return FilledButton(
+        final button = FilledButton(
           onPressed: onPressed,
           style: FilledButton.styleFrom(
             padding: padding,
+            backgroundColor: backgroundColor != null ? parseColor(backgroundColor) : null,
+            foregroundColor: foregroundColor != null ? parseColor(foregroundColor) : null,
+            elevation: elevation?.toDouble(),
+            side: borderColor != null || borderWidth != null
+                ? BorderSide(
+                    color: borderColor != null ? parseColor(borderColor)! : Colors.transparent,
+                    width: borderWidth?.toDouble() ?? 1.0,
+                  )
+                : null,
           ),
           child: child,
         );
+        return semanticLabel != null
+            ? Semantics(
+                label: semanticLabel,
+                button: true,
+                child: ExcludeSemantics(child: button),
+              )
+            : button;
       
       case 'outlined':
-        return OutlinedButton(
+        final button = OutlinedButton(
           onPressed: onPressed,
           style: OutlinedButton.styleFrom(
             padding: padding,
+            backgroundColor: backgroundColor != null ? parseColor(backgroundColor) : null,
+            foregroundColor: foregroundColor != null ? parseColor(foregroundColor) : null,
+            elevation: elevation?.toDouble(),
+            side: borderColor != null || borderWidth != null
+                ? BorderSide(
+                    color: borderColor != null ? parseColor(borderColor)! : Colors.grey,
+                    width: borderWidth?.toDouble() ?? 1.0,
+                  )
+                : null,
           ),
           child: child,
         );
+        return semanticLabel != null
+            ? Semantics(
+                label: semanticLabel,
+                button: true,
+                child: ExcludeSemantics(child: button),
+              )
+            : button;
       
       case 'text':
-        return TextButton(
+        final button = TextButton(
           onPressed: onPressed,
           style: TextButton.styleFrom(
             padding: padding,
+            backgroundColor: backgroundColor != null ? parseColor(backgroundColor) : null,
+            foregroundColor: foregroundColor != null ? parseColor(foregroundColor) : null,
+            elevation: elevation?.toDouble(),
+            side: borderColor != null || borderWidth != null
+                ? BorderSide(
+                    color: borderColor != null ? parseColor(borderColor)! : Colors.transparent,
+                    width: borderWidth?.toDouble() ?? 1.0,
+                  )
+                : null,
           ),
           child: child,
         );
+        return semanticLabel != null
+            ? Semantics(
+                label: semanticLabel,
+                button: true,
+                child: ExcludeSemantics(child: button),
+              )
+            : button;
       
       default:
-        return ElevatedButton(
+        final button = ElevatedButton(
           onPressed: onPressed,
           style: ElevatedButton.styleFrom(
             padding: padding,
+            backgroundColor: backgroundColor != null ? parseColor(backgroundColor) : null,
+            foregroundColor: foregroundColor != null ? parseColor(foregroundColor) : null,
+            elevation: elevation?.toDouble(),
+            side: borderColor != null || borderWidth != null
+                ? BorderSide(
+                    color: borderColor != null ? parseColor(borderColor)! : Colors.transparent,
+                    width: borderWidth?.toDouble() ?? 1.0,
+                  )
+                : null,
           ),
           child: child,
         );
+        return semanticLabel != null
+            ? Semantics(
+                label: semanticLabel,
+                button: true,
+                child: ExcludeSemantics(child: button),
+              )
+            : button;
     }
   }
 
@@ -173,6 +352,18 @@ class ButtonWidgetFactory extends WidgetFactory {
         return 18;
     }
   }
+  
+  double _getIconSize(String size) {
+    switch (size) {
+      case 'small':
+        return 18;
+      case 'large':
+        return 28;
+      case 'medium':
+      default:
+        return 24;
+    }
+  }
 
   IconData _parseIcon(String iconName) {
     // This is a simplified icon mapping
@@ -202,6 +393,8 @@ class ButtonWidgetFactory extends WidgetFactory {
         return Icons.settings;
       case 'home':
         return Icons.home;
+      case 'star':
+        return Icons.star;
       default:
         return Icons.circle;
     }

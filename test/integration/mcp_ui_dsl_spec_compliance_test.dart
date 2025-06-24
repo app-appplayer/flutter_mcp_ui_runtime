@@ -37,16 +37,19 @@ void main() {
           },
         };
 
-        await runtime.initialize(validAppDefinition, pageLoader: (route) async {
-          // Simple page loader for test
-          return {
-            'type': 'page',
-            'content': {
-              'type': 'text',
-              'content': 'Home Page',
-            },
-          };
-        });
+        await runtime.initialize(
+          validAppDefinition,
+          pageLoader: (route) async {
+            // Simple page loader for test
+            return {
+              'type': 'page',
+              'content': {
+                'type': 'text',
+                'content': 'Home Page',
+              },
+            };
+          },
+        );
         expect(runtime.isInitialized, isTrue);
       });
 
@@ -104,7 +107,15 @@ void main() {
         };
 
         try {
-          await runtime.initialize(invalidAppDefinition);
+          await runtime.initialize(invalidAppDefinition, pageLoader: (String route) async {
+            return {
+              'type': 'page',
+              'content': {
+                'type': 'text',
+                'value': 'Test page'
+              }
+            };
+          });
           fail('Should have thrown an exception');
         } catch (e) {
           expect(e, isA<ArgumentError>());
@@ -119,10 +130,10 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'Test Button',
-            'onTap': {
+            'click': {
               'type': 'tool',
               'tool': 'test_tool',
-              'args': {'param': 'value'},
+              'params': {'param': 'value'},
             },
           },
         };
@@ -137,10 +148,10 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'Test Button',
-            'onTap': {
+            'click': {
               'type': 'tool',
               'name': 'test_tool',  // Legacy: should be 'tool'
-              'params': {'param': 'value'},  // Legacy: should be 'args'
+              'params': {'param': 'value'},  // Legacy: should be 'params'
             },
           },
         };
@@ -158,10 +169,10 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'Test Button',
-            'onTap': {
+            'click': {
               'type': 'tool',
               // Missing required 'tool' field
-              'args': {},
+              'params': {},
             },
           },
         };
@@ -177,7 +188,7 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'Increment',
-            'onTap': {
+            'click': {
               'type': 'state',
               'action': 'increment',
               'path': 'counter',
@@ -196,7 +207,7 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'Navigate',
-            'onTap': {
+            'click': {
               'type': 'navigation',
               'action': 'push',
               'target': '/next-page',
@@ -222,17 +233,19 @@ void main() {
             'label': 'Required label',
           },
           {
-            'type': 'container',
+            'type': 'box',
             'child': {'type': 'text', 'content': 'Child'},
           },
           {
-            'type': 'column',
+            'type': 'linear',
+            'direction': 'vertical',
             'children': [
               {'type': 'text', 'content': 'Child 1'},
             ],
           },
           {
-            'type': 'row',
+            'type': 'linear',
+            'direction': 'horizontal',
             'children': [
               {'type': 'text', 'content': 'Child 1'},
             ],
@@ -263,7 +276,8 @@ void main() {
             // Missing required 'label' property
           },
           {
-            'type': 'column',
+            'type': 'linear',
+            'direction': 'vertical',
             // Missing required 'children' property
           },
         ];

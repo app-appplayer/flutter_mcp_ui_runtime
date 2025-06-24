@@ -5,6 +5,7 @@ import '../binding/binding_engine.dart';
 import '../actions/action_handler.dart';
 import '../state/state_manager.dart';
 import '../theme/theme_manager.dart';
+import '../i18n/i18n_manager.dart';
 import '../utils/mcp_logger.dart';
 
 /// Render context that provides access to runtime services during widget rendering
@@ -20,6 +21,8 @@ class RenderContext {
   final List<String> _idPath;
   final BuildContext? buildContext;
   final dynamic engine;
+  final bool Function(String action, String route, Map<String, dynamic> params)? navigationHandler;
+  final Future<dynamic> Function(String resource, String method, String target, dynamic data)? resourceHandler;
 
   RenderContext({
     required this.renderer,
@@ -30,6 +33,8 @@ class RenderContext {
     this.parentId,
     this.buildContext,
     this.engine,
+    this.navigationHandler,
+    this.resourceHandler,
     Map<String, dynamic>? localVariables,
     List<String>? idPath,
   }) : localVariables = localVariables ?? {},
@@ -59,6 +64,8 @@ class RenderContext {
       parentId: id ?? parentId,
       buildContext: buildContext,
       engine: engine,
+      navigationHandler: navigationHandler,
+      resourceHandler: resourceHandler,
       localVariables: childVars,
       idPath: childPath,
     );
@@ -95,6 +102,11 @@ class RenderContext {
       // Resolve each item in the list
       return value.map((item) => resolve(item)).toList() as T;
     } else if (value is String) {
+      // Check for i18n strings first
+      if (value.startsWith('i18n:')) {
+        final translated = I18nManager.instance.resolveI18nString(value);
+        return (translated ?? value) as T;
+      }
       // Check if it contains any binding expressions
       if (value.contains('{{') && value.contains('}}')) {
         return bindingEngine.resolve<T>(value, this);
@@ -121,21 +133,45 @@ class RenderContext {
   /// Get current theme
   ThemeData get theme => themeManager.currentTheme;
 
-  /// Get a value from state (handles app.* prefix for global state)
+  /// Get a value from state (handles local.* and app.* prefixes per v1.0 spec)
   T? getState<T>(String path) {
-    // Always use global state manager for now
-    // TODO: Implement proper page-local state management
-    final result = stateManager.get<T>(path);
-    _logger.debug('getState path: $path, result: $result');
-    return result;
+    // Handle v1.0 state prefixes
+    if (path.startsWith('local.')) {
+      // Page-local state (stored in localVariables)
+      final localPath = path.substring(6);
+      return localVariables[localPath] as T?;
+    } else if (path.startsWith('app.')) {
+      // Global application state
+      final globalPath = path.substring(4);
+      final result = stateManager.get<T>(globalPath);
+      _logger.debug('getState app.$globalPath: $result');
+      return result;
+    } else {
+      // No prefix - default to global state for backward compatibility
+      final result = stateManager.get<T>(path);
+      _logger.debug('getState path: $path, result: $result');
+      return result;
+    }
   }
 
-  /// Set a value in state (handles app.* prefix for global state)
+  /// Set a value in state (handles local.* and app.* prefixes per v1.0 spec)
   void setState(String path, dynamic value) {
-    // Always use global state manager for now
-    // TODO: Implement proper page-local state management
-    stateManager.set(path, value);
-    _logger.debug('setState path: $path, value: $value');
+    // Handle v1.0 state prefixes
+    if (path.startsWith('local.')) {
+      // Page-local state (stored in localVariables)
+      final localPath = path.substring(6);
+      localVariables[localPath] = value;
+      _logger.debug('setState local.$localPath: $value');
+    } else if (path.startsWith('app.')) {
+      // Global application state
+      final globalPath = path.substring(4);
+      stateManager.set(globalPath, value);
+      _logger.debug('setState app.$globalPath: $value');
+    } else {
+      // No prefix - default to global state for backward compatibility
+      stateManager.set(path, value);
+      _logger.debug('setState path: $path, value: $value');
+    }
   }
 
   /// Update state
@@ -145,8 +181,27 @@ class RenderContext {
   
   /// Get a value from state (alias for getState)
   T? getValue<T>(String path) {
-    // Check local variables first
-    if (localVariables.containsKey(path)) {
+    // Check local variables first (including nested paths)
+    if (path.contains('.')) {
+      final parts = path.split('.');
+      final firstPart = parts[0];
+      
+      // Check if the first part is in local variables
+      if (localVariables.containsKey(firstPart)) {
+        dynamic current = localVariables[firstPart];
+        
+        // Navigate the rest of the path
+        for (int i = 1; i < parts.length; i++) {
+          if (current is Map<String, dynamic>) {
+            current = current[parts[i]];
+          } else {
+            return null;
+          }
+        }
+        
+        return current as T?;
+      }
+    } else if (localVariables.containsKey(path)) {
       return localVariables[path] as T?;
     }
     

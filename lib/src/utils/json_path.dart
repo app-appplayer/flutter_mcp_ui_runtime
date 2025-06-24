@@ -43,6 +43,9 @@ class JsonPath {
         // Handle regular property access
         if (current is Map<String, dynamic>) {
           current = current[part.key];
+        } else if (current is Map) {
+          // Handle Map that's not Map<String, dynamic>
+          current = current[part.key];
         } else if (current is List) {
           // Handle special properties for List
           if (part.key == 'length') {
@@ -73,6 +76,9 @@ class JsonPath {
     
     final parts = _parsePath(path);
     dynamic current = data;
+    
+    // Debug logging
+    // Debug logging removed
     
     // Navigate to the parent of the target
     for (int i = 0; i < parts.length - 1; i++) {
@@ -112,7 +118,9 @@ class JsonPath {
               current[part.key] = nextPart.isArrayAccess ? [] : <String, dynamic>{};
             }
           }
-          current = current[part.key];
+          if (i < parts.length - 1 && current.containsKey(part.key)) {
+            current = current[part.key];
+          }
         } else if (current is List) {
           final index = int.tryParse(part.key);
           if (index != null) {
@@ -135,6 +143,7 @@ class JsonPath {
     
     // Set the final value
     final lastPart = parts.last;
+    // Set the final value
     if (lastPart.isArrayAccess) {
       if (current is Map<String, dynamic>) {
         if (!current.containsKey(lastPart.key)) {
@@ -158,6 +167,9 @@ class JsonPath {
     } else {
       if (current is Map<String, dynamic>) {
         current[lastPart.key] = value;
+      } else if (current is Map) {
+        // Handle Map that's not Map<String, dynamic>
+        (current as Map)[lastPart.key] = value;
       } else if (current is List) {
         final index = int.tryParse(lastPart.key);
         if (index != null) {

@@ -22,7 +22,8 @@ void main() {
       
       stateManager.initialize({
         'user': {'name': 'John', 'age': 30},
-        'app': {'title': 'Test App', 'version': '1.0.0'},
+        'title': 'Test App',
+        'version': '1.0.0',
         'form': {'email': 'test@example.com', 'validated': true}
       });
 

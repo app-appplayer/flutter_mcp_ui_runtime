@@ -13,7 +13,7 @@ class BottomSheetWidgetFactory extends WidgetFactory {
     final backgroundColor = parseColor(context.resolve(properties['backgroundColor']));
     final elevation = properties['elevation']?.toDouble();
     final shape = _parseShapeBorder(properties['shape']);
-    // final clipBehavior = _parseClip(properties['clipBehavior']); // TODO: Use this property
+    final clipBehavior = _parseClip(properties['clipBehavior']);
     final constraints = _parseBoxConstraints(properties['constraints']);
     final enableDrag = properties['enableDrag'] as bool? ?? true;
     final showDragHandle = properties['showDragHandle'] as bool? ?? false;
@@ -22,7 +22,7 @@ class BottomSheetWidgetFactory extends WidgetFactory {
     final shadowColor = parseColor(context.resolve(properties['shadowColor']));
     
     // Extract action handlers
-    // final onClosing = properties['onClosing'] as Map<String, dynamic>?; // TODO: Use this property
+    final onClosing = properties['onClosing'] as Map<String, dynamic>?;
     
     // Build child widget
     final childrenData = definition['children'] as List<dynamic>?;
@@ -45,6 +45,7 @@ class BottomSheetWidgetFactory extends WidgetFactory {
     // BottomSheet requires an AnimationController, typically used with showModalBottomSheet
     // For standalone use, wrap in a simple container
     Widget bottomSheet = Container(
+      clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: shape is RoundedRectangleBorder ? shape.borderRadius : null,
@@ -80,6 +81,23 @@ class BottomSheetWidgetFactory extends WidgetFactory {
       bottomSheet = GestureDetector(
         onVerticalDragUpdate: (details) {
           // Handle drag if needed
+          if (details.delta.dy > 10 && onClosing != null) {
+            // User is dragging down, trigger onClosing
+            context.actionHandler.execute(onClosing, context);
+          }
+        },
+        child: bottomSheet,
+      );
+    }
+    
+    // If onClosing is specified but drag is disabled, wrap with NotificationListener
+    if (onClosing != null && !enableDrag) {
+      bottomSheet = NotificationListener<DraggableScrollableNotification>(
+        onNotification: (notification) {
+          if (notification.extent <= notification.minExtent) {
+            context.actionHandler.execute(onClosing, context);
+          }
+          return false;
         },
         child: bottomSheet,
       );
@@ -105,8 +123,20 @@ class BottomSheetWidgetFactory extends WidgetFactory {
     }
   }
 
-  // Clip _parseClip method removed as it's currently unused
-  // TODO: Implement clipBehavior property when needed
+  Clip _parseClip(String? value) {
+    switch (value) {
+      case 'none':
+        return Clip.none;
+      case 'hardEdge':
+        return Clip.hardEdge;
+      case 'antiAlias':
+        return Clip.antiAlias;
+      case 'antiAliasWithSaveLayer':
+        return Clip.antiAliasWithSaveLayer;
+      default:
+        return Clip.none;
+    }
+  }
 
   BoxConstraints? _parseBoxConstraints(Map<String, dynamic>? constraints) {
     if (constraints == null) return null;

@@ -17,16 +17,22 @@ class GridViewWidgetFactory extends WidgetFactory {
     final padding = parseEdgeInsets(properties['padding']);
     
     // Grid specific properties
-    final crossAxisCount = properties['crossAxisCount'] as int?;
+    // Support both 'columns' (MCP UI DSL v1.0) and 'crossAxisCount' (Flutter style)
+    final crossAxisCount = (properties['columns'] ?? properties['crossAxisCount']) as int?;
     final maxCrossAxisExtent = properties['maxCrossAxisExtent']?.toDouble();
-    final mainAxisSpacing = properties['mainAxisSpacing']?.toDouble() ?? 0.0;
-    final crossAxisSpacing = properties['crossAxisSpacing']?.toDouble() ?? 0.0;
+    // Support both 'spacing' (MCP UI DSL v1.0) and individual spacing properties
+    final spacing = properties['spacing']?.toDouble();
+    final mainAxisSpacing = properties['mainAxisSpacing']?.toDouble() ?? spacing ?? 0.0;
+    final crossAxisSpacing = properties['crossAxisSpacing']?.toDouble() ?? spacing ?? 0.0;
     final childAspectRatio = properties['childAspectRatio']?.toDouble() ?? 1.0;
     final mainAxisExtent = properties['mainAxisExtent']?.toDouble();
     
     // Get data source
     final staticChildren = definition['children'] as List<dynamic>?;
-    final itemsPath = properties['items'] as String?;
+    // Support both direct list and path-based items
+    final itemsProp = properties['items'];
+    final directItems = itemsProp is List ? itemsProp : null;
+    final itemsPath = itemsProp is String ? itemsProp : null;
     final itemTemplate = properties['itemTemplate'] as Map<String, dynamic>?;
     
     Widget gridView;
@@ -59,9 +65,11 @@ class GridViewWidgetFactory extends WidgetFactory {
       );
     }
     
-    if (itemsPath != null && itemTemplate != null) {
+    if ((itemsPath != null || directItems != null) && itemTemplate != null) {
       // Dynamic grid with data binding
-      final items = context.resolve<List<dynamic>>(properties['items']) as List<dynamic>? ?? [];
+      final items = itemsPath != null 
+          ? context.resolve<List<dynamic>>(itemsPath) as List<dynamic>? ?? []
+          : directItems ?? [];
       
       gridView = GridView.builder(
         scrollDirection: scrollDirection,
@@ -92,6 +100,23 @@ class GridViewWidgetFactory extends WidgetFactory {
           return context.renderer.renderWidget(itemTemplate, childContext);
         },
       );
+    } else if (directItems != null && directItems.isNotEmpty && itemTemplate == null) {
+      // Direct items list (like in showcase_definition.dart)
+      final items = directItems;
+      
+      gridView = GridView.builder(
+        scrollDirection: scrollDirection,
+        reverse: reverse,
+        shrinkWrap: shrinkWrap,
+        physics: physics,
+        padding: padding,
+        gridDelegate: gridDelegate,
+        itemCount: items.length,
+        itemBuilder: (buildContext, index) {
+          // Render each item directly as a widget
+          return context.renderer.renderWidget(items[index], context);
+        },
+      );
     } else if (staticChildren != null && staticChildren.isNotEmpty) {
       // Static grid with predefined children
       final children = staticChildren
@@ -117,7 +142,34 @@ class GridViewWidgetFactory extends WidgetFactory {
       );
     }
     
-    return applyCommonWrappers(gridView, properties, context);
+    // Ensure GridView has proper constraints for stability
+    final wrappedGridView = _ensureStableConstraints(gridView, shrinkWrap);
+    
+    return applyCommonWrappers(wrappedGridView, properties, context);
+  }
+  
+  Widget _ensureStableConstraints(Widget gridView, bool shrinkWrap) {
+    // If shrinkWrap is true, the GridView handles its own constraints
+    if (shrinkWrap) {
+      return gridView;
+    }
+    
+    // For non-shrinkWrap GridViews, ensure they have bounded constraints
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // If constraints are already bounded, use them as-is
+        if (constraints.hasBoundedHeight) {
+          return gridView;
+        }
+        
+        // Provide a default height for unbounded contexts
+        // This prevents viewport assertion errors in tests
+        return SizedBox(
+          height: MediaQuery.of(context).size.height,
+          child: gridView,
+        );
+      },
+    );
   }
 
   Axis _parseAxis(String? value) {

@@ -18,15 +18,19 @@ import '../notifications/notification_manager.dart';
 import '../models/ui_definition.dart';
 import '../routing/route_manager.dart';
 import 'background_service_manager.dart';
-import '../utils/mcp_logger.dart';
 import '../theme/theme_manager.dart';
+import '../utils/mcp_logger.dart';
+import '../state/computed_manager.dart';
 
 /// The main runtime engine that manages the MCP UI Runtime lifecycle
 /// and coordinates all runtime services.
 class RuntimeEngine with ChangeNotifier {
   RuntimeEngine({
     this.enableDebugMode = kDebugMode,
-  }) : _logger = MCPLogger('RuntimeEngine', enableLogging: enableDebugMode);
+  }) : _logger = MCPLogger('RuntimeEngine', enableLogging: enableDebugMode) {
+    // Initialize core components in constructor so they're available immediately
+    _initializeCoreComponents();
+  }
 
   final bool enableDebugMode;
   final MCPLogger _logger;
@@ -45,6 +49,7 @@ class RuntimeEngine with ChangeNotifier {
   late final StateManager _stateManager;
   late final Renderer _renderer;
   late final ThemeManager _themeManager;
+  late final ComputedManager _computedManager;
   
   // Public getters for page rendering
   Renderer get renderer => _renderer;
@@ -142,10 +147,7 @@ class RuntimeEngine with ChangeNotifier {
         
         _logger.debug('Updating state: $binding = $value');
         _stateManager.set(binding, value);
-        
-        // Trigger UI update
-        notifyListeners();
-        _logger.debug('State updated and UI notified');
+        _logger.debug('State updated via StateManager listener');
       } else {
         _logger.warning('No content in notification data');
       }
@@ -197,7 +199,8 @@ class RuntimeEngine with ChangeNotifier {
         _logger.info('Initialization complete');
       }
       
-      notifyListeners();
+      // Automatically mark as ready after initialization - this will notify listeners
+      await markReady();
     } catch (error, stackTrace) {
       if (enableDebugMode) {
         _logger.error('Initialization failed', error, stackTrace);
@@ -238,22 +241,6 @@ class RuntimeEngine with ChangeNotifier {
       _uiDefinition = definition;
     }
     
-    // Initialize core components
-    _lifecycleManager = LifecycleManager(
-      enableDebugMode: enableDebugMode,
-    );
-    
-    _serviceRegistry = ServiceRegistry(
-      enableDebugMode: enableDebugMode,
-    );
-    
-    // Initialize modern rendering system
-    _widgetRegistry = WidgetRegistry();
-    _bindingEngine = BindingEngine();
-    _actionHandler = ActionHandler();
-    _stateManager = StateManager();
-    _themeManager = ThemeManager();
-    
     // Set the state manager in theme manager for custom theme values
     _themeManager.setStateManager(_stateManager);
     
@@ -274,21 +261,13 @@ class RuntimeEngine with ChangeNotifier {
       stateManager: _stateManager,
       engine: this,
     );
-    
-    _notificationManager = NotificationManager(
-      enableDebugMode: enableDebugMode,
-    );
-    
-    _cacheManager = CacheManager(
-      enableDebugMode: enableDebugMode,
-    );
-    
-    _backgroundServiceManager = BackgroundServiceManager(
-      enableDebugMode: enableDebugMode,
-    );
 
     // Register core services
     await _registerCoreServices();
+    
+    // Set up lifecycle manager with action handler and render context
+    final rootContext = _renderer.createRootContext(null);
+    _lifecycleManager.setActionHandler(_actionHandler, rootContext);
 
     // Handle application type
     if (_parsedUIDefinition!.type == UIDefinitionType.application) {
@@ -308,6 +287,13 @@ class RuntimeEngine with ChangeNotifier {
       // Initialize theme from application definition
       if (_applicationDefinition!.theme != null) {
         _themeManager.setTheme(_applicationDefinition!.theme!);
+      }
+      
+      // Check for theme in runtime.services.theme (MCP UI DSL standard location)
+      final runtimeServices = definition['runtime']?['services'];
+      if (runtimeServices != null && runtimeServices['theme'] != null) {
+        _logger.debug('Setting theme from runtime.services.theme');
+        _themeManager.setTheme(runtimeServices['theme'] as Map<String, dynamic>);
       }
       
       // Initialize global app state
@@ -392,13 +378,13 @@ class RuntimeEngine with ChangeNotifier {
         // Set up computed properties
         final computed = services.state!['computed'] as Map<String, dynamic>?;
         if (computed != null) {
-          // TODO: Implement computed properties
+          _initializeComputedProperties(computed);
         }
         
         // Set up watchers
         final watchers = services.state!['watchers'] as List<dynamic>?;
         if (watchers != null) {
-          // TODO: Implement watchers
+          _initializeWatchers(watchers);
         }
       }
     }
@@ -576,7 +562,19 @@ class RuntimeEngine with ChangeNotifier {
     }
 
     // Execute onReady lifecycle hooks
-    if (_runtimeConfig?['lifecycle']?['onReady'] != null) {
+    final lifecycle = _parsedUIDefinition?.type == UIDefinitionType.application
+        ? _applicationDefinition?.lifecycleDefinition
+        : (_parsedUIDefinition?.type == UIDefinitionType.page
+            ? PageDefinition.fromUIDefinition(_parsedUIDefinition!).lifecycleDefinition
+            : null);
+    
+    if (lifecycle != null && lifecycle.onReady != null) {
+      await _lifecycleManager.executeLifecycleHooks(
+        LifecycleEvent.ready,
+        lifecycle.onReady!,
+      );
+    } else if (_runtimeConfig?['lifecycle']?['onReady'] != null) {
+      // Fallback to runtime config for legacy format
       await _lifecycleManager.executeLifecycleHooks(
         LifecycleEvent.ready,
         _runtimeConfig!['lifecycle']['onReady'] as List<dynamic>,
@@ -790,5 +788,94 @@ class RuntimeEngine with ChangeNotifier {
       if (services.notification != null) 'notification': services.notification,
       if (services.backgroundServices != null) 'backgroundServices': services.backgroundServices,
     };
+  }
+  
+  /// Initialize computed properties
+  void _initializeComputedProperties(Map<String, dynamic> computed) {
+    for (final entry in computed.entries) {
+      final key = entry.key;
+      final config = entry.value as Map<String, dynamic>;
+      
+      final expression = config['expression'] as String?;
+      final dependencies = (config['dependencies'] as List?)?.cast<String>() ?? [];
+      
+      if (expression != null) {
+        _computedManager.registerComputed(
+          key,
+          ComputedConfig(
+            expression: expression,
+            dependencies: dependencies,
+          ),
+        );
+      }
+    }
+  }
+  
+  /// Initialize watchers
+  void _initializeWatchers(List<dynamic> watchers) {
+    for (final watcherDef in watchers) {
+      if (watcherDef is Map<String, dynamic>) {
+        final path = watcherDef['path'] as String?;
+        final handler = watcherDef['handler'] as Map<String, dynamic>?;
+        final immediate = watcherDef['immediate'] as bool? ?? false;
+        final deep = watcherDef['deep'] as bool? ?? false;
+        
+        if (path != null && handler != null) {
+          _computedManager.registerWatcher(
+            path,
+            WatcherConfig(
+              handler: (value, oldValue) {
+                // Execute the handler action
+                final watchContext = renderer.createRootContext(null).createChildContext(
+                  variables: {
+                    'value': value,
+                    'oldValue': oldValue,
+                  },
+                );
+                _actionHandler.execute(handler, watchContext);
+              },
+              immediate: immediate,
+              deep: deep,
+            ),
+          );
+        }
+      }
+    }
+  }
+  
+  /// Initialize core components that need to be available immediately
+  void _initializeCoreComponents() {
+    // Initialize these components so they're available before initialize() is called
+    _lifecycleManager = LifecycleManager(
+      enableDebugMode: enableDebugMode,
+    );
+    
+    _serviceRegistry = ServiceRegistry(
+      enableDebugMode: enableDebugMode,
+    );
+    
+    _widgetRegistry = WidgetRegistry();
+    _bindingEngine = BindingEngine();
+    _actionHandler = ActionHandler();
+    _stateManager = StateManager();
+    _themeManager = ThemeManager();
+    _computedManager = ComputedManager(
+      stateManager: _stateManager,
+      bindingEngine: _bindingEngine,
+    );
+    
+    _notificationManager = NotificationManager(
+      enableDebugMode: enableDebugMode,
+    );
+    
+    _cacheManager = CacheManager(
+      enableDebugMode: enableDebugMode,
+    );
+    
+    _backgroundServiceManager = BackgroundServiceManager(
+      enableDebugMode: enableDebugMode,
+      actionHandler: _actionHandler,
+      stateManager: _stateManager,
+    );
   }
 }

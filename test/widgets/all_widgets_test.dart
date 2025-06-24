@@ -38,33 +38,33 @@ void main() {
     testWidgets('Layout widgets render correctly', (WidgetTester tester) async {
       // Basic layout widgets that work independently
       final basicLayoutWidgets = <Map<String, dynamic>>[
-        {'type': 'column', 'children': <dynamic>[]},
-        {'type': 'row', 'children': <dynamic>[]},
+        {'type': 'linear', 'direction': 'vertical', 'children': <dynamic>[]},
+        {'type': 'linear', 'direction': 'horizontal', 'children': <dynamic>[]},
         {'type': 'stack', 'children': []},
-        {'type': 'container'},
+        {'type': 'box'},
         {'type': 'center', 'children': []},
         {'type': 'align', 'children': []},
         {'type': 'padding', 'padding': 8.0, 'children': []},
-        {'type': 'sizedbox', 'width': 100, 'height': 100},
+        {'type': 'sizedBox', 'width': 100, 'height': 100},
         {'type': 'wrap', 'children': []},
-        {'type': 'intrinsicheight', 'children': []},
-        {'type': 'intrinsicwidth', 'children': []},
+        {'type': 'intrinsicHeight', 'children': []},
+        {'type': 'intrinsicWidth', 'children': []},
         {'type': 'visibility', 'visible': true, 'children': []},
-        {'type': 'aspectratio', 'aspectRatio': 1.0, 'children': []},
+        {'type': 'aspectRatio', 'aspectRatio': 1.0, 'children': []},
         {'type': 'baseline', 'baseline': 50.0, 'children': []},
-        {'type': 'constrainedbox', 'children': []},
-        {'type': 'fittedbox', 'children': []},
-        {'type': 'limitedbox', 'children': []},
+        {'type': 'constrainedBox', 'children': []},
+        {'type': 'fittedBox', 'children': []},
+        {'type': 'limitedBox', 'children': []},
       ];
       
       // Complex layout widgets that need specific parent context
       final complexLayoutWidgets = <Map<String, dynamic>>[
-        // Expanded in Row
-        {'type': 'row', 'children': [{'type': 'expanded', 'children': [{'type': 'text', 'content': 'Expanded'}]}]},
-        // Flexible in Column
-        {'type': 'column', 'children': [{'type': 'flexible', 'children': [{'type': 'text', 'content': 'Flexible'}]}]},
-        // Spacer in Row
-        {'type': 'row', 'children': [{'type': 'spacer'}]},
+        // Expanded in Linear (horizontal)
+        {'type': 'linear', 'direction': 'horizontal', 'children': [{'type': 'expanded', 'children': [{'type': 'text', 'content': 'Expanded'}]}]},
+        // Flexible in Linear (vertical)
+        {'type': 'linear', 'direction': 'vertical', 'children': [{'type': 'flexible', 'children': [{'type': 'text', 'content': 'Flexible'}]}]},
+        // Spacer in Linear (horizontal)
+        {'type': 'linear', 'direction': 'horizontal', 'children': [{'type': 'spacer'}]},
         // Positioned in Stack
         {'type': 'stack', 'children': [{'type': 'positioned', 'top': 10, 'left': 10, 'children': [{'type': 'text', 'content': 'Positioned'}]}]},
       ];
@@ -106,17 +106,17 @@ void main() {
     testWidgets('Display widgets render correctly', (WidgetTester tester) async {
       final displayWidgets = <Map<String, dynamic>>[
         {'type': 'text', 'content': 'Hello World'},
-        {'type': 'richtext', 'spans': [{'text': 'Rich text'}]},
+        {'type': 'richText', 'spans': [{'text': 'Rich text'}]},
         {'type': 'image', 'src': 'https://via.placeholder.com/150'},
         {'type': 'icon', 'icon': 'home'},
         {'type': 'card', 'children': []},
         {'type': 'divider'},
         {'type': 'badge', 'label': '1', 'children': []},
         {'type': 'placeholder'},
-        {'type': 'clipoval', 'children': []},
-        {'type': 'cliprrect', 'children': []},
-        {'type': 'decoratedbox', 'children': []},
-        {'type': 'verticaldivider'},
+        {'type': 'clipOval', 'children': []},
+        {'type': 'clipRRect', 'children': []},
+        {'type': 'decoratedBox', 'children': []},
+        {'type': 'verticalDivider'},
         {'type': 'avatar', 'children': [{'type': 'text', 'content': 'A'}]},
       ];
       
@@ -171,23 +171,23 @@ void main() {
     testWidgets('Input widgets render correctly', (WidgetTester tester) async {
       final inputWidgets = <Map<String, dynamic>>[
         {'type': 'button', 'label': 'Button'},
-        {'type': 'textfield'},
-        {'type': 'textformfield'},
+        {'type': 'textInput'},
+        {'type': 'textFormField'},
         {'type': 'checkbox', 'value': false},
         {'type': 'radio', 'value': 'option1', 'groupValue': 'option1'},
-        {'type': 'switch', 'value': false},
+        {'type': 'toggle', 'value': false},
         {'type': 'slider', 'value': 0.5},
-        {'type': 'rangeslider', 'start': 0.2, 'end': 0.8},
-        {'type': 'stepper', 'currentStep': 0, 'steps': [{'titleText': 'Step 1', 'content': {'type': 'text', 'content': 'Step content'}}]},
-        {'type': 'iconbutton', 'icon': 'home'},
+        {'type': 'rangeSlider', 'start': 0.2, 'end': 0.8},
+        // Note: stepper removed - not in MCP UI DSL v1.0
+        {'type': 'iconButton', 'icon': 'home'},
         {'type': 'form', 'children': []},
       ];
       
       // Widgets that need special handling due to null resolve issues
       final specialCaseInputWidgets = <Map<String, dynamic>>[
-        {'type': 'dropdown', 'value': 'item1', 'items': [{'value': 'item1', 'label': 'Item 1'}]},
-        {'type': 'datepicker', 'label': 'Pick Date'},
-        {'type': 'timepicker', 'label': 'Pick Time'},
+        {'type': 'select', 'value': 'item1', 'items': [{'value': 'item1', 'label': 'Item 1'}]},
+        {'type': 'dateField', 'label': 'Pick Date'},
+        {'type': 'timeField', 'label': 'Pick Time'},
       ];
 
       for (final definition in inputWidgets) {
@@ -231,22 +231,22 @@ void main() {
 
     testWidgets('Navigation widgets render correctly', (WidgetTester tester) async {
       final navigationWidgets = <Map<String, dynamic>>[
-        {'type': 'appbar', 'title': {'type': 'text', 'content': 'AppBar'}},
-        {'type': 'tabbar', 'tabs': [{'label': 'Tab 1'}]},
+        {'type': 'headerBar', 'title': {'type': 'text', 'content': 'AppBar'}},
+        {'type': 'tabBar', 'tabs': [{'label': 'Tab 1'}]},
         {'type': 'drawer', 'children': []},
-        {'type': 'navigationrail', 'destinations': [{'icon': 'home', 'label': 'Home'}]},
-        {'type': 'floatingactionbutton'},
-        {'type': 'popupmenubutton', 'items': []},
+        {'type': 'navigationRail', 'destinations': [{'icon': 'home', 'label': 'Home'}]},
+        {'type': 'floatingActionButton'},
+        {'type': 'popupMenuButton', 'items': []},
       ];
       
       // TabBarView requires TabController - test separately
       final specialTabWidgets = <Map<String, dynamic>>[
-        {'type': 'tabbarview', 'children': []},
+        {'type': 'tabBarView', 'children': []},
       ];
       
       // Special case navigation widgets with null resolve issues
       final specialCaseNavWidgets = <Map<String, dynamic>>[
-        {'type': 'bottomnavigationbar', 'items': [{'icon': 'home', 'label': 'Home'}]},
+        {'type': 'bottomNavigation', 'items': [{'icon': 'home', 'label': 'Home'}]},
       ];
 
       for (final definition in navigationWidgets) {
@@ -300,30 +300,31 @@ void main() {
     testWidgets('Other category widgets render correctly', (WidgetTester tester) async {
       final otherWidgets = <Map<String, dynamic>>[
         // List widgets
-        {'type': 'listview', 'children': []},
-        {'type': 'gridview', 'children': []},
-        {'type': 'listtile', 'title': {'type': 'text', 'content': 'List Item'}},
+        {'type': 'list', 'children': []},
+        {'type': 'grid', 'children': []},
+        {'type': 'listTile', 'title': {'type': 'text', 'content': 'List Item'}},
         
         // Scroll widgets
-        {'type': 'singlechildscrollview', 'children': []},
-        {'type': 'pageview', 'children': []},
-        {'type': 'scrollbar', 'children': []},
+        {'type': 'singleChildScrollView', 'children': []},
+        // Note: pageview removed - not in MCP UI DSL v1.0, use scrollView instead
+        {'type': 'scrollView', 'children': []},
+        {'type': 'scrollBar', 'children': []},
         
         // Animation widgets
-        {'type': 'animatedcontainer'},
+        {'type': 'animatedContainer'},
         
         // Interactive widgets
-        {'type': 'gesturedetector', 'children': []},
-        {'type': 'inkwell', 'children': []},
+        {'type': 'gestureDetector', 'children': []},
+        {'type': 'inkWell', 'children': []},
         
         // Dialog widgets
-        {'type': 'alertdialog', 'title': {'type': 'text', 'content': 'Alert'}},
-        {'type': 'bottomsheet', 'children': []},
+        {'type': 'alertDialog', 'title': {'type': 'text', 'content': 'Alert'}},
+        {'type': 'bottomSheet', 'children': []},
       ];
       
       // Special case widgets with null resolve issues
       final specialCaseOtherWidgets = <Map<String, dynamic>>[
-        {'type': 'snackbar', 'content': 'Snackbar'},
+        {'type': 'snackBar', 'content': 'Snackbar'},
       ];
 
       for (final definition in otherWidgets) {
@@ -365,10 +366,28 @@ void main() {
       }
     });
 
-    test('All progress indicator widgets are registered', () {
-      expect(registry.has('circularprogressindicator'), isTrue);
-      expect(registry.has('linearprogressindicator'), isTrue);
-      expect(registry.has('progressindicator'), isTrue);
+    test('Loading indicator widget is registered', () {
+      expect(registry.has('loadingIndicator'), isTrue);
+    });
+    
+    test('Additional v1.0 widgets are registered', () {
+      // Control flow
+      expect(registry.has('conditional'), isTrue);
+      
+      // Additional input widgets
+      expect(registry.has('numberField'), isTrue);
+      expect(registry.has('colorPicker'), isTrue);
+      expect(registry.has('radioGroup'), isTrue);
+      expect(registry.has('checkboxGroup'), isTrue);
+      expect(registry.has('segmentedControl'), isTrue);
+      expect(registry.has('dateRangePicker'), isTrue);
+      
+      // Media widgets
+      expect(registry.has('mediaPlayer'), isTrue);
+      
+      // Interactive widgets
+      expect(registry.has('draggable'), isTrue);
+      expect(registry.has('dragTarget'), isTrue);
     });
 
     test('Additional layout widgets are registered', () {

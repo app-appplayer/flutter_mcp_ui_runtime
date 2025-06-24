@@ -195,7 +195,7 @@ void main() {
         'title': 'Test Page',
       },
       'content': {
-        'type': 'container'
+        'type': 'box'
       }
     });
 

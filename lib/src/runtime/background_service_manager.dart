@@ -1,16 +1,24 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/ui_definition.dart';
+import '../actions/action_handler.dart';
+import '../state/state_manager.dart';
+import '../utils/mcp_logger.dart';
 
 /// Manages background services for the runtime
 class BackgroundServiceManager {
   final bool enableDebugMode;
   final Map<String, BackgroundServiceRunner> _runningServices = {};
+  final ActionHandler? actionHandler;
+  final StateManager? stateManager;
+  final MCPLogger _logger;
   bool _isDisposed = false;
 
   BackgroundServiceManager({
     this.enableDebugMode = false,
-  });
+    this.actionHandler,
+    this.stateManager,
+  }) : _logger = MCPLogger('BackgroundServiceManager', enableLogging: enableDebugMode);
 
   /// Start background services from definition
   Future<void> startServices(Map<String, BackgroundServiceDefinition> services) async {
@@ -31,6 +39,8 @@ class BackgroundServiceManager {
     final runner = BackgroundServiceRunner(
       definition: definition,
       enableDebugMode: enableDebugMode,
+      actionHandler: actionHandler,
+      stateManager: stateManager,
     );
 
     _runningServices[id] = runner;
@@ -84,14 +94,22 @@ class BackgroundServiceManager {
 class BackgroundServiceRunner {
   final BackgroundServiceDefinition definition;
   final bool enableDebugMode;
+  final ActionHandler? actionHandler;
+  final StateManager? stateManager;
+  final MCPLogger _logger;
   
   Timer? _timer;
+  StreamSubscription? _eventSubscription;
   bool _isRunning = false;
+  int _retryCount = 0;
+  final int _maxRetries = 3;
   
   BackgroundServiceRunner({
     required this.definition,
     this.enableDebugMode = false,
-  });
+    this.actionHandler,
+    this.stateManager,
+  }) : _logger = MCPLogger('BackgroundService[${definition.id}]', enableLogging: enableDebugMode);
 
   /// Start the service
   Future<void> start() async {
@@ -123,6 +141,9 @@ class BackgroundServiceRunner {
     _isRunning = false;
     _timer?.cancel();
     _timer = null;
+    _eventSubscription?.cancel();
+    _eventSubscription = null;
+    _retryCount = 0;
   }
 
   void _startPeriodicService() {
@@ -139,14 +160,51 @@ class BackgroundServiceRunner {
         timer.cancel();
         return;
       }
-      _executeTool();
+      _executeToolAsync();
     });
   }
 
   void _startScheduledService() {
-    // TODO: Implement cron-like scheduling
-    if (enableDebugMode) {
-      debugPrint('BackgroundService: Scheduled service not yet implemented for ${definition.id}');
+    // Simple implementation: parse schedule pattern and set up timer
+    final schedule = definition.schedule;
+    if (schedule == null) {
+      _logger.error('Scheduled service ${definition.id} missing schedule pattern');
+      return;
+    }
+    
+    // For now, support simple interval-based scheduling
+    // Format: "every <number> <unit>" where unit is seconds/minutes/hours
+    final match = RegExp(r'every\s+(\d+)\s+(second|minute|hour)s?').firstMatch(schedule.toLowerCase());
+    if (match != null) {
+      final amount = int.parse(match.group(1)!);
+      final unit = match.group(2)!;
+      
+      int intervalMs;
+      switch (unit) {
+        case 'second':
+          intervalMs = amount * 1000;
+          break;
+        case 'minute':
+          intervalMs = amount * 60 * 1000;
+          break;
+        case 'hour':
+          intervalMs = amount * 60 * 60 * 1000;
+          break;
+        default:
+          intervalMs = amount * 1000;
+      }
+      
+      _timer = Timer.periodic(Duration(milliseconds: intervalMs), (timer) {
+        if (!_isRunning) {
+          timer.cancel();
+          return;
+        }
+        _executeToolAsync();
+      });
+      
+      _logger.debug('Started scheduled service with interval: ${intervalMs}ms');
+    } else {
+      _logger.error('Unsupported schedule pattern: $schedule');
     }
   }
 
@@ -157,40 +215,112 @@ class BackgroundServiceRunner {
         timer.cancel();
         return;
       }
-      _executeTool();
+      _executeToolAsync();
     });
   }
 
   void _startEventService() {
-    // TODO: Implement event-based triggering
-    if (enableDebugMode) {
-      debugPrint('BackgroundService: Event service not yet implemented for ${definition.id}');
+    // Listen to state changes that match the event pattern
+    final eventPattern = definition.event;
+    if (eventPattern == null) {
+      _logger.error('Event service ${definition.id} missing event pattern');
+      return;
     }
+    
+    if (stateManager != null) {
+      // Subscribe to state changes
+      _eventSubscription = stateManager!.stream.listen((event) {
+        if (_isRunning && _matchesEventPattern(event, eventPattern)) {
+          _executeToolAsync();
+        }
+      });
+      
+      _logger.debug('Started event service listening for: $eventPattern');
+    } else {
+      _logger.error('Event service requires StateManager');
+    }
+  }
+  
+  bool _matchesEventPattern(StateChangeEvent event, String pattern) {
+    // Simple pattern matching: "state.path.changed" or "state.*.changed"
+    if (pattern.contains('*')) {
+      final regex = RegExp(pattern.replaceAll('*', '.*'));
+      return regex.hasMatch(event.path);
+    }
+    return event.path == pattern;
   }
 
   void _startOneoffService() {
     final delay = definition.interval ?? 0;
     _timer = Timer(Duration(milliseconds: delay), () {
       if (_isRunning) {
-        _executeTool();
+        _executeToolAsync();
       }
       _isRunning = false;
     });
   }
 
-  void _executeTool() {
+  Future<void> _executeToolAsync() async {
+    _executeTool();
+  }
+  
+  Future<void> _executeTool() async {
     try {
-      // TODO: Execute the tool through MCP
-      if (enableDebugMode) {
-        debugPrint('BackgroundService: Executing tool "${definition.tool}" for service ${definition.id}');
+      _logger.debug('Executing tool "${definition.tool}"');
+      
+      if (actionHandler == null) {
+        _logger.error('No ActionHandler available for tool execution');
+        return;
       }
       
-      // This would normally call the MCP tool with the provided parameters
-      // For now, just log the execution
+      // For background services, execute the tool directly
+      // We bypass the normal action handler flow since we don't have a full render context
       
-    } catch (error) {
-      if (enableDebugMode) {
-        debugPrint('BackgroundService: Error executing tool for ${definition.id}: $error');
+      // Get the tool executor directly
+      final toolExecutors = actionHandler!.toolExecutors;
+      final toolExecutor = toolExecutors[definition.tool] ?? toolExecutors['default'];
+      
+      if (toolExecutor == null) {
+        _logger.error('Tool executor not found: ${definition.tool}');
+        return;
+      }
+      
+      // Execute the tool with the params
+      final result = await toolExecutor(definition.params ?? {});
+      
+      _logger.debug('Tool execution completed: $result');
+      _retryCount = 0; // Reset retry count on success
+      
+      // Store result in state if configured
+      if (definition.resultPath != null && stateManager != null) {
+        stateManager!.set(definition.resultPath!, result);
+      }
+      
+    } catch (error, stackTrace) {
+      _logger.error('Error executing tool', error, stackTrace);
+      _handleExecutionError(error);
+    }
+  }
+  
+  void _handleExecutionError(dynamic error) {
+    _retryCount++;
+    
+    if (_retryCount <= _maxRetries && definition.retryOnError == true) {
+      final retryDelay = definition.retryDelay ?? 5000;
+      _logger.debug('Retrying tool execution in ${retryDelay}ms (attempt $_retryCount/$_maxRetries)');
+      
+      Future.delayed(Duration(milliseconds: retryDelay), () {
+        if (_isRunning) {
+          _executeTool();
+        }
+      });
+    } else {
+      _logger.error('Max retries exceeded or retry disabled');
+      
+      // Optionally stop service on persistent errors
+      if (definition.stopOnError == true) {
+        _logger.debug('Stopping service due to persistent errors');
+        stop();
       }
     }
   }

@@ -27,8 +27,8 @@ class DropdownWidgetFactory extends WidgetFactory {
     final isExpanded = properties['isExpanded'] as bool? ?? false;
     final itemHeight = properties['itemHeight']?.toDouble();
     
-    // Extract action handler
-    final onChange = properties['onChange'] as Map<String, dynamic>?;
+    // Extract action handler - MCP UI DSL v1.0 spec
+    final onChange = properties['change'] as Map<String, dynamic>?;
     
     // Build dropdown items
     final dropdownItems = items.map<DropdownMenuItem<dynamic>>((item) {
@@ -57,19 +57,33 @@ class DropdownWidgetFactory extends WidgetFactory {
           context.setValue(binding, newValue);
         }
         
-        // Update state if bindTo is specified (legacy)
-        final path = properties['bindTo'] as String?;
-        if (path != null) {
-          context.setValue(path, newValue);
+        // Find the index of the selected item
+        int? index;
+        for (int i = 0; i < items.length; i++) {
+          final item = items[i];
+          if (item is Map<String, dynamic>) {
+            if (item['value'] == newValue) {
+              index = i;
+              break;
+            }
+          } else if (item == newValue) {
+            index = i;
+            break;
+          }
         }
         
-        // Execute action if provided
+        // Execute action if provided with event context
         if (onChange != null) {
-          final eventData = Map<String, dynamic>.from(onChange);
-          if (eventData['value'] == '{{event.value}}') {
-            eventData['value'] = newValue;
-          }
-          context.actionHandler.execute(eventData, context);
+          final eventContext = context.createChildContext(
+            variables: {
+              'event': {
+                'value': newValue,
+                'index': index,
+                'type': 'change',
+              },
+            },
+          );
+          context.actionHandler.execute(onChange, eventContext);
         }
       } : null,
       elevation: elevation,

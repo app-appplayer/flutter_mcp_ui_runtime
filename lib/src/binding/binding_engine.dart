@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../renderer/render_context.dart';
 import 'binding_expression.dart';
+import 'expression_cache.dart';
 import '../utils/mcp_logger.dart';
 
 /// Engine for handling data bindings
@@ -179,8 +180,11 @@ class BindingEngine {
       final expression = match.group(1)!; // e.g., "count"
       
       try {
-        // Parse and evaluate the expression
-        final parsed = BindingExpression.parse(expression);
+        // Use cache for expression parsing
+        final cachedParsed = ExpressionCache.parse(expression);
+        
+        // Convert cached expression to BindingExpression for evaluation
+        final parsed = _convertCachedToBinding(cachedParsed, expression);
         final resolvedValue = _evaluateExpression(parsed, context);
         
         // Apply transform if specified
@@ -189,8 +193,18 @@ class BindingEngine {
           finalValue = _transforms[parsed.transform]!(resolvedValue);
         }
         
-        // Replace the binding with the resolved value
-        result = result.replaceAll(fullMatch, finalValue.toString());
+        // Replace the binding with the resolved value (format numbers nicely)
+        String valueString;
+        if (finalValue == null) {
+          // Null values should be rendered as empty strings per spec
+          valueString = '';
+        } else if (finalValue is double && finalValue == finalValue.toInt()) {
+          // If it's a whole number, display without decimal
+          valueString = finalValue.toInt().toString();
+        } else {
+          valueString = finalValue.toString();
+        }
+        result = result.replaceAll(fullMatch, valueString);
         _logger.debug('Resolved $fullMatch to $finalValue');
       } catch (e) {
         // If evaluation fails, leave the binding as-is
@@ -214,8 +228,11 @@ class BindingEngine {
       return _convertToType<T>(expression);
     }
     
-    // Parse expression
-    final parsed = BindingExpression.parse(expr);
+    // Use cache for expression parsing
+    final cachedParsed = ExpressionCache.parse(expr);
+    
+    // Convert cached expression to BindingExpression for evaluation
+    final parsed = _convertCachedToBinding(cachedParsed, expr);
     
     // Evaluate expression
     dynamic result = _evaluateExpression(parsed, context);
@@ -229,6 +246,13 @@ class BindingEngine {
   }
 
   /// Evaluate a binding expression
+  /// Convert cached expression to BindingExpression
+  BindingExpression _convertCachedToBinding(ParsedExpression cached, String originalExpr) {
+    // For now, we still parse with BindingExpression for compatibility
+    // In the future, we can optimize this further by using cached data directly
+    return BindingExpression.parse(originalExpr);
+  }
+  
   dynamic _evaluateExpression(BindingExpression expr, RenderContext context) {
     // Check if this expression has a literal value
     if (expr.value != null) {
@@ -288,7 +312,6 @@ class BindingEngine {
   /// Evaluate a conditional expression
   dynamic _evaluateConditional(BindingExpression expr, RenderContext context) {
     final condition = _evaluateExpression(expr.left!, context);
-    
     if (_isTruthy(condition)) {
       return _evaluateExpression(expr.trueValue!, context);
     } else {
@@ -358,7 +381,7 @@ class BindingEngine {
   }
 
   /// Evaluate a logical expression
-  bool _evaluateLogical(BindingExpression expr, RenderContext context) {
+  dynamic _evaluateLogical(BindingExpression expr, RenderContext context) {
     switch (expr.operator) {
       case '&&':
         final left = _evaluateExpression(expr.left!, context);
@@ -367,10 +390,11 @@ class BindingEngine {
         return _isTruthy(right);
       
       case '||':
+        // For ||, if left is truthy return left value, otherwise return right value
+        // This allows || to work as both logical OR and null coalescing
         final left = _evaluateExpression(expr.left!, context);
-        if (_isTruthy(left)) return true;
-        final right = _evaluateExpression(expr.right!, context);
-        return _isTruthy(right);
+        if (_isTruthy(left)) return left;
+        return _evaluateExpression(expr.right!, context);
       
       case '!':
         final operand = _evaluateExpression(expr.left!, context);
@@ -608,6 +632,14 @@ class BindingEngine {
     }
     _subscriptions.clear();
     _bindings.clear();
+    
+    // Log expression cache statistics
+    final stats = ExpressionCache.statistics;
+    _logger.debug('Expression cache statistics: '
+        'hits=${stats['hits']}, misses=${stats['misses']}, '
+        'size=${stats['size']}, hitRate=${stats['hitRate']}%');
+    _transforms.clear();
+    _registerDefaultTransforms(); // Re-register default transforms
   }
 }
 

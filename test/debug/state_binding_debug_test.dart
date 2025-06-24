@@ -11,7 +11,8 @@ void main() {
       final stateDemo = {
         'type': 'page',
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'text',
@@ -72,7 +73,8 @@ void main() {
       final stateActionDemo = {
         'type': 'page',
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'text',
@@ -81,7 +83,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Increment',
-              'onTap': {
+              'click': {
                 'type': 'state',
                 'action': 'increment',
                 'path': 'counter',
@@ -91,7 +93,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Set to 100',
-              'onTap': {
+              'click': {
                 'type': 'state',
                 'action': 'set',
                 'path': 'counter',
@@ -154,7 +156,8 @@ void main() {
       final toolActionDemo = {
         'type': 'page',
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'text',
@@ -163,10 +166,10 @@ void main() {
             {
               'type': 'button',
               'label': 'Tool Increment',
-              'onTap': {
+              'click': {
                 'type': 'tool',
                 'tool': 'increment',
-                'args': {},
+                'params': {},
               },
             },
           ],

@@ -20,10 +20,10 @@ class SliderWidgetFactory extends WidgetFactory {
     final inactiveColor = parseColor(context.resolve(properties['inactiveColor']));
     final thumbColor = parseColor(context.resolve(properties['thumbColor']));
     
-    // Extract action handlers
-    final onChange = properties['onChange'] as Map<String, dynamic>?;
-    final onChangeStart = properties['onChangeStart'] as Map<String, dynamic>?;
-    final onChangeEnd = properties['onChangeEnd'] as Map<String, dynamic>?;
+    // Extract action handlers - MCP UI DSL v1.0 spec
+    final changeAction = properties['change'] as Map<String, dynamic>?;
+    final changeStartAction = properties['changeStart'] as Map<String, dynamic>?;
+    final changeEndAction = properties['changeEnd'] as Map<String, dynamic>?;
     
     Widget slider = Slider(
       value: value.clamp(min, max).toDouble(),
@@ -34,34 +34,49 @@ class SliderWidgetFactory extends WidgetFactory {
       activeColor: activeColor,
       inactiveColor: inactiveColor,
       thumbColor: thumbColor,
-      onChanged: (onChange != null || properties['bindTo'] != null) ? (newValue) {
-        // Update state if bindTo is specified
-        final path = properties['bindTo'] as String?;
+      onChanged: (changeAction != null || properties['binding'] != null) ? (newValue) {
+        // Update state if binding is specified
+        final path = properties['binding'] as String?;
         if (path != null) {
           context.setValue(path, newValue);
         }
-        // Execute action if onChange is specified
-        if (onChange != null) {
-          final eventData = Map<String, dynamic>.from(onChange);
-          if (eventData['value'] == '{{event.value}}') {
-            eventData['value'] = newValue;
-          }
-          context.actionHandler.execute(eventData, context);
+        // Execute action if change is specified
+        if (changeAction != null) {
+          // Create a child context with event data
+          final eventContext = context.createChildContext(
+            variables: {
+              'event': {
+                'value': newValue,
+                'type': 'change',
+              },
+            },
+          );
+          eventContext.handleAction(changeAction);
         }
       } : null,
-      onChangeStart: onChangeStart != null ? (value) {
-        final eventData = Map<String, dynamic>.from(onChangeStart);
-        if (eventData['value'] == '{{event.value}}') {
-          eventData['value'] = value;
-        }
-        context.actionHandler.execute(eventData, context);
+      onChangeStart: changeStartAction != null ? (value) {
+        // Create a child context with event data
+        final eventContext = context.createChildContext(
+          variables: {
+            'event': {
+              'value': value,
+              'type': 'changeStart',
+            },
+          },
+        );
+        eventContext.handleAction(changeStartAction);
       } : null,
-      onChangeEnd: onChangeEnd != null ? (value) {
-        final eventData = Map<String, dynamic>.from(onChangeEnd);
-        if (eventData['value'] == '{{event.value}}') {
-          eventData['value'] = value;
-        }
-        context.actionHandler.execute(eventData, context);
+      onChangeEnd: changeEndAction != null ? (value) {
+        // Create a child context with event data
+        final eventContext = context.createChildContext(
+          variables: {
+            'event': {
+              'value': value,
+              'type': 'changeEnd',
+            },
+          },
+        );
+        eventContext.handleAction(changeEndAction);
       } : null,
     );
     

@@ -104,9 +104,32 @@ class DecorationWidgetFactory extends WidgetFactory {
           width: all['width']?.toDouble() ?? 1.0,
         );
       }
-      // TODO: Support individual borders (top, right, bottom, left)
+      
+      // Support individual borders (top, right, bottom, left)
+      return Border(
+        top: _resolveBorderSide(border['top']),
+        right: _resolveBorderSide(border['right']),
+        bottom: _resolveBorderSide(border['bottom']),
+        left: _resolveBorderSide(border['left']),
+      );
     }
     return null;
+  }
+  
+  BorderSide _resolveBorderSide(dynamic side) {
+    if (side == null) {
+      return BorderSide.none;
+    }
+    
+    if (side is Map<String, dynamic>) {
+      return BorderSide(
+        color: resolveColor(side['color']) ?? Colors.grey,
+        width: side['width']?.toDouble() ?? 1.0,
+        style: side['style'] == 'none' ? BorderStyle.none : BorderStyle.solid,
+      );
+    }
+    
+    return BorderSide.none;
   }
   
   BorderRadius? _resolveBorderRadius(dynamic radius) {
@@ -117,7 +140,14 @@ class DecorationWidgetFactory extends WidgetFactory {
       if (radius.containsKey('all')) {
         return BorderRadius.circular(radius['all'].toDouble());
       }
-      // TODO: Support individual corner radius
+      
+      // Support individual corner radius
+      return BorderRadius.only(
+        topLeft: Radius.circular(radius['topLeft']?.toDouble() ?? 0.0),
+        topRight: Radius.circular(radius['topRight']?.toDouble() ?? 0.0),
+        bottomLeft: Radius.circular(radius['bottomLeft']?.toDouble() ?? 0.0),
+        bottomRight: Radius.circular(radius['bottomRight']?.toDouble() ?? 0.0),
+      );
     }
     return null;
   }
@@ -172,8 +202,68 @@ class DecorationWidgetFactory extends WidgetFactory {
   }
   
   BlendMode? _resolveBlendMode(String? mode) {
-    // TODO: Implement blend mode resolution
-    return null;
+    switch (mode) {
+      case 'clear':
+        return BlendMode.clear;
+      case 'src':
+        return BlendMode.src;
+      case 'dst':
+        return BlendMode.dst;
+      case 'srcOver':
+        return BlendMode.srcOver;
+      case 'dstOver':
+        return BlendMode.dstOver;
+      case 'srcIn':
+        return BlendMode.srcIn;
+      case 'dstIn':
+        return BlendMode.dstIn;
+      case 'srcOut':
+        return BlendMode.srcOut;
+      case 'dstOut':
+        return BlendMode.dstOut;
+      case 'srcATop':
+        return BlendMode.srcATop;
+      case 'dstATop':
+        return BlendMode.dstATop;
+      case 'xor':
+        return BlendMode.xor;
+      case 'plus':
+        return BlendMode.plus;
+      case 'modulate':
+        return BlendMode.modulate;
+      case 'screen':
+        return BlendMode.screen;
+      case 'overlay':
+        return BlendMode.overlay;
+      case 'darken':
+        return BlendMode.darken;
+      case 'lighten':
+        return BlendMode.lighten;
+      case 'colorDodge':
+        return BlendMode.colorDodge;
+      case 'colorBurn':
+        return BlendMode.colorBurn;
+      case 'hardLight':
+        return BlendMode.hardLight;
+      case 'softLight':
+        return BlendMode.softLight;
+      case 'difference':
+        return BlendMode.difference;
+      case 'exclusion':
+        return BlendMode.exclusion;
+      case 'multiply':
+        return BlendMode.multiply;
+      case 'hue':
+        return BlendMode.hue;
+      case 'saturation':
+        return BlendMode.saturation;
+      case 'color':
+        return BlendMode.color;
+      case 'luminosity':
+        return BlendMode.luminosity;
+      default:
+        return null;
+    }
   }
   
   BoxShape _resolveBoxShape(String? shape) {

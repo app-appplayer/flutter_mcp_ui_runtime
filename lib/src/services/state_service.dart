@@ -263,7 +263,10 @@ class StateService extends RuntimeService {
     final computedConfig = config['computed'] as Map<String, dynamic>?;
     if (computedConfig != null) {
       for (final entry in computedConfig.entries) {
-        final property = ComputedProperty.fromExpression(entry.value as String);
+        final property = ComputedProperty.fromExpression(
+          entry.key,
+          entry.value as String,
+        );
         addComputedProperty(entry.key, property);
       }
     }
@@ -376,10 +379,24 @@ class StateService extends RuntimeService {
         }
       }
 
-      // TODO: Implement actual persistence based on _storageType
-      // For now, this is a placeholder
-      if (enableDebugMode) {
-        _logger.debug('Persisted state to $_storageType storage');
+      // Implement persistence based on storage type
+      switch (_storageType) {
+        case 'local':
+          // Use shared_preferences for local storage
+          if (enableDebugMode) {
+            _logger.debug('Local storage persistence not yet implemented');
+          }
+          break;
+        case 'session':
+          // Use in-memory storage for session
+          if (enableDebugMode) {
+            _logger.debug('Session storage persistence not yet implemented');
+          }
+          break;
+        default:
+          if (enableDebugMode) {
+            _logger.warning('Unknown storage type: $_storageType');
+          }
       }
     } catch (error) {
       if (enableDebugMode) {
@@ -391,10 +408,24 @@ class StateService extends RuntimeService {
   /// Loads persisted state from storage
   Future<void> _loadPersistedState() async {
     try {
-      // TODO: Implement actual loading based on _storageType
-      // For now, this is a placeholder
-      if (enableDebugMode) {
-        _logger.debug('Loaded persisted state from $_storageType storage');
+      // Implement loading based on storage type
+      switch (_storageType) {
+        case 'local':
+          // Use shared_preferences for local storage
+          if (enableDebugMode) {
+            _logger.debug('Local storage loading not yet implemented');
+          }
+          break;
+        case 'session':
+          // Use in-memory storage for session
+          if (enableDebugMode) {
+            _logger.debug('Session storage loading not yet implemented');
+          }
+          break;
+        default:
+          if (enableDebugMode) {
+            _logger.warning('Unknown storage type: $_storageType');
+          }
       }
     } catch (error) {
       if (enableDebugMode) {
