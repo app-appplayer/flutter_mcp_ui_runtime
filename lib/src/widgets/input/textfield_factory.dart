@@ -22,7 +22,11 @@ class TextFieldWidgetFactory extends WidgetFactory {
       );
     }
 
-    return _buildTextField(definition, context);
+    // Use stateful wrapper for proper controller management
+    return _StatefulTextField(
+      definition: definition,
+      context: context,
+    );
   }
 
   Widget _buildTextField(
@@ -172,6 +176,160 @@ class TextFieldWidgetFactory extends WidgetFactory {
           if (!hasFocus) {
             // Field lost focus (blur event)
             // Create a child context with event data
+            final eventContext = context.createChildContext(
+              variables: {
+                'event': {
+                  'value': controller.text,
+                  'type': 'blur',
+                },
+              },
+            );
+            eventContext.handleAction(blurAction);
+          }
+        },
+        child: textField,
+      );
+    }
+
+    return applyCommonWrappers(textField, properties, context);
+  }
+
+  Widget _buildTextFieldWithController(
+    Map<String, dynamic> definition,
+    RenderContext context,
+    TextEditingController controller,
+    Function(String) onValueChanged,
+  ) {
+    final properties = extractProperties(definition);
+
+    // Extract properties
+    final hint = context.resolve<String?>(properties['hint']) ??
+        context.resolve<String?>(properties['placeholder']) ??
+        '';
+    final label = properties['label'] as String?;
+    final helperText = properties['helperText'] as String?;
+    final prefixIcon = properties['prefixIcon'] as String?;
+    final obscureText = properties['obscureText'] as bool? ?? false;
+    final enabled = properties['enabled'] as bool? ?? true;
+    final readOnly = properties['readOnly'] as bool? ?? false;
+    final maxLines = properties['maxLines'] as int? ?? 1;
+    final maxLength = properties['maxLength'] as int?;
+    final keyboardType = _parseKeyboardType(properties['keyboardType']);
+    final textInputAction =
+        _parseTextInputAction(properties['textInputAction']);
+
+    // Parse validation rules if provided
+    final validationDef = properties['validation'];
+    final validationRules = ValidationEngine.parseValidation(validationDef);
+    final hasValidation = validationRules.isNotEmpty;
+
+    // Handle error state
+    final errorValue = context.resolve<dynamic>(properties['error']);
+    final String? errorText;
+    if (errorValue is String && errorValue.isNotEmpty) {
+      errorText = errorValue;
+    } else if (errorValue is bool && errorValue) {
+      errorText = context.resolve<String?>(properties['errorText']);
+    } else {
+      errorText = null;
+    }
+
+    // Get event handlers
+    final changeAction = properties['change'] as Map<String, dynamic>?;
+    final submitAction = properties['submit'] as Map<String, dynamic>?;
+    final blurAction = properties['blur'] as Map<String, dynamic>?;
+
+    // Parse style
+    TextStyle? style;
+    final styleDef = properties['style'];
+    if (styleDef is Map<String, dynamic>) {
+      style = TextStyle(
+        fontSize: context.resolve<num?>(styleDef['fontSize'])?.toDouble(),
+        fontWeight: _parseFontWeight(styleDef['fontWeight']),
+        fontStyle: styleDef['fontStyle'] == 'italic' ? FontStyle.italic : null,
+        color: parseColor(context.resolve(styleDef['color'])),
+        letterSpacing:
+            context.resolve<num?>(styleDef['letterSpacing'])?.toDouble(),
+        wordSpacing: context.resolve<num?>(styleDef['wordSpacing'])?.toDouble(),
+        height: context.resolve<num?>(styleDef['height'])?.toDouble(),
+      );
+    }
+
+    // Build text field with provided controller
+    Widget textField = TextField(
+      controller: controller,
+      style: style,
+      decoration: InputDecoration(
+        hintText: hint,
+        labelText: label,
+        helperText: helperText,
+        prefixIcon: prefixIcon != null ? Icon(_parseIcon(prefixIcon)) : null,
+        border: const OutlineInputBorder(),
+        counterText: maxLength != null ? null : '',
+        errorText: errorText,
+      ),
+      obscureText: obscureText,
+      enabled: enabled,
+      readOnly: readOnly,
+      maxLines: maxLines,
+      maxLength: maxLength,
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      onChanged: (newValue) {
+        // Notify parent of value change
+        onValueChanged(newValue);
+
+        // Validate if rules are defined
+        if (hasValidation) {
+          ValidationEngine.validate(newValue, validationRules);
+        }
+
+        // Update state if binding is specified
+        final path = properties['binding'] as String?;
+        if (path != null) {
+          context.setValue(path, newValue);
+        }
+
+        // Execute action if change is specified
+        if (changeAction != null) {
+          final eventContext = context.createChildContext(
+            variables: {
+              'event': {
+                'value': newValue,
+                'type': 'change',
+              },
+            },
+          );
+          eventContext.handleAction(changeAction);
+        }
+      },
+      onSubmitted: (newValue) {
+        // Update state if binding is specified
+        final path = properties['binding'] as String?;
+        if (path != null) {
+          context.setValue(path, newValue);
+        }
+
+        // Execute action if submit is specified
+        if (submitAction != null) {
+          final eventContext = context.createChildContext(
+            variables: {
+              'event': {
+                'value': newValue,
+                'type': 'submit',
+              },
+            },
+          );
+          eventContext.handleAction(submitAction);
+        }
+      },
+    );
+
+    // Wrap in Focus if blur action is specified
+    if (blurAction != null) {
+      textField = Focus(
+        onFocusChange: (hasFocus) {
+          if (!hasFocus) {
             final eventContext = context.createChildContext(
               variables: {
                 'event': {
@@ -430,5 +588,106 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
     }
 
     return textField;
+  }
+}
+
+/// Stateful wrapper for TextField to properly manage TextEditingController
+class _StatefulTextField extends StatefulWidget {
+  final Map<String, dynamic> definition;
+  final RenderContext context;
+
+  const _StatefulTextField({
+    required this.definition,
+    required this.context,
+  });
+
+  @override
+  State<_StatefulTextField> createState() => _StatefulTextFieldState();
+}
+
+class _StatefulTextFieldState extends State<_StatefulTextField> {
+  late TextEditingController _controller;
+  late String _currentValue;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeController();
+  }
+
+  void _initializeController() {
+    final factory = widget.context.renderer.widgetRegistry.get('textInput')
+        as TextFieldWidgetFactory;
+    final properties = factory.extractProperties(widget.definition);
+
+    // Get initial value from binding or value property
+    final bindingPath = properties['binding'] as String?;
+    String initialValue = '';
+    if (bindingPath != null) {
+      initialValue = widget.context.getState(bindingPath)?.toString() ?? '';
+    } else {
+      initialValue = widget.context.resolve<String>(properties['value'] ?? '');
+    }
+
+    _currentValue = initialValue;
+    _controller = TextEditingController(text: initialValue);
+  }
+
+  @override
+  void didUpdateWidget(covariant _StatefulTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    final factory = widget.context.renderer.widgetRegistry.get('textInput')
+        as TextFieldWidgetFactory;
+    final properties = factory.extractProperties(widget.definition);
+
+    // Check if value from state has changed
+    final bindingPath = properties['binding'] as String?;
+    String newValue = '';
+    if (bindingPath != null) {
+      newValue = widget.context.getState(bindingPath)?.toString() ?? '';
+    } else {
+      newValue = widget.context.resolve<String>(properties['value'] ?? '');
+    }
+
+    // Only update controller if value actually changed from external source
+    if (newValue != _currentValue && newValue != _controller.text) {
+      _currentValue = newValue;
+      // Preserve cursor position
+      final selection = _controller.selection;
+      _controller.text = newValue;
+      // Restore cursor position if valid
+      if (selection.baseOffset <= newValue.length) {
+        _controller.selection = selection;
+      } else {
+        // Place cursor at end if previous position is invalid
+        _controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: newValue.length),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final factory = widget.context.renderer.widgetRegistry.get('textInput')
+        as TextFieldWidgetFactory;
+    
+    // Build the text field with our controller
+    return factory._buildTextFieldWithController(
+      widget.definition, 
+      widget.context, 
+      _controller,
+      (value) {
+        // Update our internal state
+        _currentValue = value;
+      }
+    );
   }
 }
