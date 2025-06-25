@@ -42,20 +42,19 @@ abstract class WidgetFactory {
 
     // Handle enabled state - skip for widgets that handle it internally
     // Button widgets handle enabled state by setting onPressed to null
-    final isButtonWidget = widget is ElevatedButton || 
-                          widget is TextButton || 
-                          widget is OutlinedButton || 
-                          widget is FilledButton ||
-                          widget is IconButton ||
-                          widget is GestureDetector ||
-                          widget is SizedBox && (
-                            widget.child is ElevatedButton ||
-                            widget.child is TextButton ||
-                            widget.child is OutlinedButton ||
-                            widget.child is FilledButton ||
-                            widget.child is IconButton
-                          );
-    
+    final isButtonWidget = widget is ElevatedButton ||
+        widget is TextButton ||
+        widget is OutlinedButton ||
+        widget is FilledButton ||
+        widget is IconButton ||
+        widget is GestureDetector ||
+        widget is SizedBox &&
+            (widget.child is ElevatedButton ||
+                widget.child is TextButton ||
+                widget.child is OutlinedButton ||
+                widget.child is FilledButton ||
+                widget.child is IconButton);
+
     if (!isButtonWidget) {
       final enabled = context.resolve<bool>(properties['enabled'] ?? true);
       if (!enabled) {
@@ -82,26 +81,32 @@ abstract class WidgetFactory {
   ) {
     // Get accessibility properties
     final ariaLabel = context.resolve<String?>(properties['aria-label']);
-    final ariaHidden = context.resolve<bool>(properties['aria-hidden'] ?? false);
+    final ariaHidden =
+        context.resolve<bool>(properties['aria-hidden'] ?? false);
     final ariaRole = context.resolve<String?>(properties['aria-role']);
-    final ariaDescription = context.resolve<String?>(properties['aria-description']);
+    final ariaDescription =
+        context.resolve<String?>(properties['aria-description']);
     final ariaLiveRegion = context.resolve<String?>(properties['aria-live']);
-    
+
     // If aria-hidden is true, exclude from semantics tree
     if (ariaHidden) {
       return ExcludeSemantics(
         child: widget,
       );
     }
-    
+
     // Apply semantic properties if any are specified
-    if (ariaLabel != null || ariaRole != null || ariaDescription != null || ariaLiveRegion != null) {
+    if (ariaLabel != null ||
+        ariaRole != null ||
+        ariaDescription != null ||
+        ariaLiveRegion != null) {
       // Convert aria-live to Flutter's liveness
       bool? isLiveRegion;
       if (ariaLiveRegion != null) {
-        isLiveRegion = ariaLiveRegion == 'polite' || ariaLiveRegion == 'assertive';
+        isLiveRegion =
+            ariaLiveRegion == 'polite' || ariaLiveRegion == 'assertive';
       }
-      
+
       widget = Semantics(
         label: ariaLabel,
         hint: ariaDescription,
@@ -113,30 +118,32 @@ abstract class WidgetFactory {
         textField: ariaRole == 'textbox',
         image: ariaRole == 'img',
         slider: ariaRole == 'slider',
-        checked: ariaRole == 'checkbox' ? null : null, // Checkbox state handled by widget itself
+        checked: ariaRole == 'checkbox'
+            ? null
+            : null, // Checkbox state handled by widget itself
         child: widget,
       );
     }
-    
+
     return widget;
   }
 
   /// Parse EdgeInsets
   EdgeInsets? parseEdgeInsets(dynamic value) {
     if (value == null) return null;
-    
+
     if (value is Map<String, dynamic>) {
       if (value.containsKey('all')) {
         return EdgeInsets.all(value['all'].toDouble());
       }
-      
+
       if (value.containsKey('horizontal') || value.containsKey('vertical')) {
         return EdgeInsets.symmetric(
           horizontal: value['horizontal']?.toDouble() ?? 0,
           vertical: value['vertical']?.toDouble() ?? 0,
         );
       }
-      
+
       return EdgeInsets.only(
         left: value['left']?.toDouble() ?? 0,
         top: value['top']?.toDouble() ?? 0,
@@ -144,11 +151,11 @@ abstract class WidgetFactory {
         bottom: value['bottom']?.toDouble() ?? 0,
       );
     }
-    
+
     if (value is num) {
       return EdgeInsets.all(value.toDouble());
     }
-    
+
     return null;
   }
 
@@ -170,11 +177,11 @@ abstract class WidgetFactory {
   /// Parse Color - supports 6-digit (#RRGGBB) and 8-digit (#AARRGGBB) hex formats
   Color? parseColor(dynamic value) {
     if (value == null) return null;
-    
+
     if (value is String) {
       if (value.startsWith('#')) {
         String hex = value.substring(1);
-        
+
         try {
           // 8자리 AARRGGBB 형식
           if (hex.length == 8) {
@@ -193,10 +200,10 @@ abstract class WidgetFactory {
           // 잘못된 hex 문자가 있는 경우 null 반환
           return null;
         }
-        
+
         return null;
       }
-      
+
       // Named colors
       switch (value.toLowerCase()) {
         case 'red':
@@ -222,14 +229,14 @@ abstract class WidgetFactory {
           return null;
       }
     }
-    
+
     return null;
   }
 
   /// Parse Alignment
   Alignment? parseAlignment(dynamic value) {
     if (value == null) return null;
-    
+
     if (value is String) {
       switch (value) {
         case 'topLeft':
@@ -254,14 +261,14 @@ abstract class WidgetFactory {
           return null;
       }
     }
-    
+
     return null;
   }
 
   /// Parse BoxConstraints
   BoxConstraints? parseConstraints(dynamic value) {
     if (value == null) return null;
-    
+
     if (value is Map<String, dynamic>) {
       return BoxConstraints(
         minWidth: value['minWidth']?.toDouble() ?? 0.0,
@@ -270,7 +277,7 @@ abstract class WidgetFactory {
         maxHeight: value['maxHeight']?.toDouble() ?? double.infinity,
       );
     }
-    
+
     return null;
   }
 }

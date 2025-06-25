@@ -70,7 +70,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return MaterialApp(
+      return const MaterialApp(
         home: Scaffold(
           body: Center(
             child: CircularProgressIndicator(),

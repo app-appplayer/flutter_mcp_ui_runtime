@@ -8,10 +8,12 @@ class SnackBarWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
-    final content = context.resolve<String>(properties['content']) as String? ?? '';
-    final backgroundColor = parseColor(context.resolve(properties['backgroundColor']));
+    final content =
+        context.resolve<String>(properties['content']) as String? ?? '';
+    final backgroundColor =
+        parseColor(context.resolve(properties['backgroundColor']));
     final elevation = properties['elevation']?.toDouble();
     final margin = parseEdgeInsets(properties['margin']);
     final padding = parseEdgeInsets(properties['padding']);
@@ -20,9 +22,11 @@ class SnackBarWidgetFactory extends WidgetFactory {
     final behavior = _parseSnackBarBehavior(properties['behavior']);
     final duration = Duration(milliseconds: properties['duration'] ?? 4000);
     final showCloseIcon = properties['showCloseIcon'] as bool? ?? false;
-    final closeIconColor = parseColor(context.resolve(properties['closeIconColor']));
-    final dismissDirection = _parseDismissDirection(properties['dismissDirection']);
-    
+    final closeIconColor =
+        parseColor(context.resolve(properties['closeIconColor']));
+    final dismissDirection =
+        _parseDismissDirection(properties['dismissDirection']);
+
     // Extract action
     final actionData = properties['action'] as Map<String, dynamic>?;
     SnackBarAction? action;
@@ -30,7 +34,8 @@ class SnackBarWidgetFactory extends WidgetFactory {
       action = SnackBarAction(
         label: actionData['label'] ?? 'ACTION',
         textColor: parseColor(context.resolve(actionData['textColor'])),
-        backgroundColor: parseColor(context.resolve(actionData['backgroundColor'])),
+        backgroundColor:
+            parseColor(context.resolve(actionData['backgroundColor'])),
         onPressed: () {
           if (actionData['onPressed'] != null) {
             context.actionHandler.execute(actionData['onPressed'], context);
@@ -38,7 +43,7 @@ class SnackBarWidgetFactory extends WidgetFactory {
         },
       );
     }
-    
+
     // Build content widget
     Widget contentWidget = Text(
       content,
@@ -46,7 +51,7 @@ class SnackBarWidgetFactory extends WidgetFactory {
         color: parseColor(context.resolve(properties['textColor'])),
       ),
     );
-    
+
     final snackBar = SnackBar(
       content: contentWidget,
       backgroundColor: backgroundColor,
@@ -61,11 +66,13 @@ class SnackBarWidgetFactory extends WidgetFactory {
       showCloseIcon: showCloseIcon,
       closeIconColor: closeIconColor,
       dismissDirection: dismissDirection,
-      onVisible: properties['onVisible'] != null ? () {
-        context.actionHandler.execute(properties['onVisible'], context);
-      } : null,
+      onVisible: properties['onVisible'] != null
+          ? () {
+              context.actionHandler.execute(properties['onVisible'], context);
+            }
+          : null,
     );
-    
+
     // SnackBar needs to be wrapped in a widget that can display it
     return Builder(
       builder: (BuildContext context) {
@@ -113,7 +120,7 @@ class SnackBarWidgetFactory extends WidgetFactory {
 
   ShapeBorder? _parseShapeBorder(Map<String, dynamic>? shape) {
     if (shape == null) return null;
-    
+
     final type = shape['type'] as String?;
     switch (type) {
       case 'rounded':

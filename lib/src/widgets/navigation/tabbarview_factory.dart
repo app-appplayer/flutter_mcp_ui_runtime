@@ -9,16 +9,17 @@ class TabBarViewWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
     final children = definition['children'] as List<dynamic>? ?? [];
-    
+
     return TabBarView(
       physics: _resolveScrollPhysics(properties['physics']),
-      dragStartBehavior: _resolveDragStartBehavior(properties['dragStartBehavior']),
+      dragStartBehavior:
+          _resolveDragStartBehavior(properties['dragStartBehavior']),
       children: children
           .map((child) => context.buildWidget(child as Map<String, dynamic>))
           .toList(),
     );
   }
-  
+
   ScrollPhysics? _resolveScrollPhysics(String? physics) {
     switch (physics) {
       case 'bounce':
@@ -31,7 +32,7 @@ class TabBarViewWidgetFactory extends WidgetFactory {
         return null;
     }
   }
-  
+
   DragStartBehavior _resolveDragStartBehavior(String? behavior) {
     switch (behavior) {
       case 'down':

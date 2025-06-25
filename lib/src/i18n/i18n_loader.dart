@@ -10,7 +10,7 @@ class I18nLoader {
     try {
       final jsonString = await rootBundle.loadString(assetPath);
       final Map<String, dynamic> jsonData = json.decode(jsonString);
-      
+
       // Load translations using the I18nManager API
       await I18nManager.instance.loadTranslations({
         'translations': jsonData,
@@ -19,14 +19,15 @@ class I18nLoader {
       debugPrint('Error loading i18n translations from $assetPath: $e');
     }
   }
-  
+
   /// Load translations from a map (useful for inline translations)
-  static Future<void> loadFromMap(Map<String, Map<String, dynamic>> translations) async {
+  static Future<void> loadFromMap(
+      Map<String, Map<String, dynamic>> translations) async {
     await I18nManager.instance.loadTranslations({
       'translations': translations,
     });
   }
-  
+
   /// Load translations from MCP UI DSL format
   static Future<void> loadFromMcpFormat(Map<String, dynamic> i18nData) async {
     // MCP UI DSL format:
@@ -44,7 +45,7 @@ class I18nLoader {
     //     }
     //   }
     // }
-    
+
     // Load all translations including default locale
     await I18nManager.instance.loadTranslations({
       'fallbackLocale': i18nData['defaultLocale'] ?? 'en',
@@ -52,7 +53,7 @@ class I18nLoader {
       'remoteUrl': i18nData['remoteUrl'],
     });
   }
-  
+
   /// Set current locale from string
   static void setLocale(String localeString) {
     I18nManager.instance.setLocale(localeString);

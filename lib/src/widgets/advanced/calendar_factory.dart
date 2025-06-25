@@ -9,7 +9,7 @@ class CalendarWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract calendar properties
     final view = context.resolve<String>(properties['view'] ?? 'month');
     final selectedDate = context.resolve<String?>(properties['selectedDate']);
@@ -17,7 +17,7 @@ class CalendarWidgetFactory extends WidgetFactory {
     final showHeader = context.resolve<bool>(properties['showHeader'] ?? true);
     final width = context.resolve<double?>(properties['width']);
     final height = context.resolve<double?>(properties['height']) ?? 400.0;
-    
+
     // Parse selected date
     DateTime? selected;
     if (selectedDate != null) {
@@ -29,7 +29,7 @@ class CalendarWidgetFactory extends WidgetFactory {
     } else {
       selected = DateTime.now();
     }
-    
+
     // Build placeholder calendar widget
     Widget calendar = Container(
       width: width,
@@ -123,15 +123,24 @@ class CalendarWidgetFactory extends WidgetFactory {
         ],
       ),
     );
-    
+
     return applyCommonWrappers(calendar, properties, context);
   }
-  
+
   String _formatMonth(DateTime date) {
     const months = [
-      'January', 'February', 'March', 'April',
-      'May', 'June', 'July', 'August',
-      'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
     ];
     return '${months[date.month - 1]} ${date.year}';
   }

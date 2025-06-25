@@ -8,7 +8,7 @@ class NavigationRailWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
     final selectedIndex = properties['selectedIndex'] as int? ?? 0;
     final extended = properties['extended'] as bool? ?? false;
@@ -16,17 +16,24 @@ class NavigationRailWidgetFactory extends WidgetFactory {
     final minExtendedWidth = properties['minExtendedWidth']?.toDouble();
     final groupAlignment = properties['groupAlignment']?.toDouble() ?? -1.0;
     final labelType = _parseLabelType(properties['labelType']);
-    final unselectedLabelTextStyle = _parseTextStyle(properties['unselectedLabelTextStyle'], context);
-    final selectedLabelTextStyle = _parseTextStyle(properties['selectedLabelTextStyle'], context);
-    final unselectedIconTheme = _parseIconThemeData(properties['unselectedIconTheme'], context);
-    final selectedIconTheme = _parseIconThemeData(properties['selectedIconTheme'], context);
-    final backgroundColor = parseColor(context.resolve(properties['backgroundColor']));
+    final unselectedLabelTextStyle =
+        _parseTextStyle(properties['unselectedLabelTextStyle'], context);
+    final selectedLabelTextStyle =
+        _parseTextStyle(properties['selectedLabelTextStyle'], context);
+    final unselectedIconTheme =
+        _parseIconThemeData(properties['unselectedIconTheme'], context);
+    final selectedIconTheme =
+        _parseIconThemeData(properties['selectedIconTheme'], context);
+    final backgroundColor =
+        parseColor(context.resolve(properties['backgroundColor']));
     final elevation = properties['elevation']?.toDouble();
-    
+
     // Extract destinations
     final destinationsData = properties['destinations'] as List<dynamic>? ?? [];
-    final destinations = destinationsData.map((dest) => _buildDestination(dest, context)).toList();
-    
+    final destinations = destinationsData
+        .map((dest) => _buildDestination(dest, context))
+        .toList();
+
     // Extract leading and trailing widgets
     final leading = properties['leading'] != null
         ? context.buildWidget(properties['leading'] as Map<String, dynamic>)
@@ -34,10 +41,11 @@ class NavigationRailWidgetFactory extends WidgetFactory {
     final trailing = properties['trailing'] != null
         ? context.buildWidget(properties['trailing'] as Map<String, dynamic>)
         : null;
-    
+
     // Extract action handler
-    final onDestinationSelected = properties['onDestinationSelected'] as Map<String, dynamic>?;
-    
+    final onDestinationSelected =
+        properties['onDestinationSelected'] as Map<String, dynamic>?;
+
     Widget navigationRail = NavigationRail(
       selectedIndex: selectedIndex.clamp(0, destinations.length - 1),
       destinations: destinations,
@@ -54,19 +62,23 @@ class NavigationRailWidgetFactory extends WidgetFactory {
       elevation: elevation,
       leading: leading,
       trailing: trailing,
-      onDestinationSelected: onDestinationSelected != null ? (index) {
-        final eventData = Map<String, dynamic>.from(onDestinationSelected);
-        if (eventData['index'] == '{{event.index}}') {
-          eventData['index'] = index;
-        }
-        context.actionHandler.execute(eventData, context);
-      } : null,
+      onDestinationSelected: onDestinationSelected != null
+          ? (index) {
+              final eventData =
+                  Map<String, dynamic>.from(onDestinationSelected);
+              if (eventData['index'] == '{{event.index}}') {
+                eventData['index'] = index;
+              }
+              context.actionHandler.execute(eventData, context);
+            }
+          : null,
     );
-    
+
     return applyCommonWrappers(navigationRail, properties, context);
   }
 
-  NavigationRailDestination _buildDestination(dynamic destData, RenderContext context) {
+  NavigationRailDestination _buildDestination(
+      dynamic destData, RenderContext context) {
     if (destData is Map<String, dynamic>) {
       final icon = _parseIcon(destData['icon'], context);
       final selectedIcon = _parseIcon(destData['selectedIcon'], context);
@@ -78,15 +90,16 @@ class NavigationRailWidgetFactory extends WidgetFactory {
         } else if (labelData is Map<String, dynamic>) {
           label = context.buildWidget(labelData);
         } else {
-          label = Text('');
+          label = const Text('');
         }
       } else if (destData['labelText'] != null) {
-        label = Text(context.resolve<String>(destData['labelText']) as String? ?? '');
+        label = Text(
+            context.resolve<String>(destData['labelText']) as String? ?? '');
       } else {
-        label = Text('');
+        label = const Text('');
       }
       final padding = parseEdgeInsets(destData['padding']);
-      
+
       return NavigationRailDestination(
         icon: icon,
         selectedIcon: selectedIcon,
@@ -94,7 +107,7 @@ class NavigationRailWidgetFactory extends WidgetFactory {
         padding: padding,
       );
     }
-    
+
     return const NavigationRailDestination(
       icon: Icon(Icons.home),
       label: Text('Item'),
@@ -105,11 +118,11 @@ class NavigationRailWidgetFactory extends WidgetFactory {
     if (iconData is Map<String, dynamic>) {
       return context.buildWidget(iconData);
     }
-    
+
     if (iconData is String) {
       return Icon(_parseIconData(iconData));
     }
-    
+
     return const Icon(Icons.home);
   }
 
@@ -145,7 +158,7 @@ class NavigationRailWidgetFactory extends WidgetFactory {
 
   TextStyle? _parseTextStyle(dynamic style, RenderContext context) {
     if (style == null) return null;
-    
+
     if (style is Map<String, dynamic>) {
       return TextStyle(
         color: parseColor(context.resolve(style['color'])),
@@ -153,13 +166,13 @@ class NavigationRailWidgetFactory extends WidgetFactory {
         fontWeight: style['fontWeight'] == 'bold' ? FontWeight.bold : null,
       );
     }
-    
+
     return null;
   }
 
   IconThemeData? _parseIconThemeData(dynamic theme, RenderContext context) {
     if (theme == null) return null;
-    
+
     if (theme is Map<String, dynamic>) {
       return IconThemeData(
         color: parseColor(context.resolve(theme['color'])),
@@ -167,7 +180,7 @@ class NavigationRailWidgetFactory extends WidgetFactory {
         opacity: theme['opacity']?.toDouble(),
       );
     }
-    
+
     return null;
   }
 }

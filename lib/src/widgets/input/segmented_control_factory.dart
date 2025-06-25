@@ -7,31 +7,30 @@ class SegmentedControlFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
     final label = properties['label'] as String?;
     final binding = properties['binding'] as String?;
     final options = properties['options'] as List<dynamic>? ?? [];
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
-    
+
     // Get current value
-    final currentValue = binding != null 
-        ? context.resolve("{{$binding}}")
-        : properties['value'];
-    
+    final currentValue =
+        binding != null ? context.resolve("{{$binding}}") : properties['value'];
+
     // Build segments
     final segments = <String, Widget>{};
     for (final option in options) {
       String value;
       Widget child;
-      
+
       if (option is Map<String, dynamic>) {
         value = option['value']?.toString() ?? '';
-        
+
         // Check for icon
         final iconName = option['icon'] as String?;
         final label = option['label']?.toString() ?? value;
-        
+
         if (iconName != null) {
           // Try to parse icon
           final iconData = _parseIcon(iconName);
@@ -47,27 +46,31 @@ class SegmentedControlFactory extends WidgetFactory {
         value = option.toString();
         child = Text(value);
       }
-      
+
       segments[value] = Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: child,
       );
     }
-    
+
     Widget segmentedControl = SegmentedButton<String>(
-      segments: segments.entries.map((entry) => ButtonSegment<String>(
-        value: entry.key,
-        label: entry.value,
-      )).toList(),
+      segments: segments.entries
+          .map((entry) => ButtonSegment<String>(
+                value: entry.key,
+                label: entry.value,
+              ))
+          .toList(),
       selected: currentValue != null ? {currentValue.toString()} : {},
-      onSelectionChanged: enabled ? (Set<String> selection) {
-        if (binding != null && selection.isNotEmpty) {
-          context.setValue(binding, selection.first);
-        }
-      } : null,
+      onSelectionChanged: enabled
+          ? (Set<String> selection) {
+              if (binding != null && selection.isNotEmpty) {
+                context.setValue(binding, selection.first);
+              }
+            }
+          : null,
       multiSelectionEnabled: false,
     );
-    
+
     // Add label if provided
     if (label != null) {
       segmentedControl = Column(
@@ -86,10 +89,10 @@ class SegmentedControlFactory extends WidgetFactory {
         ],
       );
     }
-    
+
     return applyCommonWrappers(segmentedControl, properties, context);
   }
-  
+
   IconData? _parseIcon(String iconName) {
     // Common material icons mapping
     final iconMap = {
@@ -113,7 +116,7 @@ class SegmentedControlFactory extends WidgetFactory {
       'more_vert': Icons.more_vert,
       'more_horiz': Icons.more_horiz,
     };
-    
+
     return iconMap[iconName];
   }
 }

@@ -8,9 +8,10 @@ class AnimatedContainerWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
-    final duration = Duration(milliseconds: properties['duration'] as int? ?? 300);
+    final duration =
+        Duration(milliseconds: properties['duration'] as int? ?? 300);
     final curve = _parseCurve(properties['curve'] as String?);
     final width = properties['width']?.toDouble();
     final height = properties['height']?.toDouble();
@@ -18,23 +19,24 @@ class AnimatedContainerWidgetFactory extends WidgetFactory {
     final margin = parseEdgeInsets(properties['margin']);
     final alignment = parseAlignment(properties['alignment']);
     final decoration = _parseDecoration(properties['decoration'], context);
-    final foregroundDecoration = _parseDecoration(properties['foregroundDecoration'], context);
+    final foregroundDecoration =
+        _parseDecoration(properties['foregroundDecoration'], context);
     final constraints = parseConstraints(properties['constraints']);
     final transform = _parseMatrix4(properties['transform']);
     final transformAlignment = parseAlignment(properties['transformAlignment']);
     final clipBehavior = _parseClip(properties['clipBehavior']) ?? Clip.none;
-    
+
     // Extract child widget
-    final childrenDef = properties['children'] as List<dynamic>? ?? 
-                       definition['children'] as List<dynamic>?;
+    final childrenDef = properties['children'] as List<dynamic>? ??
+        definition['children'] as List<dynamic>?;
     Widget? child;
     if (childrenDef != null && childrenDef.isNotEmpty) {
       child = context.buildWidget(childrenDef.first as Map<String, dynamic>);
     }
-    
+
     // Extract action handlers
     final onEnd = properties['onEnd'] as Map<String, dynamic>?;
-    
+
     Widget animatedContainer = AnimatedContainer(
       duration: duration,
       curve: curve,
@@ -49,12 +51,14 @@ class AnimatedContainerWidgetFactory extends WidgetFactory {
       transform: transform,
       transformAlignment: transformAlignment,
       clipBehavior: clipBehavior,
-      onEnd: onEnd != null ? () {
-        context.actionHandler.execute(onEnd, context);
-      } : null,
+      onEnd: onEnd != null
+          ? () {
+              context.actionHandler.execute(onEnd, context);
+            }
+          : null,
       child: child,
     );
-    
+
     return applyCommonWrappers(animatedContainer, properties, context);
   }
 
@@ -87,7 +91,7 @@ class AnimatedContainerWidgetFactory extends WidgetFactory {
 
   Decoration? _parseDecoration(dynamic decoration, RenderContext context) {
     if (decoration == null) return null;
-    
+
     if (decoration is Map<String, dynamic>) {
       return BoxDecoration(
         color: parseColor(context.resolve(decoration['color'])),
@@ -95,36 +99,37 @@ class AnimatedContainerWidgetFactory extends WidgetFactory {
         border: _parseBorder(decoration['border'], context),
       );
     }
-    
+
     return null;
   }
 
   BorderRadius? _parseBorderRadius(dynamic value) {
     if (value == null) return null;
-    
+
     if (value is num) {
       return BorderRadius.circular(value.toDouble());
     }
-    
+
     return null;
   }
 
   Border? _parseBorder(dynamic border, RenderContext context) {
     if (border == null) return null;
-    
+
     if (border is Map<String, dynamic>) {
-      final color = parseColor(context.resolve(border['color'])) ?? Colors.black;
+      final color =
+          parseColor(context.resolve(border['color'])) ?? Colors.black;
       final width = border['width']?.toDouble() ?? 1.0;
-      
+
       return Border.all(color: color, width: width);
     }
-    
+
     return null;
   }
 
   Matrix4? _parseMatrix4(dynamic transform) {
     if (transform == null) return null;
-    
+
     if (transform is Map<String, dynamic>) {
       final type = transform['type'] as String?;
       switch (type) {
@@ -142,7 +147,7 @@ class AnimatedContainerWidgetFactory extends WidgetFactory {
           return null;
       }
     }
-    
+
     return null;
   }
 

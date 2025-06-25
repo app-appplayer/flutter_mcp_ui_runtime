@@ -29,8 +29,11 @@ class MCPUIRuntime {
   late final StateManager _stateManager;
 
   bool _isInitialized = false;
-  bool Function(String action, String route, Map<String, dynamic> params)? _navigationHandler;
-  final Map<String, Future<dynamic> Function(String method, String target, dynamic data)> _resourceHandlers = {};
+  bool Function(String action, String route, Map<String, dynamic> params)?
+      _navigationHandler;
+  final Map<String,
+          Future<dynamic> Function(String method, String target, dynamic data)>
+      _resourceHandlers = {};
 
   /// Initialize the runtime
   void _initialize() {
@@ -55,7 +58,7 @@ class MCPUIRuntime {
 
   /// Gets the state manager
   StateManager get stateManager => _engine.stateManager;
-  
+
   /// Gets the action handler
   ActionHandler get actionHandler => _engine.actionHandler;
 
@@ -91,15 +94,15 @@ class MCPUIRuntime {
       definition: definition,
       pageLoader: pageLoader,
     );
-    
+
     _isInitialized = true;
-    
+
     // Pass navigation handler to renderer and action handler if already registered
     if (_navigationHandler != null) {
       _engine.renderer.navigationHandler = _navigationHandler;
       _engine.actionHandler.registerNavigationHandler(_navigationHandler!);
     }
-    
+
     // Pass resource handler to renderer if any registered
     if (_resourceHandlers.isNotEmpty) {
       _engine.renderer.resourceHandler = _createResourceHandlerWrapper();
@@ -150,37 +153,42 @@ class MCPUIRuntime {
   void updateState(String key, dynamic value) {
     _engine.stateManager.set(key, value);
   }
-  
+
   /// Gets a state value
   T? getState<T>(String key) {
     return _engine.stateManager.get<T>(key);
   }
-  
+
   /// Execute an action directly (primarily for testing purposes)
   Future<void> executeAction(Map<String, dynamic> action) async {
     if (!_isInitialized) {
       throw StateError('Runtime must be initialized before executing actions');
     }
-    
+
     // Create a minimal render context for action execution
     final context = _engine.renderer.createRootContext(null);
     await _engine.actionHandler.execute(action, context);
   }
 
   /// Register a resource handler
-  void registerResourceHandler(String resource, Future<dynamic> Function(String method, String target, dynamic data) handler) {
+  void registerResourceHandler(
+      String resource,
+      Future<dynamic> Function(String method, String target, dynamic data)
+          handler) {
     _resourceHandlers[resource] = handler;
-    
+
     // Pass to renderer if initialized
     if (_isInitialized) {
       _engine.renderer.resourceHandler = _createResourceHandlerWrapper();
     }
-    
+
     _logger.debug('Resource handler registered for: $resource');
   }
-  
+
   /// Create a wrapper function that routes to the appropriate resource handler
-  Future<dynamic> Function(String resource, String method, String target, dynamic data) _createResourceHandlerWrapper() {
+  Future<dynamic> Function(
+          String resource, String method, String target, dynamic data)
+      _createResourceHandlerWrapper() {
     return (String resource, String method, String target, dynamic data) async {
       final handler = _resourceHandlers[resource];
       if (handler != null) {
@@ -190,11 +198,14 @@ class MCPUIRuntime {
     };
   }
 
-  /// Register a navigation handler  
-  void registerNavigationHandler(bool Function(String action, String route, Map<String, dynamic> params) handler) {
-    _logger.info('registerNavigationHandler called, isInitialized=$_isInitialized');
+  /// Register a navigation handler
+  void registerNavigationHandler(
+      bool Function(String action, String route, Map<String, dynamic> params)
+          handler) {
+    _logger.info(
+        'registerNavigationHandler called, isInitialized=$_isInitialized');
     _navigationHandler = handler;
-    
+
     // Set global handler for navigation actions in ActionHandler
     if (_isInitialized) {
       _logger.info('Calling engine.actionHandler.registerNavigationHandler');
@@ -203,14 +214,17 @@ class MCPUIRuntime {
     } else {
       _logger.info('Runtime not initialized, storing handler for later');
     }
-    
+
     // Pass to renderer if initialized
     if (_isInitialized) {
-      _logger.info('Setting navigation handler on renderer (was ${_engine.renderer.navigationHandler != null})');
+      _logger.info(
+          'Setting navigation handler on renderer (was ${_engine.renderer.navigationHandler != null})');
       _engine.renderer.navigationHandler = handler;
-      _logger.info('Navigation handler set on renderer (now ${_engine.renderer.navigationHandler != null})');
+      _logger.info(
+          'Navigation handler set on renderer (now ${_engine.renderer.navigationHandler != null})');
       // Force rebuild to pick up new handler by triggering a state change
-      _stateManager.set('_internal_handler_update', DateTime.now().millisecondsSinceEpoch);
+      _stateManager.set(
+          '_internal_handler_update', DateTime.now().millisecondsSinceEpoch);
     }
     _logger.info('Navigation handler registered');
   }
@@ -219,13 +233,13 @@ class MCPUIRuntime {
   Future<void> destroy() async {
     await _engine.destroy();
     _isInitialized = false;
-    
+
     // Clear global navigation handler to prevent state leaking between tests
     NavigationActionExecutor.clearGlobalNavigationHandler();
-    
+
     // Reset theme manager singleton
     ThemeManager.instance.reset();
-    
+
     // Clear i18n manager
     I18nManager.instance.clear();
 
@@ -252,14 +266,15 @@ class MCPRuntimeWidget extends StatefulWidget {
   State<MCPRuntimeWidget> createState() => _MCPRuntimeWidgetState();
 }
 
-class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBindingObserver {
+class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    
+
     // Add lifecycle observer
     WidgetsBinding.instance.addObserver(this);
-    
+
     // Don't listen to state changes directly - AnimatedBuilder already listens to engine
     // which forwards state changes from StateManager
 
@@ -308,17 +323,20 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBinding
 
         try {
           // Check if this is an application type
-          if (widget.engine.isApplication && widget.engine.routeManager != null) {
+          if (widget.engine.isApplication &&
+              widget.engine.routeManager != null) {
             // Build application with routing and navigation
             final appDefinition = widget.engine.applicationDefinition!;
-            
+
             if (appDefinition.navigation != null) {
               // Build with navigation wrapper
               // TODO: Implement NavigationBuilder
               final navKey = NavigationService.instance.navigatorKey;
-              widget.runtime._logger.debug('Creating MaterialApp with navigatorKey: $navKey');
-              widget.runtime._logger.debug('NavigatorKey hashCode: ${navKey.hashCode}');
-              
+              widget.runtime._logger
+                  .debug('Creating MaterialApp with navigatorKey: $navKey');
+              widget.runtime._logger
+                  .debug('NavigatorKey hashCode: ${navKey.hashCode}');
+
               return MaterialApp(
                 navigatorKey: navKey,
                 title: appDefinition.title,
@@ -329,9 +347,11 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBinding
             } else {
               // Build simple routing without navigation wrapper
               final navKey = NavigationService.instance.navigatorKey;
-              widget.runtime._logger.debug('Creating MaterialApp with navigatorKey: $navKey');
-              widget.runtime._logger.debug('NavigatorKey hashCode: ${navKey.hashCode}');
-              
+              widget.runtime._logger
+                  .debug('Creating MaterialApp with navigatorKey: $navKey');
+              widget.runtime._logger
+                  .debug('NavigatorKey hashCode: ${navKey.hashCode}');
+
               return MaterialApp(
                 navigatorKey: navKey,
                 title: appDefinition.title,
@@ -343,7 +363,8 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBinding
           } else {
             // Render single page UI using the unified renderer
             if (widget.runtime.enableDebugMode) {
-              widget.runtime._logger.debug('Rendering page with uiDefinition type: ${widget.uiDefinition['type']}');
+              widget.runtime._logger.debug(
+                  'Rendering page with uiDefinition type: ${widget.uiDefinition['type']}');
             }
             return _renderPage(widget.uiDefinition);
           }
@@ -361,43 +382,51 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBinding
   /// Render a page using the unified renderer
   Widget _renderPage(Map<String, dynamic> definition) {
     if (widget.runtime.enableDebugMode) {
-      widget.runtime._logger.debug('_renderPage called with definition: ${jsonEncode(definition)}');
-      widget.runtime._logger.debug('_renderPage called with definition type: ${definition['type']}');
-      widget.runtime._logger.debug('_renderPage definition keys: ${definition.keys.toList()}');
+      widget.runtime._logger.debug(
+          '_renderPage called with definition: ${jsonEncode(definition)}');
+      widget.runtime._logger.debug(
+          '_renderPage called with definition type: ${definition['type']}');
+      widget.runtime._logger
+          .debug('_renderPage definition keys: ${definition.keys.toList()}');
     }
-    
+
     // Check if this is a page type with content
     if (definition['type'] == 'page' && definition.containsKey('content')) {
       if (widget.runtime.enableDebugMode) {
-        widget.runtime._logger.debug('_renderPage: Handling page type with content');
+        widget.runtime._logger
+            .debug('_renderPage: Handling page type with content');
       }
       // For page type, render the content field directly
       final content = definition['content'] as Map<String, dynamic>;
       final context = widget.renderer.createRootContext(this.context);
       return widget.renderer.renderWidget(content, context);
     }
-    
+
     // Check if UI definition has appBar and body at top level
     final hasAppBar = definition.containsKey('appBar');
     final hasBody = definition.containsKey('body');
-    
+
     if (hasAppBar || hasBody) {
       if (widget.runtime.enableDebugMode) {
-        widget.runtime._logger.debug('_renderPage: Handling legacy format with appBar/body');
+        widget.runtime._logger
+            .debug('_renderPage: Handling legacy format with appBar/body');
       }
       // Create a page definition for the renderer
       final pageDefinition = {
         'type': 'single',
         if (hasAppBar) 'appBar': definition['appBar'],
         if (hasBody) 'body': definition['body'],
-        if (definition.containsKey('bottomBar')) 'bottomBar': definition['bottomBar'],
-        if (definition.containsKey('floatingAction')) 'floatingAction': definition['floatingAction'],
+        if (definition.containsKey('bottomBar'))
+          'bottomBar': definition['bottomBar'],
+        if (definition.containsKey('floatingAction'))
+          'floatingAction': definition['floatingAction'],
       };
-      
+
       return widget.renderer.renderPage(pageDefinition);
     } else {
       if (widget.runtime.enableDebugMode) {
-        widget.runtime._logger.debug('_renderPage: Rendering as single widget, type: ${definition['type']}');
+        widget.runtime._logger.debug(
+            '_renderPage: Rendering as single widget, type: ${definition['type']}');
       }
       // This should never happen for page type, but handle it gracefully
       if (definition['type'] == 'page') {
@@ -408,7 +437,7 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBinding
       return widget.renderer.renderWidget(definition, context);
     }
   }
-  
+
   Widget _errorWidget(String message) {
     return Center(
       child: Container(

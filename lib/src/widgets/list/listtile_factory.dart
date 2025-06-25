@@ -8,7 +8,7 @@ class ListTileWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
     final titleProp = properties['title'];
     final subtitleProp = properties['subtitle'];
@@ -20,21 +20,22 @@ class ListTileWidgetFactory extends WidgetFactory {
     final textColor = parseColor(context.resolve(properties['textColor']));
     final contentPadding = parseEdgeInsets(properties['contentPadding']);
     final tileColor = parseColor(context.resolve(properties['tileColor']));
-    final selectedTileColor = parseColor(context.resolve(properties['selectedTileColor']));
+    final selectedTileColor =
+        parseColor(context.resolve(properties['selectedTileColor']));
     final focusColor = parseColor(context.resolve(properties['focusColor']));
     final hoverColor = parseColor(context.resolve(properties['hoverColor']));
     final shape = _parseShapeBorder(properties['shape']);
-    
+
     // Extract leading widget
     Widget? leading = _buildWidget(properties['leading'], context);
-    
+
     // Extract trailing widget
     Widget? trailing = _buildWidget(properties['trailing'], context);
-    
+
     // Extract action handlers
     final onTap = properties['onTap'] as Map<String, dynamic>?;
     final onLongPress = properties['onLongPress'] as Map<String, dynamic>?;
-    
+
     // Build title widget
     Widget? titleWidget;
     if (titleProp != null) {
@@ -44,7 +45,7 @@ class ListTileWidgetFactory extends WidgetFactory {
         titleWidget = context.renderer.renderWidget(titleProp, context);
       }
     }
-    
+
     // Build subtitle widget
     Widget? subtitleWidget;
     if (subtitleProp != null) {
@@ -54,7 +55,7 @@ class ListTileWidgetFactory extends WidgetFactory {
         subtitleWidget = context.renderer.renderWidget(subtitleProp, context);
       }
     }
-    
+
     Widget listTile = ListTile(
       leading: leading,
       title: titleWidget,
@@ -66,12 +67,16 @@ class ListTileWidgetFactory extends WidgetFactory {
       shape: shape,
       contentPadding: contentPadding,
       enabled: enabled,
-      onTap: onTap != null ? () {
-        context.actionHandler.execute(onTap, context);
-      } : null,
-      onLongPress: onLongPress != null ? () {
-        context.actionHandler.execute(onLongPress, context);
-      } : null,
+      onTap: onTap != null
+          ? () {
+              context.actionHandler.execute(onTap, context);
+            }
+          : null,
+      onLongPress: onLongPress != null
+          ? () {
+              context.actionHandler.execute(onLongPress, context);
+            }
+          : null,
       selected: selected,
       selectedColor: textColor,
       iconColor: iconColor,
@@ -81,13 +86,13 @@ class ListTileWidgetFactory extends WidgetFactory {
       focusColor: focusColor,
       hoverColor: hoverColor,
     );
-    
+
     return applyCommonWrappers(listTile, properties, context);
   }
 
   Widget? _buildWidget(dynamic widgetDef, RenderContext context) {
     if (widgetDef == null) return null;
-    
+
     if (widgetDef is Map<String, dynamic>) {
       // Full widget definition
       return context.renderer.renderWidget(widgetDef, context);
@@ -95,13 +100,13 @@ class ListTileWidgetFactory extends WidgetFactory {
       // Simple icon name
       return Icon(_parseIconData(widgetDef));
     }
-    
+
     return null;
   }
 
   ShapeBorder? _parseShapeBorder(Map<String, dynamic>? shape) {
     if (shape == null) return null;
-    
+
     final type = shape['type'] as String?;
     switch (type) {
       case 'rounded':

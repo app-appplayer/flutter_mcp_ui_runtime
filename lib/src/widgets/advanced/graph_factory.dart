@@ -8,23 +8,28 @@ class GraphWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
-    final data = context.resolve<List<dynamic>>(properties['data']) as List<dynamic>? ?? [];
+    final data =
+        context.resolve<List<dynamic>>(properties['data']) as List<dynamic>? ??
+            [];
     final type = properties['type'] as String? ?? 'line';
     final width = properties['width']?.toDouble() ?? 300.0;
     final height = properties['height']?.toDouble() ?? 200.0;
     final showGrid = properties['showGrid'] as bool? ?? true;
     final showLabels = properties['showLabels'] as bool? ?? true;
-    final lineColor = parseColor(context.resolve(properties['lineColor'])) ?? Colors.blue;
-    final fillColor = parseColor(context.resolve(properties['fillColor'])) ?? Colors.blue.withOpacity(0.3);
-    final gridColor = parseColor(context.resolve(properties['gridColor'])) ?? Colors.grey[300]!;
+    final lineColor =
+        parseColor(context.resolve(properties['lineColor'])) ?? Colors.blue;
+    final fillColor = parseColor(context.resolve(properties['fillColor'])) ??
+        Colors.blue.withOpacity(0.3);
+    final gridColor = parseColor(context.resolve(properties['gridColor'])) ??
+        Colors.grey[300]!;
     final strokeWidth = properties['strokeWidth']?.toDouble() ?? 2.0;
-    
+
     // Parse data points
     List<double> values = [];
     List<String> labels = [];
-    
+
     for (var item in data) {
       if (item is num) {
         values.add(item.toDouble());
@@ -34,11 +39,11 @@ class GraphWidgetFactory extends WidgetFactory {
         labels.add(item['label']?.toString() ?? '');
       }
     }
-    
+
     if (values.isEmpty) {
       return const SizedBox();
     }
-    
+
     Widget graph = SizedBox(
       width: width,
       height: height,
@@ -56,7 +61,7 @@ class GraphWidgetFactory extends WidgetFactory {
         ),
       ),
     );
-    
+
     return applyCommonWrappers(graph, properties, context);
   }
 }
@@ -71,7 +76,7 @@ class _GraphPainter extends CustomPainter {
   final Color fillColor;
   final Color gridColor;
   final double strokeWidth;
-  
+
   _GraphPainter({
     required this.values,
     required this.labels,
@@ -83,26 +88,26 @@ class _GraphPainter extends CustomPainter {
     required this.gridColor,
     required this.strokeWidth,
   });
-  
+
   @override
   void paint(Canvas canvas, Size size) {
     if (values.isEmpty) return;
-    
+
     final padding = showLabels ? 40.0 : 20.0;
     final graphWidth = size.width - padding * 2;
     final graphHeight = size.height - padding * 2;
-    
+
     // Find min and max values
     final minValue = values.reduce(math.min);
     final maxValue = values.reduce(math.max);
     final valueRange = maxValue - minValue;
-    
+
     // Draw grid
     if (showGrid) {
       final gridPaint = Paint()
         ..color = gridColor
         ..strokeWidth = 1;
-      
+
       // Horizontal grid lines
       for (int i = 0; i <= 5; i++) {
         final y = padding + (graphHeight * i / 5);
@@ -112,7 +117,7 @@ class _GraphPainter extends CustomPainter {
           gridPaint,
         );
       }
-      
+
       // Vertical grid lines
       final gridSpacing = graphWidth / (values.length - 1);
       for (int i = 0; i < values.length; i++) {
@@ -124,20 +129,19 @@ class _GraphPainter extends CustomPainter {
         );
       }
     }
-    
+
     // Calculate points
     final points = <Offset>[];
     final spacing = graphWidth / (values.length - 1);
-    
+
     for (int i = 0; i < values.length; i++) {
-      final normalizedValue = valueRange > 0 
-          ? (values[i] - minValue) / valueRange 
-          : 0.5;
+      final normalizedValue =
+          valueRange > 0 ? (values[i] - minValue) / valueRange : 0.5;
       final x = padding + (i * spacing);
       final y = padding + graphHeight - (normalizedValue * graphHeight);
       points.add(Offset(x, y));
     }
-    
+
     if (type == 'line') {
       // Draw filled area
       final fillPath = Path();
@@ -147,12 +151,12 @@ class _GraphPainter extends CustomPainter {
       }
       fillPath.lineTo(points.last.dx, padding + graphHeight);
       fillPath.close();
-      
+
       final fillPaint = Paint()
         ..color = fillColor
         ..style = PaintingStyle.fill;
       canvas.drawPath(fillPath, fillPaint);
-      
+
       // Draw line
       final linePaint = Paint()
         ..color = lineColor
@@ -160,19 +164,19 @@ class _GraphPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round;
-      
+
       final linePath = Path();
       linePath.moveTo(points.first.dx, points.first.dy);
       for (int i = 1; i < points.length; i++) {
         linePath.lineTo(points[i].dx, points[i].dy);
       }
       canvas.drawPath(linePath, linePaint);
-      
+
       // Draw points
       final pointPaint = Paint()
         ..color = lineColor
         ..style = PaintingStyle.fill;
-      
+
       for (final point in points) {
         canvas.drawCircle(point, 4, pointPaint);
       }
@@ -182,7 +186,7 @@ class _GraphPainter extends CustomPainter {
       final barPaint = Paint()
         ..color = lineColor
         ..style = PaintingStyle.fill;
-      
+
       for (int i = 0; i < points.length; i++) {
         final rect = Rect.fromLTWH(
           points[i].dx - barWidth / 2,
@@ -196,13 +200,13 @@ class _GraphPainter extends CustomPainter {
         );
       }
     }
-    
+
     // Draw labels
     if (showLabels) {
       final textPainter = TextPainter(
         textDirection: TextDirection.ltr,
       );
-      
+
       // Value labels on Y axis
       for (int i = 0; i <= 5; i++) {
         final value = minValue + (valueRange * (5 - i) / 5);
@@ -214,7 +218,7 @@ class _GraphPainter extends CustomPainter {
         final y = padding + (graphHeight * i / 5) - textPainter.height / 2;
         textPainter.paint(canvas, Offset(padding - textPainter.width - 5, y));
       }
-      
+
       // X axis labels
       for (int i = 0; i < labels.length && i < values.length; i++) {
         if (labels[i].isNotEmpty) {
@@ -230,7 +234,7 @@ class _GraphPainter extends CustomPainter {
       }
     }
   }
-  
+
   @override
   bool shouldRepaint(_GraphPainter oldDelegate) {
     return true;

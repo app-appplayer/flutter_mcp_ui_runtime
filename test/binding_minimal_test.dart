@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_mcp_ui_runtime/src/binding/binding_engine.dart';
 import 'package:flutter_mcp_ui_runtime/src/binding/binding_expression.dart';
 
 void main() {

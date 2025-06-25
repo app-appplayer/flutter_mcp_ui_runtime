@@ -9,16 +9,17 @@ class MediaPlayerWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract media player properties
     final source = context.resolve<String?>(properties['source']);
-    final mediaType = context.resolve<String>(properties['mediaType'] ?? 'video');
+    final mediaType =
+        context.resolve<String>(properties['mediaType'] ?? 'video');
     final autoplay = context.resolve<bool>(properties['autoplay'] ?? false);
     final controls = context.resolve<bool>(properties['controls'] ?? true);
     final loop = context.resolve<bool>(properties['loop'] ?? false);
     final width = context.resolve<double?>(properties['width']);
     final height = context.resolve<double?>(properties['height']) ?? 300.0;
-    
+
     // Build placeholder media player widget
     Widget player = Container(
       width: width,
@@ -79,7 +80,7 @@ class MediaPlayerWidgetFactory extends WidgetFactory {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withOpacity(0.7),
+                      Colors.black.withValues(alpha: 0.7),
                     ],
                   ),
                 ),
@@ -114,9 +115,10 @@ class MediaPlayerWidgetFactory extends WidgetFactory {
               children: [
                 if (autoplay)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.8),
+                      color: Colors.green.withValues(alpha: 0.8),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Text(
@@ -130,9 +132,10 @@ class MediaPlayerWidgetFactory extends WidgetFactory {
                 if (loop) ...[
                   const SizedBox(width: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                     decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.8),
+                      color: Colors.blue.withValues(alpha: 0.8),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Text(
@@ -150,7 +153,7 @@ class MediaPlayerWidgetFactory extends WidgetFactory {
         ],
       ),
     );
-    
+
     return applyCommonWrappers(player, properties, context);
   }
 }

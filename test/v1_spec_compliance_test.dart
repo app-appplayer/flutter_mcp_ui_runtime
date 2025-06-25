@@ -1,11 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
-import 'package:flutter_mcp_ui_runtime/src/runtime/widget_registry.dart';
-import 'package:flutter_mcp_ui_runtime/src/state/state_manager.dart';
 import 'package:flutter_mcp_ui_runtime/src/theme/theme_manager.dart';
 import 'package:flutter_mcp_ui_runtime/src/runtime/default_widgets.dart';
 import 'package:flutter_mcp_ui_runtime/src/binding/binding_engine.dart';
-import 'package:flutter_mcp_ui_runtime/src/validation/validation_engine.dart';
 import 'package:flutter_mcp_ui_runtime/src/validation/validation_rules.dart' as rules;
 
 void main() {

@@ -9,16 +9,17 @@ class MapWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract map properties
     final latitude = context.resolve<double?>(properties['latitude']) ?? 0.0;
     final longitude = context.resolve<double?>(properties['longitude']) ?? 0.0;
     final zoom = context.resolve<double?>(properties['zoom']) ?? 10.0;
     final markers = context.resolve<List<dynamic>>(properties['markers'] ?? []);
-    final interactive = context.resolve<bool>(properties['interactive'] ?? true);
+    final interactive =
+        context.resolve<bool>(properties['interactive'] ?? true);
     final width = context.resolve<double?>(properties['width']);
     final height = context.resolve<double?>(properties['height']) ?? 400.0;
-    
+
     // Build placeholder map widget
     Widget map = Container(
       width: width,
@@ -101,7 +102,7 @@ class MapWidgetFactory extends WidgetFactory {
         ],
       ),
     );
-    
+
     return applyCommonWrappers(map, properties, context);
   }
 }

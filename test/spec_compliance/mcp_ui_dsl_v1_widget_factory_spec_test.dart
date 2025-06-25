@@ -1,9 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
-import 'package:flutter_mcp_ui_runtime/src/runtime/widget_registry.dart';
 import 'package:flutter_mcp_ui_runtime/src/runtime/default_widgets.dart';
-import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart';
 
 /// MCP UI DSL v1.0 Widget Factory Specification Compliance Test
 /// 
@@ -690,7 +688,7 @@ void main() {
         expect(decoration?.color, const Color(0xFFFF5722));
         expect(decoration?.border?.top.color, const Color(0xFF000000));
         expect(decoration?.border?.top.width, 2);
-        expect(decoration?.borderRadius, BorderRadius.only(
+        expect(decoration?.borderRadius, const BorderRadius.only(
           topLeft: Radius.circular(10),
           topRight: Radius.circular(20),
           bottomLeft: Radius.circular(30),

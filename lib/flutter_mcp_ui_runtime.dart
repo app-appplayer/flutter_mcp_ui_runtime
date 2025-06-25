@@ -24,7 +24,6 @@ export 'src/runtime/background_service_manager.dart';
 export 'src/runtime/conformance_checker.dart';
 
 // Service exports
-export 'src/services/state_service.dart';
 export 'src/services/navigation_service.dart';
 export 'src/services/dialog_service.dart';
 export 'src/services/notification_service.dart';
@@ -35,7 +34,8 @@ export 'src/state/state_watcher.dart';
 export 'src/state/computed_property.dart';
 
 // Action exports
-export 'src/actions/action_handler.dart' show ActionHandler, NavigationActionExecutor;
+export 'src/actions/action_handler.dart'
+    show ActionHandler, NavigationActionExecutor;
 
 // Notification exports
 export 'src/notifications/notification_types.dart';

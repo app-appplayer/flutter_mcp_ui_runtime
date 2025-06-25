@@ -163,7 +163,6 @@ void main() {
 
       await engine.initialize(definition: definition);
 
-      expect(engine.services.get('state'), isNotNull);
       expect(engine.services.get('navigation'), isNotNull);
       expect(engine.services.get('dialogs'), isNotNull);
       expect(engine.services.get('notifications'), isNotNull);
@@ -202,9 +201,10 @@ void main() {
 
       await engine.initialize(definition: definition);
 
-      final stateService = engine.services.get('state');
-      expect(stateService, isNotNull);
-      // Additional assertions for state initialization would go here
+      // State is now managed by StateManager directly
+      expect(engine.stateManager, isNotNull);
+      expect(engine.stateManager.state['counter'], equals(0));
+      expect(engine.stateManager.state['message'], equals('Hello'));
     });
 
     test('handles destroy lifecycle correctly', () async {

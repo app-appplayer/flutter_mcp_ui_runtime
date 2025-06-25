@@ -8,7 +8,7 @@ class CacheManager {
   });
 
   final bool enableDebugMode;
-  
+
   // In-memory cache for now, can be extended to use persistent storage
   final Map<String, CachedApp> _appCache = {};
   final Map<String, Map<String, dynamic>> _stateCache = {};
@@ -32,7 +32,7 @@ class CacheManager {
   Future<void> cacheApp(CachedApp app) async {
     final key = '${app.domain}:${app.id}';
     _appCache[key] = app;
-    
+
     if (enableDebugMode) {
       debugPrint('CacheManager: Cached app $key v${app.version}');
     }
@@ -42,14 +42,14 @@ class CacheManager {
   CachedApp? getCachedApp(String domain, String id) {
     final key = '$domain:$id';
     final app = _appCache[key];
-    
+
     if (app != null && _isAppValid(app)) {
       if (enableDebugMode) {
         debugPrint('CacheManager: Cache hit for app $key');
       }
       return app;
     }
-    
+
     if (enableDebugMode) {
       debugPrint('CacheManager: Cache miss for app $key');
     }
@@ -60,20 +60,20 @@ class CacheManager {
   bool isUpdateAvailable(String domain, String id, String currentVersion) {
     final key = '$domain:$id';
     final cached = _appCache[key];
-    
+
     if (cached == null) return false;
-    
+
     return _compareVersions(cached.version, currentVersion) > 0;
   }
 
   /// Caches app state
   Future<void> cacheState(String appKey, Map<String, dynamic> state) async {
     _stateCache[appKey] = Map<String, dynamic>.from(state);
-    
+
     if (enableDebugMode) {
       debugPrint('CacheManager: Cached state for $appKey');
     }
-    
+
     // TODO: Persist to local storage
   }
 
@@ -85,7 +85,7 @@ class CacheManager {
   /// Caches a resource (e.g., downloaded data)
   Future<void> cacheResource(String key, Map<String, dynamic> data) async {
     _resourceCache[key] = Map<String, dynamic>.from(data);
-    
+
     if (enableDebugMode) {
       debugPrint('CacheManager: Cached resource $key');
     }
@@ -101,7 +101,7 @@ class CacheManager {
     _appCache.clear();
     _stateCache.clear();
     _resourceCache.clear();
-    
+
     if (enableDebugMode) {
       debugPrint('CacheManager: Cleared all caches');
     }
@@ -112,7 +112,7 @@ class CacheManager {
     final key = '$domain:$id';
     _appCache.remove(key);
     _stateCache.remove(key);
-    
+
     if (enableDebugMode) {
       debugPrint('CacheManager: Cleared cache for app $key');
     }
@@ -131,22 +131,22 @@ class CacheManager {
   /// Checks if app is still valid based on cache policy
   bool _isAppValid(CachedApp app) {
     final policy = app.cachePolicy ?? _defaultPolicy;
-    
+
     if (!policy.enabled) return false;
-    
+
     final now = DateTime.now();
     final age = now.difference(app.cachedAt);
-    
+
     // Check max age
     if (policy.maxAge != null && age > policy.maxAge!) {
       return false;
     }
-    
+
     // Check expiry time
     if (app.expiresAt != null && now.isAfter(app.expiresAt!)) {
       return false;
     }
-    
+
     return true;
   }
 
@@ -154,37 +154,37 @@ class CacheManager {
   int _compareVersions(String v1, String v2) {
     final parts1 = v1.split('.').map(int.tryParse).toList();
     final parts2 = v2.split('.').map(int.tryParse).toList();
-    
+
     for (int i = 0; i < 3; i++) {
       final p1 = i < parts1.length ? (parts1[i] ?? 0) : 0;
       final p2 = i < parts2.length ? (parts2[i] ?? 0) : 0;
-      
+
       if (p1 > p2) return 1;
       if (p1 < p2) return -1;
     }
-    
+
     return 0;
   }
 
   /// Calculates total cache size (simplified)
   int _calculateCacheSize() {
     int size = 0;
-    
+
     // Estimate size of app definitions
     for (final app in _appCache.values) {
       size += jsonEncode(app.definition).length;
     }
-    
+
     // Estimate size of states
     for (final state in _stateCache.values) {
       size += jsonEncode(state).length;
     }
-    
+
     // Estimate size of resources
     for (final resource in _resourceCache.values) {
       size += jsonEncode(resource).length;
     }
-    
+
     return size;
   }
 }
@@ -223,10 +223,10 @@ class CachedApp {
         cachedAt: DateTime.now(),
       );
     }
-    
+
     final runtimeConfig = runtime['runtime'];
     final config = runtimeConfig is Map ? runtimeConfig : <String, dynamic>{};
-    
+
     return CachedApp(
       id: config['id']?.toString() ?? 'unknown',
       domain: config['domain']?.toString() ?? 'unknown',
@@ -234,7 +234,8 @@ class CachedApp {
       definition: definition,
       cachedAt: DateTime.now(),
       cachePolicy: config['cachePolicy'] is Map
-          ? CachePolicy.fromJson(Map<String, dynamic>.from(config['cachePolicy'] as Map))
+          ? CachePolicy.fromJson(
+              Map<String, dynamic>.from(config['cachePolicy'] as Map))
           : null,
     );
   }
@@ -300,10 +301,10 @@ class CachePolicy {
 enum OfflineMode {
   /// Full offline support - all features work offline
   full,
-  
+
   /// Partial offline support - UI and cached data work, but no tools/streaming
   partial,
-  
+
   /// No offline support
   disabled,
 }

@@ -14,7 +14,8 @@ class ValidationResult {
 
   static const ValidationResult valid = ValidationResult(isValid: true);
 
-  factory ValidationResult.invalid(String message, {Map<String, dynamic>? details}) {
+  factory ValidationResult.invalid(String message,
+      {Map<String, dynamic>? details}) {
     return ValidationResult(
       isValid: false,
       message: message,
@@ -59,14 +60,14 @@ class ValidationEngine {
     if (validation == null) return [];
 
     final rules = <ValidationRule>[];
-    
+
     // Handle array format (newer spec)
     if (validation is List) {
       for (final rule in validation) {
         if (rule is Map<String, dynamic>) {
           final type = rule['type'] as String?;
           final message = rule['message'] as String?;
-          
+
           switch (type) {
             case 'required':
               rules.add(ValidationRule(
@@ -84,14 +85,16 @@ class ValidationEngine {
               rules.add(ValidationRule(
                 type: ValidationRuleType.minLength,
                 value: rule['value'] ?? rule['minLength'],
-                message: message ?? 'Minimum length is ${rule['value'] ?? rule['minLength']}',
+                message: message ??
+                    'Minimum length is ${rule['value'] ?? rule['minLength']}',
               ));
               break;
             case 'maxLength':
               rules.add(ValidationRule(
                 type: ValidationRuleType.maxLength,
                 value: rule['value'] ?? rule['maxLength'],
-                message: message ?? 'Maximum length is ${rule['value'] ?? rule['maxLength']}',
+                message: message ??
+                    'Maximum length is ${rule['value'] ?? rule['maxLength']}',
               ));
               break;
             case 'pattern':
@@ -105,14 +108,16 @@ class ValidationEngine {
               rules.add(ValidationRule(
                 type: ValidationRuleType.min,
                 value: rule['value'] ?? rule['min'],
-                message: message ?? 'Minimum value is ${rule['value'] ?? rule['min']}',
+                message: message ??
+                    'Minimum value is ${rule['value'] ?? rule['min']}',
               ));
               break;
             case 'max':
               rules.add(ValidationRule(
                 type: ValidationRuleType.max,
                 value: rule['value'] ?? rule['max'],
-                message: message ?? 'Maximum value is ${rule['value'] ?? rule['max']}',
+                message: message ??
+                    'Maximum value is ${rule['value'] ?? rule['max']}',
               ));
               break;
             case 'url':
@@ -133,12 +138,13 @@ class ValidationEngine {
       }
       return rules;
     }
-    
+
     // Reject legacy object format - MCP UI DSL v1.0 only supports array format
     if (validation is! Map<String, dynamic>) return [];
-    
+
     // Log warning about legacy format usage and return empty rules
-    _logger.warning('Legacy validation format detected. MCP UI DSL v1.0 only supports array format for validation rules.');
+    _logger.warning(
+        'Legacy validation format detected. MCP UI DSL v1.0 only supports array format for validation rules.');
     return [];
   }
 
@@ -232,7 +238,8 @@ class ValidationEngine {
   }
 
   /// Create a Flutter validator function from rules
-  static String? Function(String?) createFlutterValidator(List<ValidationRule> rules) {
+  static String? Function(String?) createFlutterValidator(
+      List<ValidationRule> rules) {
     return (String? value) {
       final result = validate(value, rules);
       return result.isValid ? null : result.message;

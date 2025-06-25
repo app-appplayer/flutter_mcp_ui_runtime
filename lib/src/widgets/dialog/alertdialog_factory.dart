@@ -8,21 +8,23 @@ class AlertDialogWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
     final titleData = properties['title'];
     final contentData = properties['content'];
-    final backgroundColor = parseColor(context.resolve(properties['backgroundColor']));
+    final backgroundColor =
+        parseColor(context.resolve(properties['backgroundColor']));
     final elevation = properties['elevation']?.toDouble();
     final shadowColor = parseColor(context.resolve(properties['shadowColor']));
-    final surfaceTintColor = parseColor(context.resolve(properties['surfaceTintColor']));
+    final surfaceTintColor =
+        parseColor(context.resolve(properties['surfaceTintColor']));
     final shape = _parseShapeBorder(properties['shape']);
     final alignment = parseAlignment(properties['alignment']);
-    final insetPadding = parseEdgeInsets(properties['insetPadding']) ?? 
+    final insetPadding = parseEdgeInsets(properties['insetPadding']) ??
         const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0);
     final clipBehavior = _parseClip(properties['clipBehavior']);
     final scrollable = properties['scrollable'] as bool? ?? false;
-    
+
     // Extract actions
     final actionsData = properties['actions'] as List<dynamic>?;
     List<Widget>? actions;
@@ -32,7 +34,7 @@ class AlertDialogWidgetFactory extends WidgetFactory {
           final label = action['label'] as String? ?? 'OK';
           final isDefaultAction = action['isDefault'] as bool? ?? false;
           final isDestructiveAction = action['isDestructive'] as bool? ?? false;
-          
+
           return TextButton(
             onPressed: () {
               if (action['onTap'] != null) {
@@ -51,7 +53,7 @@ class AlertDialogWidgetFactory extends WidgetFactory {
         return Container();
       }).toList();
     }
-    
+
     // Build title widget
     Widget? titleWidget;
     if (titleData != null) {
@@ -60,10 +62,12 @@ class AlertDialogWidgetFactory extends WidgetFactory {
       } else if (titleData is Map<String, dynamic>) {
         titleWidget = context.renderer.renderWidget(titleData, context);
       }
-    } else if (properties['titleWidget'] != null && properties['titleWidget'] is Map<String, dynamic>) {
-      titleWidget = context.renderer.renderWidget(properties['titleWidget'], context);
+    } else if (properties['titleWidget'] != null &&
+        properties['titleWidget'] is Map<String, dynamic>) {
+      titleWidget =
+          context.renderer.renderWidget(properties['titleWidget'], context);
     }
-    
+
     // Build content widget
     Widget? contentWidget;
     if (contentData != null) {
@@ -72,15 +76,18 @@ class AlertDialogWidgetFactory extends WidgetFactory {
       } else if (contentData is Map<String, dynamic>) {
         contentWidget = context.renderer.renderWidget(contentData, context);
       }
-    } else if (properties['contentWidget'] != null && properties['contentWidget'] is Map<String, dynamic>) {
-      contentWidget = context.renderer.renderWidget(properties['contentWidget'], context);
+    } else if (properties['contentWidget'] != null &&
+        properties['contentWidget'] is Map<String, dynamic>) {
+      contentWidget =
+          context.renderer.renderWidget(properties['contentWidget'], context);
     } else {
       final childrenData = definition['children'] as List<dynamic>?;
       if (childrenData != null && childrenData.isNotEmpty) {
-        contentWidget = context.renderer.renderWidget(childrenData.first, context);
+        contentWidget =
+            context.renderer.renderWidget(childrenData.first, context);
       }
     }
-    
+
     return AlertDialog(
       title: titleWidget,
       content: contentWidget,
@@ -96,7 +103,7 @@ class AlertDialogWidgetFactory extends WidgetFactory {
       scrollable: scrollable,
     );
   }
-  
+
   Clip _parseClip(String? value) {
     switch (value) {
       case 'none':
@@ -111,10 +118,10 @@ class AlertDialogWidgetFactory extends WidgetFactory {
         return Clip.none;
     }
   }
-  
+
   ShapeBorder? _parseShapeBorder(Map<String, dynamic>? shape) {
     if (shape == null) return null;
-    
+
     final type = shape['type'] as String?;
     switch (type) {
       case 'rounded':

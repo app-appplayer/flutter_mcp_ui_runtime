@@ -107,8 +107,9 @@ class NotificationService extends RuntimeService {
     String? title,
     String? body,
   }) async {
-    final currentNotification = _manager.activeNotifications
-        .firstWhere((n) => n.id == id, orElse: () => throw ArgumentError('Notification "$id" not found'));
+    final currentNotification = _manager.activeNotifications.firstWhere(
+        (n) => n.id == id,
+        orElse: () => throw ArgumentError('Notification "$id" not found'));
 
     final updatedNotification = currentNotification.copyWith(
       progress: progress,
@@ -134,7 +135,8 @@ class NotificationService extends RuntimeService {
     required String id,
     required String name,
     String? description,
-    NotificationImportance importance = NotificationImportance.defaultImportance,
+    NotificationImportance importance =
+        NotificationImportance.defaultImportance,
     bool enableSound = true,
     bool enableVibration = true,
     bool enableLights = true,
@@ -160,9 +162,10 @@ class NotificationService extends RuntimeService {
   /// Registers an action handler
   void registerActionHandler(String actionId, VoidCallback handler) {
     _actionHandlers[actionId] = handler;
-    
+
     if (enableDebugMode) {
-      debugPrint('NotificationService: Registered action handler for "$actionId"');
+      debugPrint(
+          'NotificationService: Registered action handler for "$actionId"');
     }
   }
 
@@ -212,7 +215,6 @@ class NotificationService extends RuntimeService {
 
   @override
   Future<void> onInitialize(Map<String, dynamic> config) async {
-
     // Setup channels from config
     final channelsConfig = config['channels'] as List<dynamic>?;
     if (channelsConfig != null) {
@@ -222,7 +224,8 @@ class NotificationService extends RuntimeService {
             id: channelConfig['id'] as String,
             name: channelConfig['name'] as String,
             description: channelConfig['description'] as String?,
-            importance: _parseImportance(channelConfig['importance'] as String?),
+            importance:
+                _parseImportance(channelConfig['importance'] as String?),
             enableSound: channelConfig['enableSound'] as bool? ?? true,
             enableVibration: channelConfig['enableVibration'] as bool? ?? true,
             enableLights: channelConfig['enableLights'] as bool? ?? true,
@@ -241,7 +244,8 @@ class NotificationService extends RuntimeService {
     _manager.addListener(_handleNotificationEvent);
 
     if (enableDebugMode) {
-      debugPrint('NotificationService: Initialized with ${_channels.length} channels');
+      debugPrint(
+          'NotificationService: Initialized with ${_channels.length} channels');
     }
   }
 
@@ -259,7 +263,8 @@ class NotificationService extends RuntimeService {
     String? actionId,
   ) {
     if (enableDebugMode) {
-      debugPrint('NotificationService: Event "$event" for notification "${notification.id}"');
+      debugPrint(
+          'NotificationService: Event "$event" for notification "${notification.id}"');
     }
 
     // Handle action tap
@@ -268,7 +273,8 @@ class NotificationService extends RuntimeService {
       if (handler != null) {
         handler();
       } else if (enableDebugMode) {
-        debugPrint('NotificationService: No handler registered for action "$actionId"');
+        debugPrint(
+            'NotificationService: No handler registered for action "$actionId"');
       }
     }
 

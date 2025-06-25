@@ -1,23 +1,23 @@
 /// MCP UI Runtime - Core runtime implementation
-/// 
+///
 /// ## Navigation System Overview
-/// 
+///
 /// The runtime supports two navigation paradigms that work together:
-/// 
+///
 /// ### 1. Route-based Navigation (Traditional Flutter)
 /// - Used when navigationDefinition is null
 /// - Creates MaterialApp with named routes
 /// - Navigation actions use route names directly
 /// - Works with standard Flutter Navigator
-/// 
+///
 /// ### 2. Index-based Navigation (ApplicationShell)
 /// - Used when navigationDefinition exists (drawer/tabs/bottom)
 /// - Creates MaterialApp with home widget (ApplicationShell)
 /// - Navigation is managed by index internally
 /// - Navigation actions are converted from routes to indices
-/// 
+///
 /// ### How Navigation Actions Work
-/// 
+///
 /// When a button triggers a navigation action:
 /// 1. NavigationActionExecutor receives the action
 /// 2. It checks for navigation handlers in order:
@@ -26,7 +26,7 @@
 ///    - Global handler (set by ApplicationShell)
 /// 3. ApplicationShell's handler converts route to index
 /// 4. The UI updates to show the new page
-/// 
+///
 /// This design allows navigation actions to work consistently
 /// regardless of the navigation type (drawer/tabs/bottom/routes).
 library mcp_ui_runtime;
@@ -59,35 +59,38 @@ class MCPUIRuntime {
 
   /// Gets whether the runtime is initialized
   bool get isInitialized => _isInitialized;
-  
+
   /// Gets the state manager
   StateManager get stateManager {
     if (!_isInitialized || _engine == null) {
-      throw StateError('Runtime must be initialized before accessing stateManager');
+      throw StateError(
+          'Runtime must be initialized before accessing stateManager');
     }
     return _engine!.stateManager;
   }
-  
+
   /// Gets the theme manager
   ThemeManager get themeManager {
     if (!_isInitialized || _engine == null) {
-      throw StateError('Runtime must be initialized before accessing themeManager');
+      throw StateError(
+          'Runtime must be initialized before accessing themeManager');
     }
     return _engine!.themeManager;
   }
-  
+
   /// Gets the UI definition
   Map<String, dynamic>? getUIDefinition() {
     return _engine?.uiDefinition;
   }
-  
+
   /// Renders the UI widget
   Widget render() {
     return buildUI();
   }
 
   /// Initializes the runtime with the provided definition
-  Future<void> initialize(Map<String, dynamic> definition, {
+  Future<void> initialize(
+    Map<String, dynamic> definition, {
     Function(String)? pageLoader,
     bool useCache = true,
   }) async {
@@ -145,21 +148,22 @@ class MCPUIRuntime {
       _logger.warning('Cannot handle notification - runtime not initialized');
       return;
     }
-    
+
     _logger.debug('Handling notification: $notification');
-    
+
     // Check notification method
     final method = notification['method'] as String?;
     final params = notification['params'] as Map<String, dynamic>?;
-    
+
     if (method == 'notifications/resources/updated' && params != null) {
       // Handle resource update notification
-      await _engine!.handleMCPNotification(params, resourceReader: resourceReader);
+      await _engine!
+          .handleMCPNotification(params, resourceReader: resourceReader);
     } else {
       _logger.debug('Ignoring notification with method: $method');
     }
   }
-  
+
   /// Register resource subscription for tracking
   void registerResourceSubscription(String uri, String binding) {
     if (!_isInitialized || _engine == null) {
@@ -167,7 +171,7 @@ class MCPUIRuntime {
     }
     _engine!.registerResourceSubscription(uri, binding);
   }
-  
+
   /// Unregister resource subscription
   void unregisterResourceSubscription(String uri) {
     if (!_isInitialized || _engine == null) {
@@ -175,7 +179,7 @@ class MCPUIRuntime {
     }
     _engine!.unregisterResourceSubscription(uri);
   }
-  
+
   /// Get binding for a URI
   String? getBindingForUri(String uri) {
     if (!_isInitialized || _engine == null) {
@@ -183,7 +187,7 @@ class MCPUIRuntime {
     }
     return _engine!.getBindingForUri(uri);
   }
-  
+
   /// Update state directly (for manual state updates)
   void updateState(String binding, dynamic value) {
     if (!_isInitialized || _engine == null) {
@@ -191,7 +195,7 @@ class MCPUIRuntime {
     }
     _engine!.stateManager.set(binding, value);
   }
-  
+
   /// Handle error
   void handleError(String error) {
     _logger.error(error);
@@ -200,7 +204,8 @@ class MCPUIRuntime {
   /// Register a tool executor function
   void registerToolExecutor(String toolName, Function executor) {
     if (!_isInitialized || _engine == null) {
-      throw StateError('Runtime must be initialized before registering tool executors');
+      throw StateError(
+          'Runtime must be initialized before registering tool executors');
     }
     _engine!.actionHandler.registerToolExecutor(toolName, executor);
   }
@@ -215,7 +220,6 @@ class MCPUIRuntime {
 
     _logger.info('Destroyed');
   }
-
 }
 
 /// Widget that renders the MCP UI using the runtime engine
@@ -241,26 +245,27 @@ class MCPRuntimeWidget extends StatefulWidget {
   State<MCPRuntimeWidget> createState() => _MCPRuntimeWidgetState();
 }
 
-class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBindingObserver {
-  
+class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    
+
     // Add lifecycle observer
     WidgetsBinding.instance.addObserver(this);
 
     // Register onToolCall callback if provided
     if (widget.onToolCall != null) {
-      widget.engine.actionHandler.registerToolExecutor('default', widget.onToolCall!);
+      widget.engine.actionHandler
+          .registerToolExecutor('default', widget.onToolCall!);
     }
-    
+
     // Register resource handlers if provided
     widget.engine.setResourceHandlers(
       onResourceSubscribe: widget.onResourceSubscribe,
       onResourceUnsubscribe: widget.onResourceUnsubscribe,
     );
-    
+
     // Initialize state if provided
     if (widget.initialState != null) {
       widget.engine.stateManager.setState(widget.initialState!);
@@ -308,24 +313,29 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBinding
 
         try {
           // Check if this is an application type
-          if (widget.engine.isApplication && widget.engine.routeManager != null) {
+          if (widget.engine.isApplication &&
+              widget.engine.routeManager != null) {
             // Build application with routing and navigation
             final appDefinition = widget.engine.applicationDefinition!;
-            
+
             if (widget.engine.enableDebugMode) {
-              MCPLogger('MCPRuntimeWidget').debug('Building application with navigation: ${appDefinition.navigationDefinition?.type}');
+              MCPLogger('MCPRuntimeWidget').debug(
+                  'Building application with navigation: ${appDefinition.navigationDefinition?.type}');
             }
-            
+
             if (appDefinition.navigationDefinition != null) {
               // Build with navigation wrapper
               final navKey = NavigationService.instance.navigatorKey;
-              MCPLogger('MCPRuntimeWidget').debug('Creating MaterialApp with navigatorKey for ApplicationShell: $navKey');
-              
+              MCPLogger('MCPRuntimeWidget').debug(
+                  'Creating MaterialApp with navigatorKey for ApplicationShell: $navKey');
+
               return MaterialApp(
-                navigatorKey: navKey,  // Essential for dialogs and navigation to work
+                navigatorKey:
+                    navKey, // Essential for dialogs and navigation to work
                 title: appDefinition.title,
                 theme: widget.engine.themeManager.toFlutterTheme(),
-                darkTheme: widget.engine.themeManager.toFlutterTheme(isDark: true),
+                darkTheme:
+                    widget.engine.themeManager.toFlutterTheme(isDark: true),
                 themeMode: widget.engine.themeManager.flutterThemeMode,
                 debugShowCheckedModeBanner: false,
                 home: _ApplicationShell(
@@ -339,13 +349,16 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBinding
             } else {
               // Build simple routing without navigation wrapper
               final navKey = NavigationService.instance.navigatorKey;
-              MCPLogger('MCPRuntimeWidget').debug('Creating MaterialApp with navigatorKey for routing: $navKey');
-              
+              MCPLogger('MCPRuntimeWidget').debug(
+                  'Creating MaterialApp with navigatorKey for routing: $navKey');
+
               return MaterialApp(
-                navigatorKey: navKey,  // Essential for dialogs and navigation to work
+                navigatorKey:
+                    navKey, // Essential for dialogs and navigation to work
                 title: appDefinition.title,
                 theme: widget.engine.themeManager.toFlutterTheme(),
-                darkTheme: widget.engine.themeManager.toFlutterTheme(isDark: true),
+                darkTheme:
+                    widget.engine.themeManager.toFlutterTheme(isDark: true),
                 themeMode: widget.engine.themeManager.flutterThemeMode,
                 debugShowCheckedModeBanner: false,
                 initialRoute: widget.engine.routeManager!.initialRoute,
@@ -357,21 +370,30 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBinding
             // Check if UI definition has appBar and body at top level
             final hasAppBar = widget.uiDefinition.containsKey('appBar');
             final hasBody = widget.uiDefinition.containsKey('body');
-            
+
             if (hasAppBar || hasBody) {
               // Auto-create scaffold for platform-independent UI definitions
               final renderContext = _createRenderContext();
               return Scaffold(
-                appBar: hasAppBar ? widget.engine.renderer.renderWidget(widget.uiDefinition['appBar'], renderContext) as AppBar? : null,
-                body: hasBody ? widget.engine.renderer.renderWidget(widget.uiDefinition['body'], renderContext) : Container(),
+                appBar: hasAppBar
+                    ? widget.engine.renderer.renderWidget(
+                        widget.uiDefinition['appBar'], renderContext) as AppBar?
+                    : null,
+                body: hasBody
+                    ? widget.engine.renderer.renderWidget(
+                        widget.uiDefinition['body'], renderContext)
+                    : Container(),
               );
             } else {
               // Use modern renderer for page content
-              if (widget.engine.parsedUIDefinition?.type == UIDefinitionType.page) {
-                return widget.engine.renderer.renderPage(widget.engine.parsedUIDefinition!.toJson());
+              if (widget.engine.parsedUIDefinition?.type ==
+                  UIDefinitionType.page) {
+                return widget.engine.renderer
+                    .renderPage(widget.engine.parsedUIDefinition!.toJson());
               } else {
                 // Render as widget using modern renderer
-                return widget.engine.renderer.renderWidget(widget.uiDefinition, _createRenderContext());
+                return widget.engine.renderer
+                    .renderWidget(widget.uiDefinition, _createRenderContext());
               }
             }
           }
@@ -403,24 +425,24 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget> with WidgetsBinding
 }
 
 /// Application shell widget that handles navigation
-/// 
+///
 /// This widget manages navigation for applications with drawer, tabs, or bottom navigation.
 /// It bridges two navigation systems:
-/// 
+///
 /// 1. **Index-based navigation**: Used internally by drawer/tabs/bottom navigation
 ///    - Tracks current page by index (_currentIndex)
 ///    - Updates UI by changing the displayed page widget
-/// 
+///
 /// 2. **Route-based navigation**: Used by navigation actions from buttons
 ///    - Uses route names (e.g., '/home', '/settings')
 ///    - Handled through NavigationActionExecutor
-/// 
+///
 /// The bridge works as follows:
 /// - When the app starts, a navigation handler is registered
 /// - This handler intercepts route-based navigation actions
 /// - It converts route names to indices and updates _currentIndex
 /// - The UI rebuilds to show the new page
-/// 
+///
 /// This allows buttons with navigation actions to work seamlessly with
 /// drawer/tab/bottom navigation, even though they use different systems.
 class _ApplicationShell extends StatefulWidget {
@@ -449,7 +471,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
   @override
   void initState() {
     super.initState();
-    
+
     // Find initial route index based on the application's initial route
     if (widget.appDefinition.navigationDefinition != null) {
       final initialRoute = widget.appDefinition.initialRoute;
@@ -459,7 +481,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
         _currentIndex = index;
       }
     }
-    
+
     // Register a navigation handler that converts route-based navigation to index-based
     // This allows navigation actions from buttons to work with the ApplicationShell's
     // index-based navigation system
@@ -472,7 +494,6 @@ class _ApplicationShellState extends State<_ApplicationShell> {
       return _pageDefinitionCache[route]!;
     }
 
-
     try {
       // Get page URI from route
       final pageUri = widget.appDefinition.routes[route];
@@ -484,32 +505,31 @@ class _ApplicationShellState extends State<_ApplicationShell> {
       final pageJson = await widget.engine.routeManager!.pageLoader(pageUri);
       final uiDef = UIDefinition.fromJson(pageJson as Map<String, dynamic>);
       final pageDefinition = PageDefinition.fromUIDefinition(uiDef);
-      
+
       // Cache the page definition only
       _pageDefinitionCache[route] = pageDefinition;
-      
-      
+
       return pageDefinition;
     } catch (e) {
-      
       throw Exception('Error loading page: $e');
     }
   }
-  
+
   /// Registers a navigation handler that bridges route-based navigation actions
   /// with the ApplicationShell's index-based navigation system
   void _registerNavigationHandler() {
     // Create a navigation handler that converts routes to indices
-    bool navigationHandler(String action, String route, Map<String, dynamic> params) {
+    bool navigationHandler(
+        String action, String route, Map<String, dynamic> params) {
       // Only handle navigation actions for this ApplicationShell
       if (action != 'push' && action != 'replace') {
         return false; // Let other handlers process this
       }
-      
+
       // Find the index for the given route
       final navItems = widget.appDefinition.navigationDefinition?.items ?? [];
       final targetIndex = navItems.indexWhere((item) => item.route == route);
-      
+
       if (targetIndex >= 0) {
         // Route found, update the current index to navigate
         if (mounted) {
@@ -519,15 +539,15 @@ class _ApplicationShellState extends State<_ApplicationShell> {
         }
         return true; // Navigation handled successfully
       }
-      
+
       // Route not found in navigation items
       return false;
     }
-    
+
     // Register the handler with the action handler
     widget.engine.actionHandler.registerNavigationHandler(navigationHandler);
   }
-  
+
   @override
   void dispose() {
     // Clean up page definition cache when disposing
@@ -538,7 +558,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
   @override
   Widget build(BuildContext context) {
     final navigation = widget.appDefinition.navigationDefinition;
-    
+
     if (navigation == null) {
       // No navigation, just show the initial route
       return FutureBuilder<PageDefinition>(
@@ -576,10 +596,14 @@ class _ApplicationShellState extends State<_ApplicationShell> {
             appBar: AppBar(
               title: Text(widget.appDefinition.title),
               bottom: TabBar(
-                tabs: navigation.items.map((item) => Tab(
-                  text: item.title,
-                  icon: item.icon != null ? Icon(_getIconData(item.icon!)) : null,
-                )).toList(),
+                tabs: navigation.items
+                    .map((item) => Tab(
+                          text: item.title,
+                          icon: item.icon != null
+                              ? Icon(_getIconData(item.icon!))
+                              : null,
+                        ))
+                    .toList(),
               ),
             ),
             body: TabBarView(
@@ -611,7 +635,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
             ),
           ),
         );
-        
+
       case 'bottom':
         return Scaffold(
           body: FutureBuilder<PageDefinition>(
@@ -644,13 +668,15 @@ class _ApplicationShellState extends State<_ApplicationShell> {
                 _currentIndex = index;
               });
             },
-            items: navigation.items.map((item) => BottomNavigationBarItem(
-              icon: Icon(_getIconData(item.icon ?? 'home')),
-              label: item.title,
-            )).toList(),
+            items: navigation.items
+                .map((item) => BottomNavigationBarItem(
+                      icon: Icon(_getIconData(item.icon ?? 'home')),
+                      label: item.title,
+                    ))
+                .toList(),
           ),
         );
-        
+
       default:
         // Drawer navigation
         return Scaffold(
@@ -677,7 +703,9 @@ class _ApplicationShellState extends State<_ApplicationShell> {
                   final index = entry.key;
                   final item = entry.value;
                   return ListTile(
-                    leading: item.icon != null ? Icon(_getIconData(item.icon!)) : null,
+                    leading: item.icon != null
+                        ? Icon(_getIconData(item.icon!))
+                        : null,
                     title: Text(item.title),
                     selected: index == _currentIndex,
                     onTap: () {

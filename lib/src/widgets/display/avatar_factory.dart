@@ -8,20 +8,24 @@ class AvatarWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
     final radius = properties['radius']?.toDouble() ?? 20.0;
-    final backgroundColor = parseColor(context.resolve(properties['backgroundColor']));
-    final foregroundColor = parseColor(context.resolve(properties['foregroundColor']));
+    final backgroundColor =
+        parseColor(context.resolve(properties['backgroundColor']));
+    final foregroundColor =
+        parseColor(context.resolve(properties['foregroundColor']));
     final backgroundImage = properties['backgroundImage'] as String?;
     final text = context.resolve<String?>(properties['text']);
     final icon = properties['icon'] as String?;
-    
+
     // Build child widget
     Widget? child;
     if (text != null && text.isNotEmpty) {
       child = Text(
-        text.length > 2 ? text.substring(0, 2).toUpperCase() : text.toUpperCase(),
+        text.length > 2
+            ? text.substring(0, 2).toUpperCase()
+            : text.toUpperCase(),
         style: TextStyle(color: foregroundColor),
       );
     } else if (icon != null) {
@@ -31,17 +35,18 @@ class AvatarWidgetFactory extends WidgetFactory {
         size: radius,
       );
     }
-    
+
     // Build background image
     ImageProvider? backgroundImageProvider;
     if (backgroundImage != null && backgroundImage.isNotEmpty) {
-      if (backgroundImage.startsWith('http://') || backgroundImage.startsWith('https://')) {
+      if (backgroundImage.startsWith('http://') ||
+          backgroundImage.startsWith('https://')) {
         backgroundImageProvider = NetworkImage(backgroundImage);
       } else if (backgroundImage.startsWith('assets/')) {
         backgroundImageProvider = AssetImage(backgroundImage);
       }
     }
-    
+
     Widget avatar = CircleAvatar(
       radius: radius,
       backgroundColor: backgroundColor,
@@ -49,7 +54,7 @@ class AvatarWidgetFactory extends WidgetFactory {
       backgroundImage: backgroundImageProvider,
       child: child,
     );
-    
+
     return applyCommonWrappers(avatar, properties, context);
   }
 

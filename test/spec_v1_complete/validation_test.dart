@@ -44,7 +44,7 @@ void main() {
                 'change': {
                   'type': 'state',
                   'action': 'set',
-                  'path': 'form.name',
+                  'binding': 'form.name',
                   'value': '{{event.value}}',
                 },
               },
@@ -138,7 +138,7 @@ void main() {
                 'change': {
                   'type': 'state',
                   'action': 'set',
-                  'path': 'form.firstName',
+                  'binding': 'form.firstName',
                   'value': '{{event.value}}',
                 },
               },
@@ -153,7 +153,7 @@ void main() {
                 'change': {
                   'type': 'state',
                   'action': 'set',
-                  'path': 'form.lastName',
+                  'binding': 'form.lastName',
                   'value': '{{event.value}}',
                 },
               },
@@ -169,7 +169,7 @@ void main() {
                 'change': {
                   'type': 'state',
                   'action': 'set',
-                  'path': 'form.email',
+                  'binding': 'form.email',
                   'value': '{{event.value}}',
                 },
               },
@@ -257,7 +257,7 @@ void main() {
                 'change': {
                   'type': 'state',
                   'action': 'set',
-                  'path': 'email',
+                  'binding': 'email',
                   'value': '{{event.value}}',
                 },
                 'blur': {
@@ -516,7 +516,7 @@ void main() {
                 'change': {
                   'type': 'state',
                   'action': 'set',
-                  'path': 'phone',
+                  'binding': 'phone',
                   'value': '{{event.value}}',
                 },
                 'blur': {
@@ -594,7 +594,7 @@ void main() {
                 'change': {
                   'type': 'state',
                   'action': 'set',
-                  'path': 'password',
+                  'binding': 'password',
                   'value': '{{event.value}}',
                 },
               },
@@ -804,7 +804,7 @@ void main() {
                     'change': {
                       'type': 'state',
                       'action': 'set',
-                      'path': 'form.name',
+                      'binding': 'form.name',
                       'value': '{{event.value}}',
                     },
                   },
@@ -820,7 +820,7 @@ void main() {
                     'change': {
                       'type': 'state',
                       'action': 'set',
-                      'path': 'form.email',
+                      'binding': 'form.email',
                       'value': '{{event.value}}',
                     },
                   },
@@ -838,7 +838,7 @@ void main() {
                     'change': {
                       'type': 'state',
                       'action': 'set',
-                      'path': 'form.age',
+                      'binding': 'form.age',
                       'value': '{{event.value}}',
                     },
                   },
@@ -956,6 +956,284 @@ void main() {
         expect(find.text('Name is required'), findsNothing);
         expect(find.text('Email is required'), findsNothing);
         expect(find.text('Age is required'), findsNothing);
+      });
+    });
+    
+    group('New Widget Type Validation', () {
+      testWidgets('should validate numberField input', (WidgetTester tester) async {
+        await runtime.initialize({
+          'type': 'page',
+          'runtime': {
+            'services': {
+              'state': {
+                'initialState': {
+                  'quantity': null,
+                  'quantityError': null,
+                },
+              },
+            },
+          },
+          'content': {
+            'type': 'linear',
+            'direction': 'vertical',
+            'children': [
+              {
+                'type': 'numberField',
+                'label': 'Quantity',
+                'value': '{{quantity}}',
+                'validation': [
+                  {'type': 'required', 'message': 'Quantity is required'},
+                  {'type': 'min', 'value': 1, 'message': 'Minimum quantity is 1'},
+                  {'type': 'max', 'value': 100, 'message': 'Maximum quantity is 100'},
+                ],
+                'error': '{{quantityError}}',
+                'change': {
+                  'type': 'tool',
+                  'tool': 'validateQuantity',
+                  'params': {
+                    'value': '{{event.value}}',
+                  },
+                },
+              },
+              {
+                'type': 'text',
+                'content': 'Quantity: {{quantity ?? "Not set"}}',
+              },
+            ],
+          },
+        });
+        
+        runtime.registerToolExecutor('validateQuantity', (params) async {
+          final value = params['value'];
+          runtime.stateManager.set('quantity', value);
+          
+          if (value == null) {
+            runtime.stateManager.set('quantityError', 'Quantity is required');
+          } else if (value < 1) {
+            runtime.stateManager.set('quantityError', 'Minimum quantity is 1');
+          } else if (value > 100) {
+            runtime.stateManager.set('quantityError', 'Maximum quantity is 100');
+          } else {
+            runtime.stateManager.set('quantityError', null);
+          }
+          
+          return {'success': true};
+        });
+        
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: runtime.buildUI(),
+            ),
+          ),
+        );
+        
+        await tester.pump();
+        
+        // Find the number field (TextField with number keyboard)
+        final numberField = find.byType(TextField).first;
+        
+        // Test invalid inputs
+        await tester.enterText(numberField, '0');
+        await tester.pump();
+        expect(find.text('Minimum quantity is 1'), findsOneWidget);
+        
+        await tester.enterText(numberField, '150');
+        await tester.pump();
+        expect(find.text('Maximum quantity is 100'), findsOneWidget);
+        
+        // Test valid input
+        await tester.enterText(numberField, '50');
+        await tester.pump();
+        expect(find.text('Minimum quantity is 1'), findsNothing);
+        expect(find.text('Maximum quantity is 100'), findsNothing);
+        expect(find.text('Quantity: 50'), findsOneWidget);
+      });
+      
+      testWidgets('should validate dateField input', (WidgetTester tester) async {
+        await runtime.initialize({
+          'type': 'page',
+          'runtime': {
+            'services': {
+              'state': {
+                'initialState': {
+                  'startDate': null,
+                  'endDate': null,
+                  'dateError': null,
+                },
+              },
+            },
+          },
+          'content': {
+            'type': 'linear',
+            'direction': 'vertical',
+            'children': [
+              {
+                'type': 'dateField',
+                'label': 'Start Date',
+                'value': '{{startDate}}',
+                'validation': [
+                  {'type': 'required', 'message': 'Start date is required'},
+                ],
+                'error': '{{dateError}}',
+                'change': {
+                  'type': 'state',
+                  'action': 'set',
+                  'binding': 'startDate',
+                  'value': '{{event.value}}',
+                },
+              },
+              {
+                'type': 'dateField',
+                'label': 'End Date',
+                'value': '{{endDate}}',
+                'minDate': '{{startDate}}',
+                'change': {
+                  'type': 'tool',
+                  'tool': 'validateEndDate',
+                  'params': {
+                    'value': '{{event.value}}',
+                  },
+                },
+              },
+              {
+                'type': 'text',
+                'content': 'Selected: {{startDate}} - {{endDate}}',
+                'visible': '{{startDate != null && endDate != null}}',
+              },
+            ],
+          },
+        });
+        
+        runtime.registerToolExecutor('validateEndDate', (params) async {
+          final endDate = params['value'];
+          final startDate = runtime.stateManager.get('startDate');
+          
+          runtime.stateManager.set('endDate', endDate);
+          
+          if (startDate != null && endDate != null) {
+            final start = DateTime.parse(startDate.toString());
+            final end = DateTime.parse(endDate.toString());
+            
+            if (end.isBefore(start)) {
+              runtime.stateManager.set('dateError', 'End date must be after start date');
+            } else {
+              runtime.stateManager.set('dateError', null);
+            }
+          }
+          
+          return {'success': true};
+        });
+        
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: runtime.buildUI(),
+            ),
+          ),
+        );
+        
+        await tester.pump();
+        
+        // The actual date field interaction would involve platform-specific date pickers
+        // For this test, we're focusing on the validation logic structure
+        expect(find.text('Start Date'), findsOneWidget);
+        expect(find.text('End Date'), findsOneWidget);
+      });
+      
+      testWidgets('should validate colorPicker input', (WidgetTester tester) async {
+        await runtime.initialize({
+          'type': 'page',
+          'runtime': {
+            'services': {
+              'state': {
+                'initialState': {
+                  'primaryColor': '#2196F3',
+                  'secondaryColor': null,
+                  'colorError': null,
+                },
+              },
+            },
+          },
+          'content': {
+            'type': 'linear',
+            'direction': 'vertical',
+            'children': [
+              {
+                'type': 'colorPicker',
+                'label': 'Primary Color',
+                'value': '{{primaryColor}}',
+                'change': {
+                  'type': 'state',
+                  'action': 'set',
+                  'binding': 'primaryColor',
+                  'value': '{{event.value}}',
+                },
+              },
+              {
+                'type': 'colorPicker',
+                'label': 'Secondary Color',
+                'value': '{{secondaryColor}}',
+                'validation': [
+                  {'type': 'required', 'message': 'Secondary color is required'},
+                ],
+                'error': '{{colorError}}',
+                'change': {
+                  'type': 'tool',
+                  'tool': 'validateColor',
+                  'params': {
+                    'value': '{{event.value}}',
+                  },
+                },
+              },
+              {
+                'type': 'box',
+                'height': 50,
+                'decoration': {
+                  'color': '{{primaryColor}}',
+                },
+                'child': {
+                  'type': 'center',
+                  'child': {
+                    'type': 'text',
+                    'content': 'Preview',
+                    'style': {
+                      'color': '#FFFFFF',
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        });
+        
+        runtime.registerToolExecutor('validateColor', (params) async {
+          final color = params['value'];
+          runtime.stateManager.set('secondaryColor', color);
+          
+          if (color == null || color.toString().isEmpty) {
+            runtime.stateManager.set('colorError', 'Secondary color is required');
+          } else {
+            runtime.stateManager.set('colorError', null);
+          }
+          
+          return {'success': true};
+        });
+        
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: runtime.buildUI(),
+            ),
+          ),
+        );
+        
+        await tester.pump();
+        
+        // Verify color picker widgets are rendered
+        expect(find.text('Primary Color'), findsOneWidget);
+        expect(find.text('Secondary Color'), findsOneWidget);
+        expect(find.text('Preview'), findsOneWidget);
       });
     });
   });

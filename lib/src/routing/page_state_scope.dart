@@ -9,7 +9,7 @@ class PageStateScope extends InheritedNotifier<PageStateNotifier> {
   final PageDefinition pageDefinition;
   final String routePath;
   final RuntimeEngine runtimeEngine;
-  
+
   PageStateScope({
     super.key,
     required this.pageDefinition,
@@ -17,32 +17,31 @@ class PageStateScope extends InheritedNotifier<PageStateNotifier> {
     required this.runtimeEngine,
     required super.child,
   }) : super(
-    notifier: PageStateNotifier(pageDefinition.initialState ?? {}),
-  );
-  
+          notifier: PageStateNotifier(pageDefinition.initialState ?? {}),
+        );
+
   /// Get the page state map
   Map<String, dynamic> get pageState => notifier!.state;
 
   static PageStateScope? of(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<PageStateScope>();
   }
-
 }
 
 /// Notifier for page state changes
 class PageStateNotifier extends ChangeNotifier {
   final Map<String, dynamic> _state;
-  
+
   PageStateNotifier(Map<String, dynamic> initialState)
       : _state = Map<String, dynamic>.from(initialState);
-  
+
   Map<String, dynamic> get state => _state;
-  
+
   void updateState(String key, dynamic value) {
     _state[key] = value;
     notifyListeners();
   }
-  
+
   void updateAll(Map<String, dynamic> updates) {
     _state.addAll(updates);
     notifyListeners();
@@ -84,7 +83,7 @@ class _MCPPageWidgetState extends State<MCPPageWidget> {
         }
       });
     }
-    
+
     // Execute page onMount lifecycle
     final lifecycle = widget.pageDefinition.lifecycleDefinition;
     if (lifecycle?.onMount != null) {
@@ -120,7 +119,7 @@ class _MCPPageWidgetState extends State<MCPPageWidget> {
       buildContext: context,
       engine: widget.runtimeEngine,
     );
-    
+
     // Build the page content using the renderer
     return widget.runtimeEngine.renderer.renderWidget(
       widget.pageDefinition.content,

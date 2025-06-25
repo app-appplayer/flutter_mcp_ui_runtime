@@ -8,16 +8,18 @@ class DropdownWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract label if present
     final label = properties['label'] as String?;
-    
+
     // Extract properties
     final binding = properties['binding'] as String?;
-    final value = binding != null 
+    final value = binding != null
         ? context.resolve("{{$binding}}")
         : context.resolve(properties['value']);
-    final items = context.resolve<List<dynamic>>(properties['items']) as List<dynamic>? ?? [];
+    final items =
+        context.resolve<List<dynamic>>(properties['items']) as List<dynamic>? ??
+            [];
     final hint = properties['hint'] as String?;
     final disabledHint = properties['disabledHint'] as String?;
     final elevation = properties['elevation'] as int? ?? 8;
@@ -26,16 +28,19 @@ class DropdownWidgetFactory extends WidgetFactory {
     final iconSize = properties['iconSize']?.toDouble() ?? 24.0;
     final isExpanded = properties['isExpanded'] as bool? ?? false;
     final itemHeight = properties['itemHeight']?.toDouble();
-    
+
     // Extract action handler - MCP UI DSL v1.0 spec
     final onChange = properties['change'] as Map<String, dynamic>?;
-    
+
     // Build dropdown items
     final dropdownItems = items.map<DropdownMenuItem<dynamic>>((item) {
       if (item is Map<String, dynamic>) {
         return DropdownMenuItem(
           value: item['value'],
-          child: Text(item['text']?.toString() ?? item['label']?.toString() ?? item['value']?.toString() ?? ''),
+          child: Text(item['text']?.toString() ??
+              item['label']?.toString() ??
+              item['value']?.toString() ??
+              ''),
         );
       } else {
         return DropdownMenuItem(
@@ -44,48 +49,49 @@ class DropdownWidgetFactory extends WidgetFactory {
         );
       }
     }).toList();
-    
-    
+
     Widget dropdown = DropdownButton<dynamic>(
       value: value,
       items: dropdownItems,
       hint: hint != null ? Text(hint) : null,
       disabledHint: disabledHint != null ? Text(disabledHint) : null,
-      onChanged: onChange != null || binding != null ? (newValue) {
-        // Update state if binding is specified
-        if (binding != null) {
-          context.setValue(binding, newValue);
-        }
-        
-        // Find the index of the selected item
-        int? index;
-        for (int i = 0; i < items.length; i++) {
-          final item = items[i];
-          if (item is Map<String, dynamic>) {
-            if (item['value'] == newValue) {
-              index = i;
-              break;
+      onChanged: onChange != null || binding != null
+          ? (newValue) {
+              // Update state if binding is specified
+              if (binding != null) {
+                context.setValue(binding, newValue);
+              }
+
+              // Find the index of the selected item
+              int? index;
+              for (int i = 0; i < items.length; i++) {
+                final item = items[i];
+                if (item is Map<String, dynamic>) {
+                  if (item['value'] == newValue) {
+                    index = i;
+                    break;
+                  }
+                } else if (item == newValue) {
+                  index = i;
+                  break;
+                }
+              }
+
+              // Execute action if provided with event context
+              if (onChange != null) {
+                final eventContext = context.createChildContext(
+                  variables: {
+                    'event': {
+                      'value': newValue,
+                      'index': index,
+                      'type': 'change',
+                    },
+                  },
+                );
+                context.actionHandler.execute(onChange, eventContext);
+              }
             }
-          } else if (item == newValue) {
-            index = i;
-            break;
-          }
-        }
-        
-        // Execute action if provided with event context
-        if (onChange != null) {
-          final eventContext = context.createChildContext(
-            variables: {
-              'event': {
-                'value': newValue,
-                'index': index,
-                'type': 'change',
-              },
-            },
-          );
-          context.actionHandler.execute(onChange, eventContext);
-        }
-      } : null,
+          : null,
       elevation: elevation,
       style: style,
       underline: underline ? null : Container(),
@@ -93,7 +99,7 @@ class DropdownWidgetFactory extends WidgetFactory {
       isExpanded: isExpanded,
       itemHeight: itemHeight,
     );
-    
+
     // Wrap with label if provided
     if (label != null) {
       dropdown = Column(
@@ -112,13 +118,14 @@ class DropdownWidgetFactory extends WidgetFactory {
         ],
       );
     }
-    
+
     return applyCommonWrappers(dropdown, properties, context);
   }
 
-  TextStyle? _parseTextStyle(Map<String, dynamic>? style, RenderContext context) {
+  TextStyle? _parseTextStyle(
+      Map<String, dynamic>? style, RenderContext context) {
     if (style == null) return null;
-    
+
     return TextStyle(
       color: parseColor(context.resolve(style['color'])),
       fontSize: style['fontSize']?.toDouble(),

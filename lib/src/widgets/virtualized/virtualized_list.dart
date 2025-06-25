@@ -18,7 +18,7 @@ class VirtualizedListWidget extends StatefulWidget {
   final bool reverse;
   final bool primary;
   final String? restorationId;
-  
+
   const VirtualizedListWidget({
     super.key,
     required this.items,
@@ -35,7 +35,7 @@ class VirtualizedListWidget extends StatefulWidget {
     bool? primary,
     this.restorationId,
   }) : primary = primary ?? false;
-  
+
   @override
   State<VirtualizedListWidget> createState() => _VirtualizedListWidgetState();
 }
@@ -43,15 +43,16 @@ class VirtualizedListWidget extends StatefulWidget {
 class _VirtualizedListWidgetState extends State<VirtualizedListWidget> {
   final MCPLogger _logger = MCPLogger('VirtualizedList');
   late ScrollController _scrollController;
-  
+
   @override
   void initState() {
     super.initState();
     _scrollController = widget.controller ?? ScrollController();
-    
-    _logger.debug('Initializing VirtualizedList with ${widget.items.length} items');
+
+    _logger.debug(
+        'Initializing VirtualizedList with ${widget.items.length} items');
   }
-  
+
   @override
   void dispose() {
     if (widget.controller == null) {
@@ -59,7 +60,7 @@ class _VirtualizedListWidgetState extends State<VirtualizedListWidget> {
     }
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     // Use virtualization for lists larger than threshold
@@ -71,7 +72,7 @@ class _VirtualizedListWidgetState extends State<VirtualizedListWidget> {
       return _buildRegularList();
     }
   }
-  
+
   /// Build virtualized list using ListView.builder
   Widget _buildVirtualizedList() {
     return ListView.builder(
@@ -82,7 +83,8 @@ class _VirtualizedListWidgetState extends State<VirtualizedListWidget> {
       physics: widget.physics,
       shrinkWrap: widget.shrinkWrap,
       padding: widget.padding,
-      itemExtent: widget.itemHeight, // Improves performance if all items have same height
+      itemExtent: widget
+          .itemHeight, // Improves performance if all items have same height
       cacheExtent: widget.cacheExtent.toDouble(),
       restorationId: widget.restorationId,
       itemCount: widget.items.length,
@@ -91,13 +93,13 @@ class _VirtualizedListWidgetState extends State<VirtualizedListWidget> {
       },
     );
   }
-  
+
   /// Build regular list for small item counts
   Widget _buildRegularList() {
     final children = widget.items.asMap().entries.map((entry) {
       return widget.itemBuilder(context, entry.value, entry.key);
     }).toList();
-    
+
     if (widget.scrollDirection == Axis.vertical) {
       return SingleChildScrollView(
         controller: _scrollController,
@@ -147,7 +149,7 @@ class VirtualizedGridWidget extends StatefulWidget {
   final ScrollController? controller;
   final bool reverse;
   final bool primary;
-  
+
   const VirtualizedGridWidget({
     super.key,
     required this.items,
@@ -166,7 +168,7 @@ class VirtualizedGridWidget extends StatefulWidget {
     this.reverse = false,
     bool? primary,
   }) : primary = primary ?? false;
-  
+
   @override
   State<VirtualizedGridWidget> createState() => _VirtualizedGridWidgetState();
 }
@@ -174,15 +176,16 @@ class VirtualizedGridWidget extends StatefulWidget {
 class _VirtualizedGridWidgetState extends State<VirtualizedGridWidget> {
   final MCPLogger _logger = MCPLogger('VirtualizedGrid');
   late ScrollController _scrollController;
-  
+
   @override
   void initState() {
     super.initState();
     _scrollController = widget.controller ?? ScrollController();
-    
-    _logger.debug('Initializing VirtualizedGrid with ${widget.items.length} items');
+
+    _logger.debug(
+        'Initializing VirtualizedGrid with ${widget.items.length} items');
   }
-  
+
   @override
   void dispose() {
     if (widget.controller == null) {
@@ -190,7 +193,7 @@ class _VirtualizedGridWidgetState extends State<VirtualizedGridWidget> {
     }
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     // Use virtualization for grids larger than threshold
@@ -202,7 +205,7 @@ class _VirtualizedGridWidgetState extends State<VirtualizedGridWidget> {
       return _buildRegularGrid();
     }
   }
-  
+
   /// Build virtualized grid using GridView.builder
   Widget _buildVirtualizedGrid() {
     return GridView.builder(
@@ -226,13 +229,13 @@ class _VirtualizedGridWidgetState extends State<VirtualizedGridWidget> {
       },
     );
   }
-  
+
   /// Build regular grid for small item counts
   Widget _buildRegularGrid() {
     final children = widget.items.asMap().entries.map((entry) {
       return widget.itemBuilder(context, entry.value, entry.key);
     }).toList();
-    
+
     return SingleChildScrollView(
       controller: _scrollController,
       scrollDirection: widget.scrollDirection,
@@ -257,7 +260,7 @@ extension VirtualizationExtension on RenderContext {
     final virtualizeThreshold = threshold ?? 100;
     return itemCount > virtualizeThreshold;
   }
-  
+
   /// Create virtualized list widget
   Widget createVirtualizedList({
     required List<dynamic> items,
@@ -288,7 +291,7 @@ extension VirtualizationExtension on RenderContext {
       primary: primary ?? false,
     );
   }
-  
+
   /// Create virtualized grid widget
   Widget createVirtualizedGrid({
     required List<dynamic> items,

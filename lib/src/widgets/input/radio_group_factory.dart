@@ -7,24 +7,23 @@ class RadioGroupFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
     final label = properties['label'] as String?;
     final binding = properties['binding'] as String?;
     final options = properties['options'] as List<dynamic>? ?? [];
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
     final direction = properties['direction'] as String? ?? 'vertical';
-    
+
     // Get current value
-    final currentValue = binding != null 
-        ? context.resolve("{{$binding}}")
-        : properties['value'];
-    
+    final currentValue =
+        binding != null ? context.resolve("{{$binding}}") : properties['value'];
+
     // Build radio buttons
     final radioButtons = options.map((option) {
       String value;
       String label;
-      
+
       if (option is Map<String, dynamic>) {
         value = option['value']?.toString() ?? '';
         label = option['label']?.toString() ?? value;
@@ -32,28 +31,28 @@ class RadioGroupFactory extends WidgetFactory {
         value = option.toString();
         label = value;
       }
-      
+
       return RadioListTile<String>(
         title: Text(label),
         value: value,
         groupValue: currentValue?.toString(),
-        onChanged: enabled ? (newValue) {
-          if (binding != null && newValue != null) {
-            context.setValue(binding, newValue);
-          }
-        } : null,
+        onChanged: enabled
+            ? (newValue) {
+                if (binding != null && newValue != null) {
+                  context.setValue(binding, newValue);
+                }
+              }
+            : null,
         dense: true,
         contentPadding: EdgeInsets.zero,
       );
     }).toList();
-    
+
     Widget radioGroup;
     if (direction == 'horizontal') {
       radioGroup = Row(
         mainAxisSize: MainAxisSize.min,
-        children: radioButtons.map((radio) => 
-          Flexible(child: radio)
-        ).toList(),
+        children: radioButtons.map((radio) => Flexible(child: radio)).toList(),
       );
     } else {
       radioGroup = Column(
@@ -62,7 +61,7 @@ class RadioGroupFactory extends WidgetFactory {
         children: radioButtons,
       );
     }
-    
+
     // Add label if provided
     if (label != null) {
       radioGroup = Column(
@@ -81,7 +80,7 @@ class RadioGroupFactory extends WidgetFactory {
         ],
       );
     }
-    
+
     return applyCommonWrappers(radioGroup, properties, context);
   }
 }

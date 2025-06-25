@@ -8,20 +8,20 @@ class StackWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Stack is a multi-child widget, so children should be at root level
     final childrenProp = definition['children'];
-    
+
     // Resolve children if it's a binding expression
     final resolvedChildren = context.resolve(childrenProp);
-    
+
     List<Widget> children = [];
     if (resolvedChildren is List<dynamic>) {
       children = resolvedChildren
           .map((child) => context.buildWidget(child as Map<String, dynamic>))
           .toList();
     }
-    
+
     // Build stack
     Widget stack = Stack(
       alignment: _parseAlignment(properties['alignment']),
@@ -30,7 +30,7 @@ class StackWidgetFactory extends WidgetFactory {
       clipBehavior: _parseClipBehavior(properties['clipBehavior']),
       children: children,
     );
-    
+
     return applyCommonWrappers(stack, properties, context);
   }
 

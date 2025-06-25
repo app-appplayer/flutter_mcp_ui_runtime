@@ -13,7 +13,7 @@ void main() {
         title: 'Test App',
         version: '1.0.0',
         initialRoute: '/home',
-        routes: {
+        routes: const {
           '/home': 'mcp://server/pages/home',
           '/profile': 'mcp://server/pages/profile',
           '/users/:id': 'mcp://server/pages/user-detail',
@@ -182,7 +182,7 @@ void main() {
       title: 'Nav Test App',
       version: '1.0.0',
       initialRoute: '/home',
-      routes: {
+      routes: const {
         '/home': 'home.json',
         '/profile': 'profile.json',
       },

@@ -13,7 +13,7 @@ class WidgetRegistry {
   void register(String type, WidgetFactory factory) {
     // Store with exact case for primary registration
     _factories[type] = factory;
-    
+
     // Add to categorized types
     final category = WidgetTypes.getCategoryForType(type);
     if (category != null) {
@@ -54,7 +54,7 @@ class WidgetRegistry {
   /// Unregister a widget factory
   void unregister(String type) {
     _factories.remove(type);
-    
+
     // Remove from categorized types
     for (final list in _categorizedTypes.values) {
       list.remove(type);
@@ -71,27 +71,34 @@ class WidgetRegistry {
   Map<String, dynamic> getRegistrationStatus() {
     final allExpectedTypes = WidgetTypes.allTypes;
     final registeredTypes = this.registeredTypes;
-    final missingTypes = allExpectedTypes.where((type) => !registeredTypes.contains(type)).toList();
-    
+    final missingTypes = allExpectedTypes
+        .where((type) => !registeredTypes.contains(type))
+        .toList();
+
     final statusByCategory = <String, Map<String, dynamic>>{};
     for (final category in WidgetTypes.categories.keys) {
       final expected = WidgetTypes.getTypesByCategory(category);
       final registered = getTypesByCategory(category);
-      final missing = expected.where((type) => !registered.contains(type)).toList();
-      
+      final missing =
+          expected.where((type) => !registered.contains(type)).toList();
+
       statusByCategory[category] = {
         'expected': expected.length,
         'registered': registered.length,
         'missing': missing,
-        'percentage': expected.isEmpty ? 100 : (registered.length / expected.length * 100).round(),
+        'percentage': expected.isEmpty
+            ? 100
+            : (registered.length / expected.length * 100).round(),
       };
     }
-    
+
     return {
       'totalExpected': allExpectedTypes.length,
       'totalRegistered': registeredTypes.length,
       'totalMissing': missingTypes.length,
-      'percentage': allExpectedTypes.isEmpty ? 100 : (registeredTypes.length / allExpectedTypes.length * 100).round(),
+      'percentage': allExpectedTypes.isEmpty
+          ? 100
+          : (registeredTypes.length / allExpectedTypes.length * 100).round(),
       'missingTypes': missingTypes,
       'byCategory': statusByCategory,
     };
@@ -102,27 +109,31 @@ class WidgetRegistry {
     final status = getRegistrationStatus();
     if (kDebugMode) {
       _logger.info('=== Widget Registration Status ===');
-      _logger.info('Total: ${status['totalRegistered']}/${status['totalExpected']} (${status['percentage']}%)');
+      _logger.info(
+          'Total: ${status['totalRegistered']}/${status['totalExpected']} (${status['percentage']}%)');
       _logger.info('');
     }
-    
-    final byCategory = status['byCategory'] as Map<String, Map<String, dynamic>>;
+
+    final byCategory =
+        status['byCategory'] as Map<String, Map<String, dynamic>>;
     for (final entry in byCategory.entries) {
       final category = entry.key;
       final data = entry.value;
       if (kDebugMode) {
-        _logger.info('$category: ${data['registered']}/${data['expected']} (${data['percentage']}%)');
-        
+        _logger.info(
+            '$category: ${data['registered']}/${data['expected']} (${data['percentage']}%)');
+
         final missing = data['missing'] as List;
         if (missing.isNotEmpty) {
           _logger.info('  Missing: ${missing.join(', ')}');
         }
       }
     }
-    
+
     if (status['totalMissing'] > 0) {
       if (kDebugMode) {
-        _logger.info('\nAll missing types: ${(status['missingTypes'] as List).join(', ')}');
+        _logger.info(
+            '\nAll missing types: ${(status['missingTypes'] as List).join(', ')}');
       }
     }
   }

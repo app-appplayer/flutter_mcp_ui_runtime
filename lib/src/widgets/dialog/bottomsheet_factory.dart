@@ -8,22 +8,24 @@ class BottomSheetWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
-    final backgroundColor = parseColor(context.resolve(properties['backgroundColor']));
+    final backgroundColor =
+        parseColor(context.resolve(properties['backgroundColor']));
     final elevation = properties['elevation']?.toDouble();
     final shape = _parseShapeBorder(properties['shape']);
     final clipBehavior = _parseClip(properties['clipBehavior']);
     final constraints = _parseBoxConstraints(properties['constraints']);
     final enableDrag = properties['enableDrag'] as bool? ?? true;
     final showDragHandle = properties['showDragHandle'] as bool? ?? false;
-    final dragHandleColor = parseColor(context.resolve(properties['dragHandleColor']));
+    final dragHandleColor =
+        parseColor(context.resolve(properties['dragHandleColor']));
     final dragHandleSize = _parseSize(properties['dragHandleSize']);
     final shadowColor = parseColor(context.resolve(properties['shadowColor']));
-    
+
     // Extract action handlers
     final onClosing = properties['onClosing'] as Map<String, dynamic>?;
-    
+
     // Build child widget
     final childrenData = definition['children'] as List<dynamic>?;
     Widget? child;
@@ -41,21 +43,24 @@ class BottomSheetWidgetFactory extends WidgetFactory {
         );
       }
     }
-    
+
     // BottomSheet requires an AnimationController, typically used with showModalBottomSheet
     // For standalone use, wrap in a simple container
     Widget bottomSheet = Container(
       clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: shape is RoundedRectangleBorder ? shape.borderRadius : null,
-        boxShadow: elevation != null ? [
-          BoxShadow(
-            color: shadowColor ?? Colors.black26,
-            blurRadius: elevation,
-            offset: Offset(0, -elevation / 2),
-          ),
-        ] : null,
+        borderRadius:
+            shape is RoundedRectangleBorder ? shape.borderRadius : null,
+        boxShadow: elevation != null
+            ? [
+                BoxShadow(
+                  color: shadowColor ?? Colors.black26,
+                  blurRadius: elevation,
+                  offset: Offset(0, -elevation / 2),
+                ),
+              ]
+            : null,
       ),
       constraints: constraints,
       child: Column(
@@ -75,7 +80,7 @@ class BottomSheetWidgetFactory extends WidgetFactory {
         ],
       ),
     );
-    
+
     // Apply drag behavior if enabled
     if (enableDrag) {
       bottomSheet = GestureDetector(
@@ -89,7 +94,7 @@ class BottomSheetWidgetFactory extends WidgetFactory {
         child: bottomSheet,
       );
     }
-    
+
     // If onClosing is specified but drag is disabled, wrap with NotificationListener
     if (onClosing != null && !enableDrag) {
       bottomSheet = NotificationListener<DraggableScrollableNotification>(
@@ -102,13 +107,13 @@ class BottomSheetWidgetFactory extends WidgetFactory {
         child: bottomSheet,
       );
     }
-    
+
     return bottomSheet;
   }
 
   ShapeBorder? _parseShapeBorder(Map<String, dynamic>? shape) {
     if (shape == null) return null;
-    
+
     final type = shape['type'] as String?;
     switch (type) {
       case 'rounded':
@@ -140,7 +145,7 @@ class BottomSheetWidgetFactory extends WidgetFactory {
 
   BoxConstraints? _parseBoxConstraints(Map<String, dynamic>? constraints) {
     if (constraints == null) return null;
-    
+
     return BoxConstraints(
       minWidth: constraints['minWidth']?.toDouble() ?? 0.0,
       maxWidth: constraints['maxWidth']?.toDouble() ?? double.infinity,
@@ -151,7 +156,7 @@ class BottomSheetWidgetFactory extends WidgetFactory {
 
   Size? _parseSize(Map<String, dynamic>? size) {
     if (size == null) return null;
-    
+
     return Size(
       size['width']?.toDouble() ?? 0.0,
       size['height']?.toDouble() ?? 0.0,

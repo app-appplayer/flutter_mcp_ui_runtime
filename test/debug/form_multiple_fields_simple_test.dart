@@ -2,8 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
 import 'package:flutter_mcp_ui_runtime/src/theme/theme_manager.dart';
-import 'package:flutter_mcp_ui_runtime/src/i18n/i18n_manager.dart';
-import 'package:flutter_mcp_ui_runtime/src/actions/action_handler.dart';
 import 'package:flutter_mcp_ui_runtime/src/optimization/widget_cache.dart';
 
 void main() {

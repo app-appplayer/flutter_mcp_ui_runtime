@@ -8,33 +8,33 @@ class DecoratedBoxWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract decoration
-    final decoration = _parseDecoration(properties['decoration'], context) ?? 
-                      const BoxDecoration();
-    final position = _parseDecorationPosition(properties['position']) ?? 
-                    DecorationPosition.background;
-    
+    final decoration = _parseDecoration(properties['decoration'], context) ??
+        const BoxDecoration();
+    final position = _parseDecorationPosition(properties['position']) ??
+        DecorationPosition.background;
+
     // Extract child widget
-    final childrenDef = properties['children'] as List<dynamic>? ?? 
-                       definition['children'] as List<dynamic>?;
+    final childrenDef = properties['children'] as List<dynamic>? ??
+        definition['children'] as List<dynamic>?;
     Widget? child;
     if (childrenDef != null && childrenDef.isNotEmpty) {
       child = context.buildWidget(childrenDef.first as Map<String, dynamic>);
     }
-    
+
     Widget decoratedBox = DecoratedBox(
       decoration: decoration,
       position: position,
       child: child ?? const SizedBox.shrink(),
     );
-    
+
     return applyCommonWrappers(decoratedBox, properties, context);
   }
 
   Decoration? _parseDecoration(dynamic decoration, RenderContext context) {
     if (decoration == null) return null;
-    
+
     if (decoration is Map<String, dynamic>) {
       // Check if it's a gradient decoration
       if (decoration.containsKey('gradient')) {
@@ -46,7 +46,7 @@ class DecoratedBoxWidgetFactory extends WidgetFactory {
           shape: _parseBoxShape(decoration['shape']) ?? BoxShape.rectangle,
         );
       }
-      
+
       // Standard box decoration
       return BoxDecoration(
         color: parseColor(context.resolve(decoration['color'])),
@@ -57,22 +57,25 @@ class DecoratedBoxWidgetFactory extends WidgetFactory {
         shape: _parseBoxShape(decoration['shape']) ?? BoxShape.rectangle,
       );
     }
-    
+
     return null;
   }
 
-  Gradient? _parseGradient(Map<String, dynamic>? gradient, RenderContext context) {
+  Gradient? _parseGradient(
+      Map<String, dynamic>? gradient, RenderContext context) {
     if (gradient == null) return null;
-    
+
     final type = gradient['type'] as String? ?? 'linear';
     final colors = (gradient['colors'] as List<dynamic>?)
-        ?.map((color) => parseColor(context.resolve(color)) ?? Colors.transparent)
-        .toList() ?? [];
+            ?.map((color) =>
+                parseColor(context.resolve(color)) ?? Colors.transparent)
+            .toList() ??
+        [];
     final stops = (gradient['stops'] as List<dynamic>?)
         ?.map((stop) => stop.toDouble())
         .cast<double>()
         .toList();
-    
+
     switch (type) {
       case 'linear':
         return LinearGradient(
@@ -101,19 +104,20 @@ class DecoratedBoxWidgetFactory extends WidgetFactory {
     }
   }
 
-  DecorationImage? _parseDecorationImage(Map<String, dynamic>? image, RenderContext context) {
+  DecorationImage? _parseDecorationImage(
+      Map<String, dynamic>? image, RenderContext context) {
     if (image == null) return null;
-    
+
     final src = context.resolve<String>(image['src']);
     if (src.isEmpty) return null;
-    
+
     ImageProvider imageProvider;
     if (src.startsWith('http')) {
       imageProvider = NetworkImage(src);
     } else {
       imageProvider = AssetImage(src);
     }
-    
+
     return DecorationImage(
       image: imageProvider,
       fit: _parseBoxFit(image['fit']) ?? BoxFit.cover,
@@ -124,11 +128,11 @@ class DecoratedBoxWidgetFactory extends WidgetFactory {
 
   BorderRadius? _parseBorderRadius(dynamic value) {
     if (value == null) return null;
-    
+
     if (value is num) {
       return BorderRadius.circular(value.toDouble());
     }
-    
+
     if (value is Map<String, dynamic>) {
       return BorderRadius.only(
         topLeft: Radius.circular(value['topLeft']?.toDouble() ?? 0),
@@ -137,26 +141,27 @@ class DecoratedBoxWidgetFactory extends WidgetFactory {
         bottomRight: Radius.circular(value['bottomRight']?.toDouble() ?? 0),
       );
     }
-    
+
     return null;
   }
 
   Border? _parseBorder(dynamic border, RenderContext context) {
     if (border == null) return null;
-    
+
     if (border is Map<String, dynamic>) {
-      final color = parseColor(context.resolve(border['color'])) ?? Colors.black;
+      final color =
+          parseColor(context.resolve(border['color'])) ?? Colors.black;
       final width = border['width']?.toDouble() ?? 1.0;
-      
+
       return Border.all(color: color, width: width);
     }
-    
+
     return null;
   }
 
   List<BoxShadow>? _parseBoxShadow(dynamic shadow, RenderContext context) {
     if (shadow == null) return null;
-    
+
     if (shadow is Map<String, dynamic>) {
       return [
         BoxShadow(
@@ -167,29 +172,31 @@ class DecoratedBoxWidgetFactory extends WidgetFactory {
         ),
       ];
     }
-    
+
     if (shadow is List) {
-      return shadow.map((s) => BoxShadow(
-        color: parseColor(context.resolve(s['color'])) ?? Colors.black,
-        blurRadius: s['blur']?.toDouble() ?? 0,
-        spreadRadius: s['spread']?.toDouble() ?? 0,
-        offset: _parseOffset(s['offset']),
-      )).toList();
+      return shadow
+          .map((s) => BoxShadow(
+                color: parseColor(context.resolve(s['color'])) ?? Colors.black,
+                blurRadius: s['blur']?.toDouble() ?? 0,
+                spreadRadius: s['spread']?.toDouble() ?? 0,
+                offset: _parseOffset(s['offset']),
+              ))
+          .toList();
     }
-    
+
     return null;
   }
 
   Offset _parseOffset(dynamic offset) {
     if (offset == null) return Offset.zero;
-    
+
     if (offset is Map<String, dynamic>) {
       return Offset(
         offset['x']?.toDouble() ?? 0,
         offset['y']?.toDouble() ?? 0,
       );
     }
-    
+
     return Offset.zero;
   }
 

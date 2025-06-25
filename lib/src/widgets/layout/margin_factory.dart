@@ -8,15 +8,15 @@ class MarginWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
     final children = definition['children'] as List<dynamic>? ?? [];
-    
-    final margin = resolveEdgeInsets(properties['margin']) ?? 
-                   resolveEdgeInsets(properties['value']) ??
-                   const EdgeInsets.all(8.0);
-    
+
+    final margin = resolveEdgeInsets(properties['margin']) ??
+        resolveEdgeInsets(properties['value']) ??
+        const EdgeInsets.all(8.0);
+
     Widget child = children.isNotEmpty
         ? context.buildWidget(children.first as Map<String, dynamic>)
         : Container();
-    
+
     return Container(
       margin: margin,
       child: child,

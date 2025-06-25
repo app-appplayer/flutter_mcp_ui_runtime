@@ -7,7 +7,7 @@ class VerticalDividerWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     return VerticalDivider(
       width: properties['width']?.toDouble(),
       thickness: properties['thickness']?.toDouble(),

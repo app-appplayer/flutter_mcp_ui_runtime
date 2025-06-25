@@ -8,17 +8,18 @@ class TableWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
     final rows = definition['rows'] as List<dynamic>? ?? [];
-    
+
     return Table(
       border: _resolveTableBorder(properties['border']),
       defaultColumnWidth: _resolveColumnWidth(properties['defaultColumnWidth']),
       textDirection: _resolveTextDirection(properties['textDirection']),
       textBaseline: _resolveTextBaseline(properties['textBaseline']),
-      defaultVerticalAlignment: _resolveTableCellVerticalAlignment(properties['defaultVerticalAlignment']),
+      defaultVerticalAlignment: _resolveTableCellVerticalAlignment(
+          properties['defaultVerticalAlignment']),
       children: rows.map((row) {
         final rowData = row as Map<String, dynamic>;
         final cells = rowData['cells'] as List<dynamic>? ?? [];
-        
+
         return TableRow(
           decoration: _resolveBoxDecoration(rowData['decoration']),
           children: cells.map((cell) {
@@ -32,7 +33,7 @@ class TableWidgetFactory extends WidgetFactory {
       }).toList(),
     );
   }
-  
+
   TableBorder? _resolveTableBorder(dynamic border) {
     if (border == null) return null;
     if (border is Map<String, dynamic>) {
@@ -43,7 +44,7 @@ class TableWidgetFactory extends WidgetFactory {
     }
     return null;
   }
-  
+
   TableColumnWidth _resolveColumnWidth(dynamic width) {
     if (width is String) {
       switch (width) {
@@ -74,7 +75,7 @@ class TableWidgetFactory extends WidgetFactory {
     }
     return const FlexColumnWidth();
   }
-  
+
   TextDirection? _resolveTextDirection(String? direction) {
     switch (direction) {
       case 'ltr':
@@ -85,7 +86,7 @@ class TableWidgetFactory extends WidgetFactory {
         return null;
     }
   }
-  
+
   TextBaseline? _resolveTextBaseline(String? baseline) {
     switch (baseline) {
       case 'alphabetic':
@@ -96,8 +97,9 @@ class TableWidgetFactory extends WidgetFactory {
         return null;
     }
   }
-  
-  TableCellVerticalAlignment _resolveTableCellVerticalAlignment(String? alignment) {
+
+  TableCellVerticalAlignment _resolveTableCellVerticalAlignment(
+      String? alignment) {
     switch (alignment) {
       case 'top':
         return TableCellVerticalAlignment.top;
@@ -113,13 +115,13 @@ class TableWidgetFactory extends WidgetFactory {
         return TableCellVerticalAlignment.top;
     }
   }
-  
+
   BoxDecoration? _resolveBoxDecoration(dynamic decoration) {
     if (decoration == null) return null;
     if (decoration is Map<String, dynamic>) {
       return BoxDecoration(
         color: parseColor(decoration['color']),
-        border: decoration['border'] != null 
+        border: decoration['border'] != null
             ? Border.all(
                 color: parseColor(decoration['border']['color']) ?? Colors.grey,
                 width: decoration['border']['width']?.toDouble() ?? 1.0,

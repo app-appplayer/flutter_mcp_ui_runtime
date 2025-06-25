@@ -270,7 +270,7 @@ void main() {
         await tester.pumpWidget(MaterialApp(home: Scaffold(body: runtime.buildUI())));
         await tester.pump();
         
-        final containerHeight = 200.0;
+        const containerHeight = 200.0;
         final textCenter = tester.getCenter(find.text('Center aligned'));
         
         // Should be vertically centered

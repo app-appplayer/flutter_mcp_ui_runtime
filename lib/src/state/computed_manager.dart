@@ -8,7 +8,7 @@ import '../utils/mcp_logger.dart';
 class ComputedConfig {
   final String expression;
   final List<String> dependencies;
-  
+
   ComputedConfig({
     required this.expression,
     required this.dependencies,
@@ -20,7 +20,7 @@ class WatcherConfig {
   final Function(dynamic value, dynamic oldValue) handler;
   final bool immediate;
   final bool deep;
-  
+
   WatcherConfig({
     required this.handler,
     this.immediate = false,
@@ -35,10 +35,10 @@ class ComputedProperty {
   final List<String> dependencies;
   final StateManager stateManager;
   final BindingEngine bindingEngine;
-  
+
   dynamic _cachedValue;
   bool _isDirty = true;
-  
+
   ComputedProperty({
     required this.key,
     required this.expression,
@@ -46,18 +46,18 @@ class ComputedProperty {
     required this.stateManager,
     required this.bindingEngine,
   });
-  
+
   dynamic get value {
     if (_isDirty) {
       _recompute();
     }
     return _cachedValue;
   }
-  
+
   void invalidate() {
     _isDirty = true;
   }
-  
+
   void _recompute() {
     // Create a simple context for evaluation
     final context = SimpleComputedContext(stateManager);
@@ -73,14 +73,14 @@ class Watcher {
   final bool immediate;
   final bool deep;
   dynamic _lastValue;
-  
+
   Watcher({
     required this.path,
     required this.handler,
     this.immediate = false,
     this.deep = false,
   });
-  
+
   void update(dynamic newValue) {
     if (_hasChanged(newValue, _lastValue)) {
       final oldValue = _lastValue;
@@ -88,7 +88,7 @@ class Watcher {
       handler(newValue, oldValue);
     }
   }
-  
+
   bool _hasChanged(dynamic newValue, dynamic oldValue) {
     if (deep) {
       // Deep comparison for objects and arrays
@@ -96,11 +96,11 @@ class Watcher {
     }
     return newValue != oldValue;
   }
-  
+
   bool _deepEquals(dynamic a, dynamic b) {
     if (a == b) return true;
     if (a.runtimeType != b.runtimeType) return false;
-    
+
     if (a is Map && b is Map) {
       if (a.length != b.length) return false;
       for (final key in a.keys) {
@@ -110,7 +110,7 @@ class Watcher {
       }
       return true;
     }
-    
+
     if (a is List && b is List) {
       if (a.length != b.length) return false;
       for (int i = 0; i < a.length; i++) {
@@ -118,10 +118,10 @@ class Watcher {
       }
       return true;
     }
-    
+
     return false;
   }
-  
+
   dynamic _cloneValue(dynamic value) {
     if (value is Map) {
       return Map<String, dynamic>.from(value);
@@ -141,13 +141,13 @@ class ComputedManager {
   final BindingEngine _bindingEngine;
   final Map<String, StreamSubscription> _subscriptions = {};
   final MCPLogger _logger = MCPLogger('ComputedManager');
-  
+
   ComputedManager({
     required StateManager stateManager,
     required BindingEngine bindingEngine,
   })  : _stateManager = stateManager,
         _bindingEngine = bindingEngine;
-  
+
   /// Register a computed property
   void registerComputed(String key, ComputedConfig config) {
     final computed = ComputedProperty(
@@ -157,20 +157,21 @@ class ComputedManager {
       stateManager: _stateManager,
       bindingEngine: _bindingEngine,
     );
-    
+
     _computedProperties[key] = computed;
-    
+
     // Listen to dependencies
-    for (final dep in config.dependencies) {
+    for (final _ in config.dependencies) {
       _stateManager.addListener(() {
         computed.invalidate();
         _notifyWatchers(key);
       });
     }
-    
-    _logger.debug('Registered computed property: $key with dependencies: ${config.dependencies}');
+
+    _logger.debug(
+        'Registered computed property: $key with dependencies: ${config.dependencies}');
   }
-  
+
   /// Register a watcher
   void registerWatcher(String path, WatcherConfig config) {
     final watcher = Watcher(
@@ -179,41 +180,42 @@ class ComputedManager {
       immediate: config.immediate,
       deep: config.deep,
     );
-    
+
     _watchers[path] ??= [];
     _watchers[path]!.add(watcher);
-    
+
     // Listen to changes
     _stateManager.addListener(() {
       final value = _getValue(path);
       watcher.update(value);
     });
-    
+
     if (watcher.immediate) {
       final value = _getValue(path);
       watcher._lastValue = watcher._cloneValue(value);
       watcher.handler(value, null);
     }
-    
-    _logger.debug('Registered watcher for: $path (immediate: ${config.immediate}, deep: ${config.deep})');
+
+    _logger.debug(
+        'Registered watcher for: $path (immediate: ${config.immediate}, deep: ${config.deep})');
   }
-  
+
   /// Get computed property value
   dynamic getComputed(String key) {
     return _computedProperties[key]?.value;
   }
-  
+
   /// Get value (either computed or from state)
   dynamic _getValue(String path) {
     // Check if it's a computed property
     if (_computedProperties.containsKey(path)) {
       return _computedProperties[path]!.value;
     }
-    
+
     // Otherwise get from state
     return _stateManager.get(path);
   }
-  
+
   /// Notify watchers of a change
   void _notifyWatchers(String path) {
     final watchers = _watchers[path];
@@ -224,7 +226,7 @@ class ComputedManager {
       }
     }
   }
-  
+
   /// Dispose of all resources
   void dispose() {
     for (final subscription in _subscriptions.values) {
@@ -239,14 +241,14 @@ class ComputedManager {
 /// Simple context for computed property evaluation
 class SimpleComputedContext implements RenderContext {
   final StateManager _stateManager;
-  
+
   SimpleComputedContext(this._stateManager);
-  
+
   @override
   T getValue<T>(String path) {
     return _stateManager.get(path) as T;
   }
-  
+
   @override
   T resolve<T>(dynamic value) {
     // For computed properties, we only need basic resolution
@@ -254,21 +256,21 @@ class SimpleComputedContext implements RenderContext {
     if (T == String) return value?.toString() as T;
     return value as T;
   }
-  
+
   // These are not used in computed property evaluation
   @override
   T? getState<T>(String path) => getValue(path) as T?;
-  
+
   @override
   void setValue(String path, dynamic value) {
     _stateManager.set(path, value);
   }
-  
+
   @override
   void setState(String path, dynamic value) {
     setValue(path, value);
   }
-  
+
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }

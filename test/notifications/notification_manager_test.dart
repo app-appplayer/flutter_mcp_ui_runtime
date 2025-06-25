@@ -61,7 +61,7 @@ void main() {
       });
 
       test('should show notification', () async {
-        final notification = const MCPNotification(
+        const notification = MCPNotification(
           id: 'test-1',
           title: 'Test Notification',
           body: 'This is a test',
@@ -74,7 +74,7 @@ void main() {
       });
 
       test('should schedule notification', () async {
-        final notification = const MCPNotification(
+        const notification = MCPNotification(
           id: 'scheduled-1',
           title: 'Scheduled Notification',
         );
@@ -88,7 +88,7 @@ void main() {
       });
 
       test('should dismiss notification', () async {
-        final notification = const MCPNotification(
+        const notification = MCPNotification(
           id: 'dismiss-1',
           title: 'To Dismiss',
         );
@@ -118,7 +118,7 @@ void main() {
 
       test('should throw when not initialized', () {
         final uninitializedManager = NotificationManager();
-        final notification = const MCPNotification(
+        const notification = MCPNotification(
           id: 'test',
           title: 'Test',
         );
@@ -136,7 +136,7 @@ void main() {
       });
 
       test('should handle local notifications', () async {
-        final notification = const MCPNotification(
+        const notification = MCPNotification(
           id: 'local-1',
           title: 'Local Notification',
           type: NotificationType.local,
@@ -147,7 +147,7 @@ void main() {
       });
 
       test('should handle system notifications', () async {
-        final notification = const MCPNotification(
+        const notification = MCPNotification(
           id: 'system-1',
           title: 'System Notification',
           type: NotificationType.system,
@@ -158,7 +158,7 @@ void main() {
       });
 
       test('should handle in-app notifications', () async {
-        final notification = const MCPNotification(
+        const notification = MCPNotification(
           id: 'inapp-1',
           title: 'In-App Notification',
           type: NotificationType.inApp,
@@ -175,12 +175,12 @@ void main() {
       });
 
       test('should handle notification action', () async {
-        final notification = MCPNotification(
+        const notification = MCPNotification(
           id: 'action-1',
           title: 'With Actions',
           actions: [
-            const NotificationAction(id: 'reply', title: 'Reply'),
-            const NotificationAction(id: 'dismiss', title: 'Dismiss'),
+            NotificationAction(id: 'reply', title: 'Reply'),
+            NotificationAction(id: 'dismiss', title: 'Dismiss'),
           ],
         );
         
@@ -191,11 +191,11 @@ void main() {
       });
 
       test('should throw for invalid action ID', () async {
-        final notification = MCPNotification(
+        const notification = MCPNotification(
           id: 'action-2',
           title: 'With Actions',
           actions: [
-            const NotificationAction(id: 'valid', title: 'Valid'),
+            NotificationAction(id: 'valid', title: 'Valid'),
           ],
         );
         
@@ -208,7 +208,7 @@ void main() {
       });
 
       test('should handle notification tap', () async {
-        final notification = const MCPNotification(
+        const notification = MCPNotification(
           id: 'tap-1',
           title: 'Tappable',
         );
@@ -234,7 +234,7 @@ void main() {
           receivedNotification = notification;
         });
         
-        final notification = const MCPNotification(
+        const notification = MCPNotification(
           id: 'listener-1',
           title: 'Test',
         );
@@ -252,7 +252,7 @@ void main() {
           receivedEvent = event;
         });
         
-        final notification = const MCPNotification(
+        const notification = MCPNotification(
           id: 'dismiss-listener',
           title: 'Test',
         );
@@ -272,11 +272,11 @@ void main() {
           receivedActionId = actionId;
         });
         
-        final notification = MCPNotification(
+        const notification = MCPNotification(
           id: 'action-listener',
           title: 'Test',
           actions: [
-            const NotificationAction(id: 'test-action', title: 'Test'),
+            NotificationAction(id: 'test-action', title: 'Test'),
           ],
         );
         
@@ -297,7 +297,7 @@ void main() {
         manager.addListener(listener);
         manager.removeListener(listener);
         
-        final notification = const MCPNotification(
+        const notification = MCPNotification(
           id: 'no-listener',
           title: 'Test',
         );
@@ -312,7 +312,7 @@ void main() {
           throw Exception('Listener error');
         });
         
-        final notification = const MCPNotification(
+        const notification = MCPNotification(
           id: 'error-listener',
           title: 'Test',
         );

@@ -8,20 +8,20 @@ class DecorationWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
     final children = definition['children'] as List<dynamic>? ?? [];
-    
+
     final decoration = _resolveBoxDecoration(properties);
-    
+
     Widget child = children.isNotEmpty
         ? context.buildWidget(children.first as Map<String, dynamic>)
         : Container();
-    
+
     return DecoratedBox(
       decoration: decoration,
       position: _resolveDecorationPosition(properties['position']),
       child: child,
     );
   }
-  
+
   BoxDecoration _resolveBoxDecoration(Map<String, dynamic> properties) {
     return BoxDecoration(
       color: resolveColor(properties['color']),
@@ -34,7 +34,7 @@ class DecorationWidgetFactory extends WidgetFactory {
       shape: _resolveBoxShape(properties['shape']),
     );
   }
-  
+
   DecorationPosition _resolveDecorationPosition(String? position) {
     switch (position) {
       case 'background':
@@ -45,7 +45,7 @@ class DecorationWidgetFactory extends WidgetFactory {
         return DecorationPosition.background;
     }
   }
-  
+
   DecorationImage? _resolveDecorationImage(dynamic image) {
     if (image is Map<String, dynamic>) {
       final src = image['src'] as String?;
@@ -60,7 +60,7 @@ class DecorationWidgetFactory extends WidgetFactory {
     }
     return null;
   }
-  
+
   BoxFit _resolveBoxFit(String? fit) {
     switch (fit) {
       case 'fill':
@@ -79,7 +79,7 @@ class DecorationWidgetFactory extends WidgetFactory {
         return BoxFit.cover;
     }
   }
-  
+
   ImageRepeat _resolveImageRepeat(String? repeat) {
     switch (repeat) {
       case 'repeat':
@@ -94,7 +94,7 @@ class DecorationWidgetFactory extends WidgetFactory {
         return ImageRepeat.noRepeat;
     }
   }
-  
+
   Border? _resolveBorder(dynamic border) {
     if (border is Map<String, dynamic>) {
       if (border.containsKey('all')) {
@@ -104,7 +104,7 @@ class DecorationWidgetFactory extends WidgetFactory {
           width: all['width']?.toDouble() ?? 1.0,
         );
       }
-      
+
       // Support individual borders (top, right, bottom, left)
       return Border(
         top: _resolveBorderSide(border['top']),
@@ -115,12 +115,12 @@ class DecorationWidgetFactory extends WidgetFactory {
     }
     return null;
   }
-  
+
   BorderSide _resolveBorderSide(dynamic side) {
     if (side == null) {
       return BorderSide.none;
     }
-    
+
     if (side is Map<String, dynamic>) {
       return BorderSide(
         color: resolveColor(side['color']) ?? Colors.grey,
@@ -128,10 +128,10 @@ class DecorationWidgetFactory extends WidgetFactory {
         style: side['style'] == 'none' ? BorderStyle.none : BorderStyle.solid,
       );
     }
-    
+
     return BorderSide.none;
   }
-  
+
   BorderRadius? _resolveBorderRadius(dynamic radius) {
     if (radius is num) {
       return BorderRadius.circular(radius.toDouble());
@@ -140,7 +140,7 @@ class DecorationWidgetFactory extends WidgetFactory {
       if (radius.containsKey('all')) {
         return BorderRadius.circular(radius['all'].toDouble());
       }
-      
+
       // Support individual corner radius
       return BorderRadius.only(
         topLeft: Radius.circular(radius['topLeft']?.toDouble() ?? 0.0),
@@ -151,7 +151,7 @@ class DecorationWidgetFactory extends WidgetFactory {
     }
     return null;
   }
-  
+
   List<BoxShadow>? _resolveBoxShadow(dynamic shadow) {
     if (shadow is List) {
       return shadow.map((s) {
@@ -171,16 +171,16 @@ class DecorationWidgetFactory extends WidgetFactory {
     }
     return null;
   }
-  
+
   Gradient? _resolveGradient(dynamic gradient) {
     if (gradient is Map<String, dynamic>) {
       final type = gradient['type'] as String?;
       final colors = (gradient['colors'] as List?)
           ?.map((c) => resolveColor(c) ?? Colors.transparent)
           .toList();
-      
+
       if (colors == null || colors.isEmpty) return null;
-      
+
       switch (type) {
         case 'linear':
           return LinearGradient(
@@ -200,7 +200,7 @@ class DecorationWidgetFactory extends WidgetFactory {
     }
     return null;
   }
-  
+
   BlendMode? _resolveBlendMode(String? mode) {
     switch (mode) {
       case 'clear':
@@ -265,7 +265,7 @@ class DecorationWidgetFactory extends WidgetFactory {
         return null;
     }
   }
-  
+
   BoxShape _resolveBoxShape(String? shape) {
     switch (shape) {
       case 'circle':

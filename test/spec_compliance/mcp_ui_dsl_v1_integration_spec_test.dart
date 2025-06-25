@@ -260,7 +260,7 @@ void main() {
         runtime.registerToolExecutor('submitRegistration', (params) async {
           submittedData = params.toString();
           // Simulate API delay
-          await Future.delayed(Duration(milliseconds: 100));
+          await Future.delayed(const Duration(milliseconds: 100));
           runtime.stateManager.set('isSubmitting', false);
           runtime.stateManager.set('isSuccess', true);
           return {'success': true};
@@ -340,7 +340,7 @@ void main() {
         expect(find.text('Submitting...'), findsOneWidget);
         
         // Wait for async operation
-        await tester.pump(Duration(milliseconds: 150));
+        await tester.pump(const Duration(milliseconds: 150));
         
         // Should show success state
         expect(find.text('Registration successful!'), findsOneWidget);

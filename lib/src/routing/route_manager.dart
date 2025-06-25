@@ -9,7 +9,7 @@ class RouteManager {
   final Map<String, PageDefinition> _loadedPages = {};
   final Function(String uri) pageLoader;
   final RuntimeEngine runtimeEngine;
-  
+
   RouteManager({
     required this.appDefinition,
     required this.pageLoader,
@@ -19,25 +19,25 @@ class RouteManager {
   /// Generate Flutter routes from application definition
   Map<String, WidgetBuilder> generateRoutes(BuildContext context) {
     final routes = <String, WidgetBuilder>{};
-    
+
     for (final entry in appDefinition.routes.entries) {
       final routePath = entry.key;
       final pageUri = entry.value;
-      
+
       routes[routePath] = (context) => FutureBuilder<PageDefinition>(
-        future: _loadPage(pageUri),
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            return _buildPageWidget(snapshot.data!, routePath);
-          } else if (snapshot.hasError) {
-            return _buildErrorPage(snapshot.error);
-          } else {
-            return _buildLoadingPage();
-          }
-        },
-      );
+            future: _loadPage(pageUri),
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                return _buildPageWidget(snapshot.data!, routePath);
+              } else if (snapshot.hasError) {
+                return _buildErrorPage(snapshot.error);
+              } else {
+                return _buildLoadingPage();
+              }
+            },
+          );
     }
-    
+
     return routes;
   }
 
@@ -52,7 +52,7 @@ class RouteManager {
     bool replace = false,
   }) async {
     final routeWithParams = _buildRouteWithParams(route, params);
-    
+
     if (replace) {
       return Navigator.pushReplacementNamed<T, T>(
         context,
@@ -84,15 +84,15 @@ class RouteManager {
     if (_loadedPages.containsKey(pageUri)) {
       return _loadedPages[pageUri]!;
     }
-    
+
     // Load from server
     final pageJson = await pageLoader(pageUri);
     final uiDef = UIDefinition.fromJson(pageJson as Map<String, dynamic>);
     final pageDef = PageDefinition.fromUIDefinition(uiDef);
-    
+
     // Cache the loaded page
     _loadedPages[pageUri] = pageDef;
-    
+
     return pageDef;
   }
 
@@ -101,13 +101,13 @@ class RouteManager {
     if (params == null || params.isEmpty) {
       return route;
     }
-    
+
     // Replace route parameters like /user/:id with actual values
     var finalRoute = route;
     params.forEach((key, value) {
       finalRoute = finalRoute.replaceAll(':$key', value.toString());
     });
-    
+
     return finalRoute;
   }
 
@@ -166,22 +166,22 @@ class RouteManager {
       ),
     );
   }
-  
+
   /// Parse route and extract parameters
   RouteInfo parseRoute(String route) {
     // Extract path and query parameters
     final uri = Uri.parse(route);
     final path = uri.path;
     final queryParams = uri.queryParameters;
-    
+
     // Match against application routes
     for (final appRoute in appDefinition.routes.keys) {
       final regex = _createRouteRegex(appRoute);
       final match = regex.firstMatch(path);
-      
+
       if (match != null) {
         final pathParams = <String, String>{};
-        
+
         // Extract path parameters
         final paramNames = _extractParamNames(appRoute);
         for (var i = 0; i < paramNames.length; i++) {
@@ -189,7 +189,7 @@ class RouteManager {
             pathParams[paramNames[i]] = match.group(i + 1)!;
           }
         }
-        
+
         return RouteInfo(
           route: appRoute,
           pathParams: pathParams,
@@ -198,20 +198,20 @@ class RouteManager {
         );
       }
     }
-    
+
     throw ArgumentError('No matching route found for: $route');
   }
 
   /// Create regex for route matching
   RegExp _createRouteRegex(String route) {
     var pattern = route;
-    
+
     // Replace :param with regex capture group
     pattern = pattern.replaceAllMapped(
       RegExp(r':(\w+)'),
       (match) => r'(\w+)',
     );
-    
+
     return RegExp('^$pattern\$');
   }
 
@@ -237,7 +237,7 @@ class RouteInfo {
   });
 
   Map<String, dynamic> get allParams => {
-    ...pathParams,
-    ...queryParams,
-  };
+        ...pathParams,
+        ...queryParams,
+      };
 }

@@ -8,19 +8,20 @@ class IconWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
-    final icon = properties['icon'] as String? ?? 'circle';
+    final iconValue = context.resolve(properties['icon']);
+    final icon = iconValue is String ? iconValue : 'circle';
     final size = properties['size']?.toDouble() ?? 24.0;
     final color = parseColor(context.resolve(properties['color']));
-    
+
     // Build icon
     Widget iconWidget = Icon(
       _parseIcon(icon),
       size: size,
       color: color,
     );
-    
+
     return applyCommonWrappers(iconWidget, properties, context);
   }
 
@@ -46,7 +47,7 @@ class IconWidgetFactory extends WidgetFactory {
         return Icons.more_vert;
       case 'more_horiz':
         return Icons.more_horiz;
-      
+
       // Actions
       case 'add':
         return Icons.add;
@@ -70,7 +71,7 @@ class IconWidgetFactory extends WidgetFactory {
         return Icons.filter_list;
       case 'sort':
         return Icons.sort;
-      
+
       // Content
       case 'content_copy':
         return Icons.content_copy;
@@ -80,7 +81,7 @@ class IconWidgetFactory extends WidgetFactory {
         return Icons.content_paste;
       case 'select_all':
         return Icons.select_all;
-      
+
       // Media
       case 'play_arrow':
         return Icons.play_arrow;
@@ -94,7 +95,7 @@ class IconWidgetFactory extends WidgetFactory {
         return Icons.volume_down;
       case 'volume_off':
         return Icons.volume_off;
-      
+
       // Communication
       case 'call':
         return Icons.call;
@@ -106,7 +107,7 @@ class IconWidgetFactory extends WidgetFactory {
         return Icons.share;
       case 'send':
         return Icons.send;
-      
+
       // Interface
       case 'settings':
         return Icons.settings;
@@ -122,7 +123,7 @@ class IconWidgetFactory extends WidgetFactory {
         return Icons.check_circle;
       case 'cancel':
         return Icons.cancel;
-      
+
       // Toggle
       case 'visibility':
         return Icons.visibility;
@@ -140,7 +141,7 @@ class IconWidgetFactory extends WidgetFactory {
         return Icons.star;
       case 'star_border':
         return Icons.star_border;
-      
+
       // File/Folder
       case 'folder':
         return Icons.folder;
@@ -158,7 +159,7 @@ class IconWidgetFactory extends WidgetFactory {
         return Icons.cloud_download;
       case 'cloud_upload':
         return Icons.cloud_upload;
-      
+
       // User
       case 'person':
         return Icons.person;
@@ -168,7 +169,7 @@ class IconWidgetFactory extends WidgetFactory {
         return Icons.account_circle;
       case 'account_box':
         return Icons.account_box;
-      
+
       // Location
       case 'location_on':
         return Icons.location_on;
@@ -178,7 +179,7 @@ class IconWidgetFactory extends WidgetFactory {
         return Icons.map;
       case 'place':
         return Icons.place;
-      
+
       // Time
       case 'access_time':
         return Icons.access_time;
@@ -188,7 +189,7 @@ class IconWidgetFactory extends WidgetFactory {
         return Icons.date_range;
       case 'schedule':
         return Icons.schedule;
-      
+
       // Device
       case 'phone':
         return Icons.phone;
@@ -200,7 +201,7 @@ class IconWidgetFactory extends WidgetFactory {
         return Icons.watch;
       case 'tv':
         return Icons.tv;
-      
+
       // Shopping
       case 'shopping_cart':
         return Icons.shopping_cart;
@@ -212,7 +213,21 @@ class IconWidgetFactory extends WidgetFactory {
         return Icons.payment;
       case 'local_offer':
         return Icons.local_offer;
-      
+
+      // Charts & Trends
+      case 'trending_up':
+        return Icons.trending_up;
+      case 'trending_down':
+        return Icons.trending_down;
+      case 'trending_flat':
+        return Icons.trending_flat;
+      case 'show_chart':
+        return Icons.show_chart;
+      case 'bar_chart':
+        return Icons.bar_chart;
+      case 'pie_chart':
+        return Icons.pie_chart;
+
       default:
         return Icons.circle; // Default fallback icon
     }

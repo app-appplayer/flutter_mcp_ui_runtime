@@ -8,9 +8,9 @@ class DialogService extends RuntimeService {
 
   final List<OverlayEntry> _overlays = [];
   bool _isShowingDialog = false;
-  
+
   // Use the same navigator key as NavigationActionExecutor
-  static GlobalKey<NavigatorState> get navigatorKey => 
+  static GlobalKey<NavigatorState> get navigatorKey =>
       NavigationActionExecutor.navigatorKey;
 
   /// Shows a dialog with custom content
@@ -32,7 +32,7 @@ class DialogService extends RuntimeService {
 
     try {
       final context = _getContext();
-      
+
       Widget dialogContent = content;
 
       // Wrap content based on type
@@ -124,7 +124,7 @@ class DialogService extends RuntimeService {
     int? maxLines = 1,
   }) async {
     final controller = TextEditingController(text: initialValue);
-    
+
     final result = await show<String>(
       content: TextField(
         controller: controller,
@@ -168,12 +168,12 @@ class DialogService extends RuntimeService {
       isDismissible: isDismissible,
       enableDrag: enableDrag,
       backgroundColor: backgroundColor,
-      shape: shape ?? const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => height != null
-          ? SizedBox(height: height, child: content)
-          : content,
+      shape: shape ??
+          const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+      builder: (context) =>
+          height != null ? SizedBox(height: height, child: content) : content,
     );
   }
 
@@ -212,7 +212,7 @@ class DialogService extends RuntimeService {
     SnackBarAction? action,
   }) {
     final context = _getContext();
-    
+
     Color backgroundColor;
     IconData? icon;
 
@@ -317,9 +317,10 @@ class DialogService extends RuntimeService {
   BuildContext _getContext() {
     final navigatorState = navigatorKey.currentState;
     if (navigatorState == null) {
-      throw StateError('Navigator not initialized. Make sure navigatorKey is set in MaterialApp');
+      throw StateError(
+          'Navigator not initialized. Make sure navigatorKey is set in MaterialApp');
     }
-    
+
     // Use the overlay context which is more stable than currentContext
     // This ensures dialogs can be shown even during navigation transitions
     final overlayContext = navigatorState.overlay?.context;
@@ -331,7 +332,7 @@ class DialogService extends RuntimeService {
       }
       return context;
     }
-    
+
     return overlayContext;
   }
 
@@ -344,7 +345,8 @@ class DialogService extends RuntimeService {
     return AlertDialog(
       title: title != null ? Text(title) : null,
       content: content,
-      actions: actions?.map((action) => _buildDialogAction(action)).toList() ?? [],
+      actions:
+          actions?.map((action) => _buildDialogAction(action)).toList() ?? [],
     );
   }
 
@@ -357,12 +359,13 @@ class DialogService extends RuntimeService {
     return AlertDialog(
       title: title != null ? Text(title) : null,
       content: content,
-      actions: actions?.map((action) => _buildDialogAction(action)).toList() ?? [
-        TextButton(
-          onPressed: () => Navigator.of(_getContext()).pop(),
-          child: const Text('OK'),
-        ),
-      ],
+      actions: actions?.map((action) => _buildDialogAction(action)).toList() ??
+          [
+            TextButton(
+              onPressed: () => Navigator.of(_getContext()).pop(),
+              child: const Text('OK'),
+            ),
+          ],
     );
   }
 
@@ -375,7 +378,8 @@ class DialogService extends RuntimeService {
     return AlertDialog(
       title: title != null ? Text(title) : null,
       content: content,
-      actions: actions?.map((action) => _buildDialogAction(action)).toList() ?? [],
+      actions:
+          actions?.map((action) => _buildDialogAction(action)).toList() ?? [],
     );
   }
 
@@ -388,7 +392,8 @@ class DialogService extends RuntimeService {
     return AlertDialog(
       title: title != null ? Text(title) : null,
       content: SingleChildScrollView(child: content),
-      actions: actions?.map((action) => _buildDialogAction(action)).toList() ?? [],
+      actions:
+          actions?.map((action) => _buildDialogAction(action)).toList() ?? [],
     );
   }
 

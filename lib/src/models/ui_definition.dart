@@ -3,7 +3,7 @@ library ui_definition;
 import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart' as core;
 
 /// Core models for MCP UI DSL v1.0
-/// 
+///
 /// This file defines the core data structures for UI definitions
 /// according to the MCP UI DSL v1.0 specification.
 
@@ -11,6 +11,7 @@ import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart' as core;
 enum UIDefinitionType {
   /// Complete application with routing
   application,
+
   /// Single page definition
   page,
 }
@@ -40,7 +41,7 @@ class UIDefinition {
   factory UIDefinition.fromJson(Map<String, dynamic> json) {
     final typeStr = json['type'] as String?;
     UIDefinitionType type;
-    
+
     if (typeStr == 'application') {
       type = UIDefinitionType.application;
     } else if (typeStr == 'page') {
@@ -56,15 +57,17 @@ class UIDefinition {
       // Add application-specific properties
       if (json['title'] != null) properties['title'] = json['title'];
       if (json['version'] != null) properties['version'] = json['version'];
-      if (json['initialRoute'] != null) properties['initialRoute'] = json['initialRoute'];
+      if (json['initialRoute'] != null)
+        properties['initialRoute'] = json['initialRoute'];
       if (json['theme'] != null) properties['theme'] = json['theme'];
     } else if (type == UIDefinitionType.page) {
       // Add page-specific properties
       if (json['title'] != null) properties['title'] = json['title'];
       if (json['route'] != null) properties['route'] = json['route'];
-      if (json['themeOverride'] != null) properties['themeOverride'] = json['themeOverride'];
+      if (json['themeOverride'] != null)
+        properties['themeOverride'] = json['themeOverride'];
     }
-    
+
     // Merge with explicit properties if any
     if (json['properties'] != null) {
       properties.addAll(Map<String, dynamic>.from(json['properties'] as Map));
@@ -73,16 +76,29 @@ class UIDefinition {
     return UIDefinition(
       type: type,
       properties: properties,
-      routes: json['routes'] != null ? Map<String, dynamic>.from(json['routes'] as Map) : null,
-      state: json['state'] != null 
-        ? Map<String, dynamic>.from(json['state'] as Map) 
-        : (json['initialState'] != null 
-            ? {'initial': Map<String, dynamic>.from(json['initialState'] as Map)}
-            : null),
-      navigation: json['navigation'] != null ? Map<String, dynamic>.from(json['navigation'] as Map) : null,
-      lifecycle: json['lifecycle'] != null ? Map<String, dynamic>.from(json['lifecycle'] as Map) : null,
-      services: json['services'] != null ? Map<String, dynamic>.from(json['services'] as Map) : null,
-      content: json['content'] != null ? Map<String, dynamic>.from(json['content'] as Map) : null,
+      routes: json['routes'] != null
+          ? Map<String, dynamic>.from(json['routes'] as Map)
+          : null,
+      state: json['state'] != null
+          ? Map<String, dynamic>.from(json['state'] as Map)
+          : (json['initialState'] != null
+              ? {
+                  'initial':
+                      Map<String, dynamic>.from(json['initialState'] as Map)
+                }
+              : null),
+      navigation: json['navigation'] != null
+          ? Map<String, dynamic>.from(json['navigation'] as Map)
+          : null,
+      lifecycle: json['lifecycle'] != null
+          ? Map<String, dynamic>.from(json['lifecycle'] as Map)
+          : null,
+      services: json['services'] != null
+          ? Map<String, dynamic>.from(json['services'] as Map)
+          : null,
+      content: json['content'] != null
+          ? Map<String, dynamic>.from(json['content'] as Map)
+          : null,
     );
   }
 
@@ -117,11 +133,11 @@ class ApplicationDefinition extends core.ApplicationConfig {
     this.lifecycleDef,
     this.servicesDef,
   }) : super(
-    state: initialState != null ? {'initial': initialState} : null,
-    navigation: navigationDef?.toJson(),
-    lifecycle: lifecycleDef?.toJson(),
-    services: servicesDef?.toJson(),
-  );
+          state: initialState != null ? {'initial': initialState} : null,
+          navigation: navigationDef?.toJson(),
+          lifecycle: lifecycleDef?.toJson(),
+          services: servicesDef?.toJson(),
+        );
 
   factory ApplicationDefinition.fromUIDefinition(UIDefinition definition) {
     if (definition.type != UIDefinitionType.application) {
@@ -130,7 +146,7 @@ class ApplicationDefinition extends core.ApplicationConfig {
 
     final props = definition.properties;
     final routes = definition.routes;
-    
+
     if (routes == null || routes.isEmpty) {
       throw ArgumentError('Application must have routes defined');
     }
@@ -144,22 +160,22 @@ class ApplicationDefinition extends core.ApplicationConfig {
       initialState: definition.state?['initial'] != null
           ? Map<String, dynamic>.from(definition.state!['initial'] as Map)
           : null,
-      navigationDef: definition.navigation != null 
-        ? NavigationDefinition.fromJson(definition.navigation!)
-        : null,
+      navigationDef: definition.navigation != null
+          ? NavigationDefinition.fromJson(definition.navigation!)
+          : null,
       lifecycleDef: definition.lifecycle != null
-        ? LifecycleDefinition.fromJson(definition.lifecycle!)
-        : null,
+          ? LifecycleDefinition.fromJson(definition.lifecycle!)
+          : null,
       servicesDef: definition.services != null
-        ? ServicesDefinition.fromJson(definition.services!)
-        : null,
+          ? ServicesDefinition.fromJson(definition.services!)
+          : null,
     );
   }
 
   NavigationDefinition? get navigationDefinition => navigationDef;
   LifecycleDefinition? get lifecycleDefinition => lifecycleDef;
   ServicesDefinition? get servicesDefinition => servicesDef;
-  
+
   @override
   Map<String, dynamic>? get initialState => state?['initial'] != null
       ? Map<String, dynamic>.from(state!['initial'] as Map)
@@ -178,9 +194,9 @@ class PageDefinition extends core.PageConfig {
     Map<String, dynamic>? initialState,
     this.lifecycleDef,
   }) : super(
-    state: initialState != null ? {'initial': initialState} : null,
-    lifecycle: lifecycleDef?.toJson(),
-  );
+          state: initialState != null ? {'initial': initialState} : null,
+          lifecycle: lifecycleDef?.toJson(),
+        );
 
   factory PageDefinition.fromUIDefinition(UIDefinition definition) {
     if (definition.type != UIDefinitionType.page) {
@@ -189,7 +205,7 @@ class PageDefinition extends core.PageConfig {
 
     final props = definition.properties;
     final content = definition.content;
-    
+
     if (content == null || content.isEmpty) {
       throw ArgumentError('Page must have content defined');
     }
@@ -203,13 +219,13 @@ class PageDefinition extends core.PageConfig {
           ? Map<String, dynamic>.from(definition.state!['initial'] as Map)
           : null,
       lifecycleDef: definition.lifecycle != null
-        ? LifecycleDefinition.fromJson(definition.lifecycle!)
-        : null,
+          ? LifecycleDefinition.fromJson(definition.lifecycle!)
+          : null,
     );
   }
 
   LifecycleDefinition? get lifecycleDefinition => lifecycleDef;
-  
+
   @override
   Map<String, dynamic>? get initialState => state?['initial'] != null
       ? Map<String, dynamic>.from(state!['initial'] as Map)
@@ -228,12 +244,14 @@ class NavigationDefinition {
 
   factory NavigationDefinition.fromJson(Map<String, dynamic> json) {
     // Support both 'items' and 'tabs' for backward compatibility
-    final itemsList = json['items'] as List<dynamic>? ?? 
-                     json['tabs'] as List<dynamic>? ?? [];
-    
+    final itemsList =
+        json['items'] as List<dynamic>? ?? json['tabs'] as List<dynamic>? ?? [];
+
     return NavigationDefinition(
       type: json['type'] as String? ?? 'drawer',
-      items: itemsList.map((item) => NavigationItem.fromJson(item as Map<String, dynamic>)).toList(),
+      items: itemsList
+          .map((item) => NavigationItem.fromJson(item as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -408,10 +426,11 @@ class BackgroundServiceDefinition {
     this.stopOnError,
   });
 
-  factory BackgroundServiceDefinition.fromJson(String id, Map<String, dynamic> json) {
+  factory BackgroundServiceDefinition.fromJson(
+      String id, Map<String, dynamic> json) {
     final typeStr = json['type'] as String;
     BackgroundServiceType type;
-    
+
     switch (typeStr) {
       case 'periodic':
         type = BackgroundServiceType.periodic;
@@ -454,9 +473,9 @@ class BackgroundServiceDefinition {
 
 /// Types of background services
 enum BackgroundServiceType {
-  periodic,   // Runs at regular intervals
-  scheduled,  // Runs at specific times (cron-like)
+  periodic, // Runs at regular intervals
+  scheduled, // Runs at specific times (cron-like)
   continuous, // Runs continuously
-  event,      // Triggered by events
-  oneoff,     // Runs once after delay
+  event, // Triggered by events
+  oneoff, // Runs once after delay
 }

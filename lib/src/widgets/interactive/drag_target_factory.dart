@@ -11,15 +11,16 @@ class DragTargetFactory extends WidgetFactory {
     if (builderDef == null) {
       throw Exception('DragTarget requires a builder property');
     }
-    
+
     // Get event handlers
     final onWillAccept = definition['onWillAccept'];
     final onAccept = definition['onAccept'];
     final onLeave = definition['onLeave'];
     final onMove = definition['onMove'];
-    
+
     return DragTarget<Object>(
-      builder: (BuildContext dragContext, List<Object?> candidateData, List<dynamic> rejectedData) {
+      builder: (BuildContext dragContext, List<Object?> candidateData,
+          List<dynamic> rejectedData) {
         // Create context with drag state variables
         final dragContext = context.createChildContext(
           variables: {

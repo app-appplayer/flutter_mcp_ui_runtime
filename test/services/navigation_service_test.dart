@@ -212,7 +212,7 @@ void main() {
 
 // Test pages
 class HomePage extends StatelessWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -223,7 +223,7 @@ class HomePage extends StatelessWidget {
 }
 
 class Page1 extends StatelessWidget {
-  const Page1({Key? key}) : super(key: key);
+  const Page1({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -234,7 +234,7 @@ class Page1 extends StatelessWidget {
 }
 
 class Page2 extends StatelessWidget {
-  const Page2({Key? key}) : super(key: key);
+  const Page2({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -245,7 +245,7 @@ class Page2 extends StatelessWidget {
 }
 
 class LoginPage extends StatelessWidget {
-  const LoginPage({Key? key}) : super(key: key);
+  const LoginPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -256,7 +256,7 @@ class LoginPage extends StatelessWidget {
 }
 
 class DetailsPage extends StatelessWidget {
-  const DetailsPage({Key? key, required this.title}) : super(key: key);
+  const DetailsPage({super.key, required this.title});
   
   final String title;
 

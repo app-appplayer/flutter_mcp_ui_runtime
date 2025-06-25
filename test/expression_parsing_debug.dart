@@ -26,7 +26,7 @@ void main() {
   }
   
   print('\n--- Testing indexOf behavior ---');
-  final testExpr = 'canvasWidgets.length > 0';
+  const testExpr = 'canvasWidgets.length > 0';
   print('Expression: "$testExpr"');
   print('Index of ">": ${testExpr.indexOf('>')}');
   print('Substring before ">": "${testExpr.substring(0, testExpr.indexOf('>'))}".trim() = "${testExpr.substring(0, testExpr.indexOf('>')).trim()}"');

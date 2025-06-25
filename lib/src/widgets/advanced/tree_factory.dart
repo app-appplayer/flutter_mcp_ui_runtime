@@ -9,14 +9,14 @@ class TreeWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract tree properties
     final data = context.resolve<List<dynamic>>(properties['data'] ?? []);
     final expandAll = context.resolve<bool>(properties['expandAll'] ?? false);
     final showLines = context.resolve<bool>(properties['showLines'] ?? true);
     final width = context.resolve<double?>(properties['width']);
     final height = context.resolve<double?>(properties['height']) ?? 400.0;
-    
+
     // Build placeholder tree widget
     Widget tree = Container(
       width: width,
@@ -89,7 +89,8 @@ class TreeWidgetFactory extends WidgetFactory {
                     children: [
                       if (expandAll)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 3),
                           margin: const EdgeInsets.only(right: 4),
                           decoration: BoxDecoration(
                             color: Colors.blue.shade100,
@@ -105,7 +106,8 @@ class TreeWidgetFactory extends WidgetFactory {
                         ),
                       if (showLines)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 3),
                           decoration: BoxDecoration(
                             color: Colors.green.shade100,
                             borderRadius: BorderRadius.circular(4),
@@ -127,10 +129,10 @@ class TreeWidgetFactory extends WidgetFactory {
         ],
       ),
     );
-    
+
     return applyCommonWrappers(tree, properties, context);
   }
-  
+
   int _countNodes(List<dynamic> data) {
     int count = data.length;
     for (final item in data) {

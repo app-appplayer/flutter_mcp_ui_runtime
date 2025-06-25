@@ -6,11 +6,12 @@ import '../utils/mcp_logger.dart';
 class NotificationManager {
   NotificationManager({
     this.enableDebugMode = kDebugMode,
-  }) : _logger = MCPLogger('NotificationManager', enableLogging: enableDebugMode);
+  }) : _logger =
+            MCPLogger('NotificationManager', enableLogging: enableDebugMode);
 
   final bool enableDebugMode;
   final MCPLogger _logger;
-  
+
   bool _isInitialized = false;
   final Map<String, MCPNotification> _activeNotifications = {};
   final List<NotificationListener> _listeners = [];
@@ -20,7 +21,8 @@ class NotificationManager {
   bool get isInitialized => _isInitialized;
 
   /// Gets all active notifications
-  List<MCPNotification> get activeNotifications => _activeNotifications.values.toList();
+  List<MCPNotification> get activeNotifications =>
+      _activeNotifications.values.toList();
 
   /// Gets all notification channels
   List<NotificationChannel> get channels => List.unmodifiable(_channels);
@@ -54,7 +56,8 @@ class NotificationManager {
   /// Shows a local notification
   Future<void> showNotification(MCPNotification notification) async {
     if (!_isInitialized) {
-      throw StateError('NotificationManager must be initialized before showing notifications');
+      throw StateError(
+          'NotificationManager must be initialized before showing notifications');
     }
 
     try {
@@ -90,7 +93,8 @@ class NotificationManager {
     DateTime scheduledTime,
   ) async {
     if (!_isInitialized) {
-      throw StateError('NotificationManager must be initialized before scheduling notifications');
+      throw StateError(
+          'NotificationManager must be initialized before scheduling notifications');
     }
 
     try {
@@ -116,11 +120,13 @@ class NotificationManager {
       _notifyListeners(NotificationEvent.scheduled, scheduledNotification);
 
       if (enableDebugMode) {
-        debugPrint('NotificationManager: Scheduled notification "${notification.id}" for $scheduledTime');
+        debugPrint(
+            'NotificationManager: Scheduled notification "${notification.id}" for $scheduledTime');
       }
     } catch (error) {
       if (enableDebugMode) {
-        debugPrint('NotificationManager: Error scheduling notification "${notification.id}": $error');
+        debugPrint(
+            'NotificationManager: Error scheduling notification "${notification.id}": $error');
       }
       rethrow;
     }
@@ -132,16 +138,18 @@ class NotificationManager {
     if (notification != null) {
       try {
         await _dismissSystemNotification(notificationId);
-        
+
         // Notify listeners
         _notifyListeners(NotificationEvent.dismissed, notification);
 
         if (enableDebugMode) {
-          debugPrint('NotificationManager: Dismissed notification "$notificationId"');
+          debugPrint(
+              'NotificationManager: Dismissed notification "$notificationId"');
         }
       } catch (error) {
         if (enableDebugMode) {
-          debugPrint('NotificationManager: Error dismissing notification "$notificationId": $error');
+          debugPrint(
+              'NotificationManager: Error dismissing notification "$notificationId": $error');
         }
       }
     }
@@ -150,7 +158,7 @@ class NotificationManager {
   /// Dismisses all notifications
   Future<void> dismissAllNotifications() async {
     final notificationIds = _activeNotifications.keys.toList();
-    
+
     for (final id in notificationIds) {
       await dismissNotification(id);
     }
@@ -163,7 +171,7 @@ class NotificationManager {
   /// Adds a notification channel
   void addChannel(NotificationChannel channel) {
     _channels.add(channel);
-    
+
     if (enableDebugMode) {
       debugPrint('NotificationManager: Added channel "${channel.id}"');
     }
@@ -205,7 +213,8 @@ class NotificationManager {
       _notifyListeners(NotificationEvent.actionTapped, notification, actionId);
 
       if (enableDebugMode) {
-        debugPrint('NotificationManager: Handled action "$actionId" for notification "$notificationId"');
+        debugPrint(
+            'NotificationManager: Handled action "$actionId" for notification "$notificationId"');
       }
     }
   }
@@ -218,7 +227,8 @@ class NotificationManager {
       _notifyListeners(NotificationEvent.tapped, notification);
 
       if (enableDebugMode) {
-        debugPrint('NotificationManager: Handled tap for notification "$notificationId"');
+        debugPrint(
+            'NotificationManager: Handled tap for notification "$notificationId"');
       }
     }
   }
@@ -268,7 +278,8 @@ class NotificationManager {
   Future<void> _showLocalNotification(MCPNotification notification) async {
     // Implementation would integrate with local notification plugin
     if (enableDebugMode) {
-      debugPrint('NotificationManager: Showing local notification: ${notification.title}');
+      debugPrint(
+          'NotificationManager: Showing local notification: ${notification.title}');
     }
   }
 
@@ -276,7 +287,8 @@ class NotificationManager {
   Future<void> _showSystemNotification(MCPNotification notification) async {
     // Implementation would integrate with system notification APIs
     if (enableDebugMode) {
-      debugPrint('NotificationManager: Showing system notification: ${notification.title}');
+      debugPrint(
+          'NotificationManager: Showing system notification: ${notification.title}');
     }
   }
 
@@ -284,7 +296,8 @@ class NotificationManager {
   Future<void> _showInAppNotification(MCPNotification notification) async {
     // Implementation would integrate with in-app notification UI
     if (enableDebugMode) {
-      debugPrint('NotificationManager: Showing in-app notification: ${notification.title}');
+      debugPrint(
+          'NotificationManager: Showing in-app notification: ${notification.title}');
     }
   }
 
@@ -292,7 +305,8 @@ class NotificationManager {
   Future<void> _scheduleSystemNotification(MCPNotification notification) async {
     // Implementation would integrate with system scheduling APIs
     if (enableDebugMode) {
-      debugPrint('NotificationManager: Scheduled system notification: ${notification.title}');
+      debugPrint(
+          'NotificationManager: Scheduled system notification: ${notification.title}');
     }
   }
 
@@ -314,7 +328,8 @@ class NotificationManager {
   Future<void> _dismissSystemNotification(String notificationId) async {
     // Implementation would integrate with system notification APIs
     if (enableDebugMode) {
-      debugPrint('NotificationManager: Dismissed system notification: $notificationId');
+      debugPrint(
+          'NotificationManager: Dismissed system notification: $notificationId');
     }
   }
 

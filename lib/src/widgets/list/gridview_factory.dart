@@ -8,35 +8,40 @@ class GridViewWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
     final scrollDirection = _parseAxis(properties['scrollDirection']);
     final reverse = properties['reverse'] as bool? ?? false;
     final shrinkWrap = properties['shrinkWrap'] as bool? ?? false;
     final physics = _parseScrollPhysics(properties['physics']);
     final padding = parseEdgeInsets(properties['padding']);
-    
+
     // Grid specific properties
     // Support both 'columns' (MCP UI DSL v1.0) and 'crossAxisCount' (Flutter style)
-    final crossAxisCount = (properties['columns'] ?? properties['crossAxisCount']) as int?;
+    final crossAxisCount =
+        (properties['columns'] ?? properties['crossAxisCount']) as int?;
     final maxCrossAxisExtent = properties['maxCrossAxisExtent']?.toDouble();
     // Support both 'spacing' (MCP UI DSL v1.0) and individual spacing properties
     final spacing = properties['spacing']?.toDouble();
-    final mainAxisSpacing = properties['mainAxisSpacing']?.toDouble() ?? spacing ?? 0.0;
-    final crossAxisSpacing = properties['crossAxisSpacing']?.toDouble() ?? spacing ?? 0.0;
+    final mainAxisSpacing =
+        properties['mainAxisSpacing']?.toDouble() ?? spacing ?? 0.0;
+    final crossAxisSpacing =
+        properties['crossAxisSpacing']?.toDouble() ?? spacing ?? 0.0;
     final childAspectRatio = properties['childAspectRatio']?.toDouble() ?? 1.0;
     final mainAxisExtent = properties['mainAxisExtent']?.toDouble();
-    
+
     // Get data source
     final staticChildren = definition['children'] as List<dynamic>?;
     // Support both direct list and path-based items
     final itemsProp = properties['items'];
     final directItems = itemsProp is List ? itemsProp : null;
     final itemsPath = itemsProp is String ? itemsProp : null;
-    final itemTemplate = properties['itemTemplate'] as Map<String, dynamic>?;
-    
+    // Support both 'itemTemplate' (MCP UI DSL v1.0) and 'template' (legacy)
+    final itemTemplate = (properties['itemTemplate'] ?? properties['template'])
+        as Map<String, dynamic>?;
+
     Widget gridView;
-    
+
     // Determine which delegate to use
     SliverGridDelegate gridDelegate;
     if (crossAxisCount != null) {
@@ -64,13 +69,13 @@ class GridViewWidgetFactory extends WidgetFactory {
         childAspectRatio: childAspectRatio,
       );
     }
-    
+
     if ((itemsPath != null || directItems != null) && itemTemplate != null) {
       // Dynamic grid with data binding
-      final items = itemsPath != null 
+      final items = itemsPath != null
           ? context.resolve<List<dynamic>>(itemsPath) as List<dynamic>? ?? []
           : directItems ?? [];
-      
+
       gridView = GridView.builder(
         scrollDirection: scrollDirection,
         reverse: reverse,
@@ -83,7 +88,7 @@ class GridViewWidgetFactory extends WidgetFactory {
           // Create child context with item data
           final row = index ~/ (crossAxisCount ?? 2);
           final col = index % (crossAxisCount ?? 2);
-          
+
           final childContext = context.createChildContext(
             variables: {
               'item': items[index],
@@ -96,14 +101,16 @@ class GridViewWidgetFactory extends WidgetFactory {
               'isOdd': index % 2 == 1,
             },
           );
-          
+
           return context.renderer.renderWidget(itemTemplate, childContext);
         },
       );
-    } else if (directItems != null && directItems.isNotEmpty && itemTemplate == null) {
+    } else if (directItems != null &&
+        directItems.isNotEmpty &&
+        itemTemplate == null) {
       // Direct items list (like in showcase_definition.dart)
       final items = directItems;
-      
+
       gridView = GridView.builder(
         scrollDirection: scrollDirection,
         reverse: reverse,
@@ -122,7 +129,7 @@ class GridViewWidgetFactory extends WidgetFactory {
       final children = staticChildren
           .map((child) => context.renderer.renderWidget(child, context))
           .toList();
-      
+
       gridView = GridView(
         scrollDirection: scrollDirection,
         reverse: reverse,
@@ -141,19 +148,19 @@ class GridViewWidgetFactory extends WidgetFactory {
         gridDelegate: gridDelegate,
       );
     }
-    
+
     // Ensure GridView has proper constraints for stability
     final wrappedGridView = _ensureStableConstraints(gridView, shrinkWrap);
-    
+
     return applyCommonWrappers(wrappedGridView, properties, context);
   }
-  
+
   Widget _ensureStableConstraints(Widget gridView, bool shrinkWrap) {
     // If shrinkWrap is true, the GridView handles its own constraints
     if (shrinkWrap) {
       return gridView;
     }
-    
+
     // For non-shrinkWrap GridViews, ensure they have bounded constraints
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -161,7 +168,7 @@ class GridViewWidgetFactory extends WidgetFactory {
         if (constraints.hasBoundedHeight) {
           return gridView;
         }
-        
+
         // Provide a default height for unbounded contexts
         // This prevents viewport assertion errors in tests
         return SizedBox(

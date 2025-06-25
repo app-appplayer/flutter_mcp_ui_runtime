@@ -22,7 +22,7 @@ class ThemeContext extends InheritedWidget {
     // Check overrides first
     final parts = path.split('.');
     dynamic current = themeOverrides;
-    
+
     for (final part in parts) {
       if (current is Map<String, dynamic> && current.containsKey(part)) {
         current = current[part];
@@ -31,13 +31,13 @@ class ThemeContext extends InheritedWidget {
         return themeManager.getThemeValue(path);
       }
     }
-    
+
     return current;
   }
 
   @override
   bool updateShouldNotify(ThemeContext oldWidget) {
     return themeManager != oldWidget.themeManager ||
-           themeOverrides != oldWidget.themeOverrides;
+        themeOverrides != oldWidget.themeOverrides;
   }
 }

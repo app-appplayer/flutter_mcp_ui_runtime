@@ -9,41 +9,45 @@ class ButtonWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract button properties
-    final label = context.resolve<String>(properties[core.PropertyKeys.label] ?? '');
+    final label =
+        context.resolve<String>(properties[core.PropertyKeys.label] ?? '');
     final iconValue = properties[core.PropertyKeys.icon];
     final icon = iconValue is String ? iconValue : null;
     final iconPosValue = properties['iconPosition'];
     final iconPosition = iconPosValue is String ? iconPosValue : 'start';
-    
+
     // MCP UI DSL v1.0 uses 'variant' property for button styles
     final variantValue = properties['variant'];
     final variant = variantValue is String ? variantValue : 'elevated';
-    
+
     final sizeValue = properties['size'];
     final size = sizeValue is String ? sizeValue : 'medium';
     final fullWidthValue = properties['fullWidth'];
     final fullWidth = fullWidthValue is bool ? fullWidthValue : false;
     final loading = context.resolve<bool>(properties['loading'] ?? false);
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
-    
+
     // Extract style properties from the properties directly
     final backgroundColor = properties['backgroundColor'];
     final foregroundColor = properties['foregroundColor'];
     final elevation = properties['elevation'];
     final borderColor = properties['borderColor'];
     final borderWidth = properties['borderWidth'];
-    
+
     // MCP UI DSL v1.0 event handlers
-    final onClick = properties[core.PropertyKeys.click] as Map<String, dynamic>?;
-    final onDoubleClick = properties[core.PropertyKeys.doubleClick] as Map<String, dynamic>?;
-    final onLongPress = properties[core.PropertyKeys.longPress] as Map<String, dynamic>?;
+    final onClick =
+        properties[core.PropertyKeys.click] as Map<String, dynamic>?;
+    final onDoubleClick =
+        properties[core.PropertyKeys.doubleClick] as Map<String, dynamic>?;
+    final onLongPress =
+        properties[core.PropertyKeys.longPress] as Map<String, dynamic>?;
     final submit = properties['submit'] as Map<String, dynamic>?;
-    
+
     // Use click or submit action
     final primaryAction = onClick ?? submit;
-    
+
     // Build button content
     Widget buttonChild;
     if (loading) {
@@ -53,13 +57,13 @@ class ButtonWidgetFactory extends WidgetFactory {
     } else {
       buttonChild = Text(label);
     }
-    
+
     // Get aria-label for semantic override
     final ariaLabel = context.resolve<String?>(properties['aria-label']);
-    
+
     // Build button
     Widget button;
-    
+
     // Special case for icon variant - create IconButton
     if (variant == 'icon' && icon != null) {
       button = IconButton(
@@ -80,14 +84,16 @@ class ButtonWidgetFactory extends WidgetFactory {
         style: variant,
         child: buttonChild,
         onPressed: !loading && enabled
-            ? (primaryAction != null 
+            ? (primaryAction != null
                 ? () async {
                     // Handle special submit action
                     if (primaryAction['type'] == 'submit') {
                       // Look for form key and submit action in parent context
-                      final formKey = context.getValue<GlobalKey<FormState>>('_formKey');
-                      final submitAction = context.getValue<Map<String, dynamic>>('_formSubmitAction');
-                      
+                      final formKey =
+                          context.getValue<GlobalKey<FormState>>('_formKey');
+                      final submitAction = context
+                          .getValue<Map<String, dynamic>>('_formSubmitAction');
+
                       if (formKey != null && formKey.currentState != null) {
                         final formState = formKey.currentState!;
                         if (formState.validate()) {
@@ -115,7 +121,7 @@ class ButtonWidgetFactory extends WidgetFactory {
         borderWidth: borderWidth,
       );
     }
-    
+
     // Wrap with gesture detector for additional events
     if (onDoubleClick != null || onLongPress != null) {
       button = GestureDetector(
@@ -128,7 +134,7 @@ class ButtonWidgetFactory extends WidgetFactory {
         child: button,
       );
     }
-    
+
     // Apply full width if needed
     if (fullWidth) {
       button = SizedBox(
@@ -136,12 +142,12 @@ class ButtonWidgetFactory extends WidgetFactory {
         child: button,
       );
     }
-    
+
     // If aria-label was already applied, remove it from properties to avoid double application
-    final propsForWrapper = ariaLabel != null 
+    final propsForWrapper = ariaLabel != null
         ? (Map<String, dynamic>.from(properties)..remove('aria-label'))
         : properties;
-    
+
     return applyCommonWrappers(button, propsForWrapper, context);
   }
 
@@ -158,19 +164,23 @@ class ButtonWidgetFactory extends WidgetFactory {
     dynamic borderWidth,
   }) {
     final padding = _getButtonPadding(size);
-    
+
     switch (style) {
       case 'elevated':
         final button = ElevatedButton(
           onPressed: onPressed,
           style: ElevatedButton.styleFrom(
             padding: padding,
-            backgroundColor: backgroundColor != null ? parseColor(backgroundColor) : null,
-            foregroundColor: foregroundColor != null ? parseColor(foregroundColor) : null,
+            backgroundColor:
+                backgroundColor != null ? parseColor(backgroundColor) : null,
+            foregroundColor:
+                foregroundColor != null ? parseColor(foregroundColor) : null,
             elevation: elevation?.toDouble(),
             side: borderColor != null || borderWidth != null
                 ? BorderSide(
-                    color: borderColor != null ? parseColor(borderColor)! : Colors.transparent,
+                    color: borderColor != null
+                        ? parseColor(borderColor)!
+                        : Colors.transparent,
                     width: borderWidth?.toDouble() ?? 1.0,
                   )
                 : null,
@@ -184,18 +194,22 @@ class ButtonWidgetFactory extends WidgetFactory {
                 child: ExcludeSemantics(child: button),
               )
             : button;
-      
+
       case 'filled':
         final button = FilledButton(
           onPressed: onPressed,
           style: FilledButton.styleFrom(
             padding: padding,
-            backgroundColor: backgroundColor != null ? parseColor(backgroundColor) : null,
-            foregroundColor: foregroundColor != null ? parseColor(foregroundColor) : null,
+            backgroundColor:
+                backgroundColor != null ? parseColor(backgroundColor) : null,
+            foregroundColor:
+                foregroundColor != null ? parseColor(foregroundColor) : null,
             elevation: elevation?.toDouble(),
             side: borderColor != null || borderWidth != null
                 ? BorderSide(
-                    color: borderColor != null ? parseColor(borderColor)! : Colors.transparent,
+                    color: borderColor != null
+                        ? parseColor(borderColor)!
+                        : Colors.transparent,
                     width: borderWidth?.toDouble() ?? 1.0,
                   )
                 : null,
@@ -209,18 +223,22 @@ class ButtonWidgetFactory extends WidgetFactory {
                 child: ExcludeSemantics(child: button),
               )
             : button;
-      
+
       case 'outlined':
         final button = OutlinedButton(
           onPressed: onPressed,
           style: OutlinedButton.styleFrom(
             padding: padding,
-            backgroundColor: backgroundColor != null ? parseColor(backgroundColor) : null,
-            foregroundColor: foregroundColor != null ? parseColor(foregroundColor) : null,
+            backgroundColor:
+                backgroundColor != null ? parseColor(backgroundColor) : null,
+            foregroundColor:
+                foregroundColor != null ? parseColor(foregroundColor) : null,
             elevation: elevation?.toDouble(),
             side: borderColor != null || borderWidth != null
                 ? BorderSide(
-                    color: borderColor != null ? parseColor(borderColor)! : Colors.grey,
+                    color: borderColor != null
+                        ? parseColor(borderColor)!
+                        : Colors.grey,
                     width: borderWidth?.toDouble() ?? 1.0,
                   )
                 : null,
@@ -234,18 +252,22 @@ class ButtonWidgetFactory extends WidgetFactory {
                 child: ExcludeSemantics(child: button),
               )
             : button;
-      
+
       case 'text':
         final button = TextButton(
           onPressed: onPressed,
           style: TextButton.styleFrom(
             padding: padding,
-            backgroundColor: backgroundColor != null ? parseColor(backgroundColor) : null,
-            foregroundColor: foregroundColor != null ? parseColor(foregroundColor) : null,
+            backgroundColor:
+                backgroundColor != null ? parseColor(backgroundColor) : null,
+            foregroundColor:
+                foregroundColor != null ? parseColor(foregroundColor) : null,
             elevation: elevation?.toDouble(),
             side: borderColor != null || borderWidth != null
                 ? BorderSide(
-                    color: borderColor != null ? parseColor(borderColor)! : Colors.transparent,
+                    color: borderColor != null
+                        ? parseColor(borderColor)!
+                        : Colors.transparent,
                     width: borderWidth?.toDouble() ?? 1.0,
                   )
                 : null,
@@ -259,18 +281,22 @@ class ButtonWidgetFactory extends WidgetFactory {
                 child: ExcludeSemantics(child: button),
               )
             : button;
-      
+
       default:
         final button = ElevatedButton(
           onPressed: onPressed,
           style: ElevatedButton.styleFrom(
             padding: padding,
-            backgroundColor: backgroundColor != null ? parseColor(backgroundColor) : null,
-            foregroundColor: foregroundColor != null ? parseColor(foregroundColor) : null,
+            backgroundColor:
+                backgroundColor != null ? parseColor(backgroundColor) : null,
+            foregroundColor:
+                foregroundColor != null ? parseColor(foregroundColor) : null,
             elevation: elevation?.toDouble(),
             side: borderColor != null || borderWidth != null
                 ? BorderSide(
-                    color: borderColor != null ? parseColor(borderColor)! : Colors.transparent,
+                    color: borderColor != null
+                        ? parseColor(borderColor)!
+                        : Colors.transparent,
                     width: borderWidth?.toDouble() ?? 1.0,
                   )
                 : null,
@@ -301,13 +327,13 @@ class ButtonWidgetFactory extends WidgetFactory {
 
   Widget _buildIconContent(String label, String iconName, String position) {
     final icon = Icon(_parseIcon(iconName), size: 18);
-    
+
     if (label.isEmpty) {
       return icon;
     }
-    
+
     const spacing = SizedBox(width: 8);
-    
+
     if (position == 'end') {
       return Row(
         mainAxisSize: MainAxisSize.min,
@@ -352,7 +378,7 @@ class ButtonWidgetFactory extends WidgetFactory {
         return 18;
     }
   }
-  
+
   double _getIconSize(String size) {
     switch (size) {
       case 'small':

@@ -108,7 +108,7 @@ class _MCPClientDemoState extends State<MCPClientDemo> {
       
       // Create STDIO transport configuration
       // This launches the server process and communicates via stdin/stdout
-      final transportConfig = TransportConfig.stdio(
+      const transportConfig = TransportConfig.stdio(
         command: 'dart',
         arguments: ['run', 'bin/server.dart'],
         workingDirectory: '../demo_mcp_server',

@@ -12,7 +12,7 @@ void main() async {
   );
   
   // Give server time to start
-  await Future.delayed(Duration(seconds: 2));
+  await Future.delayed(const Duration(seconds: 2));
   
   // Send initialize request
   final initializeRequest = {
@@ -45,7 +45,7 @@ void main() async {
   });
   
   // Wait a bit for response
-  await Future.delayed(Duration(seconds: 3));
+  await Future.delayed(const Duration(seconds: 3));
   
   // Send resources/list request
   final resourcesRequest = {
@@ -59,7 +59,7 @@ void main() async {
   serverProcess.stdin.writeln(jsonEncode(resourcesRequest));
   
   // Wait for response
-  await Future.delayed(Duration(seconds: 2));
+  await Future.delayed(const Duration(seconds: 2));
   
   // Clean up
   serverProcess.kill();

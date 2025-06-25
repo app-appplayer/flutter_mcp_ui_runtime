@@ -9,9 +9,9 @@ class NavigationService extends RuntimeService {
     _instance ??= NavigationService._internal();
     return _instance!;
   }
-  
-  NavigationService._internal({super.enableDebugMode});
-  
+
+  NavigationService._internal();
+
   // Factory constructor returns singleton instance
   factory NavigationService({bool enableDebugMode = false}) {
     return instance;
@@ -27,9 +27,8 @@ class NavigationService extends RuntimeService {
   NavigatorState? get navigator => navigatorKey.currentState;
 
   /// Gets the current route name
-  String? get currentRoute => _routeStack.isNotEmpty 
-      ? _routeStack.last.settings.name 
-      : null;
+  String? get currentRoute =>
+      _routeStack.isNotEmpty ? _routeStack.last.settings.name : null;
 
   /// Gets the route stack
   List<String> get routeStack => _routeStack
@@ -54,7 +53,8 @@ class NavigationService extends RuntimeService {
     // Check route guard
     if (!await _checkRouteGuard(routeName, arguments)) {
       if (enableDebugMode) {
-        debugPrint('NavigationService: Route guard prevented navigation to "$routeName"');
+        debugPrint(
+            'NavigationService: Route guard prevented navigation to "$routeName"');
       }
       return null;
     }
@@ -83,7 +83,8 @@ class NavigationService extends RuntimeService {
       }
     } catch (error) {
       if (enableDebugMode) {
-        debugPrint('NavigationService: Error navigating to "$routeName": $error');
+        debugPrint(
+            'NavigationService: Error navigating to "$routeName": $error');
       }
       rethrow;
     }
@@ -121,7 +122,7 @@ class NavigationService extends RuntimeService {
   /// Registers a route
   void registerRoute(String name, WidgetBuilder builder) {
     _routes[name] = builder;
-    
+
     if (enableDebugMode) {
       debugPrint('NavigationService: Registered route "$name"');
     }
@@ -130,7 +131,7 @@ class NavigationService extends RuntimeService {
   /// Registers multiple routes
   void registerRoutes(Map<String, WidgetBuilder> routes) {
     _routes.addAll(routes);
-    
+
     if (enableDebugMode) {
       debugPrint('NavigationService: Registered ${routes.length} routes');
     }
@@ -142,7 +143,7 @@ class NavigationService extends RuntimeService {
   /// Adds a route guard
   void addRouteGuard(String routeName, Future<bool> Function(Object?) guard) {
     _routeGuards[routeName] = guard;
-    
+
     if (enableDebugMode) {
       debugPrint('NavigationService: Added route guard for "$routeName"');
     }
@@ -151,7 +152,7 @@ class NavigationService extends RuntimeService {
   /// Removes a route guard
   void removeRouteGuard(String routeName) {
     _routeGuards.remove(routeName);
-    
+
     if (enableDebugMode) {
       debugPrint('NavigationService: Removed route guard for "$routeName"');
     }
@@ -160,7 +161,7 @@ class NavigationService extends RuntimeService {
   /// Prevents navigation temporarily
   void preventNavigation() {
     _preventNavigation = true;
-    
+
     if (enableDebugMode) {
       debugPrint('NavigationService: Navigation prevented');
     }
@@ -169,7 +170,7 @@ class NavigationService extends RuntimeService {
   /// Allows navigation
   void allowNavigation() {
     _preventNavigation = false;
-    
+
     if (enableDebugMode) {
       debugPrint('NavigationService: Navigation allowed');
     }
@@ -278,19 +279,22 @@ class NavigationService extends RuntimeService {
       onPushed: (route, previousRoute) {
         _routeStack.add(route);
         if (enableDebugMode) {
-          debugPrint('NavigationService: Pushed route "${route.settings.name}"');
+          debugPrint(
+              'NavigationService: Pushed route "${route.settings.name}"');
         }
       },
       onPopped: (route, previousRoute) {
         _routeStack.remove(route);
         if (enableDebugMode) {
-          debugPrint('NavigationService: Popped route "${route.settings.name}"');
+          debugPrint(
+              'NavigationService: Popped route "${route.settings.name}"');
         }
       },
       onRemoved: (route, previousRoute) {
         _routeStack.remove(route);
         if (enableDebugMode) {
-          debugPrint('NavigationService: Removed route "${route.settings.name}"');
+          debugPrint(
+              'NavigationService: Removed route "${route.settings.name}"');
         }
       },
       onReplaced: (newRoute, oldRoute) {
@@ -299,7 +303,8 @@ class NavigationService extends RuntimeService {
           _routeStack[index] = newRoute!;
         }
         if (enableDebugMode) {
-          debugPrint('NavigationService: Replaced route "${oldRoute.settings.name}" with "${newRoute?.settings.name}"');
+          debugPrint(
+              'NavigationService: Replaced route "${oldRoute.settings.name}" with "${newRoute?.settings.name}"');
         }
       },
     );
@@ -312,7 +317,8 @@ class NavigationService extends RuntimeService {
     if (routesConfig != null) {
       // Routes would be created from JSON definitions
       if (enableDebugMode) {
-        debugPrint('NavigationService: Configured ${routesConfig.length} routes');
+        debugPrint(
+            'NavigationService: Configured ${routesConfig.length} routes');
       }
     }
 
@@ -321,7 +327,8 @@ class NavigationService extends RuntimeService {
     if (guardsConfig != null) {
       // Guards would be created from JSON definitions
       if (enableDebugMode) {
-        debugPrint('NavigationService: Configured ${guardsConfig.length} route guards');
+        debugPrint(
+            'NavigationService: Configured ${guardsConfig.length} route guards');
       }
     }
   }
@@ -333,7 +340,7 @@ class NavigationService extends RuntimeService {
     _routeStack.clear();
     _preventNavigation = false;
   }
-  
+
   /// Reset singleton instance (for testing only)
   @visibleForTesting
   static void resetInstance() {
@@ -349,7 +356,8 @@ class NavigationService extends RuntimeService {
       return await (guard as Future<bool> Function(Object?))(arguments);
     } catch (error) {
       if (enableDebugMode) {
-        debugPrint('NavigationService: Error in route guard for "$routeName": $error');
+        debugPrint(
+            'NavigationService: Error in route guard for "$routeName": $error');
       }
       return false;
     }
@@ -365,10 +373,14 @@ class _MCPRouteObserver extends RouteObserver<PageRoute> {
     this.onReplaced,
   });
 
-  final void Function(Route<dynamic> route, Route<dynamic>? previousRoute)? onPushed;
-  final void Function(Route<dynamic> route, Route<dynamic>? previousRoute)? onPopped;
-  final void Function(Route<dynamic> route, Route<dynamic>? previousRoute)? onRemoved;
-  final void Function(Route<dynamic>? newRoute, Route<dynamic>? oldRoute)? onReplaced;
+  final void Function(Route<dynamic> route, Route<dynamic>? previousRoute)?
+      onPushed;
+  final void Function(Route<dynamic> route, Route<dynamic>? previousRoute)?
+      onPopped;
+  final void Function(Route<dynamic> route, Route<dynamic>? previousRoute)?
+      onRemoved;
+  final void Function(Route<dynamic>? newRoute, Route<dynamic>? oldRoute)?
+      onReplaced;
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {

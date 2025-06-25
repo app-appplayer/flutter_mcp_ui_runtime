@@ -8,41 +8,42 @@ class ClipRRectWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
-    final borderRadius = _parseBorderRadius(properties['borderRadius']) ?? 
-                        BorderRadius.zero;
-    final clipBehavior = _parseClip(properties['clipBehavior']) ?? Clip.antiAlias;
-    
+    final borderRadius =
+        _parseBorderRadius(properties['borderRadius']) ?? BorderRadius.zero;
+    final clipBehavior =
+        _parseClip(properties['clipBehavior']) ?? Clip.antiAlias;
+
     // Extract child widget
-    final childrenDef = properties['children'] as List<dynamic>? ?? 
-                       definition['children'] as List<dynamic>?;
+    final childrenDef = properties['children'] as List<dynamic>? ??
+        definition['children'] as List<dynamic>?;
     Widget? child;
     if (childrenDef != null && childrenDef.isNotEmpty) {
       child = context.buildWidget(childrenDef.first as Map<String, dynamic>);
     }
-    
+
     Widget clipRRect = ClipRRect(
       borderRadius: borderRadius,
       clipBehavior: clipBehavior,
       child: child,
     );
-    
+
     return applyCommonWrappers(clipRRect, properties, context);
   }
 
   BorderRadius? _parseBorderRadius(dynamic value) {
     if (value == null) return null;
-    
+
     if (value is num) {
       return BorderRadius.circular(value.toDouble());
     }
-    
+
     if (value is Map<String, dynamic>) {
       if (value.containsKey('all')) {
         return BorderRadius.circular(value['all'].toDouble());
       }
-      
+
       return BorderRadius.only(
         topLeft: Radius.circular(value['topLeft']?.toDouble() ?? 0),
         topRight: Radius.circular(value['topRight']?.toDouble() ?? 0),
@@ -50,7 +51,7 @@ class ClipRRectWidgetFactory extends WidgetFactory {
         bottomRight: Radius.circular(value['bottomRight']?.toDouble() ?? 0),
       );
     }
-    
+
     return null;
   }
 

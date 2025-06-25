@@ -63,10 +63,10 @@ class NavigationBuilder {
               ),
             ),
             ...navDefinition.items.map((item) => _buildDrawerItem(
-              item: item,
-              onNavigate: onNavigate,
-              isSelected: currentRoute == item.route,
-            )),
+                  item: item,
+                  onNavigate: onNavigate,
+                  isSelected: currentRoute == item.route,
+                )),
           ],
         ),
       ),
@@ -86,10 +86,14 @@ class NavigationBuilder {
         appBar: AppBar(
           title: const Text('MCP Application'),
           bottom: TabBar(
-            tabs: navDefinition.items.map((item) => Tab(
-              text: item.title,
-              icon: item.icon != null ? Icon(_getIconData(item.icon!)) : null,
-            )).toList(),
+            tabs: navDefinition.items
+                .map((item) => Tab(
+                      text: item.title,
+                      icon: item.icon != null
+                          ? Icon(_getIconData(item.icon!))
+                          : null,
+                    ))
+                .toList(),
             onTap: (index) {
               final item = navDefinition.items[index];
               onNavigate(item.route);
@@ -120,10 +124,12 @@ class NavigationBuilder {
           final item = navDefinition.items[index];
           onNavigate(item.route);
         },
-        items: navDefinition.items.map((item) => BottomNavigationBarItem(
-          icon: Icon(_getIconData(item.icon ?? 'home')),
-          label: item.title,
-        )).toList(),
+        items: navDefinition.items
+            .map((item) => BottomNavigationBarItem(
+                  icon: Icon(_getIconData(item.icon ?? 'home')),
+                  label: item.title,
+                ))
+            .toList(),
       ),
     );
   }

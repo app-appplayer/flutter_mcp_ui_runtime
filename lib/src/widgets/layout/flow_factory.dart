@@ -8,12 +8,12 @@ class FlowWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
     final children = definition['children'] as List<dynamic>? ?? [];
-    
+
     // Extract flow configuration properties
     final spacing = context.resolve(properties['spacing'])?.toDouble() ?? 8.0;
     final direction = properties['direction'] as String? ?? 'horizontal';
     final alignment = properties['alignment'] as String? ?? 'start';
-    
+
     return Flow(
       delegate: _ConfigurableFlowDelegate(
         spacing: spacing,
@@ -43,10 +43,10 @@ class _ConfigurableFlowDelegate extends FlowDelegate {
   void paintChildren(FlowPaintingContext context) {
     double x = 0;
     double y = 0;
-    
+
     for (int i = 0; i < context.childCount; i++) {
       final childSize = context.getChildSize(i) ?? Size.zero;
-      
+
       if (direction == 'vertical') {
         // Vertical flow layout
         if (y + childSize.height > context.size.height) {
@@ -71,7 +71,7 @@ class _ConfigurableFlowDelegate extends FlowDelegate {
   bool shouldRepaint(covariant FlowDelegate oldDelegate) {
     if (oldDelegate is! _ConfigurableFlowDelegate) return true;
     return oldDelegate.spacing != spacing ||
-           oldDelegate.direction != direction ||
-           oldDelegate.alignment != alignment;
+        oldDelegate.direction != direction ||
+        oldDelegate.alignment != alignment;
   }
 }

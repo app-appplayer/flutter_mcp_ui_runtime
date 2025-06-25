@@ -11,7 +11,8 @@ class ComputedProperty {
     required this.compute,
     this.dependencies = const [],
     this.enableDebugMode = kDebugMode,
-  }) : _logger = MCPLogger('ComputedProperty[$name]', enableLogging: enableDebugMode);
+  }) : _logger = MCPLogger('ComputedProperty[$name]',
+            enableLogging: enableDebugMode);
 
   /// The name/path of this computed property
   final String name;
@@ -45,16 +46,17 @@ class ComputedProperty {
   dynamic computeAndCache(Map<String, dynamic> state) {
     if (_isComputing) {
       _logger.error('Circular dependency detected in computed property: $name');
-      throw StateError('Circular dependency detected in computed property: $name');
+      throw StateError(
+          'Circular dependency detected in computed property: $name');
     }
 
     try {
       _isComputing = true;
       _cachedValue = compute(state);
       _isInitialized = true;
-      
+
       _logger.debug('Computed property "$name" = $_cachedValue');
-      
+
       return _cachedValue;
     } catch (error) {
       _logger.error('Error computing property "$name": $error');
@@ -68,7 +70,7 @@ class ComputedProperty {
   void invalidate() {
     _cachedValue = null;
     _isInitialized = false;
-    
+
     _logger.debug('Invalidated computed property "$name"');
   }
 
@@ -78,10 +80,11 @@ class ComputedProperty {
       if (changedPaths.containsKey(dependency)) {
         return true;
       }
-      
+
       // Check if any changed path is a parent or child of this dependency
       for (final changedPath in changedPaths.keys) {
-        if (changedPath.startsWith('$dependency.') || dependency.startsWith('$changedPath.')) {
+        if (changedPath.startsWith('$dependency.') ||
+            dependency.startsWith('$changedPath.')) {
           return true;
         }
       }
@@ -90,7 +93,8 @@ class ComputedProperty {
   }
 
   /// Creates a computed property from an expression string
-  static ComputedProperty fromExpression(String name, String expression, {List<String>? dependencies}) {
+  static ComputedProperty fromExpression(String name, String expression,
+      {List<String>? dependencies}) {
     return ComputedProperty(
       name: name,
       expression: expression,
@@ -104,114 +108,120 @@ class ComputedProperty {
     final dependencies = <String>[];
     final regex = RegExp(r'\{\{([^}]+)\}\}');
     final matches = regex.allMatches(expression);
-    
+
     for (final match in matches) {
       final content = match.group(1)?.trim();
       if (content != null) {
         // Extract the main variable name (before any operators or functions)
         final parts = content.split(RegExp(r'[\s\+\-\*\/\|\&\>\<\!\=\?\:]'));
         final mainVar = parts.first.trim();
-        
+
         // Remove function calls and pipes
         final cleanVar = mainVar.split('(').first.split('|').first.trim();
-        
+
         if (cleanVar.isNotEmpty && !_isLiteral(cleanVar)) {
           dependencies.add(cleanVar);
         }
       }
     }
-    
+
     return dependencies.toSet().toList(); // Remove duplicates
   }
 
   /// Evaluates an expression against the current state
-  static dynamic _evaluateExpression(String expression, Map<String, dynamic> state) {
+  static dynamic _evaluateExpression(
+      String expression, Map<String, dynamic> state) {
     // Simple expression evaluation
     // This is a basic implementation - a real implementation might use a proper expression parser
-    
+
     try {
       // Handle simple variable substitution
       final regex = RegExp(r'\{\{([^}]+)\}\}');
       String result = expression;
-      
+
       final matches = regex.allMatches(expression).toList();
       for (final match in matches.reversed) {
         final content = match.group(1)?.trim();
         if (content != null) {
           final value = _evaluateExpressionContent(content, state);
-          result = result.replaceRange(match.start, match.end, value.toString());
+          result =
+              result.replaceRange(match.start, match.end, value.toString());
         }
       }
-      
+
       // If the entire expression was a single substitution, return the actual value
-      if (matches.length == 1 && matches.first.start == 0 && matches.first.end == expression.length) {
+      if (matches.length == 1 &&
+          matches.first.start == 0 &&
+          matches.first.end == expression.length) {
         final content = matches.first.group(1)?.trim();
         if (content != null) {
           return _evaluateExpressionContent(content, state);
         }
       }
-      
+
       return result;
     } catch (error) {
-      debugPrint('ComputedProperty: Error evaluating expression "$expression": $error');
+      debugPrint(
+          'ComputedProperty: Error evaluating expression "$expression": $error');
       return null;
     }
   }
 
   /// Evaluates the content inside {{ }}
-  static dynamic _evaluateExpressionContent(String content, Map<String, dynamic> state) {
+  static dynamic _evaluateExpressionContent(
+      String content, Map<String, dynamic> state) {
     content = content.trim();
-    
+
     // Handle string literals
     if ((content.startsWith('"') && content.endsWith('"')) ||
         (content.startsWith("'") && content.endsWith("'"))) {
       return content.substring(1, content.length - 1);
     }
-    
+
     // Handle boolean and null literals
     if (content == 'true') return true;
     if (content == 'false') return false;
     if (content == 'null') return null;
-    
+
     // Handle numeric literals
     final numValue = num.tryParse(content);
     if (numValue != null) return numValue;
-    
+
     // Handle ternary operator (condition ? trueValue : falseValue)
     if (content.contains('?') && content.contains(':')) {
       return _evaluateTernary(content, state);
     }
-    
+
     // Handle logical operators
     if (content.contains('&&') || content.contains('||')) {
       return _evaluateLogical(content, state);
     }
-    
+
     // Handle comparison operators
     if (RegExp(r'[><=!]=?').hasMatch(content)) {
       return _evaluateComparison(content, state);
     }
-    
+
     // Handle arithmetic operators
     if (RegExp(r'[\+\-\*\/\%]').hasMatch(content)) {
       return _evaluateArithmetic(content, state);
     }
-    
+
     // Handle pipe operations (transforms)
     if (content.contains('|')) {
       return _evaluatePipe(content, state);
     }
-    
+
     // Handle function calls
     if (content.contains('(') && content.contains(')')) {
       return _evaluateFunction(content, state);
     }
-    
+
     // Handle array access
     if (content.contains('[') && content.contains(']')) {
       return _evaluateArrayAccess(content, state);
     }
-    
+
     // Handle simple variable access
     return _getStateValue(content, state);
   }
@@ -229,18 +239,18 @@ class ComputedProperty {
   static dynamic _evaluateTernary(String content, Map<String, dynamic> state) {
     final parts = content.split('?');
     if (parts.length != 2) return null;
-    
+
     final condition = parts[0].trim();
     final remaining = parts[1].split(':');
     if (remaining.length != 2) return null;
-    
+
     final trueValue = remaining[0].trim();
     final falseValue = remaining[1].trim();
-    
+
     final conditionResult = _evaluateExpressionContent(condition, state);
     final isTrue = _isTruthy(conditionResult);
-    
-    return isTrue 
+
+    return isTrue
         ? _evaluateExpressionContent(trueValue, state)
         : _evaluateExpressionContent(falseValue, state);
   }
@@ -268,16 +278,17 @@ class ComputedProperty {
   }
 
   /// Evaluates comparison expressions
-  static dynamic _evaluateComparison(String content, Map<String, dynamic> state) {
+  static dynamic _evaluateComparison(
+      String content, Map<String, dynamic> state) {
     final operators = ['>=', '<=', '!=', '==', '>', '<'];
-    
+
     for (final op in operators) {
       if (content.contains(op)) {
         final parts = content.split(op);
         if (parts.length == 2) {
           final left = _evaluateExpressionContent(parts[0].trim(), state);
           final right = _evaluateExpressionContent(parts[1].trim(), state);
-          
+
           switch (op) {
             case '==':
               return left == right;
@@ -300,24 +311,25 @@ class ComputedProperty {
   }
 
   /// Evaluates arithmetic expressions
-  static dynamic _evaluateArithmetic(String content, Map<String, dynamic> state) {
+  static dynamic _evaluateArithmetic(
+      String content, Map<String, dynamic> state) {
     // Find the last occurrence of operators for left-to-right evaluation
     final operators = ['+', '-', '*', '/', '%'];
-    
+
     for (final op in operators) {
       final opIndex = content.lastIndexOf(op);
       if (opIndex > 0 && opIndex < content.length - 1) {
         final left = content.substring(0, opIndex).trim();
         final right = content.substring(opIndex + 1).trim();
-        
+
         final leftValue = _evaluateExpressionContent(left, state);
         final rightValue = _evaluateExpressionContent(right, state);
-        
+
         if (op == '+') {
           // Handle both numeric addition and string concatenation
           final leftNum = _toNumber(leftValue);
           final rightNum = _toNumber(rightValue);
-          
+
           if (leftNum != null && rightNum != null) {
             return leftNum + rightNum;
           } else {
@@ -328,7 +340,7 @@ class ComputedProperty {
           // Other operators require numeric values
           final leftNum = _toNumber(leftValue);
           final rightNum = _toNumber(rightValue);
-          
+
           if (leftNum != null && rightNum != null) {
             switch (op) {
               case '-':
@@ -352,12 +364,12 @@ class ComputedProperty {
   static dynamic _evaluatePipe(String content, Map<String, dynamic> state) {
     final parts = content.split('|');
     dynamic value = _evaluateExpressionContent(parts[0].trim(), state);
-    
+
     for (int i = 1; i < parts.length; i++) {
       final transform = parts[i].trim();
       value = _applyTransform(value, transform);
     }
-    
+
     return value;
   }
 
@@ -365,36 +377,45 @@ class ComputedProperty {
   static dynamic _evaluateFunction(String content, Map<String, dynamic> state) {
     final parenIndex = content.indexOf('(');
     final funcName = content.substring(0, parenIndex).trim();
-    final argsString = content.substring(parenIndex + 1, content.lastIndexOf(')')).trim();
-    
-    final args = argsString.isEmpty ? <dynamic>[] : 
-        argsString.split(',').map((arg) => _evaluateExpressionContent(arg.trim(), state)).toList();
-    
+    final argsString =
+        content.substring(parenIndex + 1, content.lastIndexOf(')')).trim();
+
+    final args = argsString.isEmpty
+        ? <dynamic>[]
+        : argsString
+            .split(',')
+            .map((arg) => _evaluateExpressionContent(arg.trim(), state))
+            .toList();
+
     return _callFunction(funcName, args);
   }
 
   /// Evaluates array access
-  static dynamic _evaluateArrayAccess(String content, Map<String, dynamic> state) {
+  static dynamic _evaluateArrayAccess(
+      String content, Map<String, dynamic> state) {
     final bracketIndex = content.indexOf('[');
     final arrayPath = content.substring(0, bracketIndex).trim();
-    final indexString = content.substring(bracketIndex + 1, content.lastIndexOf(']')).trim();
-    
+    final indexString =
+        content.substring(bracketIndex + 1, content.lastIndexOf(']')).trim();
+
     final array = _getStateValue(arrayPath, state);
     final index = _evaluateExpressionContent(indexString, state);
-    
+
     if (array is List && index is int && index >= 0 && index < array.length) {
       return array[index];
     }
-    
+
     return null;
   }
 
   /// Helper methods
   static bool _isLiteral(String value) {
-    return value == 'true' || value == 'false' || value == 'null' || 
-           double.tryParse(value) != null || 
-           (value.startsWith('"') && value.endsWith('"')) ||
-           (value.startsWith("'") && value.endsWith("'"));
+    return value == 'true' ||
+        value == 'false' ||
+        value == 'null' ||
+        double.tryParse(value) != null ||
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"));
   }
 
   static bool _isTruthy(dynamic value) {
@@ -465,10 +486,15 @@ class ComputedProperty {
           if (args.length > 1) {
             // Sum by property
             final property = args[1].toString();
-            return list.map((item) => (_toNumber(_getProperty(item, property)) ?? 0).toDouble()).fold(0.0, (a, b) => a + b);
+            return list
+                .map((item) =>
+                    (_toNumber(_getProperty(item, property)) ?? 0).toDouble())
+                .fold(0.0, (a, b) => a + b);
           } else {
             // Sum values directly
-            return list.map((item) => (_toNumber(item) ?? 0).toDouble()).fold(0.0, (a, b) => a + b);
+            return list
+                .map((item) => (_toNumber(item) ?? 0).toDouble())
+                .fold(0.0, (a, b) => a + b);
           }
         }
         return 0;

@@ -19,11 +19,11 @@ class LifecycleManager {
 
   final bool enableDebugMode;
   final Map<LifecycleEvent, List<Function>> _eventListeners = {};
-  
+
   // Action handler for executing lifecycle hooks
   dynamic _actionHandler;
   dynamic _renderContext;
-  
+
   /// Sets the action handler for executing lifecycle hooks
   void setActionHandler(dynamic actionHandler, dynamic renderContext) {
     _actionHandler = actionHandler;
@@ -33,7 +33,7 @@ class LifecycleManager {
   /// Registers a listener for a specific lifecycle event
   void addListener(LifecycleEvent event, Function listener) {
     _eventListeners.putIfAbsent(event, () => []).add(listener);
-    
+
     if (enableDebugMode) {
       debugPrint('LifecycleManager: Added listener for ${event.name}');
     }
@@ -42,7 +42,7 @@ class LifecycleManager {
   /// Removes a listener for a specific lifecycle event
   void removeListener(LifecycleEvent event, Function listener) {
     _eventListeners[event]?.remove(listener);
-    
+
     if (enableDebugMode) {
       debugPrint('LifecycleManager: Removed listener for ${event.name}');
     }
@@ -54,7 +54,8 @@ class LifecycleManager {
     List<dynamic> hooks,
   ) async {
     if (enableDebugMode) {
-      debugPrint('LifecycleManager: Executing ${hooks.length} hooks for ${event.name}');
+      debugPrint(
+          'LifecycleManager: Executing ${hooks.length} hooks for ${event.name}');
     }
 
     // Execute registered listeners first
@@ -69,7 +70,8 @@ class LifecycleManager {
           }
         } catch (error) {
           if (enableDebugMode) {
-            debugPrint('LifecycleManager: Error in listener for ${event.name}: $error');
+            debugPrint(
+                'LifecycleManager: Error in listener for ${event.name}: $error');
           }
         }
       }
@@ -81,7 +83,8 @@ class LifecycleManager {
         await _executeHook(event, hook);
       } catch (error) {
         if (enableDebugMode) {
-          debugPrint('LifecycleManager: Error executing hook for ${event.name}: $error');
+          debugPrint(
+              'LifecycleManager: Error executing hook for ${event.name}: $error');
         }
         // Continue with other hooks even if one fails
       }
@@ -114,7 +117,8 @@ class LifecycleManager {
           }
         } catch (error) {
           if (enableDebugMode) {
-            debugPrint('LifecycleManager: Error in listener for ${event.name}: $error');
+            debugPrint(
+                'LifecycleManager: Error in listener for ${event.name}: $error');
           }
         }
       }
@@ -178,7 +182,7 @@ class LifecycleManager {
     if (enableDebugMode) {
       debugPrint('LifecycleManager: Executing tool hook: ${hook['tool']}');
     }
-    
+
     // Execute the tool action using ActionHandler if available
     if (_actionHandler != null && _renderContext != null) {
       try {
@@ -190,7 +194,8 @@ class LifecycleManager {
       }
     } else {
       if (enableDebugMode) {
-        debugPrint('LifecycleManager: ActionHandler not available for tool execution');
+        debugPrint(
+            'LifecycleManager: ActionHandler not available for tool execution');
       }
     }
   }
@@ -200,7 +205,8 @@ class LifecycleManager {
     // Placeholder implementation
     // This would interact with the ServiceRegistry
     if (enableDebugMode) {
-      debugPrint('LifecycleManager: Executing service hook: ${hook['service']}');
+      debugPrint(
+          'LifecycleManager: Executing service hook: ${hook['service']}');
     }
   }
 
@@ -209,7 +215,8 @@ class LifecycleManager {
     // Placeholder implementation
     // This would interact with the NotificationManager
     if (enableDebugMode) {
-      debugPrint('LifecycleManager: Executing notification hook: ${hook['action']}');
+      debugPrint(
+          'LifecycleManager: Executing notification hook: ${hook['action']}');
     }
   }
 
@@ -225,7 +232,7 @@ class LifecycleManager {
   /// Disposes of the lifecycle manager and cleans up resources
   void dispose() {
     _eventListeners.clear();
-    
+
     if (enableDebugMode) {
       debugPrint('LifecycleManager: Disposed');
     }
@@ -260,7 +267,7 @@ class ComponentLifecycleHandler {
     if (_isMounted) return;
 
     _isMounted = true;
-    
+
     if (enableDebugMode) {
       debugPrint('ComponentLifecycleHandler: Component $componentId mounted');
     }
@@ -283,7 +290,8 @@ class ComponentLifecycleHandler {
     if (!_isMounted) return;
 
     if (enableDebugMode) {
-      debugPrint('ComponentLifecycleHandler: Component $componentId unmounting');
+      debugPrint(
+          'ComponentLifecycleHandler: Component $componentId unmounting');
     }
 
     // Execute onUnmount hooks if defined
@@ -299,7 +307,7 @@ class ComponentLifecycleHandler {
     await lifecycleManager.triggerEvent(LifecycleEvent.unmount, componentId);
 
     _isMounted = false;
-    
+
     if (enableDebugMode) {
       debugPrint('ComponentLifecycleHandler: Component $componentId unmounted');
     }

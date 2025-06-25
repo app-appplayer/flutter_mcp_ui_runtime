@@ -44,7 +44,7 @@ class _SimpleMCPWidgetState extends State<SimpleMCPWidget> {
     _bindingEngine = BindingEngine();
     _actionHandler = ActionHandler();
     _stateManager = StateManager();
-    
+
     _renderer = Renderer(
       widgetRegistry: _widgetRegistry,
       bindingEngine: _bindingEngine,
@@ -53,7 +53,7 @@ class _SimpleMCPWidgetState extends State<SimpleMCPWidget> {
     );
 
     _registerDefaultWidgets();
-    
+
     // Set up initial state
     if (widget.initialState != null) {
       _stateManager.initialize(widget.initialState!);
@@ -86,9 +86,10 @@ class _SimpleMCPWidgetState extends State<SimpleMCPWidget> {
   Widget build(BuildContext context) {
     try {
       // Validate UI definition
-      if (!widget.uiDefinition.containsKey('page') && 
+      if (!widget.uiDefinition.containsKey('page') &&
           !widget.uiDefinition.containsKey('layout')) {
-        throw Exception('UI definition must contain a "page" or "layout" field');
+        throw Exception(
+            'UI definition must contain a "page" or "layout" field');
       }
 
       // Set up bindings
@@ -105,7 +106,8 @@ class _SimpleMCPWidgetState extends State<SimpleMCPWidget> {
         return _renderer.renderPage(page);
       } else {
         final layout = widget.uiDefinition['layout'] as Map<String, dynamic>;
-        return _renderer.renderWidget(layout, _renderer.createRootContext(context));
+        return _renderer.renderWidget(
+            layout, _renderer.createRootContext(context));
       }
     } catch (e, stack) {
       if (widget.errorBuilder != null) {
@@ -136,7 +138,7 @@ class _SimpleTextFactory extends WidgetFactory {
     final properties = extractProperties(definition);
     final content = properties['content'] ?? '';
     final resolvedContent = context.resolve<String>(content);
-    
+
     return Text(resolvedContent);
   }
 }
@@ -147,9 +149,9 @@ class _SimpleButtonFactory extends WidgetFactory {
     final properties = extractProperties(definition);
     final label = properties['label'] ?? '';
     final onTap = properties['onTap'] as Map<String, dynamic>?;
-    
+
     return ElevatedButton(
-      onPressed: onTap != null 
+      onPressed: onTap != null
           ? () async => await context.actionHandler.execute(onTap, context)
           : null,
       child: Text(label),
@@ -162,7 +164,7 @@ class _SimpleColumnFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     // Column is a multi-child widget, so children should be at root level
     final children = definition['children'] as List<dynamic>? ?? [];
-    
+
     return Column(
       children: children
           .map((child) => context.buildWidget(child as Map<String, dynamic>))
@@ -176,7 +178,7 @@ class _SimpleRowFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     // Row is a multi-child widget, so children should be at root level
     final children = definition['children'] as List<dynamic>? ?? [];
-    
+
     return Row(
       children: children
           .map((child) => context.buildWidget(child as Map<String, dynamic>))
@@ -191,12 +193,10 @@ class _SimpleContainerFactory extends WidgetFactory {
     final properties = extractProperties(definition);
     // Container is a single-child widget, so child should be in properties
     final childDef = properties['child'] as Map<String, dynamic>?;
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
-      child: childDef != null 
-          ? context.buildWidget(childDef)
-          : null,
+      child: childDef != null ? context.buildWidget(childDef) : null,
     );
   }
 }

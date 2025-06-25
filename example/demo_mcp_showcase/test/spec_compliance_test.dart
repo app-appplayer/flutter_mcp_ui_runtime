@@ -101,9 +101,13 @@ void main() {
             if (node['type'] != null && deprecatedTypes.contains(node['type'])) {
               fail('Found deprecated type ${node['type']} in $uri');
             }
-            node.values.forEach((value) => checkForDeprecatedTypes(value, uri));
+            for (var value in node.values) {
+              checkForDeprecatedTypes(value, uri);
+            }
           } else if (node is List) {
-            node.forEach((item) => checkForDeprecatedTypes(item, uri));
+            for (var item in node) {
+              checkForDeprecatedTypes(item, uri);
+            }
           }
         }
 

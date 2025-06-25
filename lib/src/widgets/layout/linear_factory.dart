@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart';
 import '../../renderer/render_context.dart';
 import '../widget_factory.dart';
 
@@ -9,36 +8,38 @@ class LinearLayoutFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Get direction (default to vertical)
-    final direction = context.resolve<String>(properties['direction'] ?? 'vertical');
+    final direction =
+        context.resolve<String>(properties['direction'] ?? 'vertical');
     final isVertical = direction == 'vertical';
-    
+
     // Get distribution (spec v1.0 replacement for mainAxisAlignment)
-    final distribution = context.resolve<String?>(properties['distribution']) ?? 
-                        context.resolve<String?>(properties['mainAxisAlignment']) ?? 
-                        'start';
-    
+    final distribution = context.resolve<String?>(properties['distribution']) ??
+        context.resolve<String?>(properties['mainAxisAlignment']) ??
+        'start';
+
     // Get alignment (spec v1.0 for crossAxisAlignment)
-    final alignment = context.resolve<String?>(properties['alignment']) ?? 
-                     context.resolve<String?>(properties['crossAxisAlignment']) ?? 
-                     'center';
-    
+    final alignment = context.resolve<String?>(properties['alignment']) ??
+        context.resolve<String?>(properties['crossAxisAlignment']) ??
+        'center';
+
     // Get gap (spec v1.0 for spacing between items)
     final gapValue = context.resolve(properties['gap']) ?? 0.0;
-    final gap = gapValue is int ? gapValue.toDouble() : (gapValue as double? ?? 0.0);
-    
+    final gap =
+        gapValue is int ? gapValue.toDouble() : (gapValue as double? ?? 0.0);
+
     // Get wrap (spec v1.0 for whether items should wrap)
     final wrap = context.resolve<bool>(properties['wrap'] ?? false);
-    
+
     // Build children
     final childrenDefs = definition['children'] as List<dynamic>? ?? [];
     final children = <Widget>[];
-    
+
     for (final childDef in childrenDefs) {
       if (childDef is Map<String, dynamic>) {
         final child = context.buildWidget(childDef);
-        
+
         // Check if child has flex property
         final flex = childDef['flex'];
         if (flex != null && flex is int && !wrap) {
@@ -52,7 +53,7 @@ class LinearLayoutFactory extends WidgetFactory {
         }
       }
     }
-    
+
     // If gap is specified, add spacing between children
     List<Widget> spacedChildren = children;
     if (gap > 0 && children.length > 1) {
@@ -67,7 +68,7 @@ class LinearLayoutFactory extends WidgetFactory {
         }
       }
     }
-    
+
     // If wrap is true, use Wrap widget
     if (wrap) {
       return Wrap(
@@ -79,7 +80,7 @@ class LinearLayoutFactory extends WidgetFactory {
         children: children,
       );
     }
-    
+
     // Otherwise use Column or Row
     Widget widget = isVertical
         ? Column(
@@ -94,7 +95,7 @@ class LinearLayoutFactory extends WidgetFactory {
             mainAxisSize: MainAxisSize.min,
             children: spacedChildren,
           );
-    
+
     // Apply padding if specified
     final padding = properties['padding'];
     if (padding != null) {
@@ -103,10 +104,10 @@ class LinearLayoutFactory extends WidgetFactory {
         child: widget,
       );
     }
-    
+
     return applyCommonWrappers(widget, properties, context);
   }
-  
+
   MainAxisAlignment _parseMainAxisAlignment(String? value) {
     switch (value) {
       case 'start':
@@ -128,7 +129,7 @@ class LinearLayoutFactory extends WidgetFactory {
         return MainAxisAlignment.start;
     }
   }
-  
+
   CrossAxisAlignment _parseCrossAxisAlignment(String? value) {
     switch (value) {
       case 'start':
@@ -145,7 +146,7 @@ class LinearLayoutFactory extends WidgetFactory {
         return CrossAxisAlignment.center;
     }
   }
-  
+
   WrapAlignment _parseWrapAlignment(String? value) {
     switch (value) {
       case 'start':
@@ -167,7 +168,7 @@ class LinearLayoutFactory extends WidgetFactory {
         return WrapAlignment.start;
     }
   }
-  
+
   WrapCrossAlignment _parseWrapCrossAlignment(String? value) {
     switch (value) {
       case 'start':

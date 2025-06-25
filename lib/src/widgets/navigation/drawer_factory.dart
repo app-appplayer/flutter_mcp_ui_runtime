@@ -8,21 +8,23 @@ class DrawerWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
     final width = properties['width']?.toDouble();
     final elevation = properties['elevation']?.toDouble() ?? 16.0;
     final shadowColor = parseColor(context.resolve(properties['shadowColor']));
-    final surfaceTintColor = parseColor(context.resolve(properties['surfaceTintColor']));
-    final backgroundColor = parseColor(context.resolve(properties['backgroundColor']));
+    final surfaceTintColor =
+        parseColor(context.resolve(properties['surfaceTintColor']));
+    final backgroundColor =
+        parseColor(context.resolve(properties['backgroundColor']));
     final shape = _parseShapeBorder(properties['shape']);
     final semanticLabel = context.resolve<String?>(properties['semanticLabel']);
-    
+
     // Build child widget - check both properties and definition level
-    final childrenData = properties['children'] as List<dynamic>? ?? 
-                        definition['children'] as List<dynamic>?;
+    final childrenData = properties['children'] as List<dynamic>? ??
+        definition['children'] as List<dynamic>?;
     Widget? child;
-    
+
     if (childrenData != null && childrenData.isNotEmpty) {
       if (childrenData.length == 1) {
         child = context.renderer.renderWidget(childrenData.first, context);
@@ -36,7 +38,7 @@ class DrawerWidgetFactory extends WidgetFactory {
         );
       }
     }
-    
+
     // Default drawer structure if no child provided
     child ??= Column(
       children: [
@@ -54,7 +56,7 @@ class DrawerWidgetFactory extends WidgetFactory {
         ),
       ],
     );
-    
+
     Widget drawer = Drawer(
       width: width,
       elevation: elevation,
@@ -65,13 +67,13 @@ class DrawerWidgetFactory extends WidgetFactory {
       semanticLabel: semanticLabel,
       child: child,
     );
-    
+
     return drawer;
   }
 
   ShapeBorder? _parseShapeBorder(Map<String, dynamic>? shape) {
     if (shape == null) return null;
-    
+
     final type = shape['type'] as String?;
     switch (type) {
       case 'rounded':

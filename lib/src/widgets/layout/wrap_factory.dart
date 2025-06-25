@@ -8,24 +8,26 @@ class WrapWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
     final direction = _parseAxis(properties['direction']);
     final alignment = _parseWrapAlignment(properties['alignment']);
     final spacing = properties['spacing']?.toDouble() ?? 0.0;
     final runSpacing = properties['runSpacing']?.toDouble() ?? 0.0;
     final runAlignment = _parseWrapAlignment(properties['runAlignment']);
-    final crossAxisAlignment = _parseWrapCrossAlignment(properties['crossAxisAlignment']);
+    final crossAxisAlignment =
+        _parseWrapCrossAlignment(properties['crossAxisAlignment']);
     final textDirection = _parseTextDirection(properties['textDirection']);
-    final verticalDirection = _parseVerticalDirection(properties['verticalDirection']);
+    final verticalDirection =
+        _parseVerticalDirection(properties['verticalDirection']);
     final clipBehavior = _parseClip(properties['clipBehavior']);
-    
+
     // Wrap is a multi-child widget, so children should be at root level
     final childrenData = definition['children'] as List<dynamic>? ?? [];
     final children = childrenData
         .map((child) => context.renderer.renderWidget(child, context))
         .toList();
-    
+
     Widget wrap = Wrap(
       direction: direction,
       alignment: alignment,
@@ -38,7 +40,7 @@ class WrapWidgetFactory extends WidgetFactory {
       clipBehavior: clipBehavior,
       children: children,
     );
-    
+
     return applyCommonWrappers(wrap, properties, context);
   }
 

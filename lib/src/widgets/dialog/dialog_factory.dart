@@ -8,23 +8,25 @@ class DialogWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
-    final backgroundColor = parseColor(context.resolve(properties['backgroundColor']));
+    final backgroundColor =
+        parseColor(context.resolve(properties['backgroundColor']));
     final elevation = properties['elevation']?.toDouble();
     final shadowColor = parseColor(context.resolve(properties['shadowColor']));
-    final surfaceTintColor = parseColor(context.resolve(properties['surfaceTintColor']));
-    final insetPadding = parseEdgeInsets(properties['insetPadding']) ?? 
+    final surfaceTintColor =
+        parseColor(context.resolve(properties['surfaceTintColor']));
+    final insetPadding = parseEdgeInsets(properties['insetPadding']) ??
         const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0);
     final clipBehavior = _parseClip(properties['clipBehavior']);
     final shape = _parseShapeBorder(properties['shape']);
     final alignment = parseAlignment(properties['alignment']);
-    
+
     // Extract dialog type
     final type = properties['type'] as String? ?? 'custom';
-    
+
     Widget dialog;
-    
+
     switch (type) {
       case 'alert':
         dialog = _buildAlertDialog(properties, definition, context);
@@ -39,7 +41,7 @@ class DialogWidgetFactory extends WidgetFactory {
         if (childrenData != null && childrenData.isNotEmpty) {
           child = context.renderer.renderWidget(childrenData.first, context);
         }
-        
+
         dialog = Dialog(
           backgroundColor: backgroundColor,
           elevation: elevation,
@@ -52,7 +54,7 @@ class DialogWidgetFactory extends WidgetFactory {
           child: child,
         );
     }
-    
+
     return dialog;
   }
 
@@ -64,7 +66,7 @@ class DialogWidgetFactory extends WidgetFactory {
     final title = context.resolve<String?>(properties['title']);
     final content = context.resolve<String?>(properties['content']);
     final actionsData = properties['actions'] as List<dynamic>?;
-    
+
     List<Widget>? actions;
     if (actionsData != null) {
       actions = actionsData.map((action) {
@@ -81,12 +83,13 @@ class DialogWidgetFactory extends WidgetFactory {
         return Container();
       }).toList();
     }
-    
+
     return AlertDialog(
       title: title != null ? Text(title) : null,
       content: content != null ? Text(content) : null,
       actions: actions,
-      backgroundColor: parseColor(context.resolve(properties['backgroundColor'])),
+      backgroundColor:
+          parseColor(context.resolve(properties['backgroundColor'])),
       elevation: properties['elevation']?.toDouble(),
       shape: _parseShapeBorder(properties['shape']),
     );
@@ -99,17 +102,18 @@ class DialogWidgetFactory extends WidgetFactory {
   ) {
     final title = context.resolve<String?>(properties['title']);
     final childrenData = definition['children'] as List<dynamic>?;
-    
+
     List<Widget>? children;
     if (childrenData != null) {
       children = childrenData
           .map((child) => context.renderer.renderWidget(child, context))
           .toList();
     }
-    
+
     return SimpleDialog(
       title: title != null ? Text(title) : null,
-      backgroundColor: parseColor(context.resolve(properties['backgroundColor'])),
+      backgroundColor:
+          parseColor(context.resolve(properties['backgroundColor'])),
       elevation: properties['elevation']?.toDouble(),
       shape: _parseShapeBorder(properties['shape']),
       children: children,
@@ -133,7 +137,7 @@ class DialogWidgetFactory extends WidgetFactory {
 
   ShapeBorder? _parseShapeBorder(Map<String, dynamic>? shape) {
     if (shape == null) return null;
-    
+
     final type = shape['type'] as String?;
     switch (type) {
       case 'rounded':

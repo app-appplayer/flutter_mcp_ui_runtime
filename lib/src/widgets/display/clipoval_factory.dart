@@ -8,23 +8,24 @@ class ClipOvalWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
-    final clipBehavior = _parseClip(properties['clipBehavior']) ?? Clip.antiAlias;
-    
+    final clipBehavior =
+        _parseClip(properties['clipBehavior']) ?? Clip.antiAlias;
+
     // Extract child widget
-    final childrenDef = properties['children'] as List<dynamic>? ?? 
-                       definition['children'] as List<dynamic>?;
+    final childrenDef = properties['children'] as List<dynamic>? ??
+        definition['children'] as List<dynamic>?;
     Widget? child;
     if (childrenDef != null && childrenDef.isNotEmpty) {
       child = context.buildWidget(childrenDef.first as Map<String, dynamic>);
     }
-    
+
     Widget clipOval = ClipOval(
       clipBehavior: clipBehavior,
       child: child,
     );
-    
+
     return applyCommonWrappers(clipOval, properties, context);
   }
 

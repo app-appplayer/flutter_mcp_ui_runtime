@@ -20,7 +20,7 @@ void main(List<String> args) async {
   try {
     // Create server configuration
     // This defines the server's capabilities and metadata
-    final config = McpServerConfig(
+    const config = McpServerConfig(
       name: 'Demo MCP Server',
       version: '1.0.0',
       capabilities: ServerCapabilities(
@@ -82,13 +82,13 @@ class MCPUIServer {
   // Simulates a temperature sensor with real-time updates
   double _temperature = 20.0;
   Timer? _temperatureTimer;
-  Set<String> _temperatureSubscribers = {}; // Track subscribers
+  final Set<String> _temperatureSubscribers = {}; // Track subscribers
   
   // Temperature monitoring state for standard mode
   // Demonstrates the difference between standard and extended notifications
   double _standardTemperature = 20.0;
   Timer? _standardTemperatureTimer;
-  Set<String> _standardTemperatureSubscribers = {}; // Track standard subscribers
+  final Set<String> _standardTemperatureSubscribers = {}; // Track standard subscribers
 
   MCPUIServer(this.server);
 
@@ -354,13 +354,9 @@ class MCPUIServer {
         'title': 'Counter Demo',
         'description': 'Simple counter demonstration',
       },
-      'runtime': {
-        'services': {
-          'state': {
-            'initialState': {
-              'counter': _counter,  // Provide current counter value
-            },
-          },
+      'state': {
+        'initial': {
+          'counter': _counter,  // Provide current counter value
         },
       },
       'content': {
@@ -506,15 +502,11 @@ class MCPUIServer {
         'title': 'Temperature Monitor (Standard)',
         'description': 'Temperature monitoring with standard MCP subscription',
       },
-      'runtime': {
-        'services': {
-          'state': {
-            'initialState': {
-              'temperature': _standardTemperature,
-              'subscriptionStatus': 'Not subscribed',
-              'notificationCount': 0,
-            },
-          },
+      'state': {
+        'initial': {
+          'temperature': _standardTemperature,
+          'subscriptionStatus': 'Not subscribed',
+          'notificationCount': 0,
         },
       },
       'content': {
@@ -641,15 +633,11 @@ class MCPUIServer {
         'title': 'Temperature Monitor (Extended)',
         'description': 'Real-time temperature monitoring with extended subscription',
       },
-      'runtime': {
-        'services': {
-          'state': {
-            'initialState': {
-              'temperature': _temperature,
-              'subscriptionStatus': 'Not subscribed',
-              'notificationCount': 0,
-            },
-          },
+      'state': {
+        'initial': {
+          'temperature': _temperature,
+          'subscriptionStatus': 'Not subscribed',
+          'notificationCount': 0,
         },
       },
       'content': {

@@ -8,32 +8,33 @@ class DatePickerWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
-    final label = context.resolve<String>(properties['label']) as String? ?? 'Select Date';
-    final initialDate = properties['initialDate'] != null 
-        ? DateTime.parse(properties['initialDate']) 
+    final label = context.resolve<String>(properties['label']) as String? ??
+        'Select Date';
+    final initialDate = properties['initialDate'] != null
+        ? DateTime.parse(properties['initialDate'])
         : DateTime.now();
-    final firstDate = properties['firstDate'] != null 
-        ? DateTime.parse(properties['firstDate']) 
+    final firstDate = properties['firstDate'] != null
+        ? DateTime.parse(properties['firstDate'])
         : DateTime(1900);
-    final lastDate = properties['lastDate'] != null 
-        ? DateTime.parse(properties['lastDate']) 
+    final lastDate = properties['lastDate'] != null
+        ? DateTime.parse(properties['lastDate'])
         : DateTime(2100);
     final dateFormat = properties['dateFormat'] as String? ?? 'yyyy-MM-dd';
     final variant = properties['variant'] as String? ?? 'elevated';
     final icon = properties['icon'] as String? ?? 'calendar_today';
-    
+
     // Get current value from state if bound
     final bindTo = properties['bindTo'] as String?;
     String? currentValue;
     if (bindTo != null) {
       currentValue = context.getValue(bindTo) as String?;
     }
-    
+
     // Extract action handler
     final onChange = properties['onChange'] as Map<String, dynamic>?;
-    
+
     Widget datePicker = StatefulBuilder(
       builder: (buildContext, setState) {
         DateTime? selectedDate;
@@ -44,10 +45,10 @@ class DatePickerWidgetFactory extends WidgetFactory {
             // Invalid date format
           }
         }
-        
+
         return _buildButton(
           variant: variant,
-          label: selectedDate != null 
+          label: selectedDate != null
               ? _formatDate(selectedDate, dateFormat)
               : label,
           icon: _parseIcon(icon),
@@ -58,15 +59,15 @@ class DatePickerWidgetFactory extends WidgetFactory {
               firstDate: firstDate,
               lastDate: lastDate,
             );
-            
+
             if (picked != null) {
               final formattedDate = _formatDate(picked, dateFormat);
-              
+
               // Update state if bindTo is specified
               if (bindTo != null) {
                 context.setValue(bindTo, formattedDate);
               }
-              
+
               // Execute onChange action
               if (onChange != null) {
                 final eventData = Map<String, dynamic>.from(onChange);
@@ -75,7 +76,7 @@ class DatePickerWidgetFactory extends WidgetFactory {
                 }
                 context.actionHandler.execute(eventData, context);
               }
-              
+
               setState(() {
                 selectedDate = picked;
               });
@@ -84,7 +85,7 @@ class DatePickerWidgetFactory extends WidgetFactory {
         );
       },
     );
-    
+
     return applyCommonWrappers(datePicker, properties, context);
   }
 

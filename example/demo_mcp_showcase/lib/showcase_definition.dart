@@ -260,7 +260,7 @@ final Map<String, dynamic> _layoutPage = {
                 'type': 'center',
                 'child': {
                   'type': 'icon',
-                  'name': 'star',
+                  'icon': 'star',
                   'size': 48,
                   'color': '{{theme.colors.primary}}',
                 },
@@ -365,11 +365,11 @@ final Map<String, dynamic> _displayPage = {
             'direction': 'horizontal',
             'alignment': 'center',
             'children': [
-              {'type': 'icon', 'name': 'home', 'size': 32, 'color': '{{theme.colors.primary}}'},
+              {'type': 'icon', 'icon': 'home', 'size': 32, 'color': '{{theme.colors.primary}}'},
               {'type': 'box', 'width': 20},
-              {'type': 'icon', 'name': 'favorite', 'size': 40, 'color': '#FFF44336'},
+              {'type': 'icon', 'icon': 'favorite', 'size': 40, 'color': '#FFF44336'},
               {'type': 'box', 'width': 20},
-              {'type': 'icon', 'name': 'star', 'size': 48, 'color': '#FFFFC107'},
+              {'type': 'icon', 'icon': 'star', 'size': 48, 'color': '#FFFFC107'},
             ],
           },
         ),
@@ -446,14 +446,14 @@ final Map<String, dynamic> _displayPage = {
               {
                 'type': 'badge',
                 'content': '3',
-                'child': {'type': 'icon', 'name': 'notifications', 'size': 32},
+                'child': {'type': 'icon', 'icon': 'notifications', 'size': 32},
               },
               {'type': 'box', 'width': 30},
               {
                 'type': 'badge',
                 'content': '99+',
                 'backgroundColor': '#FFF44336',
-                'child': {'type': 'icon', 'name': 'mail', 'size': 32},
+                'child': {'type': 'icon', 'icon': 'mail', 'size': 32},
               },
               {'type': 'box', 'width': 30},
               {
@@ -772,12 +772,12 @@ final Map<String, dynamic> _listsPage = {
                 'subtitle': 'Subtitle for item ${i + 1}',
                 'leading': {
                   'type': 'icon',
-                  'name': 'folder',
+                  'icon': 'folder',
                   'color': '{{theme.colors.primary}}',
                 },
                 'trailing': {
                   'type': 'icon',
-                  'name': 'arrow_forward',
+                  'icon': 'arrow_forward',
                 },
                 'click': {
                   'type': 'state',
@@ -813,7 +813,7 @@ final Map<String, dynamic> _listsPage = {
                     'children': [
                       {
                         'type': 'icon',
-                        'name': ['home', 'star', 'favorite', 'settings', 'info', 'help'][i],
+                        'icon': ['home', 'star', 'favorite', 'settings', 'info', 'help'][i],
                         'size': 48,
                         'color': '{{theme.colors.primary}}',
                       },
@@ -1263,7 +1263,7 @@ final Map<String, dynamic> _advancedPage = {
               'children': [
                 {
                   'type': 'icon',
-                  'name': 'info',
+                  'icon': 'info',
                   'size': 48,
                   'color': '{{theme.colors.primary}}',
                 },
@@ -1369,7 +1369,7 @@ Map<String, dynamic> _featureItem(String title, String description) {
       'children': [
         {
           'type': 'icon',
-          'name': 'check_circle',
+          'icon': 'check_circle',
           'size': 20,
           'color': '{{theme.colors.primary}}',
         },
@@ -1405,7 +1405,7 @@ Map<String, dynamic> _navigationItem(String title, String description) {
     'subtitle': description,
     'leading': {
       'type': 'icon',
-      'name': 'navigation',
+      'icon': 'navigation',
       'color': '{{theme.colors.primary}}',
     },
   };

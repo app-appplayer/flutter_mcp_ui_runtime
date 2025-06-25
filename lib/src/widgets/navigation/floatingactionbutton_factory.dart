@@ -8,11 +8,13 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
     final tooltip = context.resolve<String?>(properties['tooltip']);
-    final foregroundColor = parseColor(context.resolve(properties['foregroundColor']));
-    final backgroundColor = parseColor(context.resolve(properties['backgroundColor']));
+    final foregroundColor =
+        parseColor(context.resolve(properties['foregroundColor']));
+    final backgroundColor =
+        parseColor(context.resolve(properties['backgroundColor']));
     final focusColor = parseColor(context.resolve(properties['focusColor']));
     final hoverColor = parseColor(context.resolve(properties['hoverColor']));
     final splashColor = parseColor(context.resolve(properties['splashColor']));
@@ -26,12 +28,13 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
     final shape = _parseShapeBorder(properties['shape']);
     final clipBehavior = _parseClip(properties['clipBehavior']) ?? Clip.none;
     final autofocus = properties['autofocus'] as bool? ?? false;
-    final materialTapTargetSize = _parseMaterialTapTargetSize(properties['materialTapTargetSize']);
+    final materialTapTargetSize =
+        _parseMaterialTapTargetSize(properties['materialTapTargetSize']);
     final isExtended = properties['isExtended'] as bool? ?? false;
-    
+
     // Extract child widget or icon/label
-    final childrenDef = properties['children'] as List<dynamic>? ?? 
-                       definition['children'] as List<dynamic>?;
+    final childrenDef = properties['children'] as List<dynamic>? ??
+        definition['children'] as List<dynamic>?;
     Widget? child;
     if (childrenDef != null && childrenDef.isNotEmpty) {
       child = context.buildWidget(childrenDef.first as Map<String, dynamic>);
@@ -39,7 +42,7 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
       // Build from icon and label
       final icon = properties['icon'] as String?;
       final label = context.resolve<String?>(properties['label']);
-      
+
       if (isExtended && label != null) {
         child = Row(
           mainAxisSize: MainAxisSize.min,
@@ -53,18 +56,20 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
         child = Icon(_parseIconData(icon));
       }
     }
-    
+
     // Extract action handler
     final onPressed = properties['onPressed'] as Map<String, dynamic>?;
     final onLongPress = properties['onLongPress'] as Map<String, dynamic>?;
-    
+
     Widget fab;
-    
+
     if (isExtended) {
       fab = FloatingActionButton.extended(
-        onPressed: onPressed != null ? () {
-          context.actionHandler.execute(onPressed, context);
-        } : null,
+        onPressed: onPressed != null
+            ? () {
+                context.actionHandler.execute(onPressed, context);
+              }
+            : null,
         tooltip: tooltip,
         foregroundColor: foregroundColor,
         backgroundColor: backgroundColor,
@@ -81,14 +86,19 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
         clipBehavior: clipBehavior,
         autofocus: autofocus,
         materialTapTargetSize: materialTapTargetSize,
-        label: Text(context.resolve<String>(properties['label']) as String? ?? ''),
-        icon: properties['icon'] != null ? Icon(_parseIconData(properties['icon'])) : null,
+        label:
+            Text(context.resolve<String>(properties['label']) as String? ?? ''),
+        icon: properties['icon'] != null
+            ? Icon(_parseIconData(properties['icon']))
+            : null,
       );
     } else {
       fab = FloatingActionButton(
-        onPressed: onPressed != null ? () {
-          context.actionHandler.execute(onPressed, context);
-        } : null,
+        onPressed: onPressed != null
+            ? () {
+                context.actionHandler.execute(onPressed, context);
+              }
+            : null,
         // onLongPress is not available for FloatingActionButton
         tooltip: tooltip,
         foregroundColor: foregroundColor,
@@ -110,7 +120,7 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
         child: child,
       );
     }
-    
+
     // Wrap with GestureDetector if onLongPress is specified
     if (onLongPress != null) {
       fab = GestureDetector(
@@ -120,7 +130,7 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
         child: fab,
       );
     }
-    
+
     return applyCommonWrappers(fab, properties, context);
   }
 
@@ -151,7 +161,7 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
 
   ShapeBorder? _parseShapeBorder(dynamic shape) {
     if (shape == null) return null;
-    
+
     if (shape is Map<String, dynamic>) {
       final type = shape['type'] as String?;
       switch (type) {
@@ -168,7 +178,7 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
           return null;
       }
     }
-    
+
     return null;
   }
 

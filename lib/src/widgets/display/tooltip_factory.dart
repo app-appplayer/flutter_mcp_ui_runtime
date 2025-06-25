@@ -8,10 +8,11 @@ class TooltipWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
-    final message = context.resolve<String>(properties['message']) as String? ?? '';
-    final richMessage = properties['richMessage'] != null 
+    final message =
+        context.resolve<String>(properties['message']) as String? ?? '';
+    final richMessage = properties['richMessage'] != null
         ? _buildInlineSpan(properties['richMessage'], context)
         : null;
     final height = properties['height']?.toDouble();
@@ -31,18 +32,18 @@ class TooltipWidgetFactory extends WidgetFactory {
         : null;
     final triggerMode = _parseTriggerMode(properties['triggerMode']);
     final enableFeedback = properties['enableFeedback'] as bool?;
-    
+
     // Extract child widget
     Widget? child;
     final childDef = properties['child'] as Map<String, dynamic>?;
     if (childDef != null) {
       child = context.renderer.renderWidget(childDef, context);
     }
-    
+
     Widget tooltip = Tooltip(
       message: richMessage != null ? '' : message,
       richMessage: richMessage,
-      height: height,
+      constraints: BoxConstraints(minHeight: height),
       padding: padding,
       margin: margin,
       verticalOffset: verticalOffset,
@@ -57,40 +58,41 @@ class TooltipWidgetFactory extends WidgetFactory {
       enableFeedback: enableFeedback,
       child: child ?? const Icon(Icons.info),
     );
-    
+
     return applyCommonWrappers(tooltip, properties, context);
   }
 
   InlineSpan? _buildInlineSpan(dynamic spanData, RenderContext context) {
     if (spanData == null) return null;
-    
+
     if (spanData is Map<String, dynamic>) {
       final text = context.resolve<String?>(spanData['text']);
       final style = _parseTextStyle(spanData['style'], context);
       final children = spanData['children'] as List<dynamic>?;
-      
+
       if (children != null && children.isNotEmpty) {
         return TextSpan(
           text: text,
           style: style,
-          children: children.map((child) => 
-            _buildInlineSpan(child, context) ?? const TextSpan()
-          ).toList(),
+          children: children
+              .map((child) =>
+                  _buildInlineSpan(child, context) ?? const TextSpan())
+              .toList(),
         );
       }
-      
+
       return TextSpan(
         text: text,
         style: style,
       );
     }
-    
+
     return null;
   }
 
   TextStyle? _parseTextStyle(dynamic style, RenderContext context) {
     if (style == null) return null;
-    
+
     if (style is Map<String, dynamic>) {
       return TextStyle(
         color: parseColor(context.resolve(style['color'])),
@@ -98,7 +100,7 @@ class TooltipWidgetFactory extends WidgetFactory {
         fontWeight: style['fontWeight'] == 'bold' ? FontWeight.bold : null,
       );
     }
-    
+
     return null;
   }
 
@@ -136,7 +138,7 @@ class TooltipWidgetFactory extends WidgetFactory {
 
   Decoration? _parseDecoration(dynamic decoration, RenderContext context) {
     if (decoration == null) return null;
-    
+
     if (decoration is Map<String, dynamic>) {
       return BoxDecoration(
         color: parseColor(context.resolve(decoration['color'])),
@@ -144,23 +146,23 @@ class TooltipWidgetFactory extends WidgetFactory {
         boxShadow: _parseBoxShadow(decoration['shadow'], context),
       );
     }
-    
+
     return null;
   }
 
   BorderRadius? _parseBorderRadius(dynamic value) {
     if (value == null) return null;
-    
+
     if (value is num) {
       return BorderRadius.circular(value.toDouble());
     }
-    
+
     return null;
   }
 
   List<BoxShadow>? _parseBoxShadow(dynamic shadow, RenderContext context) {
     if (shadow == null) return null;
-    
+
     if (shadow is Map<String, dynamic>) {
       return [
         BoxShadow(
@@ -174,7 +176,7 @@ class TooltipWidgetFactory extends WidgetFactory {
         ),
       ];
     }
-    
+
     return null;
   }
 }

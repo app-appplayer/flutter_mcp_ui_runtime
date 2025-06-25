@@ -8,14 +8,14 @@ import '../utils/mcp_logger.dart';
 class MCPFocusManager {
   static MCPFocusManager? _instance;
   static MCPFocusManager get instance => _instance ??= MCPFocusManager._();
-  
+
   MCPFocusManager._();
-  
+
   final Map<String, FocusNode> _focusNodes = {};
   final List<String> _traversalOrder = [];
   final Map<String, FocusGroup> _focusGroups = {};
   final MCPLogger _logger = MCPLogger('MCPFocusManager');
-  
+
   /// Register a focus node
   void registerFocusNode(
     String id,
@@ -25,7 +25,7 @@ class MCPFocusManager {
     String? label,
   }) {
     _focusNodes[id] = node;
-    
+
     // Set semantic label if provided
     if (label != null) {
       node.onKeyEvent = (node, event) {
@@ -36,43 +36,43 @@ class MCPFocusManager {
         return KeyEventResult.ignored;
       };
     }
-    
+
     // Add to traversal order
     if (order != null && order < _traversalOrder.length) {
       _traversalOrder.insert(order, id);
     } else {
       _traversalOrder.add(id);
     }
-    
+
     // Add to group if specified
     if (groupId != null) {
       _focusGroups.putIfAbsent(groupId, () => FocusGroup(groupId));
       _focusGroups[groupId]!.addNode(id, node);
     }
-    
+
     _logger.debug('Registered focus node: $id');
   }
-  
+
   /// Unregister a focus node
   void unregisterFocusNode(String id) {
     final node = _focusNodes.remove(id);
     if (node != null) {
       node.dispose();
     }
-    
+
     _traversalOrder.remove(id);
-    
+
     // Remove from all groups
     for (final group in _focusGroups.values) {
       group.removeNode(id);
     }
-    
+
     _logger.debug('Unregistered focus node: $id');
   }
-  
+
   /// Get a focus node by ID
   FocusNode? getFocusNode(String id) => _focusNodes[id];
-  
+
   /// Focus a specific node
   void focus(String id) {
     final node = _focusNodes[id];
@@ -81,7 +81,7 @@ class MCPFocusManager {
       _logger.debug('Focused node: $id');
     }
   }
-  
+
   /// Focus the next element in traversal order
   void focusNext() {
     final currentFocus = FocusManager.instance.primaryFocus;
@@ -92,7 +92,7 @@ class MCPFocusManager {
       }
       return;
     }
-    
+
     // Find current focused element
     String? currentId;
     for (final entry in _focusNodes.entries) {
@@ -101,7 +101,7 @@ class MCPFocusManager {
         break;
       }
     }
-    
+
     if (currentId != null) {
       final currentIndex = _traversalOrder.indexOf(currentId);
       if (currentIndex >= 0 && currentIndex < _traversalOrder.length - 1) {
@@ -112,7 +112,7 @@ class MCPFocusManager {
       }
     }
   }
-  
+
   /// Focus the previous element in traversal order
   void focusPrevious() {
     final currentFocus = FocusManager.instance.primaryFocus;
@@ -123,7 +123,7 @@ class MCPFocusManager {
       }
       return;
     }
-    
+
     // Find current focused element
     String? currentId;
     for (final entry in _focusNodes.entries) {
@@ -132,7 +132,7 @@ class MCPFocusManager {
         break;
       }
     }
-    
+
     if (currentId != null) {
       final currentIndex = _traversalOrder.indexOf(currentId);
       if (currentIndex > 0) {
@@ -143,7 +143,7 @@ class MCPFocusManager {
       }
     }
   }
-  
+
   /// Focus first element in a group
   void focusGroup(String groupId) {
     final group = _focusGroups[groupId];
@@ -151,16 +151,16 @@ class MCPFocusManager {
       focus(group.nodeIds.first);
     }
   }
-  
+
   /// Trap focus within a group
   void trapFocus(String groupId) {
     final group = _focusGroups[groupId];
     if (group == null) return;
-    
+
     group.trapFocus = true;
     _logger.debug('Trapped focus in group: $groupId');
   }
-  
+
   /// Release focus trap
   void releaseFocusTrap(String groupId) {
     final group = _focusGroups[groupId];
@@ -169,7 +169,7 @@ class MCPFocusManager {
       _logger.debug('Released focus trap in group: $groupId');
     }
   }
-  
+
   /// Clear all focus nodes
   void clear() {
     for (final node in _focusNodes.values) {
@@ -179,7 +179,7 @@ class MCPFocusManager {
     _traversalOrder.clear();
     _focusGroups.clear();
   }
-  
+
   /// Create a focus scope for a widget
   Widget createFocusScope({
     required String scopeId,
@@ -207,14 +207,14 @@ class FocusGroup {
   final List<String> nodeIds = [];
   final Map<String, FocusNode> nodes = {};
   bool trapFocus = false;
-  
+
   FocusGroup(this.id);
-  
+
   void addNode(String nodeId, FocusNode node) {
     nodeIds.add(nodeId);
     nodes[nodeId] = node;
   }
-  
+
   void removeNode(String nodeId) {
     nodeIds.remove(nodeId);
     nodes.remove(nodeId);
@@ -225,26 +225,29 @@ class FocusGroup {
 class MCPFocusTraversalPolicy extends FocusTraversalPolicy {
   final List<String> traversalOrder;
   final Map<String, FocusNode> focusNodes;
-  
+
   const MCPFocusTraversalPolicy({
     required this.traversalOrder,
     required this.focusNodes,
   });
-  
+
   @override
-  FocusNode findFirstFocus(FocusNode currentNode, {bool ignoreCurrentFocus = false}) {
+  FocusNode findFirstFocus(FocusNode currentNode,
+      {bool ignoreCurrentFocus = false}) {
     if (traversalOrder.isEmpty) return currentNode;
     return focusNodes[traversalOrder.first] ?? currentNode;
   }
-  
+
   @override
-  FocusNode findLastFocus(FocusNode currentNode, {bool ignoreCurrentFocus = false}) {
+  FocusNode findLastFocus(FocusNode currentNode,
+      {bool ignoreCurrentFocus = false}) {
     if (traversalOrder.isEmpty) return currentNode;
     return focusNodes[traversalOrder.last] ?? currentNode;
   }
-  
+
   @override
-  FocusNode? findFirstFocusInDirection(FocusNode currentNode, TraversalDirection direction) {
+  FocusNode? findFirstFocusInDirection(
+      FocusNode currentNode, TraversalDirection direction) {
     switch (direction) {
       case TraversalDirection.up:
       case TraversalDirection.left:
@@ -254,7 +257,7 @@ class MCPFocusTraversalPolicy extends FocusTraversalPolicy {
         return findLastFocus(currentNode);
     }
   }
-  
+
   @override
   bool inDirection(FocusNode currentNode, TraversalDirection direction) {
     switch (direction) {
@@ -266,7 +269,7 @@ class MCPFocusTraversalPolicy extends FocusTraversalPolicy {
         return _focusNext(currentNode);
     }
   }
-  
+
   bool _focusNext(FocusNode currentNode) {
     String? currentId;
     for (final entry in focusNodes.entries) {
@@ -275,7 +278,7 @@ class MCPFocusTraversalPolicy extends FocusTraversalPolicy {
         break;
       }
     }
-    
+
     if (currentId != null) {
       final currentIndex = traversalOrder.indexOf(currentId);
       if (currentIndex >= 0 && currentIndex < traversalOrder.length - 1) {
@@ -286,7 +289,7 @@ class MCPFocusTraversalPolicy extends FocusTraversalPolicy {
     }
     return false;
   }
-  
+
   bool _focusPrevious(FocusNode currentNode) {
     String? currentId;
     for (final entry in focusNodes.entries) {
@@ -295,7 +298,7 @@ class MCPFocusTraversalPolicy extends FocusTraversalPolicy {
         break;
       }
     }
-    
+
     if (currentId != null) {
       final currentIndex = traversalOrder.indexOf(currentId);
       if (currentIndex > 0) {
@@ -306,25 +309,26 @@ class MCPFocusTraversalPolicy extends FocusTraversalPolicy {
     }
     return false;
   }
-  
+
   @override
-  Iterable<FocusNode> sortDescendants(Iterable<FocusNode> descendants, FocusNode currentNode) {
+  Iterable<FocusNode> sortDescendants(
+      Iterable<FocusNode> descendants, FocusNode currentNode) {
     final sorted = <FocusNode>[];
-    
+
     for (final id in traversalOrder) {
       final node = focusNodes[id];
       if (node != null && descendants.contains(node)) {
         sorted.add(node);
       }
     }
-    
+
     // Add any remaining nodes not in traversal order
     for (final node in descendants) {
       if (!sorted.contains(node)) {
         sorted.add(node);
       }
     }
-    
+
     return sorted;
   }
 }
@@ -333,26 +337,26 @@ class MCPFocusTraversalPolicy extends FocusTraversalPolicy {
 class FocusRestore extends StatefulWidget {
   final Widget child;
   final String? focusId;
-  
+
   const FocusRestore({
     super.key,
     required this.child,
     this.focusId,
   });
-  
+
   @override
   State<FocusRestore> createState() => _FocusRestoreState();
 }
 
 class _FocusRestoreState extends State<FocusRestore> {
   FocusNode? _previousFocus;
-  
+
   @override
   void initState() {
     super.initState();
     _previousFocus = FocusManager.instance.primaryFocus;
   }
-  
+
   @override
   void dispose() {
     // Restore focus when widget is disposed
@@ -361,7 +365,7 @@ class _FocusRestoreState extends State<FocusRestore> {
     }
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return widget.child;
@@ -372,13 +376,13 @@ class _FocusRestoreState extends State<FocusRestore> {
 class SkipToContent extends StatelessWidget {
   final String label;
   final VoidCallback onSkip;
-  
+
   const SkipToContent({
     super.key,
     this.label = 'Skip to main content',
     required this.onSkip,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return Semantics(

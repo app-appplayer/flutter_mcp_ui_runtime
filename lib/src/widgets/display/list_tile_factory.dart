@@ -12,34 +12,34 @@ class ListTileFactory extends WidgetFactory {
     if (titleData != null) {
       title = context.renderer.renderWidget(titleData, context);
     }
-    
+
     // Get subtitle widget
     final subtitleData = definition['subtitle'];
     Widget? subtitle;
     if (subtitleData != null) {
       subtitle = context.renderer.renderWidget(subtitleData, context);
     }
-    
+
     // Get leading widget
     final leadingData = definition['leading'];
     Widget? leading;
     if (leadingData != null) {
       leading = context.renderer.renderWidget(leadingData, context);
     }
-    
+
     // Get trailing widget
     final trailingData = definition['trailing'];
     Widget? trailing;
     if (trailingData != null) {
       trailing = context.renderer.renderWidget(trailingData, context);
     }
-    
+
     // Get other properties
     final isThreeLine = definition['isThreeLine'] as bool? ?? false;
     final dense = definition['dense'] as bool?;
     final enabled = definition['enabled'] as bool? ?? true;
     final selected = definition['selected'] as bool? ?? false;
-    
+
     // Handle onTap
     VoidCallback? onTap;
     final onTapAction = definition['onTap'];
@@ -48,7 +48,7 @@ class ListTileFactory extends WidgetFactory {
         context.actionHandler.execute(onTapAction, context);
       };
     }
-    
+
     // Handle onLongPress
     VoidCallback? onLongPress;
     final onLongPressAction = definition['onLongPress'];
@@ -57,7 +57,7 @@ class ListTileFactory extends WidgetFactory {
         context.actionHandler.execute(onLongPressAction, context);
       };
     }
-    
+
     return ListTile(
       title: title,
       subtitle: subtitle,

@@ -8,22 +8,24 @@ class SingleChildScrollViewWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
-    final scrollDirection = _parseAxis(properties['scrollDirection']) ?? Axis.vertical;
+    final scrollDirection =
+        _parseAxis(properties['scrollDirection']) ?? Axis.vertical;
     final reverse = properties['reverse'] as bool? ?? false;
     final padding = parseEdgeInsets(properties['padding']);
     final primary = properties['primary'] as bool?;
     final physics = _parseScrollPhysics(properties['physics']);
-    final clipBehavior = _parseClip(properties['clipBehavior']) ?? Clip.hardEdge;
-    
+    final clipBehavior =
+        _parseClip(properties['clipBehavior']) ?? Clip.hardEdge;
+
     // Extract child widget
     final childDef = properties['child'] ?? definition['child'];
     Widget? child;
     if (childDef != null && childDef is Map<String, dynamic>) {
       child = context.buildWidget(childDef);
     }
-    
+
     Widget scrollView = SingleChildScrollView(
       scrollDirection: scrollDirection,
       reverse: reverse,
@@ -33,7 +35,7 @@ class SingleChildScrollViewWidgetFactory extends WidgetFactory {
       clipBehavior: clipBehavior,
       child: child,
     );
-    
+
     return applyCommonWrappers(scrollView, properties, context);
   }
 

@@ -12,7 +12,7 @@ class StateChangeEvent {
   final dynamic oldValue;
   final dynamic newValue;
   final DateTime timestamp;
-  
+
   StateChangeEvent({
     required this.path,
     this.oldValue,
@@ -28,14 +28,14 @@ class StateManager extends ChangeNotifier {
   final Map<String, StreamController> _streamControllers = {};
   final Map<String, ComputedProperty> _computedProperties = {};
   final MCPLogger _logger = MCPLogger('StateManager');
-  
+
   // Stream controller for state changes
-  final StreamController<StateChangeEvent> _stateChangeController = 
+  final StreamController<StateChangeEvent> _stateChangeController =
       StreamController<StateChangeEvent>.broadcast();
-  
+
   /// Stream of state change events
   Stream<StateChangeEvent> get stream => _stateChangeController.stream;
-  
+
   /// Get the current state
   Map<String, dynamic> get state => Map<String, dynamic>.from(_state);
 
@@ -45,7 +45,7 @@ class StateManager extends ChangeNotifier {
     _state.addAll(initialState);
     _logger.debug('initialize with: $initialState');
     _logger.debug('state after init: $_state');
-    _logger.debug('hashCode: ${hashCode}');
+    _logger.debug('hashCode: $hashCode');
     notifyListeners();
   }
 
@@ -74,23 +74,23 @@ class StateManager extends ChangeNotifier {
     final oldValue = JsonPath.get(_state, path);
     JsonPath.set(_state, path, value);
     _logger.debug('set path: $path, value: $value, new state: $_state');
-    
+
     // Emit state change event
     _stateChangeController.add(StateChangeEvent(
       path: path,
       oldValue: oldValue,
       newValue: value,
     ));
-    
+
     // Invalidate affected computed properties
     _invalidateComputedProperties({path: value.toString()});
-    
+
     // Notify stream listeners for this specific path
     final controller = _streamControllers[path];
     if (controller != null && !controller.isClosed) {
       controller.add(value);
     }
-    
+
     // Notify general listeners
     _logger.debug('calling notifyListeners() for path: $path');
     notifyListeners();
@@ -100,14 +100,14 @@ class StateManager extends ChangeNotifier {
   void updateAll(Map<String, dynamic> updates) {
     updates.forEach((path, value) {
       JsonPath.set(_state, path, value);
-      
+
       // Notify stream listeners
       final controller = _streamControllers[path];
       if (controller != null && !controller.isClosed) {
         controller.add(value);
       }
     });
-    
+
     notifyListeners();
   }
 
@@ -118,15 +118,15 @@ class StateManager extends ChangeNotifier {
       path,
       () => StreamController<T>.broadcast(),
     );
-    
+
     final controller = _streamControllers[path] as StreamController<T>;
-    
+
     // Emit current value immediately
     final currentValue = get<T>(path);
     if (currentValue != null) {
       controller.add(currentValue);
     }
-    
+
     return controller.stream;
   }
 
@@ -190,7 +190,7 @@ class StateManager extends ChangeNotifier {
   void setState(Map<String, dynamic> newState) {
     _state.clear();
     _state.addAll(newState);
-    
+
     // Notify all stream listeners
     _streamControllers.forEach((path, controller) {
       if (!controller.isClosed) {
@@ -200,7 +200,7 @@ class StateManager extends ChangeNotifier {
         }
       }
     });
-    
+
     notifyListeners();
   }
 
@@ -224,8 +224,10 @@ class StateManager extends ChangeNotifier {
   }
 
   /// Add a computed property from expression
-  void addComputedProperty(String path, String expression, {List<String>? dependencies}) {
-    final property = ComputedProperty.fromExpression(path, expression, dependencies: dependencies);
+  void addComputedProperty(String path, String expression,
+      {List<String>? dependencies}) {
+    final property = ComputedProperty.fromExpression(path, expression,
+        dependencies: dependencies);
     registerComputedProperty(path, property);
   }
 
@@ -251,7 +253,7 @@ class StateManager extends ChangeNotifier {
     _streamControllers.clear();
     _computedProperties.clear();
     _stateChangeController.close();
-    
+
     super.dispose();
   }
 }

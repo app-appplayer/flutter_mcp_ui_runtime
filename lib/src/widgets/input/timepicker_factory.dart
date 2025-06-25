@@ -8,37 +8,38 @@ class TimePickerWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
-    final label = context.resolve<String>(properties['label']) as String? ?? 'Select Time';
-    final initialTime = properties['initialTime'] != null 
+    final label = context.resolve<String>(properties['label']) as String? ??
+        'Select Time';
+    final initialTime = properties['initialTime'] != null
         ? (_parseTimeOfDay(properties['initialTime']) ?? TimeOfDay.now())
         : TimeOfDay.now();
     final timeFormat = properties['timeFormat'] as String? ?? 'HH:mm';
     final variant = properties['variant'] as String? ?? 'elevated';
     final icon = properties['icon'] as String? ?? 'access_time';
     final use24HourFormat = properties['use24HourFormat'] as bool? ?? true;
-    
+
     // Get current value from state if bound
     final bindTo = properties['bindTo'] as String?;
     String? currentValue;
     if (bindTo != null) {
       currentValue = context.getValue(bindTo) as String?;
     }
-    
+
     // Extract action handler
     final onChange = properties['onChange'] as Map<String, dynamic>?;
-    
+
     Widget timePicker = StatefulBuilder(
       builder: (buildContext, setState) {
         TimeOfDay? selectedTime;
         if (currentValue != null) {
           selectedTime = _parseTimeOfDay(currentValue);
         }
-        
+
         return _buildButton(
           variant: variant,
-          label: selectedTime != null 
+          label: selectedTime != null
               ? _formatTime(selectedTime, timeFormat, use24HourFormat)
               : label,
           icon: _parseIcon(icon),
@@ -58,15 +59,16 @@ class TimePickerWidgetFactory extends WidgetFactory {
                 );
               },
             );
-            
+
             if (picked != null) {
-              final formattedTime = _formatTime(picked, timeFormat, use24HourFormat);
-              
+              final formattedTime =
+                  _formatTime(picked, timeFormat, use24HourFormat);
+
               // Update state if bindTo is specified
               if (bindTo != null) {
                 context.setValue(bindTo, formattedTime);
               }
-              
+
               // Execute onChange action
               if (onChange != null) {
                 final eventData = Map<String, dynamic>.from(onChange);
@@ -75,7 +77,7 @@ class TimePickerWidgetFactory extends WidgetFactory {
                 }
                 context.actionHandler.execute(eventData, context);
               }
-              
+
               setState(() {
                 selectedTime = picked;
               });
@@ -84,7 +86,7 @@ class TimePickerWidgetFactory extends WidgetFactory {
         );
       },
     );
-    
+
     return applyCommonWrappers(timePicker, properties, context);
   }
 

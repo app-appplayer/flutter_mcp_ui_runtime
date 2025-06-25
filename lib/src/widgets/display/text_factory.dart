@@ -9,41 +9,49 @@ class TextWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
-    // Extract and resolve text value  
-    final content = properties[core.PropertyKeys.content] ?? properties[core.PropertyKeys.value] ?? '';
+
+    // Extract and resolve text value
+    final content = properties[core.PropertyKeys.content] ??
+        properties[core.PropertyKeys.value] ??
+        '';
     final value = context.resolve<String>(content);
-    
+
     // Build text widget
     Widget text = Text(
       value,
       style: _parseTextStyle(properties[core.PropertyKeys.style], context),
-      textAlign: _parseTextAlign(context.resolve(properties[core.PropertyKeys.textAlign])),
-      textDirection: _parseTextDirection(context.resolve(properties['textDirection'])),
+      textAlign: _parseTextAlign(
+          context.resolve(properties[core.PropertyKeys.textAlign])),
+      textDirection:
+          _parseTextDirection(context.resolve(properties['textDirection'])),
       overflow: _parseTextOverflow(context.resolve(properties['overflow'])),
       maxLines: context.resolve(properties[core.PropertyKeys.maxLines]) as int?,
       softWrap: context.resolve(properties['softWrap']) as bool? ?? true,
-      textScaler: properties['textScaleFactor'] != null 
-          ? TextScaler.linear(context.resolve(properties['textScaleFactor'])?.toDouble())
+      textScaler: properties['textScaleFactor'] != null
+          ? TextScaler.linear(
+              context.resolve(properties['textScaleFactor'])?.toDouble())
           : null,
-      semanticsLabel: context.resolve(properties['semanticsLabel']) as String? ?? 
-                      context.resolve(properties['aria-label']) as String?,
+      semanticsLabel:
+          context.resolve(properties['semanticsLabel']) as String? ??
+              context.resolve(properties['aria-label']) as String?,
     );
-    
+
     return applyCommonWrappers(text, properties, context);
   }
 
   TextStyle? _parseTextStyle(dynamic style, RenderContext context) {
     if (style == null) return null;
-    
+
     if (style is Map<String, dynamic>) {
       final colorValue = style[core.PropertyKeys.color];
       final resolvedColor = context.resolve(colorValue);
       final parsedColor = parseColor(resolvedColor);
-      
+
       return TextStyle(
-        fontSize: context.resolve(style[core.PropertyKeys.fontSize])?.toDouble(),
-        fontWeight: _parseFontWeight(context.resolve(style[core.PropertyKeys.fontWeight])),
+        fontSize:
+            context.resolve(style[core.PropertyKeys.fontSize])?.toDouble(),
+        fontWeight: _parseFontWeight(
+            context.resolve(style[core.PropertyKeys.fontWeight])),
         fontStyle: _parseFontStyle(context.resolve(style['fontStyle'])),
         color: parsedColor,
         letterSpacing: context.resolve(style['letterSpacing'])?.toDouble(),
@@ -51,19 +59,22 @@ class TextWidgetFactory extends WidgetFactory {
         height: context.resolve(style['height'])?.toDouble(),
         decoration: _parseTextDecoration(context.resolve(style['decoration'])),
         decorationColor: parseColor(context.resolve(style['decorationColor'])),
-        decorationStyle: _parseTextDecorationStyle(context.resolve(style['decorationStyle'])),
-        decorationThickness: context.resolve(style['decorationThickness'])?.toDouble(),
-        fontFamily: context.resolve(style[core.PropertyKeys.fontFamily]) as String?,
+        decorationStyle: _parseTextDecorationStyle(
+            context.resolve(style['decorationStyle'])),
+        decorationThickness:
+            context.resolve(style['decorationThickness'])?.toDouble(),
+        fontFamily:
+            context.resolve(style[core.PropertyKeys.fontFamily]) as String?,
         shadows: _parseShadows(style['shadows'], context),
       );
     }
-    
+
     return null;
   }
 
   FontWeight? _parseFontWeight(dynamic value) {
     if (value == null) return null;
-    
+
     if (value is String) {
       switch (value) {
         case 'thin':
@@ -97,7 +108,7 @@ class TextWidgetFactory extends WidgetFactory {
           return null;
       }
     }
-    
+
     if (value is int) {
       final index = (value ~/ 100) - 1;
       if (index >= 0 && index < FontWeight.values.length) {
@@ -105,7 +116,7 @@ class TextWidgetFactory extends WidgetFactory {
       }
       return null;
     }
-    
+
     return null;
   }
 
@@ -196,16 +207,16 @@ class TextWidgetFactory extends WidgetFactory {
         return null;
     }
   }
-  
+
   List<Shadow>? _parseShadows(dynamic shadows, RenderContext context) {
     if (shadows == null || shadows is! List) return null;
-    
+
     return shadows.map((shadow) {
       if (shadow is Map<String, dynamic>) {
         final offset = shadow['offset'] as Map<String, dynamic>?;
         return Shadow(
           color: parseColor(context.resolve(shadow['color'])) ?? Colors.black,
-          offset: offset != null 
+          offset: offset != null
               ? Offset(
                   context.resolve(offset['x'])?.toDouble() ?? 0,
                   context.resolve(offset['y'])?.toDouble() ?? 0,

@@ -8,21 +8,23 @@ class RichTextWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
-    final textAlign = _parseTextAlign(properties['textAlign']) ?? TextAlign.start;
+    final textAlign =
+        _parseTextAlign(properties['textAlign']) ?? TextAlign.start;
     final textDirection = _parseTextDirection(properties['textDirection']);
     final softWrap = properties['softWrap'] as bool? ?? true;
-    final overflow = _parseTextOverflow(properties['overflow']) ?? TextOverflow.clip;
-    final textScaler = properties['textScaleFactor'] != null 
+    final overflow =
+        _parseTextOverflow(properties['overflow']) ?? TextOverflow.clip;
+    final textScaler = properties['textScaleFactor'] != null
         ? TextScaler.linear(properties['textScaleFactor'].toDouble())
         : TextScaler.noScaling;
     final maxLines = properties['maxLines'] as int?;
-    
+
     // Build text spans
     final spans = properties['spans'] as List<dynamic>? ?? [];
     final textSpan = _buildTextSpan(spans, context);
-    
+
     Widget richText = RichText(
       text: textSpan,
       textAlign: textAlign,
@@ -32,7 +34,7 @@ class RichTextWidgetFactory extends WidgetFactory {
       textScaler: textScaler,
       maxLines: maxLines,
     );
-    
+
     return applyCommonWrappers(richText, properties, context);
   }
 
@@ -40,22 +42,23 @@ class RichTextWidgetFactory extends WidgetFactory {
     if (spans.isEmpty) {
       return const TextSpan(text: '');
     }
-    
+
     final children = <InlineSpan>[];
-    
+
     for (final span in spans) {
       if (span is Map<String, dynamic>) {
         final text = context.resolve<String?>(span['text']);
         final style = _parseTextStyle(span['style'], context);
         final childSpans = span['children'] as List<dynamic>?;
-        
+
         if (childSpans != null && childSpans.isNotEmpty) {
           children.add(TextSpan(
             text: text,
             style: style,
-            children: childSpans.map((child) => 
-              _buildInlineSpan(child as Map<String, dynamic>, context)
-            ).toList(),
+            children: childSpans
+                .map((child) =>
+                    _buildInlineSpan(child as Map<String, dynamic>, context))
+                .toList(),
           ));
         } else {
           children.add(TextSpan(
@@ -65,14 +68,15 @@ class RichTextWidgetFactory extends WidgetFactory {
         }
       }
     }
-    
+
     return TextSpan(children: children);
   }
 
-  InlineSpan _buildInlineSpan(Map<String, dynamic> span, RenderContext context) {
+  InlineSpan _buildInlineSpan(
+      Map<String, dynamic> span, RenderContext context) {
     final text = context.resolve<String?>(span['text']);
     final style = _parseTextStyle(span['style'], context);
-    
+
     return TextSpan(
       text: text,
       style: style,
@@ -81,7 +85,7 @@ class RichTextWidgetFactory extends WidgetFactory {
 
   TextStyle? _parseTextStyle(dynamic style, RenderContext context) {
     if (style == null) return null;
-    
+
     if (style is Map<String, dynamic>) {
       return TextStyle(
         color: parseColor(context.resolve(style['color'])),
@@ -97,7 +101,7 @@ class RichTextWidgetFactory extends WidgetFactory {
         decorationStyle: _parseTextDecorationStyle(style['decorationStyle']),
       );
     }
-    
+
     return null;
   }
 

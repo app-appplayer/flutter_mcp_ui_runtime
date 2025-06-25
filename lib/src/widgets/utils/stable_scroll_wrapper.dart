@@ -23,7 +23,7 @@ class _StableScrollWrapperState extends State<StableScrollWrapper> {
   @override
   void initState() {
     super.initState();
-    
+
     // Schedule a frame to ensure the widget tree is stable
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -46,7 +46,7 @@ class _StableScrollWrapperState extends State<StableScrollWrapper> {
         ),
       );
     }
-    
+
     return widget.child;
   }
 }

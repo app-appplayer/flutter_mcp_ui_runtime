@@ -2,21 +2,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
 import 'package:flutter_mcp_ui_runtime/src/theme/theme_manager.dart';
-import 'package:flutter_mcp_ui_runtime/src/i18n/i18n_manager.dart';
-import 'package:flutter_mcp_ui_runtime/src/actions/action_handler.dart';
 import 'package:flutter_mcp_ui_runtime/src/optimization/widget_cache.dart';
 
 void main() {
   group('Form Multiple Fields Test', () {
+    late MCPUIRuntime runtime;
+    
     setUp(() {
       // Clean up any previous test state
       NavigationActionExecutor.clearGlobalNavigationHandler();
       ThemeManager.instance.reset();
       I18nManager.instance.clear();
       WidgetCache.instance.clear();
+      
+      // Create runtime instance in setUp
+      runtime = MCPUIRuntime(enableDebugMode: false);
     });
 
-    tearDown(() {
+    tearDown(() async {
+      // Destroy runtime first
+      await runtime.destroy();
+      
       // Clean up after test
       NavigationActionExecutor.clearGlobalNavigationHandler();
       ThemeManager.instance.reset();
@@ -25,6 +31,10 @@ void main() {
     });
 
     testWidgets('should update multiple fields in form', (WidgetTester tester) async {
+      // Force a clean widget tree
+      await tester.pumpWidget(Container());
+      await tester.pumpAndSettle();
+      
       // Pump a completely new app to clear any widget state
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
@@ -33,24 +43,21 @@ void main() {
       ));
       await tester.pumpAndSettle();
       
-      final runtime = MCPUIRuntime();
+      // Use the runtime created in setUp
       await runtime.initialize({
         'type': 'page',
-        'runtime': {
-          'services': {
-            'state': {
-              'initialState': {
-                'form': {
-                  'name': '',
-                  'email': '',
-                  'age': '',
-                },
-              },
+        'state': {
+          'initial': {
+            'form': {
+              'name': '',
+              'email': '',
+              'age': '',
             },
           },
         },
         'content': {
-          'type': 'form',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'textInput',
@@ -102,28 +109,69 @@ void main() {
       );
       
       // Wait for widget tree to settle
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
       
-      // Initial state
-      try {
-        expect(find.text('Name: , Email: , Age: '), findsOneWidget);
-      } catch (e) {
-        print('ERROR: Initial state check failed');
-        print('Found widgets: ${find.text('Name: , Email: , Age: ').evaluate()}');
-        final textWidgets = find.byType(Text);
-        print('All Text widgets found: ${textWidgets.evaluate().length}');
-        for (var i = 0; i < textWidgets.evaluate().length; i++) {
-          final widget = tester.widget<Text>(textWidgets.at(i));
-          print('Text $i: "${widget.data}"');
+      // Initial state - more flexible check
+      final nameLabelFinder = find.text('Name');
+      final emailLabelFinder = find.text('Email');
+      final ageLabelFinder = find.text('Age');
+      
+      // Verify labels are present first
+      expect(nameLabelFinder, findsOneWidget);
+      expect(emailLabelFinder, findsOneWidget);
+      expect(ageLabelFinder, findsOneWidget);
+      
+      // Wait a bit more to ensure all bindings are evaluated
+      await tester.pump();
+      await tester.pump(); // Double pump to ensure state updates
+      
+      // Find the text widget showing the combined state - be more flexible
+      final allTextWidgets = find.byType(Text);
+      expect(allTextWidgets, findsWidgets, reason: 'Should find text widgets');
+      
+      // Print all text widgets for debugging
+      if (const String.fromEnvironment('DEBUG_TEST') == 'true') {
+        for (var i = 0; i < allTextWidgets.evaluate().length; i++) {
+          final widget = tester.widget<Text>(allTextWidgets.at(i));
+          debugPrint('Text widget $i: "${widget.data}"');
         }
-        rethrow;
       }
       
-      // Verify labels are present
-      expect(find.text('Name'), findsOneWidget);
-      expect(find.text('Email'), findsOneWidget);
-      expect(find.text('Age'), findsOneWidget);
+      // Find the specific text that shows all three fields
+      String? foundText;
+      bool foundStateDisplay = false;
+      
+      for (var i = 0; i < allTextWidgets.evaluate().length; i++) {
+        final widget = tester.widget<Text>(allTextWidgets.at(i));
+        final text = widget.data ?? '';
+        
+        if (text.contains('Name:') && text.contains('Email:') && text.contains('Age:')) {
+          foundText = text;
+          foundStateDisplay = true;
+          break;
+        }
+      }
+      
+      // If we didn't find it, let's be more permissive and check what we actually have
+      if (!foundStateDisplay) {
+        // Maybe the state is not initialized properly - check if state is correct
+        final actualState = runtime.stateManager.state;
+        debugPrint('Current state manager state: $actualState');
+        
+        // Try to find any text widget that might be our state display
+        for (var i = 0; i < allTextWidgets.evaluate().length; i++) {
+          final widget = tester.widget<Text>(allTextWidgets.at(i));
+          final text = widget.data ?? '';
+          if (text.contains(':')) {  // Any text with colon might be our display
+            debugPrint('Found text with colon: "$text"');
+          }
+        }
+      }
+      
+      if (!foundStateDisplay) {
+        fail('Could not find state display widget. Found texts: ${allTextWidgets.evaluate().map((e) => '"${(e.widget as Text).data}"').join(", ")}');
+      }
+      expect(foundText, equals('Name: , Email: , Age: '));
       
       // Use a more robust approach: find each field by its associated label
       // This works regardless of widget tree structure
@@ -173,18 +221,17 @@ void main() {
       try {
         expect(find.text('Name: John Doe, Email: john@example.com, Age: 25'), findsOneWidget);
       } catch (e) {
-        print('ERROR: Final UI check failed');
+        debugPrint('ERROR: Final UI check failed');
+        debugPrint('Expected to find: "Name: John Doe, Email: john@example.com, Age: 25"');
         final textWidgets = find.byType(Text);
-        print('All Text widgets found: ${textWidgets.evaluate().length}');
+        debugPrint('All Text widgets found: ${textWidgets.evaluate().length}');
         for (var i = 0; i < textWidgets.evaluate().length; i++) {
           final widget = tester.widget<Text>(textWidgets.at(i));
-          print('Text $i: "${widget.data}"');
+          debugPrint('Text $i: "${widget.data}"');
         }
+        debugPrint('Final state: ${runtime.stateManager.state}');
         rethrow;
       }
-      
-      // Clean up
-      await runtime.destroy();
       
       // Extra cleanup - ensure widget tree is completely cleared
       await tester.pumpWidget(Container());

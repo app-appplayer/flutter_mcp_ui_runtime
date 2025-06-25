@@ -7,20 +7,19 @@ class ColorPickerFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
     final label = properties['label'] as String?;
     final binding = properties['binding'] as String?;
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
-    
+
     // Get current color value
-    final currentValue = binding != null 
-        ? context.resolve("{{$binding}}")
-        : properties['value'];
-    
+    final currentValue =
+        binding != null ? context.resolve("{{$binding}}") : properties['value'];
+
     // Parse current color
     Color currentColor = parseColor(currentValue) ?? Colors.blue;
-    
+
     // Simple color picker implementation using preset colors
     final colors = [
       Colors.red,
@@ -44,20 +43,24 @@ class ColorPickerFactory extends WidgetFactory {
       Colors.blueGrey,
       Colors.black,
     ];
-    
+
     Widget colorPicker = Wrap(
       spacing: 8,
       runSpacing: 8,
       children: colors.map((color) {
         final isSelected = currentColor.toString() == color.toString();
         return InkWell(
-          onTap: enabled ? () {
-            if (binding != null) {
-              // Convert color to hex string
-              final hexColor = '#${(color.r * 255).round().toRadixString(16).padLeft(2, '0')}${(color.g * 255).round().toRadixString(16).padLeft(2, '0')}${(color.b * 255).round().toRadixString(16).padLeft(2, '0')}'.toUpperCase();
-              context.setValue(binding, hexColor);
-            }
-          } : null,
+          onTap: enabled
+              ? () {
+                  if (binding != null) {
+                    // Convert color to hex string
+                    final hexColor =
+                        '#${(color.r * 255).round().toRadixString(16).padLeft(2, '0')}${(color.g * 255).round().toRadixString(16).padLeft(2, '0')}${(color.b * 255).round().toRadixString(16).padLeft(2, '0')}'
+                            .toUpperCase();
+                    context.setValue(binding, hexColor);
+                  }
+                }
+              : null,
           child: Container(
             width: 32,
             height: 32,
@@ -73,7 +76,7 @@ class ColorPickerFactory extends WidgetFactory {
         );
       }).toList(),
     );
-    
+
     // Add label if provided
     if (label != null) {
       colorPicker = Column(
@@ -92,7 +95,7 @@ class ColorPickerFactory extends WidgetFactory {
         ],
       );
     }
-    
+
     // Add opacity if disabled
     if (!enabled) {
       colorPicker = Opacity(
@@ -100,7 +103,7 @@ class ColorPickerFactory extends WidgetFactory {
         child: colorPicker,
       );
     }
-    
+
     return applyCommonWrappers(colorPicker, properties, context);
   }
 }

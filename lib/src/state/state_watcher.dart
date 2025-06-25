@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 /// Represents a function that is called when a watched state value changes
-typedef StateChangeCallback = Future<void> Function(dynamic newValue, dynamic oldValue);
+typedef StateChangeCallback = Future<void> Function(
+    dynamic newValue, dynamic oldValue);
 
 /// Watches for changes to a specific state path
 class StateWatcher {
@@ -62,7 +63,7 @@ class StateWatcher {
       final now = DateTime.now();
       _lastTriggerTime = now;
       final capturedLastValue = _lastValue;
-      
+
       // Schedule a delayed trigger
       Future.delayed(Duration(milliseconds: debounceMs), () async {
         // Only execute if this is still the latest trigger
@@ -82,13 +83,15 @@ class StateWatcher {
   Future<void> _executeTrigger(dynamic newValue, dynamic oldValue) async {
     try {
       if (enableDebugMode) {
-        debugPrint('StateWatcher: Triggering for path "$path": $oldValue -> $newValue');
+        debugPrint(
+            'StateWatcher: Triggering for path "$path": $oldValue -> $newValue');
       }
 
       await onChange(newValue, oldValue);
     } catch (error, stackTrace) {
       if (enableDebugMode) {
-        debugPrint('StateWatcher: Error in onChange callback for path "$path": $error');
+        debugPrint(
+            'StateWatcher: Error in onChange callback for path "$path": $error');
         debugPrint('Stack trace: $stackTrace');
       }
       rethrow;
@@ -105,7 +108,7 @@ class StateWatcher {
   static StateWatcher fromConfig(Map<String, dynamic> config) {
     final path = config['path'] as String;
     final debounceMs = config['debounceMs'] as int? ?? 0;
-    
+
     return StateWatcher(
       path: path,
       onChange: (newValue, oldValue) async {
@@ -139,18 +142,20 @@ class StateWatcherGroup {
   /// Adds a watcher to this group
   void add(StateWatcher watcher) {
     _watchers.add(watcher);
-    
+
     if (enableDebugMode) {
-      debugPrint('StateWatcherGroup: Added watcher for path "${watcher.path}" to group "${name ?? 'unnamed'}"');
+      debugPrint(
+          'StateWatcherGroup: Added watcher for path "${watcher.path}" to group "${name ?? 'unnamed'}"');
     }
   }
 
   /// Removes a watcher from this group
   void remove(StateWatcher watcher) {
     _watchers.remove(watcher);
-    
+
     if (enableDebugMode) {
-      debugPrint('StateWatcherGroup: Removed watcher for path "${watcher.path}" from group "${name ?? 'unnamed'}"');
+      debugPrint(
+          'StateWatcherGroup: Removed watcher for path "${watcher.path}" from group "${name ?? 'unnamed'}"');
     }
   }
 
@@ -161,7 +166,8 @@ class StateWatcherGroup {
         await watcher.trigger(newValue, oldValue);
       } catch (error) {
         if (enableDebugMode) {
-          debugPrint('StateWatcherGroup: Error triggering watcher for path "${watcher.path}": $error');
+          debugPrint(
+              'StateWatcherGroup: Error triggering watcher for path "${watcher.path}": $error');
         }
       }
     }
@@ -170,9 +176,10 @@ class StateWatcherGroup {
   /// Clears all watchers from this group
   void clear() {
     _watchers.clear();
-    
+
     if (enableDebugMode) {
-      debugPrint('StateWatcherGroup: Cleared all watchers from group "${name ?? 'unnamed'}"');
+      debugPrint(
+          'StateWatcherGroup: Cleared all watchers from group "${name ?? 'unnamed'}"');
     }
   }
 

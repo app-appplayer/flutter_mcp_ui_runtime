@@ -7,19 +7,19 @@ class CheckboxGroupFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
     final label = properties['label'] as String?;
     final options = properties['options'] as List<dynamic>? ?? [];
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
     final direction = properties['direction'] as String? ?? 'vertical';
-    
+
     // Build checkboxes
     final checkboxes = options.map((option) {
       String value;
       String label;
       String? binding;
-      
+
       if (option is Map<String, dynamic>) {
         value = option['value']?.toString() ?? '';
         label = option['label']?.toString() ?? value;
@@ -29,33 +29,34 @@ class CheckboxGroupFactory extends WidgetFactory {
         label = value;
         binding = null;
       }
-      
+
       // Get current checked state
-      final isChecked = binding != null 
+      final isChecked = binding != null
           ? context.resolve("{{$binding}}") as bool? ?? false
           : false;
-      
+
       return CheckboxListTile(
         title: Text(label),
         value: isChecked,
-        onChanged: enabled && binding != null ? (newValue) {
-          if (newValue != null && binding != null) {
-            context.setValue(binding, newValue);
-          }
-        } : null,
+        onChanged: enabled && binding != null
+            ? (newValue) {
+                if (newValue != null && binding != null) {
+                  context.setValue(binding, newValue);
+                }
+              }
+            : null,
         dense: true,
         contentPadding: EdgeInsets.zero,
         controlAffinity: ListTileControlAffinity.leading,
       );
     }).toList();
-    
+
     Widget checkboxGroup;
     if (direction == 'horizontal') {
       checkboxGroup = Row(
         mainAxisSize: MainAxisSize.min,
-        children: checkboxes.map((checkbox) => 
-          Flexible(child: checkbox)
-        ).toList(),
+        children:
+            checkboxes.map((checkbox) => Flexible(child: checkbox)).toList(),
       );
     } else {
       checkboxGroup = Column(
@@ -64,7 +65,7 @@ class CheckboxGroupFactory extends WidgetFactory {
         children: checkboxes,
       );
     }
-    
+
     // Add label if provided
     if (label != null) {
       checkboxGroup = Column(
@@ -83,7 +84,7 @@ class CheckboxGroupFactory extends WidgetFactory {
         ],
       );
     }
-    
+
     return applyCommonWrappers(checkboxGroup, properties, context);
   }
 }

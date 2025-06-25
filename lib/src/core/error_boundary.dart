@@ -11,7 +11,7 @@ class ErrorBoundary extends StatefulWidget {
   final void Function(Object error, StackTrace? stackTrace)? onError;
   final bool showErrorInDebug;
   final bool catchAsync;
-  
+
   const ErrorBoundary({
     super.key,
     required this.child,
@@ -20,7 +20,7 @@ class ErrorBoundary extends StatefulWidget {
     this.showErrorInDebug = true,
     this.catchAsync = true,
   });
-  
+
   @override
   State<ErrorBoundary> createState() => _ErrorBoundaryState();
 }
@@ -29,16 +29,16 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
   Object? _error;
   StackTrace? _stackTrace;
   final MCPLogger _logger = MCPLogger('ErrorBoundary');
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     if (widget.catchAsync) {
       // Catch async errors
       FlutterError.onError = (FlutterErrorDetails details) {
         _handleError(details.exception, details.stack);
-        
+
         // Call original error handler if in debug mode
         if (widget.showErrorInDebug) {
           FlutterError.presentError(details);
@@ -46,13 +46,13 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
       };
     }
   }
-  
+
   void _handleError(Object error, StackTrace? stackTrace) {
     _logger.error('Error caught by ErrorBoundary', error, stackTrace);
-    
+
     // Call error callback
     widget.onError?.call(error, stackTrace);
-    
+
     // Update state to show error widget
     if (mounted) {
       setState(() {
@@ -61,28 +61,28 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
       });
     }
   }
-  
+
   void _resetError() {
     setState(() {
       _error = null;
       _stackTrace = null;
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     if (_error != null) {
       return widget.errorBuilder?.call(_error!, _stackTrace) ??
           _defaultErrorWidget(_error!, _stackTrace);
     }
-    
+
     // Wrap child in error widget to catch sync errors
     return _ErrorWidget(
       onError: _handleError,
       child: widget.child,
     );
   }
-  
+
   Widget _defaultErrorWidget(Object error, StackTrace? stackTrace) {
     return Material(
       child: Container(
@@ -101,9 +101,9 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
               Text(
                 'An error occurred',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.red.shade700,
-                  fontWeight: FontWeight.bold,
-                ),
+                      color: Colors.red.shade700,
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 8),
               Container(
@@ -157,19 +157,19 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
 class _ErrorWidget extends StatelessWidget {
   final Widget child;
   final void Function(Object error, StackTrace? stackTrace) onError;
-  
+
   const _ErrorWidget({
     required this.child,
     required this.onError,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     ErrorWidget.builder = (FlutterErrorDetails details) {
       onError(details.exception, details.stack);
       return const SizedBox.shrink();
     };
-    
+
     return child;
   }
 }
@@ -178,16 +178,16 @@ class _ErrorWidget extends StatelessWidget {
 enum ErrorRecoveryStrategy {
   /// Retry the operation
   retry,
-  
+
   /// Reset to initial state
   reset,
-  
+
   /// Navigate to error page
   navigate,
-  
+
   /// Ignore and continue
   ignore,
-  
+
   /// Show error dialog
   dialog,
 }
@@ -202,7 +202,7 @@ class ErrorRecovery extends StatefulWidget {
   final Widget Function(Object error, StackTrace? stackTrace)? errorBuilder;
   final Future<void> Function()? onReset;
   final void Function(Object error, StackTrace? stackTrace)? onError;
-  
+
   const ErrorRecovery({
     super.key,
     required this.child,
@@ -214,7 +214,7 @@ class ErrorRecovery extends StatefulWidget {
     this.onReset,
     this.onError,
   });
-  
+
   @override
   State<ErrorRecovery> createState() => _ErrorRecoveryState();
 }
@@ -225,19 +225,19 @@ class _ErrorRecoveryState extends State<ErrorRecovery> {
   int _retryCount = 0;
   bool _isRecovering = false;
   final MCPLogger _logger = MCPLogger('ErrorRecovery');
-  
+
   void _handleError(Object error, StackTrace? stackTrace) async {
     _logger.error('Error in ErrorRecovery', error, stackTrace);
-    
+
     // Call error callback
     widget.onError?.call(error, stackTrace);
-    
+
     setState(() {
       _error = error;
       _stackTrace = stackTrace;
       _isRecovering = true;
     });
-    
+
     // Apply recovery strategy
     switch (widget.strategy) {
       case ErrorRecoveryStrategy.retry:
@@ -257,14 +257,15 @@ class _ErrorRecoveryState extends State<ErrorRecovery> {
         break;
     }
   }
-  
+
   Future<void> _retryStrategy() async {
     if (_retryCount < widget.maxRetries) {
       _retryCount++;
-      _logger.debug('Retrying after error (attempt $_retryCount/${widget.maxRetries})');
-      
+      _logger.debug(
+          'Retrying after error (attempt $_retryCount/${widget.maxRetries})');
+
       await Future.delayed(widget.retryDelay);
-      
+
       if (mounted) {
         setState(() {
           _error = null;
@@ -279,14 +280,14 @@ class _ErrorRecoveryState extends State<ErrorRecovery> {
       });
     }
   }
-  
+
   Future<void> _resetStrategy() async {
     _logger.debug('Resetting after error');
-    
+
     if (widget.onReset != null) {
       await widget.onReset!();
     }
-    
+
     if (mounted) {
       setState(() {
         _error = null;
@@ -296,7 +297,7 @@ class _ErrorRecoveryState extends State<ErrorRecovery> {
       });
     }
   }
-  
+
   void _navigateStrategy() {
     if (widget.errorRoute != null) {
       _logger.debug('Navigating to error route: ${widget.errorRoute}');
@@ -306,7 +307,7 @@ class _ErrorRecoveryState extends State<ErrorRecovery> {
       _isRecovering = false;
     });
   }
-  
+
   void _dialogStrategy() {
     showDialog(
       context: context,
@@ -329,7 +330,7 @@ class _ErrorRecoveryState extends State<ErrorRecovery> {
       ),
     );
   }
-  
+
   void _ignoreStrategy() {
     _logger.debug('Ignoring error and continuing');
     setState(() {
@@ -338,21 +339,21 @@ class _ErrorRecoveryState extends State<ErrorRecovery> {
       _isRecovering = false;
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     if (_error != null && !_isRecovering) {
       return widget.errorBuilder?.call(_error!, _stackTrace) ??
           _defaultErrorWidget();
     }
-    
+
     return ErrorBoundary(
       onError: _handleError,
       errorBuilder: widget.errorBuilder,
       child: widget.child,
     );
   }
-  
+
   Widget _defaultErrorWidget() {
     return Material(
       child: Center(
@@ -405,40 +406,40 @@ class _ErrorRecoveryState extends State<ErrorRecovery> {
 class GlobalErrorHandler {
   static final MCPLogger _logger = MCPLogger('GlobalErrorHandler');
   static final List<void Function(Object, StackTrace?)> _handlers = [];
-  
+
   /// Register a global error handler
   static void registerHandler(void Function(Object, StackTrace?) handler) {
     _handlers.add(handler);
   }
-  
+
   /// Unregister a global error handler
   static void unregisterHandler(void Function(Object, StackTrace?) handler) {
     _handlers.remove(handler);
   }
-  
+
   /// Initialize global error handling
   static void initialize() {
     FlutterError.onError = (FlutterErrorDetails details) {
       _logger.error('Flutter error', details.exception, details.stack);
-      
+
       for (final handler in _handlers) {
         handler(details.exception, details.stack);
       }
-      
+
       // Present error in debug mode
       if (kDebugMode) {
         FlutterError.presentError(details);
       }
     };
-    
+
     // Catch async errors
     PlatformDispatcher.instance.onError = (error, stack) {
       _logger.error('Async error', error, stack);
-      
+
       for (final handler in _handlers) {
         handler(error, stack);
       }
-      
+
       return true; // Handled
     };
   }

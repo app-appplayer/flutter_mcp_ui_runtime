@@ -10,7 +10,6 @@ import 'default_widgets.dart';
 import '../binding/binding_engine.dart';
 import '../actions/action_handler.dart';
 import '../state/state_manager.dart';
-import '../services/state_service.dart';
 import '../services/navigation_service.dart';
 import '../services/dialog_service.dart';
 import '../services/notification_service.dart';
@@ -41,7 +40,7 @@ class RuntimeEngine with ChangeNotifier {
   late final NotificationManager _notificationManager;
   late final CacheManager _cacheManager;
   late final BackgroundServiceManager _backgroundServiceManager;
-  
+
   // Modern rendering system
   late final WidgetRegistry _widgetRegistry;
   late final BindingEngine _bindingEngine;
@@ -50,7 +49,7 @@ class RuntimeEngine with ChangeNotifier {
   late final Renderer _renderer;
   late final ThemeManager _themeManager;
   late final ComputedManager _computedManager;
-  
+
   // Public getters for page rendering
   Renderer get renderer => _renderer;
   StateManager get stateManager => _stateManager;
@@ -64,17 +63,17 @@ class RuntimeEngine with ChangeNotifier {
   bool _isReady = false;
   Map<String, dynamic>? _runtimeConfig;
   Map<String, dynamic>? _uiDefinition;
-  
+
   // Application support
   UIDefinition? _parsedUIDefinition;
   ApplicationDefinition? _applicationDefinition;
   RouteManager? _routeManager;
   Function(String)? _pageLoader;
-  
+
   // Resource handlers
   Function(String, String)? _onResourceSubscribe;
   Function(String)? _onResourceUnsubscribe;
-  
+
   // Resource subscription tracking
   final Map<String, String> _resourceSubscriptions = {}; // URI -> binding
 
@@ -91,11 +90,11 @@ class RuntimeEngine with ChangeNotifier {
   RouteManager? get routeManager => _routeManager;
   bool get isApplication => _applicationDefinition != null;
   WidgetRegistry get widgetRegistry => _widgetRegistry;
-  
+
   // Resource handler getters
   Function(String, String)? get onResourceSubscribe => _onResourceSubscribe;
   Function(String)? get onResourceUnsubscribe => _onResourceUnsubscribe;
-  
+
   // Set resource handlers
   void setResourceHandlers({
     Function(String, String)? onResourceSubscribe,
@@ -104,13 +103,13 @@ class RuntimeEngine with ChangeNotifier {
     _onResourceSubscribe = onResourceSubscribe;
     _onResourceUnsubscribe = onResourceUnsubscribe;
   }
-  
+
   // Register a resource subscription
   void registerResourceSubscription(String uri, String binding) {
     _resourceSubscriptions[uri] = binding;
     _logger.debug('Registered subscription: $uri -> $binding');
   }
-  
+
   // Unregister a resource subscription
   void unregisterResourceSubscription(String uri) {
     final binding = _resourceSubscriptions.remove(uri);
@@ -118,33 +117,34 @@ class RuntimeEngine with ChangeNotifier {
       _logger.debug('Unregistered subscription: $uri -> $binding');
     }
   }
-  
+
   // Get binding for a URI
   String? getBindingForUri(String uri) {
     return _resourceSubscriptions[uri];
   }
-  
+
   // Handle resource notification from MCP
   void handleResourceNotification(String uri, Map<String, dynamic> data) {
     _logger.debug('=== RUNTIME NOTIFICATION ===');
     _logger.debug('URI: $uri');
     _logger.debug('Subscriptions: $_resourceSubscriptions');
-    
+
     // Find the binding for this URI
     final binding = getBindingForUri(uri);
     _logger.debug('Binding found: $binding');
-    
+
     if (binding != null) {
       // Extract the content data
       final content = data['content'];
-      
+
       if (content != null) {
         // If the content has a field with the same name as the binding, use that value
         // Otherwise, use the entire content
-        final value = (content is Map<String, dynamic> && content.containsKey(binding)) 
-                     ? content[binding] 
-                     : content;
-        
+        final value =
+            (content is Map<String, dynamic> && content.containsKey(binding))
+                ? content[binding]
+                : content;
+
         _logger.debug('Updating state: $binding = $value');
         _stateManager.set(binding, value);
         _logger.debug('State updated via StateManager listener');
@@ -187,18 +187,18 @@ class RuntimeEngine with ChangeNotifier {
 
       // Initialize with the definition
       await _initializeWithDefinition(finalDefinition, context);
-      
+
       // Cache the app after successful initialization
       if (useCache) {
         await _cacheApp(finalDefinition);
       }
 
       _isInitialized = true;
-      
+
       if (enableDebugMode) {
         _logger.info('Initialization complete');
       }
-      
+
       // Automatically mark as ready after initialization - this will notify listeners
       await markReady();
     } catch (error, stackTrace) {
@@ -219,7 +219,7 @@ class RuntimeEngine with ChangeNotifier {
       await _initializeV1Format(definition, context);
       return;
     }
-    
+
     // v1.0 spec only supports application or page types
     throw ArgumentError('Definition must be a valid application or page type');
   }
@@ -231,7 +231,7 @@ class RuntimeEngine with ChangeNotifier {
   ) async {
     // Parse UI definition
     _parsedUIDefinition = UIDefinition.fromJson(definition);
-    
+
     // Store the appropriate UI definition based on type
     if (_parsedUIDefinition!.type == UIDefinitionType.page) {
       // For page type, store the full definition but extract content for rendering
@@ -240,19 +240,19 @@ class RuntimeEngine with ChangeNotifier {
       // For application type and others, store the raw definition
       _uiDefinition = definition;
     }
-    
+
     // Set the state manager in theme manager for custom theme values
     _themeManager.setStateManager(_stateManager);
-    
+
     // Set up state change forwarding to trigger UI rebuilds
     _stateManager.addListener(() {
       _logger.debug('StateManager change detected, forwarding to UI...');
       notifyListeners(); // Forward state changes to UI
     });
-    
+
     // Register all default widgets
     DefaultWidgets.registerAll(_widgetRegistry);
-    
+
     // Create modern renderer
     _renderer = Renderer(
       widgetRegistry: _widgetRegistry,
@@ -264,7 +264,7 @@ class RuntimeEngine with ChangeNotifier {
 
     // Register core services
     await _registerCoreServices();
-    
+
     // Set up lifecycle manager with action handler and render context
     final rootContext = _renderer.createRootContext(null);
     _lifecycleManager.setActionHandler(_actionHandler, rootContext);
@@ -274,77 +274,87 @@ class RuntimeEngine with ChangeNotifier {
       if (_pageLoader == null) {
         throw ArgumentError('Page loader is required for application type');
       }
-      
-      _applicationDefinition = ApplicationDefinition.fromUIDefinition(_parsedUIDefinition!);
-      
+
+      _applicationDefinition =
+          ApplicationDefinition.fromUIDefinition(_parsedUIDefinition!);
+
       // Create route manager
       _routeManager = RouteManager(
         appDefinition: _applicationDefinition!,
         pageLoader: _pageLoader!,
         runtimeEngine: this,
       );
-      
+
       // Initialize theme from application definition
       if (_applicationDefinition!.theme != null) {
         _themeManager.setTheme(_applicationDefinition!.theme!);
       }
-      
+
       // Check for theme in runtime.services.theme (MCP UI DSL standard location)
       final runtimeServices = definition['runtime']?['services'];
       if (runtimeServices != null && runtimeServices['theme'] != null) {
         _logger.debug('Setting theme from runtime.services.theme');
-        _themeManager.setTheme(runtimeServices['theme'] as Map<String, dynamic>);
+        _themeManager
+            .setTheme(runtimeServices['theme'] as Map<String, dynamic>);
       }
-      
+
       // Initialize global app state
       if (_applicationDefinition!.initialState != null) {
-        final stateService = _serviceRegistry.get<StateService>('state');
-        if (stateService != null) {
-          stateService.setState(_applicationDefinition!.initialState!);
-        }
+        _stateManager.setState(_applicationDefinition!.initialState!);
+        _logger.debug(
+            'Initialized app state in StateManager with ${_applicationDefinition!.initialState!.length} keys');
       }
-      
+
       // Initialize services from application definition
       if (_applicationDefinition!.servicesDefinition != null) {
-        await _initializeServicesV1(_applicationDefinition!.servicesDefinition!);
-        
+        await _initializeServicesV1(
+            _applicationDefinition!.servicesDefinition!);
+
         // Start background services
-        if (_applicationDefinition!.servicesDefinition!.backgroundServices != null) {
-          await _startBackgroundServices(_applicationDefinition!.servicesDefinition!.backgroundServices!);
+        if (_applicationDefinition!.servicesDefinition!.backgroundServices !=
+            null) {
+          await _startBackgroundServices(
+              _applicationDefinition!.servicesDefinition!.backgroundServices!);
         }
       }
-      
+
       // Set runtime config for lifecycle compatibility
       _runtimeConfig = {
-        'lifecycle': _applicationDefinition!.lifecycleDefinition != null ? _lifecycleToJson(_applicationDefinition!.lifecycleDefinition!) : null,
-        'services': _applicationDefinition!.servicesDefinition != null ? _servicesToJson(_applicationDefinition!.servicesDefinition!) : null,
+        'lifecycle': _applicationDefinition!.lifecycleDefinition != null
+            ? _lifecycleToJson(_applicationDefinition!.lifecycleDefinition!)
+            : null,
+        'services': _applicationDefinition!.servicesDefinition != null
+            ? _servicesToJson(_applicationDefinition!.servicesDefinition!)
+            : null,
       };
     } else {
       // Handle page type
-      final pageDefinition = PageDefinition.fromUIDefinition(_parsedUIDefinition!);
-      
+      final pageDefinition =
+          PageDefinition.fromUIDefinition(_parsedUIDefinition!);
+
       // Initialize services from page runtime definition if present
-      final runtimeServices = definition['runtime']?['services'] as Map<String, dynamic>?;
+      final runtimeServices =
+          definition['runtime']?['services'] as Map<String, dynamic>?;
       if (runtimeServices != null) {
         // Initialize state if present
         final stateConfig = runtimeServices['state'] as Map<String, dynamic>?;
         if (stateConfig != null && stateConfig['initialState'] != null) {
-          final initialState = stateConfig['initialState'] as Map<String, dynamic>;
-          
+          final initialState =
+              stateConfig['initialState'] as Map<String, dynamic>;
+
           // Initialize StateManager directly (this is what the renderer uses)
           _stateManager.initialize(initialState);
-          
-          // Also initialize StateService for compatibility
-          final stateService = _serviceRegistry.get<StateService>('state');
-          if (stateService != null) {
-            stateService.setState(initialState);
-          }
+
+          // StateManager is already initialized above
+          _logger.debug('Page state initialized in StateManager');
         }
       }
-      
+
       // Set runtime config for lifecycle compatibility
       _runtimeConfig = {
-        'lifecycle': pageDefinition.lifecycleDefinition != null ? _lifecycleToJson(pageDefinition.lifecycleDefinition!) : null,
+        'lifecycle': pageDefinition.lifecycleDefinition != null
+            ? _lifecycleToJson(pageDefinition.lifecycleDefinition!)
+            : null,
         'services': runtimeServices,
       };
     }
@@ -353,9 +363,10 @@ class RuntimeEngine with ChangeNotifier {
     final lifecycle = _parsedUIDefinition!.type == UIDefinitionType.application
         ? _applicationDefinition?.lifecycleDefinition
         : (_parsedUIDefinition!.type == UIDefinitionType.page
-            ? PageDefinition.fromUIDefinition(_parsedUIDefinition!).lifecycleDefinition
+            ? PageDefinition.fromUIDefinition(_parsedUIDefinition!)
+                .lifecycleDefinition
             : null);
-    
+
     if (lifecycle != null && lifecycle.onInitialize != null) {
       await _lifecycleManager.executeLifecycleHooks(
         LifecycleEvent.initialize,
@@ -366,29 +377,28 @@ class RuntimeEngine with ChangeNotifier {
 
   /// Initialize services for v1.0 format
   Future<void> _initializeServicesV1(ServicesDefinition services) async {
-    // Initialize state service
+    // Initialize state
     if (services.state != null) {
-      final stateService = _serviceRegistry.get<StateService>('state');
-      if (stateService != null) {
-        final initialState = services.state!['initialState'] as Map<String, dynamic>?;
-        if (initialState != null) {
-          stateService.setState(initialState);
-        }
-        
-        // Set up computed properties
-        final computed = services.state!['computed'] as Map<String, dynamic>?;
-        if (computed != null) {
-          _initializeComputedProperties(computed);
-        }
-        
-        // Set up watchers
-        final watchers = services.state!['watchers'] as List<dynamic>?;
-        if (watchers != null) {
-          _initializeWatchers(watchers);
-        }
+      final initialState =
+          services.state!['initialState'] as Map<String, dynamic>?;
+      if (initialState != null) {
+        _stateManager.setState(initialState);
+        _logger.debug('Initialized service state in StateManager');
+      }
+
+      // Set up computed properties
+      final computed = services.state!['computed'] as Map<String, dynamic>?;
+      if (computed != null) {
+        _initializeComputedProperties(computed);
+      }
+
+      // Set up watchers
+      final watchers = services.state!['watchers'] as List<dynamic>?;
+      if (watchers != null) {
+        _initializeWatchers(watchers);
       }
     }
-    
+
     // Initialize navigation service
     if (services.navigation != null) {
       final navService = _serviceRegistry.get<NavigationService>('navigation');
@@ -396,20 +406,22 @@ class RuntimeEngine with ChangeNotifier {
         // TODO: Configure navigation service
       }
     }
-    
+
     // Initialize other services...
   }
-  
+
   /// Start background services
-  Future<void> _startBackgroundServices(Map<String, dynamic> servicesConfig) async {
+  Future<void> _startBackgroundServices(
+      Map<String, dynamic> servicesConfig) async {
     final services = <String, BackgroundServiceDefinition>{};
-    
+
     for (final entry in servicesConfig.entries) {
       final serviceId = entry.key;
       final serviceConfig = entry.value as Map<String, dynamic>;
-      
+
       try {
-        final serviceDef = BackgroundServiceDefinition.fromJson(serviceId, serviceConfig);
+        final serviceDef =
+            BackgroundServiceDefinition.fromJson(serviceId, serviceConfig);
         services[serviceId] = serviceDef;
       } catch (error) {
         if (enableDebugMode) {
@@ -417,20 +429,20 @@ class RuntimeEngine with ChangeNotifier {
         }
       }
     }
-    
+
     if (services.isNotEmpty) {
       await _backgroundServiceManager.startServices(services);
     }
   }
 
-
   /// Handles MCP notification for resource updates
   void handleNotification(String uri, Map<String, dynamic> data) {
-    _logger.debug('RuntimeEngine handling notification for URI: $uri with data: $data');
-    
+    _logger.debug(
+        'RuntimeEngine handling notification for URI: $uri with data: $data');
+
     // Forward to notification manager for additional processing
     // Notification manager is initialized during runtime setup
-    
+
     // Update state based on notification
     final binding = data['binding'] as String?;
     if (binding != null) {
@@ -439,7 +451,7 @@ class RuntimeEngine with ChangeNotifier {
       _stateManager.set(binding, value);
     }
   }
-  
+
   /// Handles MCP notification with automatic mode detection
   /// Supports both standard (URI only) and extended (URI + content) modes
   Future<void> handleMCPNotification(
@@ -448,31 +460,31 @@ class RuntimeEngine with ChangeNotifier {
   }) async {
     _logger.debug('=== MCP NOTIFICATION ===');
     _logger.debug('Params: $params');
-    
+
     final uri = params['uri'] as String?;
     if (uri == null) {
       _logger.warning('No URI in notification params');
       return;
     }
-    
+
     // Find binding for this URI
     final binding = getBindingForUri(uri);
     if (binding == null) {
       _logger.warning('No binding found for URI: $uri');
       return;
     }
-    
+
     _logger.debug('Binding found: $binding');
-    
+
     // Check if content is included (extended mode)
     if (params.containsKey('content')) {
       // Extended mode: content included in notification
       _logger.debug('Extended mode detected - using content from notification');
-      
+
       final contentData = params['content'];
       _logger.debug('Content data type: ${contentData.runtimeType}');
       _logger.debug('Content data: $contentData');
-      
+
       if (contentData is Map<String, dynamic>) {
         // Check if it's a ResourceContentInfo structure
         if (contentData.containsKey('text')) {
@@ -482,12 +494,13 @@ class RuntimeEngine with ChangeNotifier {
             try {
               final parsedData = jsonDecode(text);
               _logger.debug('Parsed text content: $parsedData');
-              
+
               // Extract value based on binding name
-              final value = (parsedData is Map<String, dynamic> && parsedData.containsKey(binding))
+              final value = (parsedData is Map<String, dynamic> &&
+                      parsedData.containsKey(binding))
                   ? parsedData[binding]
                   : parsedData;
-              
+
               _logger.debug('Updating state: $binding = $value');
               _stateManager.set(binding, value);
             } catch (e) {
@@ -496,45 +509,46 @@ class RuntimeEngine with ChangeNotifier {
           }
         } else {
           // Direct content (might not have text wrapper)
-          final value = contentData.containsKey(binding) 
-              ? contentData[binding] 
+          final value = contentData.containsKey(binding)
+              ? contentData[binding]
               : contentData;
-          
+
           _logger.debug('Updating state: $binding = $value');
           _stateManager.set(binding, value);
         }
-        
+
         // Update notification count if it exists in state
         final currentCount = _stateManager.get('notificationCount');
         if (currentCount != null && currentCount is int) {
           _stateManager.set('notificationCount', currentCount + 1);
         }
-        
+
         notifyListeners();
       }
     } else {
       // Standard mode: need to read resource
       _logger.debug('Standard mode detected - reading resource');
-      
+
       if (resourceReader != null) {
         try {
           final resourceContent = await resourceReader(uri);
           final data = jsonDecode(resourceContent);
-          
+
           // Extract value based on binding name
-          final value = (data is Map<String, dynamic> && data.containsKey(binding))
-              ? data[binding]
-              : data;
-          
+          final value =
+              (data is Map<String, dynamic> && data.containsKey(binding))
+                  ? data[binding]
+                  : data;
+
           _logger.debug('Updating state: $binding = $value');
           _stateManager.set(binding, value);
-          
+
           // Update notification count if it exists in state
           final currentCount = _stateManager.get('notificationCount');
           if (currentCount != null && currentCount is int) {
             _stateManager.set('notificationCount', currentCount + 1);
           }
-          
+
           notifyListeners();
         } catch (e) {
           _logger.error('Failed to read resource: $e');
@@ -543,20 +557,21 @@ class RuntimeEngine with ChangeNotifier {
         _logger.warning('Standard mode but no resource reader provided');
       }
     }
-    
+
     _logger.debug('=== MCP NOTIFICATION END ===');
   }
 
   /// Marks the runtime as ready and executes onReady lifecycle hooks
   Future<void> markReady() async {
     if (!_isInitialized) {
-      throw StateError('Runtime engine must be initialized before marking ready');
+      throw StateError(
+          'Runtime engine must be initialized before marking ready');
     }
 
     if (_isReady) return;
 
     _isReady = true;
-    
+
     if (enableDebugMode) {
       _logger.info('Marked as ready');
     }
@@ -565,9 +580,10 @@ class RuntimeEngine with ChangeNotifier {
     final lifecycle = _parsedUIDefinition?.type == UIDefinitionType.application
         ? _applicationDefinition?.lifecycleDefinition
         : (_parsedUIDefinition?.type == UIDefinitionType.page
-            ? PageDefinition.fromUIDefinition(_parsedUIDefinition!).lifecycleDefinition
+            ? PageDefinition.fromUIDefinition(_parsedUIDefinition!)
+                .lifecycleDefinition
             : null);
-    
+
     if (lifecycle != null && lifecycle.onReady != null) {
       await _lifecycleManager.executeLifecycleHooks(
         LifecycleEvent.ready,
@@ -654,11 +670,9 @@ class RuntimeEngine with ChangeNotifier {
 
   /// Registers core runtime services
   Future<void> _registerCoreServices() async {
-    // Register StateService
-    _serviceRegistry.register(
-      'state',
-      StateService(enableDebugMode: enableDebugMode),
-    );
+    // Note: StateService is no longer registered as we use StateManager directly
+    // This is kept for backward compatibility with services that might expect it
+    // TODO: Remove this comment after verifying no services depend on StateService
 
     // Register NavigationService
     _serviceRegistry.register(
@@ -682,21 +696,20 @@ class RuntimeEngine with ChangeNotifier {
     );
   }
 
-
-
   /// Tries to load app from cache
-  Future<Map<String, dynamic>?> _tryLoadFromCache(Map<String, dynamic> definition) async {
+  Future<Map<String, dynamic>?> _tryLoadFromCache(
+      Map<String, dynamic> definition) async {
     try {
       // v1.0 format: application type has properties at top level
       if (definition['type'] == 'application') {
         final domain = definition['domain'] as String?;
         final id = definition['id'] as String?;
         final version = definition['version'] as String?;
-        
+
         if (domain == null || id == null || version == null) {
           return null;
         }
-        
+
         final cachedApp = _cacheManager.getCachedApp(domain, id);
         if (cachedApp != null) {
           // Check if we need to update
@@ -707,18 +720,16 @@ class RuntimeEngine with ChangeNotifier {
             // Still use cached version but mark for update
             // In production, you might want to trigger an update check
           }
-          
+
           // Load cached state if available
           final appKey = '$domain:$id';
           final cachedState = _cacheManager.getCachedState(appKey);
           if (cachedState != null) {
-            // Merge cached state into initial state
-            final stateService = _serviceRegistry.get<StateService>('state');
-            if (stateService != null) {
-              await stateService.initialize({'initialState': cachedState});
-            }
+            // Merge cached state into StateManager
+            _stateManager.setState(cachedState);
+            _logger.debug('Loaded cached state into StateManager');
           }
-          
+
           return cachedApp.definition;
         }
       }
@@ -727,7 +738,7 @@ class RuntimeEngine with ChangeNotifier {
         _logger.error('Error loading from cache', error);
       }
     }
-    
+
     return null;
   }
 
@@ -736,20 +747,17 @@ class RuntimeEngine with ChangeNotifier {
     try {
       final cachedApp = CachedApp.fromDefinition(definition);
       await _cacheManager.cacheApp(cachedApp);
-      
+
       // Also cache the current state
-      final stateService = _serviceRegistry.get<StateService>('state');
-      if (stateService != null) {
-        final appKey = '${cachedApp.domain}:${cachedApp.id}';
-        await _cacheManager.cacheState(appKey, stateService.state);
-      }
+      final appKey = '${cachedApp.domain}:${cachedApp.id}';
+      await _cacheManager.cacheState(appKey, _stateManager.getState());
+      _logger.debug('Cached current state from StateManager');
     } catch (error) {
       if (enableDebugMode) {
         _logger.error('Error caching app', error);
       }
     }
   }
-
 
   @override
   void dispose() {
@@ -767,7 +775,8 @@ class RuntimeEngine with ChangeNotifier {
   /// Convert LifecycleDefinition to JSON
   Map<String, dynamic> _lifecycleToJson(LifecycleDefinition lifecycle) {
     return {
-      if (lifecycle.onInitialize != null) 'onInitialize': lifecycle.onInitialize,
+      if (lifecycle.onInitialize != null)
+        'onInitialize': lifecycle.onInitialize,
       if (lifecycle.onReady != null) 'onReady': lifecycle.onReady,
       if (lifecycle.onMount != null) 'onMount': lifecycle.onMount,
       if (lifecycle.onUnmount != null) 'onUnmount': lifecycle.onUnmount,
@@ -786,19 +795,21 @@ class RuntimeEngine with ChangeNotifier {
       if (services.navigation != null) 'navigation': services.navigation,
       if (services.dialog != null) 'dialog': services.dialog,
       if (services.notification != null) 'notification': services.notification,
-      if (services.backgroundServices != null) 'backgroundServices': services.backgroundServices,
+      if (services.backgroundServices != null)
+        'backgroundServices': services.backgroundServices,
     };
   }
-  
+
   /// Initialize computed properties
   void _initializeComputedProperties(Map<String, dynamic> computed) {
     for (final entry in computed.entries) {
       final key = entry.key;
       final config = entry.value as Map<String, dynamic>;
-      
+
       final expression = config['expression'] as String?;
-      final dependencies = (config['dependencies'] as List?)?.cast<String>() ?? [];
-      
+      final dependencies =
+          (config['dependencies'] as List?)?.cast<String>() ?? [];
+
       if (expression != null) {
         _computedManager.registerComputed(
           key,
@@ -810,7 +821,7 @@ class RuntimeEngine with ChangeNotifier {
       }
     }
   }
-  
+
   /// Initialize watchers
   void _initializeWatchers(List<dynamic> watchers) {
     for (final watcherDef in watchers) {
@@ -819,14 +830,15 @@ class RuntimeEngine with ChangeNotifier {
         final handler = watcherDef['handler'] as Map<String, dynamic>?;
         final immediate = watcherDef['immediate'] as bool? ?? false;
         final deep = watcherDef['deep'] as bool? ?? false;
-        
+
         if (path != null && handler != null) {
           _computedManager.registerWatcher(
             path,
             WatcherConfig(
               handler: (value, oldValue) {
                 // Execute the handler action
-                final watchContext = renderer.createRootContext(null).createChildContext(
+                final watchContext =
+                    renderer.createRootContext(null).createChildContext(
                   variables: {
                     'value': value,
                     'oldValue': oldValue,
@@ -842,18 +854,18 @@ class RuntimeEngine with ChangeNotifier {
       }
     }
   }
-  
+
   /// Initialize core components that need to be available immediately
   void _initializeCoreComponents() {
     // Initialize these components so they're available before initialize() is called
     _lifecycleManager = LifecycleManager(
       enableDebugMode: enableDebugMode,
     );
-    
+
     _serviceRegistry = ServiceRegistry(
       enableDebugMode: enableDebugMode,
     );
-    
+
     _widgetRegistry = WidgetRegistry();
     _bindingEngine = BindingEngine();
     _actionHandler = ActionHandler();
@@ -863,15 +875,15 @@ class RuntimeEngine with ChangeNotifier {
       stateManager: _stateManager,
       bindingEngine: _bindingEngine,
     );
-    
+
     _notificationManager = NotificationManager(
       enableDebugMode: enableDebugMode,
     );
-    
+
     _cacheManager = CacheManager(
       enableDebugMode: enableDebugMode,
     );
-    
+
     _backgroundServiceManager = BackgroundServiceManager(
       enableDebugMode: enableDebugMode,
       actionHandler: _actionHandler,

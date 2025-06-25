@@ -110,7 +110,8 @@ class ServiceRegistry {
     _dependencies.putIfAbsent(serviceName, () => []).add(dependsOn);
 
     if (enableDebugMode) {
-      debugPrint('ServiceRegistry: Service "$serviceName" depends on "$dependsOn"');
+      debugPrint(
+          'ServiceRegistry: Service "$serviceName" depends on "$dependsOn"');
     }
   }
 
@@ -122,12 +123,13 @@ class ServiceRegistry {
       final service = _services[serviceName];
       if (service != null && !service.isInitialized) {
         final config = configs[serviceName] ?? <String, dynamic>{};
-        
+
         try {
           await service.initialize(config);
         } catch (error) {
           if (enableDebugMode) {
-            debugPrint('ServiceRegistry: Failed to initialize service "$serviceName": $error');
+            debugPrint(
+                'ServiceRegistry: Failed to initialize service "$serviceName": $error');
           }
           rethrow;
         }
@@ -147,9 +149,10 @@ class ServiceRegistry {
 
     void visit(String serviceName) {
       if (visiting.contains(serviceName)) {
-        throw StateError('Circular dependency detected involving service "$serviceName"');
+        throw StateError(
+            'Circular dependency detected involving service "$serviceName"');
       }
-      
+
       if (visited.contains(serviceName)) {
         return;
       }
@@ -160,7 +163,8 @@ class ServiceRegistry {
       final deps = _dependencies[serviceName] ?? [];
       for (final dep in deps) {
         if (!_services.containsKey(dep)) {
-          throw StateError('Service "$serviceName" depends on unregistered service "$dep"');
+          throw StateError(
+              'Service "$serviceName" depends on unregistered service "$dep"');
         }
         visit(dep);
       }
@@ -181,7 +185,7 @@ class ServiceRegistry {
   /// Gets service status information
   Map<String, ServiceStatus> getServiceStatuses() {
     final statuses = <String, ServiceStatus>{};
-    
+
     for (final entry in _services.entries) {
       statuses[entry.key] = ServiceStatus(
         name: entry.key,
@@ -190,7 +194,7 @@ class ServiceRegistry {
         type: entry.value.runtimeType.toString(),
       );
     }
-    
+
     return statuses;
   }
 
@@ -223,7 +227,8 @@ class ServiceRegistry {
           await service.dispose();
         } catch (error) {
           if (enableDebugMode) {
-            debugPrint('ServiceRegistry: Error disposing service "$serviceName": $error');
+            debugPrint(
+                'ServiceRegistry: Error disposing service "$serviceName": $error');
           }
         }
       }

@@ -64,7 +64,7 @@ void main() {
       };
 
       final contextData = {'state': 'test'};
-      final widget = const Text('Hello World');
+      const widget = Text('Hello World');
 
       // Cache the widget
       cache.put(definition, contextData, widget);
@@ -87,8 +87,8 @@ void main() {
       };
 
       final contextData = {'state': 'test'};
-      final widget1 = const Text('Hello');
-      final widget2 = const Text('World');
+      const widget1 = Text('Hello');
+      const widget2 = Text('World');
 
       cache.put(definition1, contextData, widget1);
       cache.put(definition2, contextData, widget2);
@@ -108,7 +108,7 @@ void main() {
       };
 
       final contextData = {'state': 'test'};
-      final widget = const Text('Test');
+      const widget = Text('Test');
 
       cache.put(definition, contextData, widget);
       
@@ -143,7 +143,7 @@ void main() {
         'text': 'Stats Test',
       };
 
-      final widget = const Text('Stats Test');
+      const widget = Text('Stats Test');
       cache.put(definition, null, widget);
 
       // First hit
@@ -164,7 +164,7 @@ void main() {
         'text': 'Enable Test',
       };
 
-      final widget = const Text('Enable Test');
+      const widget = Text('Enable Test');
 
       // Disable cache
       cache.disable();
@@ -242,7 +242,7 @@ void main() {
         'text': 'Clear Test',
       };
 
-      final widget = const Text('Clear Test');
+      const widget = Text('Clear Test');
       cache.put(definition, null, widget);
       
       expect(cache.getStatistics()['size'], equals(1));

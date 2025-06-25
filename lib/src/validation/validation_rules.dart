@@ -16,7 +16,7 @@ class PropertyKeys {
   static const String doubleClick = 'doubleClick';
   static const String rightClick = 'rightClick';
   static const String longPress = 'longPress';
-  
+
   // Widget properties
   static const String type = 'type';
   static const String content = 'content';
@@ -34,7 +34,7 @@ class PropertyKeys {
   static const String height = 'height';
   static const String style = 'style';
   static const String theme = 'theme';
-  
+
   // Event properties
   static const String click = 'click';
   static const String change = 'change';
@@ -43,7 +43,7 @@ class PropertyKeys {
   static const String submit = 'submit';
   static const String itemClick = 'itemClick';
   static const String indexChange = 'indexChange';
-  
+
   // Action properties
   static const String action = 'action';
   static const String tool = 'tool';

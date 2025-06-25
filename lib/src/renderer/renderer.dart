@@ -19,8 +19,11 @@ class Renderer {
   final WidgetCache _widgetCache = WidgetCache.instance;
   final MCPLogger _logger = MCPLogger('Renderer');
   dynamic engine;
-  bool Function(String action, String route, Map<String, dynamic> params)? navigationHandler;
-  Future<dynamic> Function(String resource, String method, String target, dynamic data)? resourceHandler;
+  bool Function(String action, String route, Map<String, dynamic> params)?
+      navigationHandler;
+  Future<dynamic> Function(
+          String resource, String method, String target, dynamic data)?
+      resourceHandler;
 
   Renderer({
     required this.widgetRegistry,
@@ -33,17 +36,19 @@ class Renderer {
   /// Render a page definition
   Widget renderPage(Map<String, dynamic> pageDefinition) {
     final type = pageDefinition['type'] as String? ?? 'single';
-    final properties = pageDefinition['properties'] as Map<String, dynamic>? ?? {};
+    final properties =
+        pageDefinition['properties'] as Map<String, dynamic>? ?? {};
     final content = pageDefinition['content'] as Map<String, dynamic>?;
-    
+
     // Handle both formats: appBar in properties or at root level
     final appBar = pageDefinition['appBar'] ?? properties['appBar'];
     final body = pageDefinition['body'] ?? content;
     final bottomBar = pageDefinition['bottomBar'] ?? properties['bottomBar'];
-    final floatingAction = pageDefinition['floatingAction'] ?? properties['floatingAction'];
+    final floatingAction =
+        pageDefinition['floatingAction'] ?? properties['floatingAction'];
 
     switch (type) {
-      case 'page':  // Add explicit handling for 'page' type
+      case 'page': // Add explicit handling for 'page' type
       case 'single':
         return _renderSinglePage({
           ...properties,
@@ -70,7 +75,7 @@ class Renderer {
     Map<String, dynamic>? content,
   ) {
     final context = createRootContext(null);
-    
+
     return Scaffold(
       appBar: _buildAppBar(properties['appBar'], context),
       body: content != null ? renderWidget(content, context) : Container(),
@@ -88,7 +93,7 @@ class Renderer {
     Map<String, dynamic> pageDefinition,
   ) {
     final tabs = pageDefinition['tabs'] as List<dynamic>? ?? [];
-    
+
     return DefaultTabController(
       length: tabs.length,
       child: Scaffold(
@@ -125,7 +130,7 @@ class Renderer {
   ) {
     final context = createRootContext(null);
     final drawer = properties['drawer'] as Map<String, dynamic>?;
-    
+
     return Scaffold(
       appBar: _buildAppBar(properties['appBar'], context),
       drawer: drawer != null ? renderWidget(drawer, context) : null,
@@ -140,7 +145,7 @@ class Renderer {
       _logger.debug('renderWidget called with type: $type');
       _logger.debug('renderWidget definition: $definition');
     }
-    
+
     if (type == null) {
       return _errorWidget('Widget type is required', definition);
     }
@@ -165,13 +170,13 @@ class Renderer {
 
     try {
       final widget = factory.build(definition, context);
-      
+
       // Cache the widget if caching is enabled and it's cacheable
       if (_widgetCache.enabled && _isCacheable(definition, type)) {
         final contextData = _extractCacheableContext(context);
         _widgetCache.put(definition, contextData, widget);
       }
-      
+
       return widget;
     } catch (e, stackTrace) {
       if (kDebugMode) {
@@ -183,7 +188,8 @@ class Renderer {
 
   /// Create root render context
   RenderContext createRootContext(BuildContext? context) {
-    _logger.debug('Creating root context with navigationHandler: ${navigationHandler != null}');
+    _logger.debug(
+        'Creating root context with navigationHandler: ${navigationHandler != null}');
     return RenderContext(
       renderer: this,
       stateManager: stateManager,
@@ -202,7 +208,7 @@ class Renderer {
     RenderContext context,
   ) {
     if (appBarDef == null) return null;
-    
+
     // If it already has a type, use the factory
     if (appBarDef['type'] != null) {
       final widget = renderWidget(appBarDef, context);
@@ -215,24 +221,26 @@ class Renderer {
         );
       }
     }
-    
+
     // Otherwise create a simple AppBar (backward compatibility)
-    final properties = appBarDef['properties'] as Map<String, dynamic>? ?? appBarDef;
+    final properties =
+        appBarDef['properties'] as Map<String, dynamic>? ?? appBarDef;
     final actions = properties['actions'] as List<dynamic>?;
     final leading = properties['leading'] as Map<String, dynamic>?;
     final title = properties['title'];
 
     return AppBar(
-      title: title is String 
+      title: title is String
           ? Text(context.resolve(title))
-          : (title is Map<String, dynamic> 
-              ? renderWidget(title, context) 
+          : (title is Map<String, dynamic>
+              ? renderWidget(title, context)
               : null),
       elevation: properties['elevation']?.toDouble(),
       backgroundColor: _resolveColor(properties['backgroundColor']),
       leading: leading != null ? renderWidget(leading, context) : null,
       actions: actions
-          ?.map((action) => renderWidget(action as Map<String, dynamic>, context))
+          ?.map(
+              (action) => renderWidget(action as Map<String, dynamic>, context))
           .toList(),
     );
   }
@@ -261,17 +269,29 @@ class Renderer {
       }
       // Handle named colors
       switch (color.toLowerCase()) {
-        case 'red': return Colors.red;
-        case 'blue': return Colors.blue;
-        case 'green': return Colors.green;
-        case 'yellow': return Colors.yellow;
-        case 'orange': return Colors.orange;
-        case 'purple': return Colors.purple;
-        case 'pink': return Colors.pink;
-        case 'grey': case 'gray': return Colors.grey;
-        case 'black': return Colors.black;
-        case 'white': return Colors.white;
-        case 'transparent': return Colors.transparent;
+        case 'red':
+          return Colors.red;
+        case 'blue':
+          return Colors.blue;
+        case 'green':
+          return Colors.green;
+        case 'yellow':
+          return Colors.yellow;
+        case 'orange':
+          return Colors.orange;
+        case 'purple':
+          return Colors.purple;
+        case 'pink':
+          return Colors.pink;
+        case 'grey':
+        case 'gray':
+          return Colors.grey;
+        case 'black':
+          return Colors.black;
+        case 'white':
+          return Colors.white;
+        case 'transparent':
+          return Colors.transparent;
       }
     } else if (color is int) {
       return Color(color);
@@ -283,297 +303,589 @@ class Renderer {
     if (icon is String) {
       // Map common icon names to Flutter icons
       switch (icon.toLowerCase()) {
-        case 'home': return Icons.home;
-        case 'settings': return Icons.settings;
-        case 'person': case 'profile': return Icons.person;
-        case 'search': return Icons.search;
-        case 'menu': return Icons.menu;
-        case 'close': return Icons.close;
-        case 'add': return Icons.add;
-        case 'remove': return Icons.remove;
-        case 'edit': return Icons.edit;
-        case 'delete': return Icons.delete;
-        case 'save': return Icons.save;
-        case 'share': return Icons.share;
-        case 'favorite': return Icons.favorite;
-        case 'star': return Icons.star;
-        case 'check': return Icons.check;
-        case 'error': return Icons.error;
-        case 'warning': return Icons.warning;
-        case 'info': return Icons.info;
-        case 'help': return Icons.help;
-        case 'dashboard': return Icons.dashboard;
-        case 'notifications': return Icons.notifications;
-        case 'email': return Icons.email;
-        case 'phone': return Icons.phone;
-        case 'calendar': return Icons.calendar_today;
-        case 'location': return Icons.location_on;
-        case 'camera': return Icons.camera_alt;
-        case 'image': return Icons.image;
-        case 'video': return Icons.videocam;
-        case 'audio': return Icons.audiotrack;
-        case 'file': return Icons.insert_drive_file;
-        case 'folder': return Icons.folder;
-        case 'download': return Icons.download;
-        case 'upload': return Icons.upload;
-        case 'cloud': return Icons.cloud;
-        case 'link': return Icons.link;
-        case 'lock': return Icons.lock;
-        case 'unlock': return Icons.lock_open;
-        case 'visibility': return Icons.visibility;
-        case 'visibility_off': return Icons.visibility_off;
-        case 'refresh': return Icons.refresh;
-        case 'sync': return Icons.sync;
-        case 'timer': return Icons.timer;
-        case 'history': return Icons.history;
-        case 'language': return Icons.language;
-        case 'brightness': return Icons.brightness_6;
-        case 'wifi': return Icons.wifi;
-        case 'bluetooth': return Icons.bluetooth;
-        case 'battery': return Icons.battery_full;
-        case 'signal': return Icons.signal_cellular_4_bar;
-        case 'gps': return Icons.gps_fixed;
-        case 'compass': return Icons.explore;
-        case 'map': return Icons.map;
-        case 'navigation': return Icons.navigation;
-        case 'directions': return Icons.directions;
-        case 'train': return Icons.train;
-        case 'car': return Icons.directions_car;
-        case 'bike': return Icons.directions_bike;
-        case 'walk': return Icons.directions_walk;
-        case 'flight': return Icons.flight;
-        case 'hotel': return Icons.hotel;
-        case 'restaurant': return Icons.restaurant;
-        case 'cafe': return Icons.local_cafe;
-        case 'shopping': return Icons.shopping_cart;
-        case 'gift': return Icons.card_giftcard;
-        case 'payment': return Icons.payment;
-        case 'wallet': return Icons.account_balance_wallet;
-        case 'chart': return Icons.insert_chart;
-        case 'trending': return Icons.trending_up;
-        case 'attach': return Icons.attach_file;
-        case 'send': return Icons.send;
-        case 'inbox': return Icons.inbox;
-        case 'archive': return Icons.archive;
-        case 'reply': return Icons.reply;
-        case 'forward': return Icons.forward;
-        case 'undo': return Icons.undo;
-        case 'redo': return Icons.redo;
-        case 'copy': return Icons.content_copy;
-        case 'cut': return Icons.content_cut;
-        case 'paste': return Icons.content_paste;
-        case 'select_all': return Icons.select_all;
-        case 'zoom_in': return Icons.zoom_in;
-        case 'zoom_out': return Icons.zoom_out;
-        case 'fullscreen': return Icons.fullscreen;
-        case 'print': return Icons.print;
-        case 'book': return Icons.book;
-        case 'bookmark': return Icons.bookmark;
-        case 'flag': return Icons.flag;
-        case 'tag': return Icons.label;
-        case 'chat': return Icons.chat;
-        case 'forum': return Icons.forum;
-        case 'group': return Icons.group;
-        case 'contacts': return Icons.contacts;
-        case 'call': return Icons.call;
-        case 'videocall': return Icons.video_call;
-        case 'mic': return Icons.mic;
-        case 'mic_off': return Icons.mic_off;
-        case 'volume': return Icons.volume_up;
-        case 'volume_off': return Icons.volume_off;
-        case 'play': return Icons.play_arrow;
-        case 'pause': return Icons.pause;
-        case 'stop': return Icons.stop;
-        case 'skip_next': return Icons.skip_next;
-        case 'skip_previous': return Icons.skip_previous;
-        case 'fast_forward': return Icons.fast_forward;
-        case 'fast_rewind': return Icons.fast_rewind;
-        case 'queue_music': return Icons.queue_music;
-        case 'playlist': return Icons.playlist_play;
-        case 'shuffle': return Icons.shuffle;
-        case 'repeat': return Icons.repeat;
-        case 'games': return Icons.games;
-        case 'computer': return Icons.computer;
-        case 'keyboard': return Icons.keyboard;
-        case 'mouse': return Icons.mouse;
-        case 'watch': return Icons.watch;
-        case 'tv': return Icons.tv;
-        case 'radio': return Icons.radio;
-        case 'headset': return Icons.headset;
-        case 'speaker': return Icons.speaker;
-        case 'router': return Icons.router;
-        case 'scanner': return Icons.scanner;
-        case 'printer': return Icons.print;
-        case 'desktop': return Icons.desktop_windows;
-        case 'laptop': return Icons.laptop;
-        case 'tablet': return Icons.tablet;
-        case 'smartphone': return Icons.smartphone;
-        case 'sim_card': return Icons.sim_card;
-        case 'storage': return Icons.storage;
-        case 'cloud_download': return Icons.cloud_download;
-        case 'cloud_upload': return Icons.cloud_upload;
-        case 'cloud_sync': return Icons.cloud_sync;
-        case 'backup': return Icons.backup;
-        case 'update': return Icons.update;
-        case 'extension': return Icons.extension;
-        case 'puzzle': return Icons.extension;
-        case 'toys': return Icons.toys;
-        case 'beach': return Icons.beach_access;
-        case 'pool': return Icons.pool;
-        case 'spa': return Icons.spa;
-        case 'fitness': return Icons.fitness_center;
-        case 'sports': return Icons.sports;
-        case 'golf': return Icons.golf_course;
-        case 'casino': return Icons.casino;
-        case 'child': return Icons.child_care;
-        case 'pets': return Icons.pets;
-        case 'nature': return Icons.nature;
-        case 'park': return Icons.park;
-        case 'flower': return Icons.local_florist;
-        case 'weather': return Icons.wb_sunny;
-        case 'cloud_weather': return Icons.cloud;
-        case 'rain': return Icons.grain;
-        case 'snow': return Icons.ac_unit;
-        case 'night': return Icons.nights_stay;
-        case 'weekend': return Icons.weekend;
-        case 'today': return Icons.today;
-        case 'event': return Icons.event;
-        case 'schedule': return Icons.schedule;
-        case 'alarm': return Icons.alarm;
-        case 'snooze': return Icons.snooze;
-        case 'work': return Icons.work;
-        case 'business': return Icons.business;
-        case 'store': return Icons.store;
-        case 'shopping_bag': return Icons.shopping_bag;
-        case 'school': return Icons.school;
-        case 'science': return Icons.science;
-        case 'psychology': return Icons.psychology;
-        case 'biotech': return Icons.biotech;
-        case 'medical': return Icons.medical_services;
-        case 'hospital': return Icons.local_hospital;
-        case 'pharmacy': return Icons.local_pharmacy;
-        case 'healing': return Icons.healing;
-        case 'accessible': return Icons.accessible;
-        case 'elderly': return Icons.elderly;
-        case 'pregnant': return Icons.pregnant_woman;
-        case 'baby': return Icons.child_friendly;
-        case 'stroller': return Icons.stroller;
-        case 'wheelchair': return Icons.wheelchair_pickup;
-        case 'elevator': return Icons.elevator;
-        case 'escalator': return Icons.escalator;
-        case 'stairs': return Icons.stairs;
-        case 'emergency': return Icons.emergency;
-        case 'fire': return Icons.local_fire_department;
-        case 'police': return Icons.local_police;
-        case 'security': return Icons.security;
-        case 'shield': return Icons.shield;
-        case 'verified': return Icons.verified;
-        case 'fingerprint': return Icons.fingerprint;
-        case 'face': return Icons.face;
-        case 'mood': return Icons.mood;
-        case 'sentiment': return Icons.sentiment_satisfied;
-        case 'emoji': return Icons.emoji_emotions;
-        case 'celebration': return Icons.celebration;
-        case 'cake': return Icons.cake;
-        case 'gift_card': return Icons.card_giftcard;
-        case 'loyalty': return Icons.loyalty;
-        case 'discount': return Icons.discount;
-        case 'qr_code': return Icons.qr_code;
-        case 'barcode': return Icons.barcode_reader;
-        case 'receipt': return Icons.receipt;
-        case 'invoice': return Icons.receipt_long;
-        case 'account': return Icons.account_circle;
-        case 'badge': return Icons.badge;
-        case 'workspace': return Icons.workspaces;
-        case 'dashboard_customize': return Icons.dashboard_customize;
-        case 'widgets': return Icons.widgets;
-        case 'layers': return Icons.layers;
-        case 'pivot_table': return Icons.pivot_table_chart;
-        case 'analytics': return Icons.analytics;
-        case 'insights': return Icons.insights;
-        case 'data': return Icons.data_usage;
-        case 'database': return Icons.storage;
-        case 'dns': return Icons.dns;
-        case 'vpn': return Icons.vpn_key;
-        case 'firewall': return Icons.security;
-        case 'bug': return Icons.bug_report;
-        case 'code': return Icons.code;
-        case 'terminal': return Icons.terminal;
-        case 'developer': return Icons.developer_mode;
-        case 'api': return Icons.api;
-        case 'integration': return Icons.integration_instructions;
-        case 'webhook': return Icons.webhook;
-        case 'functions': return Icons.functions;
-        case 'variables': return Icons.code;
-        case 'class': return Icons.class_;
-        case 'library': return Icons.library_books;
-        case 'source': return Icons.source;
-        case 'git': return Icons.account_tree;
-        case 'branch': return Icons.merge_type;
-        case 'merge': return Icons.merge;
-        case 'pull_request': return Icons.compare_arrows;
-        case 'commit': return Icons.commit;
-        case 'diff': return Icons.difference;
-        case 'fork': return Icons.call_split;
-        case 'clone': return Icons.file_copy;
-        case 'deploy': return Icons.cloud_upload;
-        case 'rollback': return Icons.history;
-        case 'pipeline': return Icons.double_arrow;
-        case 'build': return Icons.build;
-        case 'test': return Icons.bug_report;
-        case 'release': return Icons.new_releases;
-        case 'version': return Icons.label;
-        case 'package': return Icons.inventory_2;
-        case 'dependencies': return Icons.account_tree;
-        case 'settings_system': return Icons.settings_system_daydream;
-        case 'settings_input': return Icons.settings_input_composite;
-        case 'settings_voice': return Icons.settings_voice;
-        case 'settings_power': return Icons.settings_power;
-        case 'settings_bluetooth': return Icons.settings_bluetooth;
-        case 'settings_brightness': return Icons.settings_brightness;
-        case 'tune': return Icons.tune;
-        case 'build_circle': return Icons.build_circle;
-        case 'eco': return Icons.eco;
-        case 'energy': return Icons.bolt;
-        case 'water': return Icons.water_drop;
-        case 'air': return Icons.air;
-        case 'terrain': return Icons.terrain;
-        case 'satellite': return Icons.satellite;
-        case 'my_location': return Icons.my_location;
-        case 'near_me': return Icons.near_me;
-        case 'layers_clear': return Icons.layers_clear;
-        case 'traffic': return Icons.traffic;
-        case 'directions_boat': return Icons.directions_boat;
-        case 'directions_bus': return Icons.directions_bus;
-        case 'directions_railway': return Icons.directions_railway;
-        case 'directions_subway': return Icons.directions_subway;
-        case 'directions_transit': return Icons.directions_transit;
-        case 'local_taxi': return Icons.local_taxi;
-        case 'local_shipping': return Icons.local_shipping;
-        case 'local_airport': return Icons.local_airport;
-        case 'local_bar': return Icons.local_bar;
-        case 'local_cafe': return Icons.local_cafe;
-        case 'local_dining': return Icons.local_dining;
-        case 'local_drink': return Icons.local_drink;
-        case 'local_hotel': return Icons.local_hotel;
-        case 'local_laundry': return Icons.local_laundry_service;
-        case 'local_library': return Icons.local_library;
-        case 'local_mall': return Icons.local_mall;
-        case 'local_movies': return Icons.local_movies;
-        case 'local_offer': return Icons.local_offer;
-        case 'local_parking': return Icons.local_parking;
-        case 'local_pharmacy': return Icons.local_pharmacy;
-        case 'local_pizza': return Icons.local_pizza;
-        case 'local_play': return Icons.local_play;
-        case 'local_post': return Icons.local_post_office;
-        case 'local_print': return Icons.local_printshop;
-        case 'local_see': return Icons.local_see;
-        case 'local_gas': return Icons.local_gas_station;
-        case 'local_grocery': return Icons.local_grocery_store;
-        case 'local_activity': return Icons.local_activity;
-        case 'local_atm': return Icons.local_atm;
-        case 'local_convenience': return Icons.local_convenience_store;
-        default: return Icons.help_outline; // Fallback icon
+        case 'home':
+          return Icons.home;
+        case 'settings':
+          return Icons.settings;
+        case 'person':
+        case 'profile':
+          return Icons.person;
+        case 'search':
+          return Icons.search;
+        case 'menu':
+          return Icons.menu;
+        case 'close':
+          return Icons.close;
+        case 'add':
+          return Icons.add;
+        case 'remove':
+          return Icons.remove;
+        case 'edit':
+          return Icons.edit;
+        case 'delete':
+          return Icons.delete;
+        case 'save':
+          return Icons.save;
+        case 'share':
+          return Icons.share;
+        case 'favorite':
+          return Icons.favorite;
+        case 'star':
+          return Icons.star;
+        case 'check':
+          return Icons.check;
+        case 'error':
+          return Icons.error;
+        case 'warning':
+          return Icons.warning;
+        case 'info':
+          return Icons.info;
+        case 'help':
+          return Icons.help;
+        case 'dashboard':
+          return Icons.dashboard;
+        case 'notifications':
+          return Icons.notifications;
+        case 'email':
+          return Icons.email;
+        case 'phone':
+          return Icons.phone;
+        case 'calendar':
+          return Icons.calendar_today;
+        case 'location':
+          return Icons.location_on;
+        case 'camera':
+          return Icons.camera_alt;
+        case 'image':
+          return Icons.image;
+        case 'video':
+          return Icons.videocam;
+        case 'audio':
+          return Icons.audiotrack;
+        case 'file':
+          return Icons.insert_drive_file;
+        case 'folder':
+          return Icons.folder;
+        case 'download':
+          return Icons.download;
+        case 'upload':
+          return Icons.upload;
+        case 'cloud':
+          return Icons.cloud;
+        case 'link':
+          return Icons.link;
+        case 'lock':
+          return Icons.lock;
+        case 'unlock':
+          return Icons.lock_open;
+        case 'visibility':
+          return Icons.visibility;
+        case 'visibility_off':
+          return Icons.visibility_off;
+        case 'refresh':
+          return Icons.refresh;
+        case 'sync':
+          return Icons.sync;
+        case 'timer':
+          return Icons.timer;
+        case 'history':
+          return Icons.history;
+        case 'language':
+          return Icons.language;
+        case 'brightness':
+          return Icons.brightness_6;
+        case 'wifi':
+          return Icons.wifi;
+        case 'bluetooth':
+          return Icons.bluetooth;
+        case 'battery':
+          return Icons.battery_full;
+        case 'signal':
+          return Icons.signal_cellular_4_bar;
+        case 'gps':
+          return Icons.gps_fixed;
+        case 'compass':
+          return Icons.explore;
+        case 'map':
+          return Icons.map;
+        case 'navigation':
+          return Icons.navigation;
+        case 'directions':
+          return Icons.directions;
+        case 'train':
+          return Icons.train;
+        case 'car':
+          return Icons.directions_car;
+        case 'bike':
+          return Icons.directions_bike;
+        case 'walk':
+          return Icons.directions_walk;
+        case 'flight':
+          return Icons.flight;
+        case 'hotel':
+          return Icons.hotel;
+        case 'restaurant':
+          return Icons.restaurant;
+        case 'cafe':
+          return Icons.local_cafe;
+        case 'shopping':
+          return Icons.shopping_cart;
+        case 'gift':
+          return Icons.card_giftcard;
+        case 'payment':
+          return Icons.payment;
+        case 'wallet':
+          return Icons.account_balance_wallet;
+        case 'chart':
+          return Icons.insert_chart;
+        case 'trending':
+          return Icons.trending_up;
+        case 'attach':
+          return Icons.attach_file;
+        case 'send':
+          return Icons.send;
+        case 'inbox':
+          return Icons.inbox;
+        case 'archive':
+          return Icons.archive;
+        case 'reply':
+          return Icons.reply;
+        case 'forward':
+          return Icons.forward;
+        case 'undo':
+          return Icons.undo;
+        case 'redo':
+          return Icons.redo;
+        case 'copy':
+          return Icons.content_copy;
+        case 'cut':
+          return Icons.content_cut;
+        case 'paste':
+          return Icons.content_paste;
+        case 'select_all':
+          return Icons.select_all;
+        case 'zoom_in':
+          return Icons.zoom_in;
+        case 'zoom_out':
+          return Icons.zoom_out;
+        case 'fullscreen':
+          return Icons.fullscreen;
+        case 'print':
+          return Icons.print;
+        case 'book':
+          return Icons.book;
+        case 'bookmark':
+          return Icons.bookmark;
+        case 'flag':
+          return Icons.flag;
+        case 'tag':
+          return Icons.label;
+        case 'chat':
+          return Icons.chat;
+        case 'forum':
+          return Icons.forum;
+        case 'group':
+          return Icons.group;
+        case 'contacts':
+          return Icons.contacts;
+        case 'call':
+          return Icons.call;
+        case 'videocall':
+          return Icons.video_call;
+        case 'mic':
+          return Icons.mic;
+        case 'mic_off':
+          return Icons.mic_off;
+        case 'volume':
+          return Icons.volume_up;
+        case 'volume_off':
+          return Icons.volume_off;
+        case 'play':
+          return Icons.play_arrow;
+        case 'pause':
+          return Icons.pause;
+        case 'stop':
+          return Icons.stop;
+        case 'skip_next':
+          return Icons.skip_next;
+        case 'skip_previous':
+          return Icons.skip_previous;
+        case 'fast_forward':
+          return Icons.fast_forward;
+        case 'fast_rewind':
+          return Icons.fast_rewind;
+        case 'queue_music':
+          return Icons.queue_music;
+        case 'playlist':
+          return Icons.playlist_play;
+        case 'shuffle':
+          return Icons.shuffle;
+        case 'repeat':
+          return Icons.repeat;
+        case 'games':
+          return Icons.games;
+        case 'computer':
+          return Icons.computer;
+        case 'keyboard':
+          return Icons.keyboard;
+        case 'mouse':
+          return Icons.mouse;
+        case 'watch':
+          return Icons.watch;
+        case 'tv':
+          return Icons.tv;
+        case 'radio':
+          return Icons.radio;
+        case 'headset':
+          return Icons.headset;
+        case 'speaker':
+          return Icons.speaker;
+        case 'router':
+          return Icons.router;
+        case 'scanner':
+          return Icons.scanner;
+        case 'printer':
+          return Icons.print;
+        case 'desktop':
+          return Icons.desktop_windows;
+        case 'laptop':
+          return Icons.laptop;
+        case 'tablet':
+          return Icons.tablet;
+        case 'smartphone':
+          return Icons.smartphone;
+        case 'sim_card':
+          return Icons.sim_card;
+        case 'storage':
+          return Icons.storage;
+        case 'cloud_download':
+          return Icons.cloud_download;
+        case 'cloud_upload':
+          return Icons.cloud_upload;
+        case 'cloud_sync':
+          return Icons.cloud_sync;
+        case 'backup':
+          return Icons.backup;
+        case 'update':
+          return Icons.update;
+        case 'extension':
+          return Icons.extension;
+        case 'puzzle':
+          return Icons.extension;
+        case 'toys':
+          return Icons.toys;
+        case 'beach':
+          return Icons.beach_access;
+        case 'pool':
+          return Icons.pool;
+        case 'spa':
+          return Icons.spa;
+        case 'fitness':
+          return Icons.fitness_center;
+        case 'sports':
+          return Icons.sports;
+        case 'golf':
+          return Icons.golf_course;
+        case 'casino':
+          return Icons.casino;
+        case 'child':
+          return Icons.child_care;
+        case 'pets':
+          return Icons.pets;
+        case 'nature':
+          return Icons.nature;
+        case 'park':
+          return Icons.park;
+        case 'flower':
+          return Icons.local_florist;
+        case 'weather':
+          return Icons.wb_sunny;
+        case 'cloud_weather':
+          return Icons.cloud;
+        case 'rain':
+          return Icons.grain;
+        case 'snow':
+          return Icons.ac_unit;
+        case 'night':
+          return Icons.nights_stay;
+        case 'weekend':
+          return Icons.weekend;
+        case 'today':
+          return Icons.today;
+        case 'event':
+          return Icons.event;
+        case 'schedule':
+          return Icons.schedule;
+        case 'alarm':
+          return Icons.alarm;
+        case 'snooze':
+          return Icons.snooze;
+        case 'work':
+          return Icons.work;
+        case 'business':
+          return Icons.business;
+        case 'store':
+          return Icons.store;
+        case 'shopping_bag':
+          return Icons.shopping_bag;
+        case 'school':
+          return Icons.school;
+        case 'science':
+          return Icons.science;
+        case 'psychology':
+          return Icons.psychology;
+        case 'biotech':
+          return Icons.biotech;
+        case 'medical':
+          return Icons.medical_services;
+        case 'hospital':
+          return Icons.local_hospital;
+        case 'pharmacy':
+          return Icons.local_pharmacy;
+        case 'healing':
+          return Icons.healing;
+        case 'accessible':
+          return Icons.accessible;
+        case 'elderly':
+          return Icons.elderly;
+        case 'pregnant':
+          return Icons.pregnant_woman;
+        case 'baby':
+          return Icons.child_friendly;
+        case 'stroller':
+          return Icons.stroller;
+        case 'wheelchair':
+          return Icons.wheelchair_pickup;
+        case 'elevator':
+          return Icons.elevator;
+        case 'escalator':
+          return Icons.escalator;
+        case 'stairs':
+          return Icons.stairs;
+        case 'emergency':
+          return Icons.emergency;
+        case 'fire':
+          return Icons.local_fire_department;
+        case 'police':
+          return Icons.local_police;
+        case 'security':
+          return Icons.security;
+        case 'shield':
+          return Icons.shield;
+        case 'verified':
+          return Icons.verified;
+        case 'fingerprint':
+          return Icons.fingerprint;
+        case 'face':
+          return Icons.face;
+        case 'mood':
+          return Icons.mood;
+        case 'sentiment':
+          return Icons.sentiment_satisfied;
+        case 'emoji':
+          return Icons.emoji_emotions;
+        case 'celebration':
+          return Icons.celebration;
+        case 'cake':
+          return Icons.cake;
+        case 'gift_card':
+          return Icons.card_giftcard;
+        case 'loyalty':
+          return Icons.loyalty;
+        case 'discount':
+          return Icons.discount;
+        case 'qr_code':
+          return Icons.qr_code;
+        case 'barcode':
+          return Icons.barcode_reader;
+        case 'receipt':
+          return Icons.receipt;
+        case 'invoice':
+          return Icons.receipt_long;
+        case 'account':
+          return Icons.account_circle;
+        case 'badge':
+          return Icons.badge;
+        case 'workspace':
+          return Icons.workspaces;
+        case 'dashboard_customize':
+          return Icons.dashboard_customize;
+        case 'widgets':
+          return Icons.widgets;
+        case 'layers':
+          return Icons.layers;
+        case 'pivot_table':
+          return Icons.pivot_table_chart;
+        case 'analytics':
+          return Icons.analytics;
+        case 'insights':
+          return Icons.insights;
+        case 'data':
+          return Icons.data_usage;
+        case 'database':
+          return Icons.storage;
+        case 'dns':
+          return Icons.dns;
+        case 'vpn':
+          return Icons.vpn_key;
+        case 'firewall':
+          return Icons.security;
+        case 'bug':
+          return Icons.bug_report;
+        case 'code':
+          return Icons.code;
+        case 'terminal':
+          return Icons.terminal;
+        case 'developer':
+          return Icons.developer_mode;
+        case 'api':
+          return Icons.api;
+        case 'integration':
+          return Icons.integration_instructions;
+        case 'webhook':
+          return Icons.webhook;
+        case 'functions':
+          return Icons.functions;
+        case 'variables':
+          return Icons.code;
+        case 'class':
+          return Icons.class_;
+        case 'library':
+          return Icons.library_books;
+        case 'source':
+          return Icons.source;
+        case 'git':
+          return Icons.account_tree;
+        case 'branch':
+          return Icons.merge_type;
+        case 'merge':
+          return Icons.merge;
+        case 'pull_request':
+          return Icons.compare_arrows;
+        case 'commit':
+          return Icons.commit;
+        case 'diff':
+          return Icons.difference;
+        case 'fork':
+          return Icons.call_split;
+        case 'clone':
+          return Icons.file_copy;
+        case 'deploy':
+          return Icons.cloud_upload;
+        case 'rollback':
+          return Icons.history;
+        case 'pipeline':
+          return Icons.double_arrow;
+        case 'build':
+          return Icons.build;
+        case 'test':
+          return Icons.bug_report;
+        case 'release':
+          return Icons.new_releases;
+        case 'version':
+          return Icons.label;
+        case 'package':
+          return Icons.inventory_2;
+        case 'dependencies':
+          return Icons.account_tree;
+        case 'settings_system':
+          return Icons.settings_system_daydream;
+        case 'settings_input':
+          return Icons.settings_input_composite;
+        case 'settings_voice':
+          return Icons.settings_voice;
+        case 'settings_power':
+          return Icons.settings_power;
+        case 'settings_bluetooth':
+          return Icons.settings_bluetooth;
+        case 'settings_brightness':
+          return Icons.settings_brightness;
+        case 'tune':
+          return Icons.tune;
+        case 'build_circle':
+          return Icons.build_circle;
+        case 'eco':
+          return Icons.eco;
+        case 'energy':
+          return Icons.bolt;
+        case 'water':
+          return Icons.water_drop;
+        case 'air':
+          return Icons.air;
+        case 'terrain':
+          return Icons.terrain;
+        case 'satellite':
+          return Icons.satellite;
+        case 'my_location':
+          return Icons.my_location;
+        case 'near_me':
+          return Icons.near_me;
+        case 'layers_clear':
+          return Icons.layers_clear;
+        case 'traffic':
+          return Icons.traffic;
+        case 'directions_boat':
+          return Icons.directions_boat;
+        case 'directions_bus':
+          return Icons.directions_bus;
+        case 'directions_railway':
+          return Icons.directions_railway;
+        case 'directions_subway':
+          return Icons.directions_subway;
+        case 'directions_transit':
+          return Icons.directions_transit;
+        case 'local_taxi':
+          return Icons.local_taxi;
+        case 'local_shipping':
+          return Icons.local_shipping;
+        case 'local_airport':
+          return Icons.local_airport;
+        case 'local_bar':
+          return Icons.local_bar;
+        case 'local_cafe':
+          return Icons.local_cafe;
+        case 'local_dining':
+          return Icons.local_dining;
+        case 'local_drink':
+          return Icons.local_drink;
+        case 'local_hotel':
+          return Icons.local_hotel;
+        case 'local_laundry':
+          return Icons.local_laundry_service;
+        case 'local_library':
+          return Icons.local_library;
+        case 'local_mall':
+          return Icons.local_mall;
+        case 'local_movies':
+          return Icons.local_movies;
+        case 'local_offer':
+          return Icons.local_offer;
+        case 'local_parking':
+          return Icons.local_parking;
+        case 'local_pharmacy':
+          return Icons.local_pharmacy;
+        case 'local_pizza':
+          return Icons.local_pizza;
+        case 'local_play':
+          return Icons.local_play;
+        case 'local_post':
+          return Icons.local_post_office;
+        case 'local_print':
+          return Icons.local_printshop;
+        case 'local_see':
+          return Icons.local_see;
+        case 'local_gas':
+          return Icons.local_gas_station;
+        case 'local_grocery':
+          return Icons.local_grocery_store;
+        case 'local_activity':
+          return Icons.local_activity;
+        case 'local_atm':
+          return Icons.local_atm;
+        case 'local_convenience':
+          return Icons.local_convenience_store;
+        default:
+          return Icons.help_outline; // Fallback icon
       }
     }
     return Icons.help_outline; // Default fallback
@@ -583,7 +895,7 @@ class Renderer {
   Map<String, dynamic>? _extractCacheableContext(RenderContext context) {
     // Extract only relevant state data for caching key generation
     // We exclude non-deterministic data like BuildContext
-    
+
     // Filter out non-serializable local variables
     final cleanVariables = <String, dynamic>{};
     context.localVariables.forEach((key, value) {
@@ -592,7 +904,7 @@ class Renderer {
         cleanVariables[key] = value;
       }
     });
-    
+
     return {
       'stateData': context.stateManager.getState(),
       'themeData': {
@@ -603,7 +915,7 @@ class Renderer {
       'variables': cleanVariables,
     };
   }
-  
+
   /// Check if a value is JSON serializable
   bool _isSerializable(dynamic value) {
     if (value == null || value is num || value is String || value is bool) {
@@ -623,16 +935,16 @@ class Renderer {
   bool _isCacheable(Map<String, dynamic> definition, String type) {
     // Don't cache widgets with event handlers or dynamic content
     final properties = definition;
-    
+
     // Skip caching for widgets with event handlers
     if (_hasEventHandlers(properties)) {
       return false;
     }
-    
+
     // Skip caching for certain widget types that are typically dynamic
     const nonCacheableTypes = {
       'textField', 'TextField',
-      'textFormField', 'TextFormField', 
+      'textFormField', 'TextFormField',
       'form', 'Form',
       'timer', 'Timer',
       'animatedContainer', 'AnimatedContainer',
@@ -647,23 +959,33 @@ class Renderer {
       'timeField', 'TimeField',
       'colorPicker', 'ColorPicker',
     };
-    
+
     if (nonCacheableTypes.contains(type)) {
       return false;
     }
-    
+
     return true;
   }
 
   /// Check if properties contain event handlers
   bool _hasEventHandlers(Map<String, dynamic> properties) {
     const eventHandlers = {
-      'onPressed', 'onTap', 'onLongPress', 'onDoubleTap',
-      'change', 'submit', 'focus', 'blur',
-      'onChanged', 'onSubmitted', 'onEditingComplete',
-      'onHover', 'onEnter', 'onExit',
+      'onPressed',
+      'onTap',
+      'onLongPress',
+      'onDoubleTap',
+      'change',
+      'submit',
+      'focus',
+      'blur',
+      'onChanged',
+      'onSubmitted',
+      'onEditingComplete',
+      'onHover',
+      'onEnter',
+      'onExit',
     };
-    
+
     return properties.keys.any((key) => eventHandlers.contains(key));
   }
 
@@ -700,7 +1022,8 @@ class Renderer {
         children: [
           Text(
             message,
-            style: TextStyle(color: Colors.red.shade800, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                color: Colors.red.shade800, fontWeight: FontWeight.bold),
           ),
           if (definition['type'] != null)
             Text(

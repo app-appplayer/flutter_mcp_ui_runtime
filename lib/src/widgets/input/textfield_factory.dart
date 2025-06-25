@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../renderer/render_context.dart';
 import '../widget_factory.dart';
 import '../../validation/validation_engine.dart';
-import '../../validation/custom_validator.dart';
 import '../../utils/debounce.dart';
 
 /// Factory for TextField widgets
@@ -11,10 +10,10 @@ class TextFieldWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Check if debouncing is enabled
     final debounceDelay = properties['debounce'] as int?;
-    
+
     if (debounceDelay != null && debounceDelay > 0) {
       return _DebouncedTextField(
         definition: definition,
@@ -22,16 +21,18 @@ class TextFieldWidgetFactory extends WidgetFactory {
         debounceDelay: debounceDelay,
       );
     }
-    
+
     return _buildTextField(definition, context);
   }
-  
-  Widget _buildTextField(Map<String, dynamic> definition, RenderContext context) {
+
+  Widget _buildTextField(
+      Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
-    final hint = context.resolve<String?>(properties['hint']) ?? 
-                context.resolve<String?>(properties['placeholder']) ?? '';
+    final hint = context.resolve<String?>(properties['hint']) ??
+        context.resolve<String?>(properties['placeholder']) ??
+        '';
     final label = properties['label'] as String?;
     final helperText = properties['helperText'] as String?;
     final prefixIcon = properties['prefixIcon'] as String?;
@@ -41,13 +42,14 @@ class TextFieldWidgetFactory extends WidgetFactory {
     final maxLines = properties['maxLines'] as int? ?? 1;
     final maxLength = properties['maxLength'] as int?;
     final keyboardType = _parseKeyboardType(properties['keyboardType']);
-    final textInputAction = _parseTextInputAction(properties['textInputAction']);
-    
+    final textInputAction =
+        _parseTextInputAction(properties['textInputAction']);
+
     // Parse validation rules if provided
     final validationDef = properties['validation'];
     final validationRules = ValidationEngine.parseValidation(validationDef);
     final hasValidation = validationRules.isNotEmpty;
-    
+
     // Handle error state
     // The 'error' property can be either a boolean (to show error state) or a string (the error message)
     final errorValue = context.resolve<dynamic>(properties['error']);
@@ -59,13 +61,12 @@ class TextFieldWidgetFactory extends WidgetFactory {
     } else {
       errorText = null;
     }
-    
-    
+
     // Get event handlers - MCP UI DSL v1.0 spec
     final changeAction = properties['change'] as Map<String, dynamic>?;
     final submitAction = properties['submit'] as Map<String, dynamic>?;
     final blurAction = properties['blur'] as Map<String, dynamic>?;
-    
+
     // Get initial value from binding or value property
     final bindingPath = properties['binding'] as String?;
     String initialValue = '';
@@ -74,10 +75,10 @@ class TextFieldWidgetFactory extends WidgetFactory {
     } else {
       initialValue = context.resolve<String>(properties['value'] ?? '');
     }
-    
+
     // Create text editing controller with initial value
     final controller = TextEditingController(text: initialValue);
-    
+
     // Parse style
     TextStyle? style;
     final styleDef = properties['style'];
@@ -87,12 +88,13 @@ class TextFieldWidgetFactory extends WidgetFactory {
         fontWeight: _parseFontWeight(styleDef['fontWeight']),
         fontStyle: styleDef['fontStyle'] == 'italic' ? FontStyle.italic : null,
         color: parseColor(context.resolve(styleDef['color'])),
-        letterSpacing: context.resolve<num?>(styleDef['letterSpacing'])?.toDouble(),
+        letterSpacing:
+            context.resolve<num?>(styleDef['letterSpacing'])?.toDouble(),
         wordSpacing: context.resolve<num?>(styleDef['wordSpacing'])?.toDouble(),
         height: context.resolve<num?>(styleDef['height'])?.toDouble(),
       );
     }
-    
+
     // Build text field - always use TextField for consistency with tests
     Widget textField = TextField(
       controller: controller,
@@ -119,13 +121,13 @@ class TextFieldWidgetFactory extends WidgetFactory {
           ValidationEngine.validate(newValue, validationRules);
           // Validation result will be used later if needed
         }
-        
+
         // Update state if binding is specified
         final path = properties['binding'] as String?;
         if (path != null) {
           context.setValue(path, newValue);
         }
-        
+
         // Execute action if change is specified
         if (changeAction != null) {
           // Create a child context with event data
@@ -146,7 +148,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
         if (path != null) {
           context.setValue(path, newValue);
         }
-        
+
         // Execute action if submit is specified
         if (submitAction != null) {
           // Create a child context with event data
@@ -162,7 +164,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
         }
       },
     );
-    
+
     // Wrap in Focus widget if blur action is needed
     if (blurAction != null) {
       textField = Focus(
@@ -184,7 +186,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
         child: textField,
       );
     }
-    
+
     return applyCommonWrappers(textField, properties, context);
   }
 
@@ -248,7 +250,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
         return Icons.circle;
     }
   }
-  
+
   FontWeight? _parseFontWeight(String? weight) {
     switch (weight) {
       case 'bold':
@@ -283,13 +285,13 @@ class _DebouncedTextField extends StatefulWidget {
   final Map<String, dynamic> definition;
   final RenderContext context;
   final int debounceDelay;
-  
+
   const _DebouncedTextField({
     required this.definition,
     required this.context,
     required this.debounceDelay,
   });
-  
+
   @override
   State<_DebouncedTextField> createState() => _DebouncedTextFieldState();
 }
@@ -298,14 +300,15 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
   late TextEditingController _controller;
   late Debouncer _debouncer;
   String? _lastValue;
-  
+
   @override
   void initState() {
     super.initState();
-    
-    final properties = widget.context.renderer.widgetRegistry.get('TextField')!
+
+    final properties = widget.context.renderer.widgetRegistry
+        .get('TextField')!
         .extractProperties(widget.definition);
-    
+
     // Get initial value
     final bindingPath = properties['binding'] as String?;
     String initialValue = '';
@@ -314,28 +317,29 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
     } else {
       initialValue = widget.context.resolve<String>(properties['value'] ?? '');
     }
-    
+
     _controller = TextEditingController(text: initialValue);
     _lastValue = initialValue;
     _debouncer = Debouncer(milliseconds: widget.debounceDelay);
   }
-  
+
   @override
   void dispose() {
     _controller.dispose();
     _debouncer.dispose();
     super.dispose();
   }
-  
+
   void _handleChange(String newValue) {
-    final properties = widget.context.renderer.widgetRegistry.get('TextField')!
+    final properties = widget.context.renderer.widgetRegistry
+        .get('TextField')!
         .extractProperties(widget.definition);
-    
+
     // Update local value immediately for responsive UI
     setState(() {
       _lastValue = newValue;
     });
-    
+
     // Debounce the actual state update and action execution
     _debouncer.run(() {
       // Parse validation rules if provided
@@ -344,13 +348,13 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
       if (validationRules.isNotEmpty) {
         ValidationEngine.validate(newValue, validationRules);
       }
-      
+
       // Update state if binding is specified
       final path = properties['binding'] as String?;
       if (path != null) {
         widget.context.setValue(path, newValue);
       }
-      
+
       // Execute action if change is specified
       final changeAction = properties['change'] as Map<String, dynamic>?;
       if (changeAction != null) {
@@ -366,27 +370,29 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
       }
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
-    final factory = widget.context.renderer.widgetRegistry.get('TextField') as TextFieldWidgetFactory;
+    final factory = widget.context.renderer.widgetRegistry.get('TextField')
+        as TextFieldWidgetFactory;
     final properties = factory.extractProperties(widget.definition);
-    
+
     // Create a modified definition without change action (handled by debouncer)
     final modifiedDefinition = Map<String, dynamic>.from(widget.definition);
     final modifiedProperties = Map<String, dynamic>.from(properties);
     modifiedProperties.remove('change'); // Remove change action as we handle it
     modifiedProperties['value'] = _lastValue; // Use current value
-    
+
     // Build text field without debouncing
-    final textField = factory._buildTextField(modifiedDefinition, widget.context);
-    
+    final textField =
+        factory._buildTextField(modifiedDefinition, widget.context);
+
     // If it's wrapped in Focus, we need to intercept the TextField
     if (textField is Focus) {
-      final focusChild = (textField as Focus).child;
+      final focusChild = (textField).child;
       if (focusChild is TextField) {
         return Focus(
-          onFocusChange: (textField as Focus).onFocusChange,
+          onFocusChange: (textField).onFocusChange,
           child: TextField(
             controller: _controller,
             onChanged: _handleChange,
@@ -404,7 +410,7 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
         );
       }
     }
-    
+
     // If it's a direct TextField, replace onChanged
     if (textField is TextField) {
       return TextField(
@@ -422,7 +428,7 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
         onSubmitted: textField.onSubmitted,
       );
     }
-    
+
     return textField;
   }
 }

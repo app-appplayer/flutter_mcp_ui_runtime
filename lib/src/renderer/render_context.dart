@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'renderer.dart';
 import '../binding/binding_engine.dart';
 import '../actions/action_handler.dart';
@@ -21,8 +20,11 @@ class RenderContext {
   final List<String> _idPath;
   final BuildContext? buildContext;
   final dynamic engine;
-  final bool Function(String action, String route, Map<String, dynamic> params)? navigationHandler;
-  final Future<dynamic> Function(String resource, String method, String target, dynamic data)? resourceHandler;
+  final bool Function(String action, String route, Map<String, dynamic> params)?
+      navigationHandler;
+  final Future<dynamic> Function(
+          String resource, String method, String target, dynamic data)?
+      resourceHandler;
 
   RenderContext({
     required this.renderer,
@@ -37,7 +39,7 @@ class RenderContext {
     this.resourceHandler,
     Map<String, dynamic>? localVariables,
     List<String>? idPath,
-  }) : localVariables = localVariables ?? {},
+  })  : localVariables = localVariables ?? {},
         _idPath = idPath ?? [];
 
   /// Create a child context with additional local variables
@@ -77,7 +79,7 @@ class RenderContext {
   /// Resolve a value that might contain bindings
   T resolve<T>(dynamic value) {
     if (value == null) return null as T;
-    
+
     // Handle different value types
     if (value is Map<String, dynamic>) {
       // Check if it's an action definition (has 'type' property)
@@ -87,7 +89,7 @@ class RenderContext {
         // Don't try to resolve it as a binding
         return value as T;
       }
-      
+
       // Check if it's a binding definition
       if (value.containsKey('binding')) {
         return bindingEngine.resolve<T>(value['binding'], this);
@@ -112,7 +114,7 @@ class RenderContext {
         return bindingEngine.resolve<T>(value, this);
       }
     }
-    
+
     return value as T;
   }
 
@@ -124,7 +126,7 @@ class RenderContext {
   /// Handle an action
   Future<void> handleAction(Map<String, dynamic>? action) async {
     if (action == null) return;
-    
+
     // Resolve any bindings in the action
     final resolvedAction = resolve<Map<String, dynamic>>(action);
     await actionHandler.execute(resolvedAction, this);
@@ -178,18 +180,18 @@ class RenderContext {
   void updateState(Map<String, dynamic> updates) {
     stateManager.updateAll(updates);
   }
-  
+
   /// Get a value from state (alias for getState)
   T? getValue<T>(String path) {
     // Check local variables first (including nested paths)
     if (path.contains('.')) {
       final parts = path.split('.');
       final firstPart = parts[0];
-      
+
       // Check if the first part is in local variables
       if (localVariables.containsKey(firstPart)) {
         dynamic current = localVariables[firstPart];
-        
+
         // Navigate the rest of the path
         for (int i = 1; i < parts.length; i++) {
           if (current is Map<String, dynamic>) {
@@ -198,13 +200,13 @@ class RenderContext {
             return null;
           }
         }
-        
+
         return current as T?;
       }
     } else if (localVariables.containsKey(path)) {
       return localVariables[path] as T?;
     }
-    
+
     // Check for complex paths like items[index].name
     if (path.contains('[') && path.contains(']')) {
       // Parse the path
@@ -213,7 +215,7 @@ class RenderContext {
         final arrayName = match.group(1)!;
         final indexName = match.group(2)!;
         final propertyPath = match.group(3);
-        
+
         // Get the index value from local variables
         final indexValue = localVariables[indexName];
         if (indexValue is int) {
@@ -239,7 +241,7 @@ class RenderContext {
         }
       }
     }
-    
+
     return getState<T>(path);
   }
 
@@ -360,7 +362,7 @@ class RenderContext {
   /// Get resource subscribe handler
   Function(String, String)? get onResourceSubscribe =>
       engine?.onResourceSubscribe as Function(String, String)?;
-  
+
   /// Get resource unsubscribe handler
   Function(String)? get onResourceUnsubscribe =>
       engine?.onResourceUnsubscribe as Function(String)?;
@@ -368,7 +370,7 @@ class RenderContext {
   /// Format a value using a formatter
   String format(dynamic value, String? formatter) {
     if (formatter == null) return value.toString();
-    
+
     // Handle common formatters
     switch (formatter) {
       case 'uppercase':
@@ -404,11 +406,11 @@ class RenderContext {
       case 'datetime':
         if (value is DateTime) {
           return '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')} '
-                 '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+              '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
         }
         break;
     }
-    
+
     return value.toString();
   }
 }

@@ -8,14 +8,14 @@ class DraggableFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     // Get drag data
     final data = definition['data'];
-    
+
     // Get child widget
     final childData = definition['child'];
     Widget child = const SizedBox();
     if (childData != null) {
       child = context.renderer.renderWidget(childData, context);
     }
-    
+
     // Get feedback widget (widget shown while dragging)
     final feedbackData = definition['feedback'];
     Widget feedback;
@@ -34,12 +34,13 @@ class DraggableFactory extends WidgetFactory {
         ),
       );
     }
-    
+
     // Get child when dragging
     final childWhenDraggingData = definition['childWhenDragging'];
     Widget childWhenDragging;
     if (childWhenDraggingData != null) {
-      childWhenDragging = context.renderer.renderWidget(childWhenDraggingData, context);
+      childWhenDragging =
+          context.renderer.renderWidget(childWhenDraggingData, context);
     } else {
       // Default is semi-transparent version
       childWhenDragging = Opacity(
@@ -47,27 +48,31 @@ class DraggableFactory extends WidgetFactory {
         child: child,
       );
     }
-    
+
     // Get other properties
     final affinity = definition['affinity'];
     final axis = definition['axis'];
     final dragAnchorStrategy = definition['dragAnchorStrategy'];
-    
+
     return Draggable<Object>(
       data: data,
       feedback: feedback,
       childWhenDragging: childWhenDragging,
-      affinity: affinity != null ? Axis.values.firstWhere(
-        (e) => e.name == affinity,
-        orElse: () => Axis.vertical,
-      ) : null,
-      axis: axis != null ? Axis.values.firstWhere(
-        (e) => e.name == axis,
-        orElse: () => Axis.vertical,
-      ) : null,
-      dragAnchorStrategy: dragAnchorStrategy == 'pointerDragAnchorStrategy' 
-        ? pointerDragAnchorStrategy 
-        : childDragAnchorStrategy,
+      affinity: affinity != null
+          ? Axis.values.firstWhere(
+              (e) => e.name == affinity,
+              orElse: () => Axis.vertical,
+            )
+          : null,
+      axis: axis != null
+          ? Axis.values.firstWhere(
+              (e) => e.name == axis,
+              orElse: () => Axis.vertical,
+            )
+          : null,
+      dragAnchorStrategy: dragAnchorStrategy == 'pointerDragAnchorStrategy'
+          ? pointerDragAnchorStrategy
+          : childDragAnchorStrategy,
       onDragStarted: () {
         final onDragStarted = definition['onDragStarted'];
         if (onDragStarted != null) {

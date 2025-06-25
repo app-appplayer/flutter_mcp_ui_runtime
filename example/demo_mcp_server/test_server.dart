@@ -39,7 +39,7 @@ void main() async {
   process.stdin.writeln(jsonEncode(initRequest));
   
   // Wait a bit
-  await Future.delayed(Duration(seconds: 2));
+  await Future.delayed(const Duration(seconds: 2));
   
   // Send resources/list request
   final listRequest = {
@@ -52,7 +52,7 @@ void main() async {
   process.stdin.writeln(jsonEncode(listRequest));
   
   // Wait a bit
-  await Future.delayed(Duration(seconds: 2));
+  await Future.delayed(const Duration(seconds: 2));
   
   // Send resource/read request
   final readRequest = {
@@ -68,7 +68,7 @@ void main() async {
   process.stdin.writeln(jsonEncode(readRequest));
   
   // Wait a bit more
-  await Future.delayed(Duration(seconds: 3));
+  await Future.delayed(const Duration(seconds: 3));
   
   // Send tool call request
   final toolRequest = {
@@ -85,7 +85,7 @@ void main() async {
   process.stdin.writeln(jsonEncode(toolRequest));
   
   // Wait and then kill
-  await Future.delayed(Duration(seconds: 2));
+  await Future.delayed(const Duration(seconds: 2));
   
   print('Killing server...');
   process.kill();

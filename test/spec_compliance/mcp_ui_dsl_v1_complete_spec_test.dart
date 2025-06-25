@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/src/state/state_manager.dart';
 import 'package:flutter_mcp_ui_runtime/src/state/computed_property.dart';
@@ -219,7 +218,7 @@ void main() {
           dependencies: ['circular2'],
           compute: (state) {
             // This will try to get circular2, which will cause infinite recursion
-            final circular2 = (state['circular2'] as int? ?? 0);
+            final circular2 = stateManager.get('circular2') ?? 0;
             return circular2 + 1;
           },
         );
@@ -230,7 +229,7 @@ void main() {
           dependencies: ['circular1'],
           compute: (state) {
             // This will try to get circular1, which will cause infinite recursion
-            final circular1 = (state['circular1'] as int? ?? 0);
+            final circular1 = stateManager.get('circular1') ?? 0;
             return circular1 + 1;
           },
         );
@@ -238,9 +237,14 @@ void main() {
         stateManager.registerComputedProperty('circular1', property1);
         stateManager.registerComputedProperty('circular2', property2);
 
+        // Circular dependency is detected when trying to compute the value
         expect(
           () => stateManager.get('circular1'),
-          throwsA(isA<StateError>()),
+          throwsA(isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('Circular dependency detected'),
+          )),
         );
       });
     });

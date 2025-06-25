@@ -59,7 +59,7 @@ final uiDefinition = {
     "padding": {"all": 20},
     "children": [
       {
-        "type": "text",
+        "type": "label",
         "content": "Hello {{name}}!",
         "style": {
           "fontSize": 24,
@@ -222,7 +222,7 @@ Widget ui = runtime.buildUI();
 The Flutter MCP UI Runtime supports **77+ widgets** across 9 categories:
 
 ### Layout Widgets (19)
-- `container`, `row`, `column`, `stack`, `positioned`
+- `box`, `linear`, `stack`, `positioned`
 - `padding`, `center`, `align`, `sizedbox`
 - `expanded`, `flexible`, `spacer`
 - `wrap`, `aspectratio`, `fittedbox`
@@ -378,32 +378,34 @@ MCPUIRenderer.instance.registerTransform('reverse', (value) {
 ```json
 {
   "layout": {
-    "type": "column",
+    "type": "linear",
+    "direction": "vertical",
     "properties": {"mainAxisAlignment": "center"},
     "children": [
       {
-        "type": "text",
+        "type": "label",
         "properties": {
           "content": "Count: {{count}}",
           "style": {"fontSize": 24}
         }
       },
       {
-        "type": "row",
+        "type": "linear",
+        "direction": "horizontal",
         "properties": {"mainAxisAlignment": "center"},
         "children": [
           {
             "type": "button",
             "properties": {
               "label": "-",
-              "onTap": {"type": "state", "action": "decrement", "path": "count"}
+              "click": {"type": "state", "action": "decrement", "binding": "count"}
             }
           },
           {
             "type": "button",
             "properties": {
               "label": "+",
-              "onTap": {"type": "state", "action": "increment", "path": "count"}
+              "click": {"type": "state", "action": "increment", "binding": "count"}
             }
           }
         ]
@@ -417,20 +419,21 @@ MCPUIRenderer.instance.registerTransform('reverse', (value) {
 ```json
 {
   "layout": {
-    "type": "column",
+    "type": "linear",
+    "direction": "vertical",
     "children": [
       {
-        "type": "text",
+        "type": "label",
         "properties": {"content": "Name: {{form.name}}"}
       },
       {
         "type": "button",
         "properties": {
           "label": "Update Name",
-          "onTap": {
+          "click": {
             "type": "state",
             "action": "set",
-            "path": "form.name",
+            "binding": "form.name",
             "value": "John Doe"
           }
         }

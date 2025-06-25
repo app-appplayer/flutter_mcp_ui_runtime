@@ -69,13 +69,9 @@ void main() {
             ],
           },
         },
-        'runtime': {
-          'services': {
-            'state': {
-              'initialState': {
-                'counter': 0,
-              },
-            },
+        'state': {
+          'initial': {
+            'counter': 0,
           },
         },
       };

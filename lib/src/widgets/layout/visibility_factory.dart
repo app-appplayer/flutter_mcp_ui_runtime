@@ -8,11 +8,11 @@ class VisibilityWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
     final children = definition['children'] as List<dynamic>? ?? [];
-    
+
     Widget child = children.isNotEmpty
         ? context.buildWidget(children.first as Map<String, dynamic>)
         : Container();
-    
+
     return Visibility(
       visible: properties['visible'] == true,
       maintainSize: properties['maintainSize'] == true,
@@ -23,7 +23,7 @@ class VisibilityWidgetFactory extends WidgetFactory {
       child: child,
     );
   }
-  
+
   Widget _buildReplacement(dynamic replacement, RenderContext context) {
     if (replacement is Map<String, dynamic>) {
       return context.buildWidget(replacement);

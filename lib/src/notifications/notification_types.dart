@@ -1,12 +1,11 @@
-
 /// Types of notifications supported by the runtime
 enum NotificationType {
   /// Local notifications (shown by the app)
   local,
-  
+
   /// System notifications (shown by the OS)
   system,
-  
+
   /// In-app notifications (SnackBar, Dialog, etc.)
   inApp,
 }
@@ -15,13 +14,13 @@ enum NotificationType {
 enum NotificationImportance {
   /// Low importance - minimal interruption
   low,
-  
+
   /// Default importance - normal notifications
   defaultImportance,
-  
+
   /// High importance - important notifications
   high,
-  
+
   /// Max importance - critical alerts
   max,
 }
@@ -30,16 +29,16 @@ enum NotificationImportance {
 enum NotificationEvent {
   /// Notification was shown
   shown,
-  
+
   /// Notification was scheduled
   scheduled,
-  
+
   /// Notification was dismissed
   dismissed,
-  
+
   /// Notification was tapped
   tapped,
-  
+
   /// Notification action was tapped
   actionTapped,
 }
@@ -60,28 +59,28 @@ class NotificationChannel {
 
   /// Unique identifier for this channel
   final String id;
-  
+
   /// Human-readable name for this channel
   final String name;
-  
+
   /// Optional description of this channel
   final String? description;
-  
+
   /// Importance level for notifications in this channel
   final NotificationImportance importance;
-  
+
   /// Whether to play sound for notifications in this channel
   final bool enableSound;
-  
+
   /// Whether to vibrate for notifications in this channel
   final bool enableVibration;
-  
+
   /// Whether to show lights for notifications in this channel
   final bool enableLights;
-  
+
   /// Color of the notification light
   final int? lightColor;
-  
+
   /// Custom vibration pattern (milliseconds)
   final List<int>? vibrationPattern;
 
@@ -112,16 +111,16 @@ class NotificationAction {
 
   /// Unique identifier for this action
   final String id;
-  
+
   /// Title displayed for this action
   final String title;
-  
+
   /// Optional icon for this action
   final String? icon;
-  
+
   /// Whether this action is destructive (shown in red)
   final bool isDestructive;
-  
+
   /// Whether authentication is required to perform this action
   final bool isAuthenticationRequired;
 
@@ -169,67 +168,67 @@ class MCPNotification {
 
   /// Unique identifier for this notification
   final String id;
-  
+
   /// Title of the notification
   final String title;
-  
+
   /// Body text of the notification
   final String? body;
-  
+
   /// Type of notification
   final NotificationType type;
-  
+
   /// ID of the notification channel
   final String channelId;
-  
+
   /// Priority/importance of this notification
   final NotificationImportance priority;
-  
+
   /// Actions that can be performed on this notification
   final List<NotificationAction> actions;
-  
+
   /// Additional data associated with this notification
   final Map<String, dynamic> data;
-  
+
   /// Sound to play (path or identifier)
   final String? sound;
-  
+
   /// Custom vibration pattern
   final List<int>? vibrationPattern;
-  
+
   /// Whether to enable notification lights
   final bool enableLights;
-  
+
   /// Color of the notification light
   final int? lightColor;
-  
+
   /// Large icon for the notification
   final String? largeIcon;
-  
+
   /// Big picture for expanded notification
   final String? bigPicture;
-  
+
   /// Current progress (for progress notifications)
   final int? progress;
-  
+
   /// Maximum progress value
   final int? maxProgress;
-  
+
   /// Whether progress is indeterminate
   final bool indeterminate;
-  
+
   /// Whether notification is ongoing (can't be dismissed by user)
   final bool ongoing;
-  
+
   /// Whether notification is automatically cancelled when tapped
   final bool autoCancel;
-  
+
   /// When this notification should be shown (for scheduled notifications)
   final DateTime? scheduledTime;
-  
+
   /// Interval for repeating notifications
   final Duration? repeatInterval;
-  
+
   /// How long to show the notification before auto-dismissing
   final Duration? timeoutAfter;
 
@@ -294,11 +293,14 @@ class MCPNotification {
       channelId: json['channelId'] as String? ?? 'general',
       priority: _parseNotificationImportance(json['priority'] as String?),
       actions: (json['actions'] as List<dynamic>?)
-          ?.map((action) => NotificationActionJson.fromJson(action as Map<String, dynamic>))
-          .toList() ?? [],
+              ?.map((action) => NotificationActionJson.fromJson(
+                  action as Map<String, dynamic>))
+              .toList() ??
+          [],
       data: json['data'] as Map<String, dynamic>? ?? {},
       sound: json['sound'] as String?,
-      vibrationPattern: (json['vibrationPattern'] as List<dynamic>?)?.cast<int>(),
+      vibrationPattern:
+          (json['vibrationPattern'] as List<dynamic>?)?.cast<int>(),
       enableLights: json['enableLights'] as bool? ?? true,
       lightColor: json['lightColor'] as int?,
       largeIcon: json['largeIcon'] as String?,
@@ -308,7 +310,7 @@ class MCPNotification {
       indeterminate: json['indeterminate'] as bool? ?? false,
       ongoing: json['ongoing'] as bool? ?? false,
       autoCancel: json['autoCancel'] as bool? ?? true,
-      scheduledTime: json['scheduledTime'] != null 
+      scheduledTime: json['scheduledTime'] != null
           ? DateTime.parse(json['scheduledTime'] as String)
           : null,
       repeatInterval: json['repeatInterval'] != null
@@ -360,7 +362,8 @@ class MCPNotification {
     }
   }
 
-  static NotificationImportance _parseNotificationImportance(String? importance) {
+  static NotificationImportance _parseNotificationImportance(
+      String? importance) {
     switch (importance?.toLowerCase()) {
       case 'low':
         return NotificationImportance.low;
@@ -398,7 +401,8 @@ extension NotificationActionJson on NotificationAction {
       title: json['title'] as String,
       icon: json['icon'] as String?,
       isDestructive: json['isDestructive'] as bool? ?? false,
-      isAuthenticationRequired: json['isAuthenticationRequired'] as bool? ?? false,
+      isAuthenticationRequired:
+          json['isAuthenticationRequired'] as bool? ?? false,
     );
   }
 

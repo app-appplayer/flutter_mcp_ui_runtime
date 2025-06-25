@@ -31,34 +31,38 @@ class TimelineWidgetFactory extends WidgetFactory {
         return Icons.circle;
     }
   }
+
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
-    final items = context.resolve<List<dynamic>>(properties['items'] ?? []) as List<dynamic>? ?? [];
+    final items = context.resolve<List<dynamic>>(properties['items'] ?? [])
+            as List<dynamic>? ??
+        [];
     final orientation = properties['orientation'] as String? ?? 'vertical';
-    final lineColor = parseColor(context.resolve(properties['lineColor'])) ?? Colors.grey;
+    final lineColor =
+        parseColor(context.resolve(properties['lineColor'])) ?? Colors.grey;
     final lineWidth = properties['lineWidth']?.toDouble() ?? 2.0;
     final nodeSize = properties['nodeSize']?.toDouble() ?? 20.0;
     final spacing = properties['spacing']?.toDouble() ?? 20.0;
-    
+
     // Build timeline items
     final List<Widget> timelineItems = [];
-    
+
     for (int i = 0; i < items.length; i++) {
       final item = items[i] as Map<String, dynamic>;
       final isLast = i == items.length - 1;
-      
+
       // Extract item properties
       final title = context.resolve(item['title'] ?? '') as String;
       final subtitle = context.resolve(item['subtitle'] ?? '') as String?;
       final time = context.resolve(item['time'] ?? '') as String?;
       final icon = item['icon'] as String?;
       final color = parseColor(context.resolve(item['color'])) ?? Colors.blue;
-      
+
       Widget timelineItem;
-      
+
       if (orientation == 'vertical') {
         timelineItem = IntrinsicHeight(
           child: Row(
@@ -206,10 +210,10 @@ class TimelineWidgetFactory extends WidgetFactory {
           ),
         );
       }
-      
+
       timelineItems.add(timelineItem);
     }
-    
+
     Widget timeline;
     if (orientation == 'vertical') {
       timeline = Column(
@@ -223,7 +227,7 @@ class TimelineWidgetFactory extends WidgetFactory {
         ),
       );
     }
-    
+
     return applyCommonWrappers(timeline, properties, context);
   }
 }

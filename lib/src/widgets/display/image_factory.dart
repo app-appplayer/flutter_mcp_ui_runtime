@@ -8,7 +8,7 @@ class ImageWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
     final src = context.resolve<String>(properties['src'] ?? '');
     final width = properties['width']?.toDouble();
@@ -17,9 +17,9 @@ class ImageWidgetFactory extends WidgetFactory {
     final alignment = _parseAlignment(properties['alignment']);
     final placeholder = properties['placeholder'] as String?;
     final errorWidget = properties['errorWidget'] as String?;
-    
+
     Widget image;
-    
+
     if (src.isEmpty) {
       // No source provided
       image = _buildPlaceholder(placeholder, width, height);
@@ -31,10 +31,12 @@ class ImageWidgetFactory extends WidgetFactory {
         height: height,
         fit: fit,
         alignment: alignment,
-        loadingBuilder: placeholder != null ? (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return _buildPlaceholder(placeholder, width, height);
-        } : null,
+        loadingBuilder: placeholder != null
+            ? (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return _buildPlaceholder(placeholder, width, height);
+              }
+            : null,
         errorBuilder: (context, error, stackTrace) {
           return _buildErrorWidget(errorWidget, width, height);
         },
@@ -58,7 +60,7 @@ class ImageWidgetFactory extends WidgetFactory {
       // File path or other
       image = _buildErrorWidget('Invalid image source', width, height);
     }
-    
+
     return applyCommonWrappers(image, properties, context);
   }
 
@@ -68,7 +70,7 @@ class ImageWidgetFactory extends WidgetFactory {
       height: height,
       color: Colors.grey[300],
       child: Center(
-        child: text != null 
+        child: text != null
             ? Text(text, style: TextStyle(color: Colors.grey[600]))
             : Icon(Icons.image, color: Colors.grey[600]),
       ),
@@ -85,8 +87,9 @@ class ImageWidgetFactory extends WidgetFactory {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.error, color: Colors.red),
-            if (text != null) 
-              Text(text, style: const TextStyle(color: Colors.red, fontSize: 12)),
+            if (text != null)
+              Text(text,
+                  style: const TextStyle(color: Colors.red, fontSize: 12)),
           ],
         ),
       ),

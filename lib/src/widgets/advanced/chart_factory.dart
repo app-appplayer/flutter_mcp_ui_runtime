@@ -9,14 +9,15 @@ class ChartWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract chart properties
-    final chartType = context.resolve<String>(properties['chartType'] ?? 'line');
+    final chartType =
+        context.resolve<String>(properties['chartType'] ?? 'line');
     final data = context.resolve<List<dynamic>>(properties['data'] ?? []);
     final title = context.resolve<String?>(properties['title']);
     final width = context.resolve<double?>(properties['width']);
     final height = context.resolve<double?>(properties['height']) ?? 300.0;
-    
+
     // Build placeholder chart widget
     Widget chart = Container(
       width: width,
@@ -73,10 +74,10 @@ class ChartWidgetFactory extends WidgetFactory {
         ),
       ),
     );
-    
+
     return applyCommonWrappers(chart, properties, context);
   }
-  
+
   IconData _getChartIcon(String chartType) {
     switch (chartType.toLowerCase()) {
       case 'bar':

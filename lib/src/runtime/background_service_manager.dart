@@ -18,10 +18,14 @@ class BackgroundServiceManager {
     this.enableDebugMode = false,
     this.actionHandler,
     this.stateManager,
-  }) : _logger = MCPLogger('BackgroundServiceManager', enableLogging: enableDebugMode);
+  }) : _logger = MCPLogger('BackgroundServiceManager',
+            enableLogging: enableDebugMode) {
+    _logger.debug('BackgroundServiceManager initialized');
+  }
 
   /// Start background services from definition
-  Future<void> startServices(Map<String, BackgroundServiceDefinition> services) async {
+  Future<void> startServices(
+      Map<String, BackgroundServiceDefinition> services) async {
     if (_isDisposed) return;
 
     for (final entry in services.entries) {
@@ -30,7 +34,8 @@ class BackgroundServiceManager {
   }
 
   /// Start a single background service
-  Future<void> startService(String id, BackgroundServiceDefinition definition) async {
+  Future<void> startService(
+      String id, BackgroundServiceDefinition definition) async {
     if (_isDisposed) return;
 
     // Stop existing service with same ID
@@ -56,7 +61,7 @@ class BackgroundServiceManager {
     final runner = _runningServices.remove(id);
     if (runner != null) {
       await runner.stop();
-      
+
       if (enableDebugMode) {
         debugPrint('BackgroundServiceManager: Stopped service "$id"');
       }
@@ -97,26 +102,27 @@ class BackgroundServiceRunner {
   final ActionHandler? actionHandler;
   final StateManager? stateManager;
   final MCPLogger _logger;
-  
+
   Timer? _timer;
   StreamSubscription? _eventSubscription;
   bool _isRunning = false;
   int _retryCount = 0;
   final int _maxRetries = 3;
-  
+
   BackgroundServiceRunner({
     required this.definition,
     this.enableDebugMode = false,
     this.actionHandler,
     this.stateManager,
-  }) : _logger = MCPLogger('BackgroundService[${definition.id}]', enableLogging: enableDebugMode);
+  }) : _logger = MCPLogger('BackgroundService[${definition.id}]',
+            enableLogging: enableDebugMode);
 
   /// Start the service
   Future<void> start() async {
     if (_isRunning) return;
-    
+
     _isRunning = true;
-    
+
     switch (definition.type) {
       case BackgroundServiceType.periodic:
         _startPeriodicService();
@@ -150,7 +156,8 @@ class BackgroundServiceRunner {
     final interval = definition.interval;
     if (interval == null || interval <= 0) {
       if (enableDebugMode) {
-        debugPrint('BackgroundService: Invalid interval for periodic service ${definition.id}');
+        debugPrint(
+            'BackgroundService: Invalid interval for periodic service ${definition.id}');
       }
       return;
     }
@@ -168,17 +175,19 @@ class BackgroundServiceRunner {
     // Simple implementation: parse schedule pattern and set up timer
     final schedule = definition.schedule;
     if (schedule == null) {
-      _logger.error('Scheduled service ${definition.id} missing schedule pattern');
+      _logger
+          .error('Scheduled service ${definition.id} missing schedule pattern');
       return;
     }
-    
+
     // For now, support simple interval-based scheduling
     // Format: "every <number> <unit>" where unit is seconds/minutes/hours
-    final match = RegExp(r'every\s+(\d+)\s+(second|minute|hour)s?').firstMatch(schedule.toLowerCase());
+    final match = RegExp(r'every\s+(\d+)\s+(second|minute|hour)s?')
+        .firstMatch(schedule.toLowerCase());
     if (match != null) {
       final amount = int.parse(match.group(1)!);
       final unit = match.group(2)!;
-      
+
       int intervalMs;
       switch (unit) {
         case 'second':
@@ -193,7 +202,7 @@ class BackgroundServiceRunner {
         default:
           intervalMs = amount * 1000;
       }
-      
+
       _timer = Timer.periodic(Duration(milliseconds: intervalMs), (timer) {
         if (!_isRunning) {
           timer.cancel();
@@ -201,7 +210,7 @@ class BackgroundServiceRunner {
         }
         _executeToolAsync();
       });
-      
+
       _logger.debug('Started scheduled service with interval: ${intervalMs}ms');
     } else {
       _logger.error('Unsupported schedule pattern: $schedule');
@@ -226,7 +235,7 @@ class BackgroundServiceRunner {
       _logger.error('Event service ${definition.id} missing event pattern');
       return;
     }
-    
+
     if (stateManager != null) {
       // Subscribe to state changes
       _eventSubscription = stateManager!.stream.listen((event) {
@@ -234,13 +243,13 @@ class BackgroundServiceRunner {
           _executeToolAsync();
         }
       });
-      
+
       _logger.debug('Started event service listening for: $eventPattern');
     } else {
       _logger.error('Event service requires StateManager');
     }
   }
-  
+
   bool _matchesEventPattern(StateChangeEvent event, String pattern) {
     // Simple pattern matching: "state.path.changed" or "state.*.changed"
     if (pattern.contains('*')) {
@@ -263,52 +272,53 @@ class BackgroundServiceRunner {
   Future<void> _executeToolAsync() async {
     _executeTool();
   }
-  
+
   Future<void> _executeTool() async {
     try {
       _logger.debug('Executing tool "${definition.tool}"');
-      
+
       if (actionHandler == null) {
         _logger.error('No ActionHandler available for tool execution');
         return;
       }
-      
+
       // For background services, execute the tool directly
       // We bypass the normal action handler flow since we don't have a full render context
-      
+
       // Get the tool executor directly
       final toolExecutors = actionHandler!.toolExecutors;
-      final toolExecutor = toolExecutors[definition.tool] ?? toolExecutors['default'];
-      
+      final toolExecutor =
+          toolExecutors[definition.tool] ?? toolExecutors['default'];
+
       if (toolExecutor == null) {
         _logger.error('Tool executor not found: ${definition.tool}');
         return;
       }
-      
+
       // Execute the tool with the params
       final result = await toolExecutor(definition.params ?? {});
-      
+
       _logger.debug('Tool execution completed: $result');
       _retryCount = 0; // Reset retry count on success
-      
+
       // Store result in state if configured
       if (definition.resultPath != null && stateManager != null) {
         stateManager!.set(definition.resultPath!, result);
       }
-      
     } catch (error, stackTrace) {
       _logger.error('Error executing tool', error, stackTrace);
       _handleExecutionError(error);
     }
   }
-  
+
   void _handleExecutionError(dynamic error) {
     _retryCount++;
-    
+
     if (_retryCount <= _maxRetries && definition.retryOnError == true) {
       final retryDelay = definition.retryDelay ?? 5000;
-      _logger.debug('Retrying tool execution in ${retryDelay}ms (attempt $_retryCount/$_maxRetries)');
-      
+      _logger.debug(
+          'Retrying tool execution in ${retryDelay}ms (attempt $_retryCount/$_maxRetries)');
+
       Future.delayed(Duration(milliseconds: retryDelay), () {
         if (_isRunning) {
           _executeTool();
@@ -316,7 +326,7 @@ class BackgroundServiceRunner {
       });
     } else {
       _logger.error('Max retries exceeded or retry disabled');
-      
+
       // Optionally stop service on persistent errors
       if (definition.stopOnError == true) {
         _logger.debug('Stopping service due to persistent errors');

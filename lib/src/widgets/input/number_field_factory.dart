@@ -8,7 +8,7 @@ class NumberFieldFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    
+
     // Extract properties
     final label = properties['label'] as String?;
     final binding = properties['binding'] as String?;
@@ -22,20 +22,19 @@ class NumberFieldFactory extends WidgetFactory {
     final step = properties['step'] as num? ?? 1;
     final decimals = properties['decimals'] as int? ?? 0;
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
-    
+
     // Get current value
-    final currentValue = binding != null 
-        ? context.resolve("{{$binding}}")
-        : properties['value'];
-    
+    final currentValue =
+        binding != null ? context.resolve("{{$binding}}") : properties['value'];
+
     // Create text controller with current value
     final controller = TextEditingController(
       text: currentValue?.toString() ?? '',
     );
-    
+
     // Build input formatters
     final inputFormatters = <TextInputFormatter>[];
-    
+
     // Add numeric formatter
     if (decimals > 0) {
       inputFormatters.add(
@@ -46,7 +45,7 @@ class NumberFieldFactory extends WidgetFactory {
         FilteringTextInputFormatter.allow(RegExp(r'^\-?\d*$')),
       );
     }
-    
+
     Widget textField = TextField(
       controller: controller,
       keyboardType: TextInputType.numberWithOptions(
@@ -76,7 +75,7 @@ class NumberFieldFactory extends WidgetFactory {
               numValue = int.tryParse(value);
             }
           }
-          
+
           // Validate against min/max
           if (numValue != null) {
             if (min != null && numValue < min) {
@@ -88,56 +87,60 @@ class NumberFieldFactory extends WidgetFactory {
               controller.text = numValue.toString();
             }
           }
-          
+
           // Update state
           context.setValue(binding, numValue ?? 0);
         }
       },
     );
-    
+
     // Add increment/decrement buttons if step is defined
     if (step > 0) {
       textField = Row(
         children: [
           IconButton(
             icon: const Icon(Icons.remove),
-            onPressed: enabled ? () {
-              final current = num.tryParse(controller.text) ?? 0;
-              final newValue = current - step;
-              
-              // Check bounds
-              if (min == null || newValue >= min) {
-                controller.text = decimals > 0 
-                    ? newValue.toStringAsFixed(decimals)
-                    : newValue.toStringAsFixed(0);
-                if (binding != null) {
-                  context.setValue(binding, newValue);
-                }
-              }
-            } : null,
+            onPressed: enabled
+                ? () {
+                    final current = num.tryParse(controller.text) ?? 0;
+                    final newValue = current - step;
+
+                    // Check bounds
+                    if (min == null || newValue >= min) {
+                      controller.text = decimals > 0
+                          ? newValue.toStringAsFixed(decimals)
+                          : newValue.toStringAsFixed(0);
+                      if (binding != null) {
+                        context.setValue(binding, newValue);
+                      }
+                    }
+                  }
+                : null,
           ),
           Expanded(child: textField),
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: enabled ? () {
-              final current = num.tryParse(controller.text) ?? 0;
-              final newValue = current + step;
-              
-              // Check bounds
-              if (max == null || newValue <= max) {
-                controller.text = decimals > 0 
-                    ? newValue.toStringAsFixed(decimals)
-                    : newValue.toStringAsFixed(0);
-                if (binding != null) {
-                  context.setValue(binding, newValue);
-                }
-              }
-            } : null,
+            onPressed: enabled
+                ? () {
+                    final current = num.tryParse(controller.text) ?? 0;
+                    final newValue = current + step;
+
+                    // Check bounds
+                    if (max == null || newValue <= max) {
+                      controller.text = decimals > 0
+                          ? newValue.toStringAsFixed(decimals)
+                          : newValue.toStringAsFixed(0);
+                      if (binding != null) {
+                        context.setValue(binding, newValue);
+                      }
+                    }
+                  }
+                : null,
           ),
         ],
       );
     }
-    
+
     return applyCommonWrappers(textField, properties, context);
   }
 }

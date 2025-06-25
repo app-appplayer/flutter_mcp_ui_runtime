@@ -11,7 +11,7 @@ import '../utils/mcp_logger.dart';
 abstract class Validator {
   /// Validate a value
   ValidationResult validate(dynamic value, RenderContext? context);
-  
+
   /// Convert to JSON
   Map<String, dynamic> toJson();
 }
@@ -22,30 +22,32 @@ class ValidationResult {
   final String? error;
   final bool isPending;
   final Map<String, dynamic>? metadata;
-  
+
   const ValidationResult({
     required this.isValid,
     this.error,
     this.isPending = false,
     this.metadata,
   });
-  
+
   factory ValidationResult.valid([Map<String, dynamic>? metadata]) {
     return ValidationResult(
       isValid: true,
       metadata: metadata,
     );
   }
-  
-  factory ValidationResult.invalid(String error, [Map<String, dynamic>? metadata]) {
+
+  factory ValidationResult.invalid(String error,
+      [Map<String, dynamic>? metadata]) {
     return ValidationResult(
       isValid: false,
       error: error,
       metadata: metadata,
     );
   }
-  
-  factory ValidationResult.pending([String? message, Map<String, dynamic>? metadata]) {
+
+  factory ValidationResult.pending(
+      [String? message, Map<String, dynamic>? metadata]) {
     return ValidationResult(
       isValid: false,
       error: message,
@@ -61,13 +63,13 @@ class CustomValidator extends Validator {
   final String expression;
   final BindingEngine bindingEngine;
   final String? message;
-  
+
   CustomValidator({
     required this.expression,
     required this.bindingEngine,
     this.message,
   });
-  
+
   @override
   ValidationResult validate(dynamic value, RenderContext? context) {
     if (context == null) {
@@ -75,25 +77,25 @@ class CustomValidator extends Validator {
         message ?? 'Context required for custom validation',
       );
     }
-    
+
     try {
       // Create child context with value variable
       final validationContext = context.createChildContext(
         variables: {'value': value},
       );
-      
+
       // Evaluate expression
       final result = bindingEngine.resolve(expression, validationContext);
-      
+
       if (result == true) {
         return ValidationResult.valid();
       }
-      
+
       // If result is a string, use it as error message
       if (result is String && result.isNotEmpty) {
         return ValidationResult.invalid(result);
       }
-      
+
       return ValidationResult.invalid(
         message ?? 'Validation failed',
       );
@@ -103,32 +105,32 @@ class CustomValidator extends Validator {
       );
     }
   }
-  
+
   @override
   Map<String, dynamic> toJson() => {
-    'type': 'custom',
-    'expression': expression,
-    if (message != null) 'message': message,
-  };
+        'type': 'custom',
+        'expression': expression,
+        if (message != null) 'message': message,
+      };
 }
 
 /// Async validator base class
 abstract class AsyncValidator extends Validator {
   final Debouncer _debouncer;
   final MCPLogger _logger = MCPLogger('AsyncValidator');
-  
+
   AsyncValidator({int debounceMilliseconds = 500})
       : _debouncer = Debouncer(milliseconds: debounceMilliseconds);
-  
+
   /// Async validation method to implement
   Future<ValidationResult> validateAsync(dynamic value, RenderContext? context);
-  
+
   @override
   ValidationResult validate(dynamic value, RenderContext? context) {
     // Sync validation always returns pending for async validators
     return ValidationResult.pending('Validating...');
   }
-  
+
   /// Validate with debouncing
   void validateWithDebounce(
     dynamic value,
@@ -137,7 +139,7 @@ abstract class AsyncValidator extends Validator {
   ) {
     // Show pending state immediately
     callback(ValidationResult.pending('Validating...'));
-    
+
     // Debounce the actual validation
     _debouncer.runAsync(() async {
       try {
@@ -149,12 +151,12 @@ abstract class AsyncValidator extends Validator {
       }
     });
   }
-  
+
   /// Cancel pending validation
   void cancel() {
     _debouncer.cancel();
   }
-  
+
   void dispose() {
     _debouncer.dispose();
   }
@@ -166,17 +168,18 @@ class RemoteValidator extends AsyncValidator {
   final Map<String, String>? headers;
   final String? fieldName;
   final String? message;
-  
+
   RemoteValidator({
     required this.endpoint,
     this.headers,
     this.fieldName,
     this.message,
-    int debounceMilliseconds = 500,
-  }) : super(debounceMilliseconds: debounceMilliseconds);
-  
+    super.debounceMilliseconds,
+  });
+
   @override
-  Future<ValidationResult> validateAsync(dynamic value, RenderContext? context) async {
+  Future<ValidationResult> validateAsync(
+      dynamic value, RenderContext? context) async {
     try {
       // Prepare request body
       final body = <String, dynamic>{};
@@ -185,32 +188,38 @@ class RemoteValidator extends AsyncValidator {
       } else {
         body['value'] = value;
       }
-      
+
       // Make HTTP request
-      final response = await http.post(
-        Uri.parse(endpoint),
-        headers: {
-          'Content-Type': 'application/json',
-          ...?headers,
-        },
-        body: jsonEncode(body),
-      ).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () => throw TimeoutException('Validation request timed out'),
-      );
-      
+      final response = await http
+          .post(
+            Uri.parse(endpoint),
+            headers: {
+              'Content-Type': 'application/json',
+              ...?headers,
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () =>
+                throw TimeoutException('Validation request timed out'),
+          );
+
       // Handle response
       if (response.statusCode == 200) {
         try {
           final responseData = jsonDecode(response.body);
-          
+
           // Check for standard validation response format
           if (responseData is Map<String, dynamic>) {
-            final isValid = responseData['valid'] ?? responseData['isValid'] ?? true;
-            final errorMessage = responseData['error'] ?? responseData['message'];
-            
+            final isValid =
+                responseData['valid'] ?? responseData['isValid'] ?? true;
+            final errorMessage =
+                responseData['error'] ?? responseData['message'];
+
             if (isValid == true) {
-              return ValidationResult.valid(responseData['metadata'] as Map<String, dynamic>?);
+              return ValidationResult.valid(
+                  responseData['metadata'] as Map<String, dynamic>?);
             } else {
               return ValidationResult.invalid(
                 errorMessage?.toString() ?? message ?? 'Validation failed',
@@ -218,19 +227,22 @@ class RemoteValidator extends AsyncValidator {
               );
             }
           }
-          
+
           // Fallback: treat any 200 response as valid
           return ValidationResult.valid();
         } catch (e) {
           // JSON parsing error
           _logger.error('Failed to parse validation response', e);
-          return ValidationResult.invalid(message ?? 'Invalid validation response');
+          return ValidationResult.invalid(
+              message ?? 'Invalid validation response');
         }
       } else if (response.statusCode == 400 || response.statusCode == 422) {
         // Validation failure
         try {
           final errorData = jsonDecode(response.body);
-          final errorMessage = errorData['error'] ?? errorData['message'] ?? response.reasonPhrase;
+          final errorMessage = errorData['error'] ??
+              errorData['message'] ??
+              response.reasonPhrase;
           return ValidationResult.invalid(
             errorMessage?.toString() ?? message ?? 'Validation failed',
           );
@@ -247,11 +259,13 @@ class RemoteValidator extends AsyncValidator {
       }
     } catch (e) {
       _logger.error('Remote validation error', e);
-      
+
       if (e is TimeoutException) {
-        return ValidationResult.invalid(message ?? 'Validation request timed out');
+        return ValidationResult.invalid(
+            message ?? 'Validation request timed out');
       } else if (e is http.ClientException) {
-        return ValidationResult.invalid(message ?? 'Network error during validation');
+        return ValidationResult.invalid(
+            message ?? 'Network error during validation');
       } else {
         return ValidationResult.invalid(
           message ?? 'Validation error: ${e.toString()}',
@@ -259,58 +273,59 @@ class RemoteValidator extends AsyncValidator {
       }
     }
   }
-  
+
   @override
   Map<String, dynamic> toJson() => {
-    'type': 'remote',
-    'endpoint': endpoint,
-    if (headers != null) 'headers': headers,
-    if (fieldName != null) 'fieldName': fieldName,
-    if (message != null) 'message': message,
-  };
+        'type': 'remote',
+        'endpoint': endpoint,
+        if (headers != null) 'headers': headers,
+        if (fieldName != null) 'fieldName': fieldName,
+        if (message != null) 'message': message,
+      };
 }
 
 /// Composite async validator that combines multiple validators
 class CompositeAsyncValidator extends AsyncValidator {
   final List<AsyncValidator> validators;
   final bool stopOnFirstError;
-  
+
   CompositeAsyncValidator({
     required this.validators,
     this.stopOnFirstError = true,
-    int debounceMilliseconds = 500,
-  }) : super(debounceMilliseconds: debounceMilliseconds);
-  
+    super.debounceMilliseconds,
+  });
+
   @override
-  Future<ValidationResult> validateAsync(dynamic value, RenderContext? context) async {
+  Future<ValidationResult> validateAsync(
+      dynamic value, RenderContext? context) async {
     final errors = <String>[];
-    
+
     for (final validator in validators) {
       final result = await validator.validateAsync(value, context);
-      
+
       if (!result.isValid) {
         errors.add(result.error ?? 'Validation failed');
-        
+
         if (stopOnFirstError) {
           return ValidationResult.invalid(errors.first);
         }
       }
     }
-    
+
     if (errors.isEmpty) {
       return ValidationResult.valid();
     }
-    
+
     return ValidationResult.invalid(errors.join(', '));
   }
-  
+
   @override
   Map<String, dynamic> toJson() => {
-    'type': 'composite_async',
-    'validators': validators.map((v) => v.toJson()).toList(),
-    'stopOnFirstError': stopOnFirstError,
-  };
-  
+        'type': 'composite_async',
+        'validators': validators.map((v) => v.toJson()).toList(),
+        'stopOnFirstError': stopOnFirstError,
+      };
+
   @override
   void dispose() {
     super.dispose();
@@ -320,24 +335,24 @@ class CompositeAsyncValidator extends AsyncValidator {
   }
 }
 
-
 /// Validation state for managing async validation
 class ValidationState extends ChangeNotifier {
   final Map<String, ValidationResult> _results = {};
   final Map<String, AsyncValidator> _validators = {};
-  
+
   /// Get validation result for a field
   ValidationResult? getResult(String fieldName) => _results[fieldName];
-  
+
   /// Check if field is valid
   bool isFieldValid(String fieldName) => _results[fieldName]?.isValid ?? true;
-  
+
   /// Check if field is pending validation
-  bool isFieldPending(String fieldName) => _results[fieldName]?.isPending ?? false;
-  
+  bool isFieldPending(String fieldName) =>
+      _results[fieldName]?.isPending ?? false;
+
   /// Get error for field
   String? getFieldError(String fieldName) => _results[fieldName]?.error;
-  
+
   /// Validate a field
   void validateField(
     String fieldName,
@@ -347,7 +362,7 @@ class ValidationState extends ChangeNotifier {
   ) {
     // Store validator
     _validators[fieldName] = validator;
-    
+
     // Start validation
     validator.validateWithDebounce(
       value,
@@ -358,7 +373,7 @@ class ValidationState extends ChangeNotifier {
       },
     );
   }
-  
+
   /// Clear validation for a field
   void clearField(String fieldName) {
     _results.remove(fieldName);
@@ -366,7 +381,7 @@ class ValidationState extends ChangeNotifier {
     _validators.remove(fieldName);
     notifyListeners();
   }
-  
+
   /// Clear all validations
   void clear() {
     _results.clear();
@@ -376,17 +391,18 @@ class ValidationState extends ChangeNotifier {
     _validators.clear();
     notifyListeners();
   }
-  
+
   /// Check if all fields are valid
   bool get isValid {
-    return _results.values.every((result) => result.isValid || result.isPending);
+    return _results.values
+        .every((result) => result.isValid || result.isPending);
   }
-  
+
   /// Check if any field is pending
   bool get hasPendingValidations {
     return _results.values.any((result) => result.isPending);
   }
-  
+
   @override
   void dispose() {
     for (final validator in _validators.values) {
@@ -399,9 +415,9 @@ class ValidationState extends ChangeNotifier {
 /// Form validation mixin for widgets
 mixin FormValidationMixin<T extends StatefulWidget> on State<T> {
   final ValidationState _validationState = ValidationState();
-  
+
   ValidationState get validationState => _validationState;
-  
+
   /// Validate a field
   void validateField(
     String fieldName,
@@ -411,23 +427,23 @@ mixin FormValidationMixin<T extends StatefulWidget> on State<T> {
   ]) {
     _validationState.validateField(fieldName, value, validator, context);
   }
-  
+
   /// Clear field validation
   void clearFieldValidation(String fieldName) {
     _validationState.clearField(fieldName);
   }
-  
+
   /// Clear all validations
   void clearValidations() {
     _validationState.clear();
   }
-  
+
   /// Check if form is valid
   bool get isFormValid => _validationState.isValid;
-  
+
   /// Check if form has pending validations
   bool get hasPendingValidations => _validationState.hasPendingValidations;
-  
+
   @override
   void dispose() {
     _validationState.dispose();

@@ -1,17 +1,29 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
+import 'package:flutter_mcp_ui_runtime/src/theme/theme_manager.dart';
+import 'package:flutter_mcp_ui_runtime/src/optimization/widget_cache.dart';
 
 void main() {
   group('TextInput onChange Test', () {
     late MCPUIRuntime runtime;
     
     setUp(() {
+      // Clean up any previous test state
+      NavigationActionExecutor.clearGlobalNavigationHandler();
+      ThemeManager.instance.reset();
+      I18nManager.instance.clear();
+      WidgetCache.instance.clear();
       runtime = MCPUIRuntime();
     });
     
     tearDown(() {
       runtime.destroy();
+      // Clean up after test
+      NavigationActionExecutor.clearGlobalNavigationHandler();
+      ThemeManager.instance.reset();
+      I18nManager.instance.clear();
+      WidgetCache.instance.clear();
     });
     
     testWidgets('should update state on text change', (WidgetTester tester) async {

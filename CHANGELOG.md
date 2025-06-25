@@ -1,4 +1,11 @@
 
+## 0.2.1
+
+### Bug Fixes
+- Fixed state initialization issue where page states were not properly loaded
+- Unified state management by removing duplicate StateService and using StateManager directly
+- Fixed page state initialization in routing system
+
 ## 0.2.0
 
 ### Refactoring
