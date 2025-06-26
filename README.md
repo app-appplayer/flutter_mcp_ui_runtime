@@ -24,7 +24,7 @@ A comprehensive Flutter runtime for building server-driven UIs using the MCP (Mo
 
 ## Features
 
-- 🎨 **65+ Flutter widgets** supported out of the box
+- 🎨 **77+ Flutter widgets** supported out of the box
 - 🔄 **Reactive State Management**: Built-in state management with automatic UI updates
 - 🧮 **Expression Binding**: Support for dynamic data binding with expressions
 - ⚡ **Action System**: Handle user interactions with configurable actions
@@ -40,7 +40,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  flutter_mcp_ui_runtime: ^0.2.1
+  flutter_mcp_ui_runtime: ^0.2.2
 ```
 
 ## Quick Start

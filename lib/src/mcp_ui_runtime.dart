@@ -482,10 +482,39 @@ class _ApplicationShellState extends State<_ApplicationShell> {
       }
     }
 
+    // Check if there's a saved navigation state in StateManager
+    final savedIndex = widget.engine.stateManager.get<int>('runtime.navigation.currentIndex');
+    if (savedIndex != null && 
+        widget.appDefinition.navigationDefinition != null &&
+        savedIndex >= 0 && 
+        savedIndex < widget.appDefinition.navigationDefinition!.items.length) {
+      _currentIndex = savedIndex;
+    }
+
+    // Defer navigation state update to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Save initial navigation state to StateManager
+      _updateNavigationState(_currentIndex);
+    });
+
     // Register a navigation handler that converts route-based navigation to index-based
     // This allows navigation actions from buttons to work with the ApplicationShell's
     // index-based navigation system
     _registerNavigationHandler();
+  }
+
+  /// Update navigation state in StateManager
+  void _updateNavigationState(int index) {
+    if (widget.appDefinition.navigationDefinition != null &&
+        index >= 0 &&
+        index < widget.appDefinition.navigationDefinition!.items.length) {
+      // Save current index
+      widget.engine.stateManager.set('runtime.navigation.currentIndex', index);
+      
+      // Save current route
+      final currentRoute = widget.appDefinition.navigationDefinition!.items[index].route;
+      widget.engine.stateManager.set('runtime.navigation.currentRoute', currentRoute);
+    }
   }
 
   Future<PageDefinition> _loadPageDefinition(String route) async {
@@ -536,6 +565,8 @@ class _ApplicationShellState extends State<_ApplicationShell> {
           setState(() {
             _currentIndex = targetIndex;
           });
+          // Update navigation state in StateManager
+          _updateNavigationState(targetIndex);
         }
         return true; // Navigation handled successfully
       }
@@ -592,20 +623,34 @@ class _ApplicationShellState extends State<_ApplicationShell> {
         return DefaultTabController(
           length: navigation.items.length,
           initialIndex: _currentIndex,
-          child: Scaffold(
-            appBar: AppBar(
-              title: Text(widget.appDefinition.title),
-              bottom: TabBar(
-                tabs: navigation.items
-                    .map((item) => Tab(
-                          text: item.title,
-                          icon: item.icon != null
-                              ? Icon(_getIconData(item.icon!))
-                              : null,
-                        ))
-                    .toList(),
-              ),
-            ),
+          child: Builder(
+            builder: (context) {
+              final TabController? tabController = DefaultTabController.of(context);
+              // Listen to tab changes
+              tabController?.addListener(() {
+                if (!tabController.indexIsChanging && 
+                    tabController.index != _currentIndex) {
+                  setState(() {
+                    _currentIndex = tabController.index;
+                  });
+                  _updateNavigationState(tabController.index);
+                }
+              });
+              
+              return Scaffold(
+                appBar: AppBar(
+                  title: Text(widget.appDefinition.title),
+                  bottom: TabBar(
+                    tabs: navigation.items
+                        .map((item) => Tab(
+                              text: item.title,
+                              icon: item.icon != null
+                                  ? Icon(_getIconData(item.icon!))
+                                  : null,
+                            ))
+                        .toList(),
+                  ),
+                ),
             body: TabBarView(
               children: navigation.items.map((navItem) {
                 final route = navItem.route;
@@ -633,6 +678,8 @@ class _ApplicationShellState extends State<_ApplicationShell> {
                 );
               }).toList(),
             ),
+              );
+            },
           ),
         );
 
@@ -667,6 +714,8 @@ class _ApplicationShellState extends State<_ApplicationShell> {
               setState(() {
                 _currentIndex = index;
               });
+              // Update navigation state in StateManager
+              _updateNavigationState(index);
             },
             items: navigation.items
                 .map((item) => BottomNavigationBarItem(
@@ -712,6 +761,8 @@ class _ApplicationShellState extends State<_ApplicationShell> {
                       setState(() {
                         _currentIndex = index;
                       });
+                      // Update navigation state in StateManager
+                      _updateNavigationState(index);
                       Navigator.pop(context);
                     },
                   );

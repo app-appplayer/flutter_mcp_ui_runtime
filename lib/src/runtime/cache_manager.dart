@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Cache manager for MCP UI Runtime
 class CacheManager {
@@ -74,12 +75,52 @@ class CacheManager {
       debugPrint('CacheManager: Cached state for $appKey');
     }
 
-    // TODO: Persist to local storage
+    // Persist to SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final stateJson = jsonEncode(state);
+      await prefs.setString('mcp_ui_state_$appKey', stateJson);
+      
+      if (enableDebugMode) {
+        debugPrint('CacheManager: Persisted state for $appKey');
+      }
+    } catch (e) {
+      if (enableDebugMode) {
+        debugPrint('CacheManager: Failed to persist state: $e');
+      }
+    }
   }
 
   /// Gets cached state
   Map<String, dynamic>? getCachedState(String appKey) {
     return _stateCache[appKey];
+  }
+  
+  /// Loads persisted state from storage
+  Future<void> loadPersistedState(String appKey) async {
+    // Skip if already in memory cache
+    if (_stateCache.containsKey(appKey)) {
+      return;
+    }
+    
+    // Load from SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final stateJson = prefs.getString('mcp_ui_state_$appKey');
+      
+      if (stateJson != null) {
+        final state = jsonDecode(stateJson) as Map<String, dynamic>;
+        _stateCache[appKey] = state; // Update memory cache
+        
+        if (enableDebugMode) {
+          debugPrint('CacheManager: Loaded persisted state for $appKey');
+        }
+      }
+    } catch (e) {
+      if (enableDebugMode) {
+        debugPrint('CacheManager: Failed to load persisted state: $e');
+      }
+    }
   }
 
   /// Caches a resource (e.g., downloaded data)
@@ -102,6 +143,19 @@ class CacheManager {
     _stateCache.clear();
     _resourceCache.clear();
 
+    // Clear persisted state
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys().where((key) => key.startsWith('mcp_ui_state_'));
+      for (final key in keys) {
+        await prefs.remove(key);
+      }
+    } catch (e) {
+      if (enableDebugMode) {
+        debugPrint('CacheManager: Failed to clear persisted state: $e');
+      }
+    }
+
     if (enableDebugMode) {
       debugPrint('CacheManager: Cleared all caches');
     }
@@ -112,6 +166,16 @@ class CacheManager {
     final key = '$domain:$id';
     _appCache.remove(key);
     _stateCache.remove(key);
+
+    // Clear persisted state
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('mcp_ui_state_$key');
+    } catch (e) {
+      if (enableDebugMode) {
+        debugPrint('CacheManager: Failed to clear persisted state for app: $e');
+      }
+    }
 
     if (enableDebugMode) {
       debugPrint('CacheManager: Cleared cache for app $key');

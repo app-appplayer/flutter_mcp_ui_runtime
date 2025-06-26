@@ -1,4 +1,11 @@
 
+## 0.2.2
+
+### Bug Fixes
+- Fixed navigation state persistence to properly save and restore tab/navigation positions
+- Added SharedPreferences support to CacheManager for actual disk persistence
+- Fixed setState during build error in ApplicationShell navigation initialization
+
 ## 0.2.1
 
 ### Bug Fixes

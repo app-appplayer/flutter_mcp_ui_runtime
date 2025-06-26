@@ -53,6 +53,7 @@ class RuntimeEngine with ChangeNotifier {
   // Public getters for page rendering
   Renderer get renderer => _renderer;
   StateManager get stateManager => _stateManager;
+  CacheManager get cacheManager => _cacheManager;
   BindingEngine get bindingEngine => _bindingEngine;
   ActionHandler get actionHandler => _actionHandler;
   ThemeManager get themeManager => _themeManager;
@@ -723,6 +724,8 @@ class RuntimeEngine with ChangeNotifier {
 
           // Load cached state if available
           final appKey = '$domain:$id';
+          // Load persisted state first
+          await _cacheManager.loadPersistedState(appKey);
           final cachedState = _cacheManager.getCachedState(appKey);
           if (cachedState != null) {
             // Merge cached state into StateManager
