@@ -1,7 +1,7 @@
 name: flutter_mcp_ui_runtime
 description: Runtime for building dynamic Flutter UIs from JSON with lifecycle management, state handling, and MCP protocol support.
 version: 0.2.2
-homepage: https://github.com/app-appplayer/flutter_mcp_ui_runtime
+homepage: https://app-appplayer.github.io/makemind
 repository: https://github.com/app-appplayer/flutter_mcp_ui_runtime
 documentation: https://pub.dev/documentation/flutter_mcp_ui_runtime/latest/
 environment:
