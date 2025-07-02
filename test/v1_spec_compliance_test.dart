@@ -141,26 +141,8 @@ void main() {
         
         // Should use textOnPrimary for onPrimary
         final flutterTheme = themeManager.currentTheme;
-        expect(flutterTheme.colorScheme.onPrimary.value, equals(0xFFFFFFFF));
-        expect(flutterTheme.colorScheme.onSecondary.value, equals(0xFF000000));
-      });
-      
-      test('should fallback to legacy on* names', () {
-        final themeData = {
-          'colors': {
-            'primary': '#2196F3',
-            'onPrimary': '#FFFFFF',
-            'secondary': '#FF4081',
-            'onSecondary': '#000000',
-          },
-        };
-        
-        themeManager.setTheme(themeData);
-        
-        // Should still work with legacy names
-        final flutterTheme = themeManager.currentTheme;
-        expect(flutterTheme.colorScheme.onPrimary.value, equals(0xFFFFFFFF));
-        expect(flutterTheme.colorScheme.onSecondary.value, equals(0xFF000000));
+        expect(flutterTheme.colorScheme.onPrimary.toARGB32(), equals(0xFFFFFFFF));
+        expect(flutterTheme.colorScheme.onSecondary.toARGB32(), equals(0xFF000000));
       });
     });
 

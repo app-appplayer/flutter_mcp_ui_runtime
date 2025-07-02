@@ -26,12 +26,6 @@ class ThemeManager {
       'background': '#ffffff',
       'surface': '#f5f5f5',
       'error': '#f44336',
-      // Legacy Flutter naming (backward compatibility)
-      'onPrimary': '#ffffff',
-      'onSecondary': '#000000',
-      'onBackground': '#000000',
-      'onSurface': '#000000',
-      'onError': '#ffffff',
       // MCP UI DSL v1.0 naming
       'textOnPrimary': '#ffffff',
       'textOnSecondary': '#000000',
@@ -227,24 +221,17 @@ class ThemeManager {
       colorScheme: ColorScheme(
         brightness: isDark ? Brightness.dark : Brightness.light,
         primary: _parseColor(colors['primary']) ?? Colors.blue,
-        // Use v1.0 textOnPrimary if available, fallback to onPrimary
-        onPrimary:
-            _parseColor(colors['textOnPrimary'] ?? colors['onPrimary']) ??
-                Colors.white,
+        // Use v1.0 textOnPrimary
+        onPrimary: _parseColor(colors['textOnPrimary']) ?? Colors.white,
         secondary: _parseColor(colors['secondary']) ?? Colors.pink,
-        // Use v1.0 textOnSecondary if available, fallback to onSecondary
-        onSecondary:
-            _parseColor(colors['textOnSecondary'] ?? colors['onSecondary']) ??
-                Colors.black,
+        // Use v1.0 textOnSecondary
+        onSecondary: _parseColor(colors['textOnSecondary']) ?? Colors.black,
         error: _parseColor(colors['error']) ?? Colors.red,
-        // Use v1.0 textOnError if available, fallback to onError
-        onError: _parseColor(colors['textOnError'] ?? colors['onError']) ??
-            Colors.white,
+        // Use v1.0 textOnError
+        onError: _parseColor(colors['textOnError']) ?? Colors.white,
         surface: _parseColor(colors['surface']) ?? Colors.grey[100]!,
-        // Use v1.0 textOnSurface if available, fallback to onSurface
-        onSurface:
-            _parseColor(colors['textOnSurface'] ?? colors['onSurface']) ??
-                Colors.black,
+        // Use v1.0 textOnSurface
+        onSurface: _parseColor(colors['textOnSurface']) ?? Colors.black,
         // Note: background is deprecated, using surface instead
       ),
       textTheme: _buildTextTheme(),
@@ -269,18 +256,11 @@ class ThemeManager {
         secondary: _parseColor(colors['secondary']) ?? Colors.pink,
         surface: _parseColor(colors['surface']) ?? Colors.grey[100]!,
         error: _parseColor(colors['error']) ?? Colors.red,
-        // Use v1.0 textOn* if available, fallback to on* for backward compatibility
-        onPrimary:
-            _parseColor(colors['textOnPrimary'] ?? colors['onPrimary']) ??
-                Colors.white,
-        onSecondary:
-            _parseColor(colors['textOnSecondary'] ?? colors['onSecondary']) ??
-                Colors.black,
-        onSurface:
-            _parseColor(colors['textOnSurface'] ?? colors['onSurface']) ??
-                Colors.black,
-        onError: _parseColor(colors['textOnError'] ?? colors['onError']) ??
-            Colors.white,
+        // Use v1.0 textOn* format
+        onPrimary: _parseColor(colors['textOnPrimary']) ?? Colors.white,
+        onSecondary: _parseColor(colors['textOnSecondary']) ?? Colors.black,
+        onSurface: _parseColor(colors['textOnSurface']) ?? Colors.black,
+        onError: _parseColor(colors['textOnError']) ?? Colors.white,
       ),
       scaffoldBackgroundColor:
           _parseColor(colors['background']) ?? Colors.white,

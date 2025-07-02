@@ -43,7 +43,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  flutter_mcp_ui_runtime: ^0.2.2
+  flutter_mcp_ui_runtime: ^0.2.3
 ```
 
 ## Quick Start
@@ -283,7 +283,7 @@ The renderer supports dynamic data binding using double curly braces:
   "content": "{{user.name}}",
   "style": {
     "fontSize": 16,
-    "color": "{{theme.colors.onBackground}}"
+    "color": "{{theme.colors.textOnBackground}}"
   }
 }
 ```
