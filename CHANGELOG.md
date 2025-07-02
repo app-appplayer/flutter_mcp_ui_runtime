@@ -1,6 +1,10 @@
 
 ## 0.2.3
 
+### Documentation
+- Added important build instructions for dynamic icons
+- Documented the need for `--no-tree-shake-icons` flag when building apps with dynamic icons
+
 ## 0.2.2
 
 ### Bug Fixes

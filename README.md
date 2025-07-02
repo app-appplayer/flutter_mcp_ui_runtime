@@ -46,6 +46,18 @@ dependencies:
   flutter_mcp_ui_runtime: ^0.2.3
 ```
 
+### Important: Building with Dynamic Icons
+
+If your app uses dynamic icons from JSON (e.g., `"icon": "folder"`), you must build with the `--no-tree-shake-icons` flag:
+
+```bash
+flutter build apk --no-tree-shake-icons
+flutter build ios --no-tree-shake-icons
+flutter build macos --no-tree-shake-icons
+```
+
+This is necessary because the runtime creates icons dynamically from strings, which the compiler cannot detect at build time. Without this flag, Material Icons will be removed by tree shaking and your icons won't appear.
+
 ## Quick Start
 
 ### Basic Usage
