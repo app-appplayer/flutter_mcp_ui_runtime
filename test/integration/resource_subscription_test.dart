@@ -245,7 +245,7 @@ void main() {
               'value': '{{monitoringEnabled}}',
               'label': 'Enable Monitoring',
               'bindTo': 'monitoringEnabled',
-              'onChange': {
+              'change': {
                 'type': 'conditional',
                 'condition': '{{monitoringEnabled}}',
                 'then': {

@@ -525,7 +525,7 @@ final Map<String, dynamic> _inputPage = {
               {
                 'type': 'button',
                 'label': 'Text',
-                'style': 'text',
+                'variant': 'text',
                 'click': {
                   'type': 'state',
                   'action': 'set',
@@ -1116,7 +1116,7 @@ final Map<String, dynamic> _actionsPage = {
           {
             'type': 'button',
             'label': 'Execute Batch Action',
-            'variant': 'elevated',
+            'style': 'elevated',
             'click': {
               'type': 'batch',
               'actions': [

@@ -228,7 +228,7 @@ void main() {
               {
                 'type': 'textInput',
                 'value': '{{email}}',
-                'onChange': {
+                'change': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'email',

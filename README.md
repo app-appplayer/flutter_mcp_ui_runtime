@@ -23,7 +23,7 @@ Support makemind via [PayPal](https://www.paypal.com/ncp/payment/F7G56QD9LSJ92)
 
 A comprehensive Flutter runtime for building server-driven UIs using the MCP (Model Context Protocol) UI DSL v1.0 specification. This package provides a complete runtime environment with lifecycle management, services, and advanced state management.
 
-📋 **Based on [MCP UI DSL v1.0 Specification](./doc/specification/MCP_UI_DSL_v1.0_Specification.md)** - The standard specification for Model Context Protocol UI Definition Language.
+📋 **Based on [MCP UI DSL v1.0 Specification](https://github.com/app-appplayer/makemind/blob/main/doc/specification/MCP_UI_DSL_v1.0_Specification.md)** - The standard specification for Model Context Protocol UI Definition Language.
 
 ## Features
 
@@ -43,7 +43,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  flutter_mcp_ui_runtime: ^0.2.3
+  flutter_mcp_ui_runtime: ^0.2.4
 ```
 
 ### Important: Building with Dynamic Icons
@@ -283,7 +283,7 @@ The Flutter MCP UI Runtime supports **77+ widgets** across 9 categories:
 - `snackbar` - Temporary message bar
 - `bottomsheet` - Bottom sheet modal
 
-For complete widget reference with properties and examples, see the [MCP UI DSL Complete Specification](./MCP_UI_DSL_Complete_Spec_v1.0.md).
+For complete widget reference with properties and examples, see the [Widget Reference](https://github.com/app-appplayer/makemind/blob/main/doc/api/widget-reference.md).
 
 ## Expression Binding
 
@@ -518,14 +518,14 @@ The package follows a clean architecture with these core components:
 
 ## Documentation
 
-- [MCP UI DSL v1.0 Specification](./doc/specification/MCP_UI_DSL_v1.0_Specification.md) - Complete specification for Model Context Protocol UI Definition Language
-- [API Reference](./doc/api/) - Detailed API documentation
-- [Architecture Overview](./doc/architecture/overview.md) - System architecture and design
-- [Getting Started Guide](./doc/guides/getting-started.md) - Quick start guide
-- [Advanced Topics](./doc/guides/advanced-topics.md) - Advanced usage and patterns
-- [Custom Widgets Guide](./doc/guides/custom-widgets.md) - How to create custom widgets
-- [Examples](./doc/examples/) - Sample implementations
-- [Widget Reference](./doc/api/widget-reference.md) - Complete widget property reference
+- [MCP UI DSL v1.0 Specification](https://github.com/app-appplayer/makemind/blob/main/doc/specification/MCP_UI_DSL_v1.0_Specification.md) - Complete specification for Model Context Protocol UI Definition Language
+- [API Reference](https://github.com/app-appplayer/makemind/tree/main/doc/api) - Detailed API documentation
+- [Architecture Overview](https://github.com/app-appplayer/makemind/blob/main/doc/architecture/overview.md) - System architecture and design
+- [Getting Started Guide](https://github.com/app-appplayer/makemind/blob/main/doc/guides/getting-started.md) - Quick start guide
+- [Advanced Topics](https://github.com/app-appplayer/makemind/blob/main/doc/guides/advanced-topics.md) - Advanced usage and patterns
+- [Custom Widgets Guide](https://github.com/app-appplayer/makemind/blob/main/doc/guides/custom-widgets.md) - How to create custom widgets
+- [Examples](https://github.com/app-appplayer/makemind/tree/main/doc/examples) - Sample implementations
+- [Widget Reference](https://github.com/app-appplayer/makemind/blob/main/doc/api/widget-reference.md) - Complete widget property reference
 
 ## Contributing
 

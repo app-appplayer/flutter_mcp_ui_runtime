@@ -101,11 +101,9 @@ void main() {
                 'type': 'button',
                 'label': 'Elevated Button',
                 'variant': 'elevated',
-                'style': {
-                  'backgroundColor': '#2196F3',
-                  'foregroundColor': '#FFFFFF',
-                  'elevation': 4,
-                },
+                'backgroundColor': '#2196F3',
+                'foregroundColor': '#FFFFFF',
+                'elevation': 4,
               },
               {
                 'type': 'button',
@@ -116,10 +114,8 @@ void main() {
                 'type': 'button',
                 'label': 'Outlined Button',
                 'variant': 'outlined',
-                'style': {
-                  'borderColor': '#FF5722',
-                  'borderWidth': 2,
-                },
+                'borderColor': '#FF5722',
+                'borderWidth': 2,
               },
               {
                 'type': 'button',
