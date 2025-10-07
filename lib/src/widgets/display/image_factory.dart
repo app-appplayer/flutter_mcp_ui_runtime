@@ -11,8 +11,8 @@ class ImageWidgetFactory extends WidgetFactory {
 
     // Extract properties
     final src = context.resolve<String>(properties['src'] ?? '');
-    final width = properties['width']?.toDouble();
-    final height = properties['height']?.toDouble();
+    final width = parseDimension(properties['width']);
+    final height = parseDimension(properties['height']);
     final fit = _parseBoxFit(properties['fit']);
     final alignment = _parseAlignment(properties['alignment']);
     final placeholder = properties['placeholder'] as String?;

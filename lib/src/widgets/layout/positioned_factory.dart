@@ -10,12 +10,12 @@ class PositionedWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     // Extract properties
-    final left = properties['left']?.toDouble();
-    final top = properties['top']?.toDouble();
-    final right = properties['right']?.toDouble();
-    final bottom = properties['bottom']?.toDouble();
-    final width = properties['width']?.toDouble();
-    final height = properties['height']?.toDouble();
+    final left = parseDimension(properties['left']);
+    final top = parseDimension(properties['top']);
+    final right = parseDimension(properties['right']);
+    final bottom = parseDimension(properties['bottom']);
+    final width = parseDimension(properties['width']);
+    final height = parseDimension(properties['height']);
 
     // Extract child
     final childData = definition['child'];

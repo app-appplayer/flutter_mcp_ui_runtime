@@ -22,10 +22,11 @@ class ContainerWidgetFactory extends WidgetFactory {
         _resolveEdgeInsets(properties[core.PropertyKeys.padding], context);
     final margin =
         _resolveEdgeInsets(properties[core.PropertyKeys.margin], context);
+    // Use parseDimension to support MCP UI DSL v1.0 format
     final width =
-        context.resolve(properties[core.PropertyKeys.width])?.toDouble();
+        parseDimension(context.resolve(properties[core.PropertyKeys.width]));
     final height =
-        context.resolve(properties[core.PropertyKeys.height])?.toDouble();
+        parseDimension(context.resolve(properties[core.PropertyKeys.height]));
 
     // Check for direct color and borderRadius properties (not in decoration)
     // Support both 'color' and 'backgroundColor' for v1.0 spec

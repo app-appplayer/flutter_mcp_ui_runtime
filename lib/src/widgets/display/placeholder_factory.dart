@@ -12,9 +12,9 @@ class PlaceholderWidgetFactory extends WidgetFactory {
     // Extract properties
     final color = parseColor(context.resolve(properties['color'])) ??
         const Color(0xFF455A64); // Default grey
-    final strokeWidth = properties['strokeWidth']?.toDouble() ?? 2.0;
-    final fallbackWidth = properties['fallbackWidth']?.toDouble() ?? 400.0;
-    final fallbackHeight = properties['fallbackHeight']?.toDouble() ?? 400.0;
+    final strokeWidth = parseDimension(properties['strokeWidth']) ?? 2.0;
+    final fallbackWidth = parseDimension(properties['fallbackWidth']) ?? 400.0;
+    final fallbackHeight = parseDimension(properties['fallbackHeight']) ?? 400.0;
 
     // Extract child widget (usually not used for Placeholder)
     final childrenDef = properties['children'] as List<dynamic>? ??

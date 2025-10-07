@@ -643,6 +643,25 @@ class RuntimeEngine with ChangeNotifier {
       _logger.info('Destroying...');
     }
 
+    // Unsubscribe from all active resource subscriptions before destroying
+    if (_resourceSubscriptions.isNotEmpty && _onResourceUnsubscribe != null) {
+      _logger.debug('Unsubscribing from ${_resourceSubscriptions.length} active resources');
+      final urisToUnsubscribe = List<String>.from(_resourceSubscriptions.keys);
+
+      for (final uri in urisToUnsubscribe) {
+        try {
+          _logger.debug('Unsubscribing from resource: $uri');
+          await _onResourceUnsubscribe!(uri);
+        } catch (e) {
+          _logger.warning('Failed to unsubscribe from $uri: $e');
+        }
+      }
+
+      // Clear all subscriptions after unsubscribing
+      _resourceSubscriptions.clear();
+      _logger.debug('All resource subscriptions cleared');
+    }
+
     // Execute onDestroy lifecycle hooks
     if (_runtimeConfig?['lifecycle']?['onDestroy'] != null) {
       await _lifecycleManager.executeLifecycleHooks(

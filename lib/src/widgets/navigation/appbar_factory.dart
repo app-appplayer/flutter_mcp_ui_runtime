@@ -18,12 +18,12 @@ class AppBarWidgetFactory extends WidgetFactory {
         parseColor(context.resolve(properties['backgroundColor']));
     final foregroundColor =
         parseColor(context.resolve(properties['foregroundColor']));
-    final elevation = properties['elevation']?.toDouble();
+    final elevation = parseDimension(properties['elevation']);
     final shadowColor = parseColor(context.resolve(properties['shadowColor']));
     final shape = _parseShapeBorder(properties['shape']);
-    final toolbarHeight = properties['toolbarHeight']?.toDouble();
-    final toolbarOpacity = properties['toolbarOpacity']?.toDouble() ?? 1.0;
-    final bottomOpacity = properties['bottomOpacity']?.toDouble() ?? 1.0;
+    final toolbarHeight = parseDimension(properties['toolbarHeight']);
+    final toolbarOpacity = parseDimension(properties['toolbarOpacity']) ?? 1.0;
+    final bottomOpacity = parseDimension(properties['bottomOpacity']) ?? 1.0;
 
     // Build leading widget
     Widget? leading;
@@ -49,7 +49,7 @@ class AppBarWidgetFactory extends WidgetFactory {
       if (bottomWidget != null) {
         bottom = PreferredSize(
           preferredSize:
-              Size.fromHeight(properties['bottomHeight']?.toDouble() ?? 48.0),
+              Size.fromHeight(parseDimension(properties['bottomHeight']) ?? 48.0),
           child: bottomWidget,
         );
       }

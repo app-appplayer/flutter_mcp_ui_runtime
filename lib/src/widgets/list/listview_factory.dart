@@ -16,7 +16,7 @@ class ListViewWidgetFactory extends WidgetFactory {
     final shrinkWrap = properties['shrinkWrap'] as bool? ?? false;
     final physics = _parseScrollPhysics(properties['physics']);
     final padding = parseEdgeInsets(properties['padding']);
-    final itemSpacing = properties['itemSpacing']?.toDouble() ?? 0.0;
+    final itemSpacing = parseDimension(properties['itemSpacing']) ?? 0.0;
 
     // Get data source - support both static children and dynamic items
     final childrenProp = definition['children'];

@@ -10,7 +10,7 @@ class AvatarWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     // Extract properties
-    final radius = properties['radius']?.toDouble() ?? 20.0;
+    final radius = parseDimension(properties['radius']) ?? 20.0;
     final backgroundColor =
         parseColor(context.resolve(properties['backgroundColor']));
     final foregroundColor =

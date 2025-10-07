@@ -9,9 +9,9 @@ class SizedBoxWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Extract properties
-    final width = properties['width']?.toDouble();
-    final height = properties['height']?.toDouble();
+    // Extract properties - use parseDimension for MCP UI DSL v1.0 compliance
+    final width = parseDimension(properties['width']);
+    final height = parseDimension(properties['height']);
 
     // Build child - check both properties and definition level
     final childrenData = properties['children'] as List<dynamic>? ??

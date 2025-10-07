@@ -10,8 +10,8 @@ class DrawerWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     // Extract properties
-    final width = properties['width']?.toDouble();
-    final elevation = properties['elevation']?.toDouble() ?? 16.0;
+    final width = parseDimension(properties['width']);
+    final elevation = parseDimension(properties['elevation']) ?? 16.0;
     final shadowColor = parseColor(context.resolve(properties['shadowColor']));
     final surfaceTintColor =
         parseColor(context.resolve(properties['surfaceTintColor']));
@@ -77,7 +77,7 @@ class DrawerWidgetFactory extends WidgetFactory {
     final type = shape['type'] as String?;
     switch (type) {
       case 'rounded':
-        final radius = shape['radius']?.toDouble() ?? 8.0;
+        final radius = parseDimension(shape['radius']) ?? 8.0;
         final side = shape['onlyRight'] as bool? ?? false;
         return RoundedRectangleBorder(
           borderRadius: side

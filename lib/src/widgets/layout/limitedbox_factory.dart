@@ -10,8 +10,8 @@ class LimitedBoxWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     // Extract properties
-    final maxWidth = properties['maxWidth']?.toDouble() ?? double.infinity;
-    final maxHeight = properties['maxHeight']?.toDouble() ?? double.infinity;
+    final maxWidth = parseDimension(properties['maxWidth']) ?? double.infinity;
+    final maxHeight = parseDimension(properties['maxHeight']) ?? double.infinity;
 
     // Extract child widget - check both properties and definition level
     final childrenDef = properties['children'] as List<dynamic>? ??

@@ -22,14 +22,26 @@ class ProgressWidgetFactory extends WidgetFactory {
       );
     } else {
       final strokeWidth =
-          context.resolve<double>(properties['strokeWidth'] ?? 4.0);
+          parseDimension(context.resolve(properties['strokeWidth'])) ?? 4.0;
+      final size = parseDimension(context.resolve(properties['size']));
 
-      return CircularProgressIndicator(
+      Widget widget = CircularProgressIndicator(
         value: value,
         backgroundColor: backgroundColor,
         valueColor: color != null ? AlwaysStoppedAnimation<Color>(color) : null,
         strokeWidth: strokeWidth,
       );
+
+      // Apply size if specified
+      if (size != null) {
+        widget = SizedBox(
+          width: size,
+          height: size,
+          child: widget,
+        );
+      }
+
+      return widget;
     }
   }
 }
@@ -44,8 +56,8 @@ class CircularProgressWidgetFactory extends WidgetFactory {
         parseColor(context.resolve(properties['backgroundColor']));
     final color = parseColor(context.resolve(properties['color']));
     final strokeWidth =
-        context.resolve<double>(properties['strokeWidth'] ?? 4.0);
-    final size = context.resolve<double?>(properties['size']);
+        parseDimension(context.resolve(properties['strokeWidth'])) ?? 4.0;
+    final size = parseDimension(context.resolve(properties['size']));
 
     Widget widget = CircularProgressIndicator(
       value: value,
@@ -76,8 +88,8 @@ class LinearProgressWidgetFactory extends WidgetFactory {
     final backgroundColor =
         parseColor(context.resolve(properties['backgroundColor']));
     final color = parseColor(context.resolve(properties['color']));
-    final height = context.resolve<double?>(properties['height']) ??
-        context.resolve<double?>(properties['minHeight']);
+    final height = parseDimension(context.resolve(properties['height'])) ??
+        parseDimension(context.resolve(properties['minHeight']));
 
     Widget widget = LinearProgressIndicator(
       value: value,

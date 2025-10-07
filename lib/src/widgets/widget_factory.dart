@@ -134,21 +134,21 @@ abstract class WidgetFactory {
 
     if (value is Map<String, dynamic>) {
       if (value.containsKey('all')) {
-        return EdgeInsets.all(value['all'].toDouble());
+        return EdgeInsets.all(parseDimension(value['all']) ?? 0);
       }
 
       if (value.containsKey('horizontal') || value.containsKey('vertical')) {
         return EdgeInsets.symmetric(
-          horizontal: value['horizontal']?.toDouble() ?? 0,
-          vertical: value['vertical']?.toDouble() ?? 0,
+          horizontal: parseDimension(value['horizontal']) ?? 0,
+          vertical: parseDimension(value['vertical']) ?? 0,
         );
       }
 
       return EdgeInsets.only(
-        left: value['left']?.toDouble() ?? 0,
-        top: value['top']?.toDouble() ?? 0,
-        right: value['right']?.toDouble() ?? 0,
-        bottom: value['bottom']?.toDouble() ?? 0,
+        left: parseDimension(value['left']) ?? 0,
+        top: parseDimension(value['top']) ?? 0,
+        right: parseDimension(value['right']) ?? 0,
+        bottom: parseDimension(value['bottom']) ?? 0,
       );
     }
 
@@ -265,16 +265,38 @@ abstract class WidgetFactory {
     return null;
   }
 
+  /// Parse dimension value - supports both direct numbers and MCP UI DSL v1.0 format
+  /// MCP UI DSL v1.0 format: {"value": 100, "unit": "px"}
+  /// Also supports direct numbers for backward compatibility
+  double? parseDimension(dynamic value) {
+    if (value == null) return null;
+    
+    // Direct number format
+    if (value is num) {
+      return value.toDouble();
+    }
+    
+    // MCP UI DSL v1.0 format: {"value": 100, "unit": "px"}
+    if (value is Map<String, dynamic>) {
+      final dimensionValue = value['value'];
+      if (dimensionValue is num) {
+        return dimensionValue.toDouble();
+      }
+    }
+    
+    return null;
+  }
+
   /// Parse BoxConstraints
   BoxConstraints? parseConstraints(dynamic value) {
     if (value == null) return null;
 
     if (value is Map<String, dynamic>) {
       return BoxConstraints(
-        minWidth: value['minWidth']?.toDouble() ?? 0.0,
-        minHeight: value['minHeight']?.toDouble() ?? 0.0,
-        maxWidth: value['maxWidth']?.toDouble() ?? double.infinity,
-        maxHeight: value['maxHeight']?.toDouble() ?? double.infinity,
+        minWidth: parseDimension(value['minWidth']) ?? 0.0,
+        minHeight: parseDimension(value['minHeight']) ?? 0.0,
+        maxWidth: parseDimension(value['maxWidth']) ?? double.infinity,
+        maxHeight: parseDimension(value['maxHeight']) ?? double.infinity,
       );
     }
 

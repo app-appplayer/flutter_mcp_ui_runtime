@@ -20,15 +20,15 @@ class GridViewWidgetFactory extends WidgetFactory {
     // Support both 'columns' (MCP UI DSL v1.0) and 'crossAxisCount' (Flutter style)
     final crossAxisCount =
         (properties['columns'] ?? properties['crossAxisCount']) as int?;
-    final maxCrossAxisExtent = properties['maxCrossAxisExtent']?.toDouble();
+    final maxCrossAxisExtent = parseDimension(properties['maxCrossAxisExtent']);
     // Support both 'spacing' (MCP UI DSL v1.0) and individual spacing properties
-    final spacing = properties['spacing']?.toDouble();
+    final spacing = parseDimension(properties['spacing']);
     final mainAxisSpacing =
-        properties['mainAxisSpacing']?.toDouble() ?? spacing ?? 0.0;
+        parseDimension(properties['mainAxisSpacing']) ?? spacing ?? 0.0;
     final crossAxisSpacing =
-        properties['crossAxisSpacing']?.toDouble() ?? spacing ?? 0.0;
-    final childAspectRatio = properties['childAspectRatio']?.toDouble() ?? 1.0;
-    final mainAxisExtent = properties['mainAxisExtent']?.toDouble();
+        parseDimension(properties['crossAxisSpacing']) ?? spacing ?? 0.0;
+    final childAspectRatio = parseDimension(properties['childAspectRatio']) ?? 1.0;
+    final mainAxisExtent = parseDimension(properties['mainAxisExtent']);
 
     // Get data source
     final staticChildren = definition['children'] as List<dynamic>?;

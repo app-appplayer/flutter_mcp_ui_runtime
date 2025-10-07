@@ -29,7 +29,7 @@ class TextWidgetFactory extends WidgetFactory {
       softWrap: context.resolve(properties['softWrap']) as bool? ?? true,
       textScaler: properties['textScaleFactor'] != null
           ? TextScaler.linear(
-              context.resolve(properties['textScaleFactor'])?.toDouble())
+              parseDimension(context.resolve(properties['textScaleFactor'])) ?? 1.0)
           : null,
       semanticsLabel:
           context.resolve(properties['semanticsLabel']) as String? ??
@@ -49,20 +49,20 @@ class TextWidgetFactory extends WidgetFactory {
 
       return TextStyle(
         fontSize:
-            context.resolve(style[core.PropertyKeys.fontSize])?.toDouble(),
+            parseDimension(context.resolve(style[core.PropertyKeys.fontSize])),
         fontWeight: _parseFontWeight(
             context.resolve(style[core.PropertyKeys.fontWeight])),
         fontStyle: _parseFontStyle(context.resolve(style['fontStyle'])),
         color: parsedColor,
-        letterSpacing: context.resolve(style['letterSpacing'])?.toDouble(),
-        wordSpacing: context.resolve(style['wordSpacing'])?.toDouble(),
-        height: context.resolve(style['height'])?.toDouble(),
+        letterSpacing: parseDimension(context.resolve(style['letterSpacing'])),
+        wordSpacing: parseDimension(context.resolve(style['wordSpacing'])),
+        height: parseDimension(context.resolve(style['height'])),
         decoration: _parseTextDecoration(context.resolve(style['decoration'])),
         decorationColor: parseColor(context.resolve(style['decorationColor'])),
         decorationStyle: _parseTextDecorationStyle(
             context.resolve(style['decorationStyle'])),
         decorationThickness:
-            context.resolve(style['decorationThickness'])?.toDouble(),
+            parseDimension(context.resolve(style['decorationThickness'])),
         fontFamily:
             context.resolve(style[core.PropertyKeys.fontFamily]) as String?,
         shadows: _parseShadows(style['shadows'], context),
@@ -218,11 +218,11 @@ class TextWidgetFactory extends WidgetFactory {
           color: parseColor(context.resolve(shadow['color'])) ?? Colors.black,
           offset: offset != null
               ? Offset(
-                  context.resolve(offset['x'])?.toDouble() ?? 0,
-                  context.resolve(offset['y'])?.toDouble() ?? 0,
+                  parseDimension(context.resolve(offset['x'])) ?? 0,
+                  parseDimension(context.resolve(offset['y'])) ?? 0,
                 )
               : Offset.zero,
-          blurRadius: context.resolve(shadow['blurRadius'])?.toDouble() ?? 0,
+          blurRadius: parseDimension(context.resolve(shadow['blurRadius'])) ?? 0,
         );
       }
       return const Shadow();

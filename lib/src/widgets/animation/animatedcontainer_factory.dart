@@ -13,8 +13,8 @@ class AnimatedContainerWidgetFactory extends WidgetFactory {
     final duration =
         Duration(milliseconds: properties['duration'] as int? ?? 300);
     final curve = _parseCurve(properties['curve'] as String?);
-    final width = properties['width']?.toDouble();
-    final height = properties['height']?.toDouble();
+    final width = parseDimension(properties['width']);
+    final height = parseDimension(properties['height']);
     final padding = parseEdgeInsets(properties['padding']);
     final margin = parseEdgeInsets(properties['margin']);
     final alignment = parseAlignment(properties['alignment']);

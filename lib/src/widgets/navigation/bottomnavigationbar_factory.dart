@@ -12,12 +12,12 @@ class BottomNavigationBarWidgetFactory extends WidgetFactory {
     // Extract properties
     final currentIndex =
         context.resolve<int>(properties['currentIndex']) as int? ?? 0;
-    final elevation = properties['elevation']?.toDouble();
+    final elevation = parseDimension(properties['elevation']);
     final type = _parseBottomNavigationBarType(properties['type']);
     final fixedColor = parseColor(context.resolve(properties['fixedColor']));
     final backgroundColor =
         parseColor(context.resolve(properties['backgroundColor']));
-    final iconSize = properties['iconSize']?.toDouble() ?? 24.0;
+    final iconSize = parseDimension(properties['iconSize']) ?? 24.0;
     final selectedItemColor =
         parseColor(context.resolve(properties['selectedItemColor']));
     final unselectedItemColor =
@@ -26,9 +26,9 @@ class BottomNavigationBarWidgetFactory extends WidgetFactory {
         _parseIconThemeData(properties['selectedIconTheme'], context);
     final unselectedIconTheme =
         _parseIconThemeData(properties['unselectedIconTheme'], context);
-    final selectedFontSize = properties['selectedFontSize']?.toDouble() ?? 14.0;
+    final selectedFontSize = parseDimension(properties['selectedFontSize']) ?? 14.0;
     final unselectedFontSize =
-        properties['unselectedFontSize']?.toDouble() ?? 12.0;
+        parseDimension(properties['unselectedFontSize']) ?? 12.0;
     final selectedLabelStyle =
         _parseTextStyle(properties['selectedLabelStyle'], context);
     final unselectedLabelStyle =

@@ -14,10 +14,10 @@ class SnackBarWidgetFactory extends WidgetFactory {
         context.resolve<String>(properties['content']) as String? ?? '';
     final backgroundColor =
         parseColor(context.resolve(properties['backgroundColor']));
-    final elevation = properties['elevation']?.toDouble();
+    final elevation = parseDimension(properties['elevation']);
     final margin = parseEdgeInsets(properties['margin']);
     final padding = parseEdgeInsets(properties['padding']);
-    final width = properties['width']?.toDouble();
+    final width = parseDimension(properties['width']);
     final shape = _parseShapeBorder(properties['shape']);
     final behavior = _parseSnackBarBehavior(properties['behavior']);
     final duration = Duration(milliseconds: properties['duration'] ?? 4000);

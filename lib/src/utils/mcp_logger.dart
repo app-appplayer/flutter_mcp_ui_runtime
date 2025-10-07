@@ -1,8 +1,9 @@
+import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 
 /// Logger for MCP UI Runtime that outputs debug messages.
 ///
-/// In debug mode, uses debugPrint for output. In release mode,
+/// In debug mode, uses dart:developer log for output. In release mode,
 /// logging is disabled by default to avoid performance impact.
 class MCPLogger {
   final String name;
@@ -43,8 +44,12 @@ class MCPLogger {
 
   void _log(String level, String message) {
     final timestamp = DateTime.now().toIso8601String();
-    // Use debugPrint to ensure it works on all platforms including web
-    debugPrint('[$timestamp] [$level] [$name] $message');
+    // Use dart:developer log instead of debugPrint to avoid throttling
+    developer.log(
+      '[$timestamp] [$level] [$name] $message',
+      name: name,
+      level: level == 'ERROR' ? 1000 : 0,
+    );
   }
 
   /// Factory constructor for creating a logger with a specific name

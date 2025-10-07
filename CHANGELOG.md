@@ -1,4 +1,9 @@
 
+## 0.2.5
+
+### Bug Fixes
+- Fixed resource subscription cleanup on runtime destroy to properly unsubscribe from all active resources
+
 ## 0.2.4
 
 ## 0.2.3

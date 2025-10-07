@@ -10,10 +10,10 @@ class DividerWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     // Extract properties
-    final height = properties['height']?.toDouble();
-    final thickness = properties['thickness']?.toDouble() ?? 1.0;
-    final indent = properties['indent']?.toDouble() ?? 0.0;
-    final endIndent = properties['endIndent']?.toDouble() ?? 0.0;
+    final height = parseDimension(properties['height']);
+    final thickness = parseDimension(properties['thickness']) ?? 1.0;
+    final indent = parseDimension(properties['indent']) ?? 0.0;
+    final endIndent = parseDimension(properties['endIndent']) ?? 0.0;
     final color = parseColor(context.resolve(properties['color']));
     final isVertical = properties['vertical'] as bool? ?? false;
 

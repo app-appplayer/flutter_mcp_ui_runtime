@@ -11,10 +11,8 @@ class NumberFieldFactory extends WidgetFactory {
 
     // Extract properties
     final label = properties['label'] as String?;
-    final binding = properties['binding'] as String?;
     final hint = properties['hint'] as String?;
     final helperText = context.resolve(properties['helperText']) as String?;
-    final errorText = context.resolve(properties['errorText']) as String?;
     final suffix = properties['suffix'] as String?;
     final prefix = properties['prefix'] as String?;
     final min = properties['min'] as num?;
@@ -22,10 +20,20 @@ class NumberFieldFactory extends WidgetFactory {
     final step = properties['step'] as num? ?? 1;
     final decimals = properties['decimals'] as int? ?? 0;
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
+    
+    // Handle error property
+    final errorValue = context.resolve(properties['error']);
+    final String? errorText;
+    if (errorValue is String && errorValue.isNotEmpty) {
+      errorText = errorValue;
+    } else if (errorValue == true) {
+      errorText = 'Invalid value';
+    } else {
+      errorText = null;
+    }
 
-    // Get current value
-    final currentValue =
-        binding != null ? context.resolve("{{$binding}}") : properties['value'];
+    // Get current value by resolving the value property
+    final currentValue = context.resolve(properties['value']);
 
     // Create text controller with current value
     final controller = TextEditingController(
@@ -65,31 +73,34 @@ class NumberFieldFactory extends WidgetFactory {
       ),
       enabled: enabled,
       onChanged: (value) {
-        if (binding != null) {
-          // Parse the number value
-          num? numValue;
-          if (value.isNotEmpty) {
-            if (decimals > 0) {
-              numValue = double.tryParse(value);
-            } else {
-              numValue = int.tryParse(value);
-            }
+        // Parse the number value
+        num? numValue;
+        if (value.isNotEmpty) {
+          if (decimals > 0) {
+            numValue = double.tryParse(value);
+          } else {
+            numValue = int.tryParse(value);
           }
-
-          // Validate against min/max
-          if (numValue != null) {
-            if (min != null && numValue < min) {
-              numValue = min;
-              controller.text = numValue.toString();
-            }
-            if (max != null && numValue > max) {
-              numValue = max;
-              controller.text = numValue.toString();
-            }
+        }
+        
+        // Execute change action if defined
+        final changeAction = properties['change'];
+        if (changeAction != null) {
+          // Create modified action with event value
+          final eventData = Map<String, dynamic>.from(changeAction);
+          
+          // Replace {{event.value}} placeholder in params
+          if (eventData['params'] != null && eventData['params'] is Map<String, dynamic>) {
+            final params = Map<String, dynamic>.from(eventData['params']);
+            params.forEach((key, value) {
+              if (value == '{{event.value}}') {
+                params[key] = numValue;
+              }
+            });
+            eventData['params'] = params;
           }
-
-          // Update state
-          context.setValue(binding, numValue ?? 0);
+          
+          context.actionHandler.execute(eventData, context);
         }
       },
     );
@@ -110,8 +121,24 @@ class NumberFieldFactory extends WidgetFactory {
                       controller.text = decimals > 0
                           ? newValue.toStringAsFixed(decimals)
                           : newValue.toStringAsFixed(0);
-                      if (binding != null) {
-                        context.setValue(binding, newValue);
+                      
+                      // Execute change action if defined
+                      final changeAction = properties['change'];
+                      if (changeAction != null) {
+                        final eventData = Map<String, dynamic>.from(changeAction);
+                        
+                        // Replace {{event.value}} placeholder in params
+                        if (eventData['params'] != null && eventData['params'] is Map<String, dynamic>) {
+                          final params = Map<String, dynamic>.from(eventData['params']);
+                          params.forEach((key, value) {
+                            if (value == '{{event.value}}') {
+                              params[key] = newValue;
+                            }
+                          });
+                          eventData['params'] = params;
+                        }
+                        
+                        context.actionHandler.execute(eventData, context);
                       }
                     }
                   }
@@ -130,8 +157,24 @@ class NumberFieldFactory extends WidgetFactory {
                       controller.text = decimals > 0
                           ? newValue.toStringAsFixed(decimals)
                           : newValue.toStringAsFixed(0);
-                      if (binding != null) {
-                        context.setValue(binding, newValue);
+                      
+                      // Execute change action if defined
+                      final changeAction = properties['change'];
+                      if (changeAction != null) {
+                        final eventData = Map<String, dynamic>.from(changeAction);
+                        
+                        // Replace {{event.value}} placeholder in params
+                        if (eventData['params'] != null && eventData['params'] is Map<String, dynamic>) {
+                          final params = Map<String, dynamic>.from(eventData['params']);
+                          params.forEach((key, value) {
+                            if (value == '{{event.value}}') {
+                              params[key] = newValue;
+                            }
+                          });
+                          eventData['params'] = params;
+                        }
+                        
+                        context.actionHandler.execute(eventData, context);
                       }
                     }
                   }

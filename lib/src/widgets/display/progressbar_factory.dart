@@ -11,13 +11,13 @@ class ProgressBarWidgetFactory extends WidgetFactory {
 
     // Extract properties
     final resolvedValue = context.resolve<num?>(properties['value']);
-    final value = resolvedValue?.toDouble();
+    final value = parseDimension(resolvedValue);
     final backgroundColor =
         parseColor(context.resolve(properties['backgroundColor']));
     final color = parseColor(context.resolve(properties['color']));
     final valueColor =
         color != null ? AlwaysStoppedAnimation<Color>(color) : null;
-    final minHeight = properties['minHeight']?.toDouble();
+    final minHeight = parseDimension(properties['minHeight']);
     final semanticsLabel =
         context.resolve<String?>(properties['semanticsLabel']);
     final semanticsValue =
@@ -29,8 +29,8 @@ class ProgressBarWidgetFactory extends WidgetFactory {
     Widget progressBar;
 
     if (type == 'circular') {
-      final strokeWidth = properties['strokeWidth']?.toDouble() ?? 4.0;
-      final size = properties['size']?.toDouble() ?? 36.0;
+      final strokeWidth = parseDimension(properties['strokeWidth']) ?? 4.0;
+      final size = parseDimension(properties['size']) ?? 36.0;
 
       progressBar = SizedBox(
         width: size,

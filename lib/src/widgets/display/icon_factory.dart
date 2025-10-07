@@ -12,7 +12,7 @@ class IconWidgetFactory extends WidgetFactory {
     // Extract properties
     final iconValue = context.resolve(properties['icon']);
     final icon = iconValue is String ? iconValue : 'circle';
-    final size = properties['size']?.toDouble() ?? 24.0;
+    final size = parseDimension(context.resolve(properties['size'])) ?? 24.0;
     final color = parseColor(context.resolve(properties['color']));
 
     // Build icon

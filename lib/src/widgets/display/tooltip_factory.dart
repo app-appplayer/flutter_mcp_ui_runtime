@@ -15,10 +15,10 @@ class TooltipWidgetFactory extends WidgetFactory {
     final richMessage = properties['richMessage'] != null
         ? _buildInlineSpan(properties['richMessage'], context)
         : null;
-    final height = properties['height']?.toDouble();
+    final height = parseDimension(properties['height']);
     final padding = parseEdgeInsets(properties['padding']);
     final margin = parseEdgeInsets(properties['margin']);
-    final verticalOffset = properties['verticalOffset']?.toDouble();
+    final verticalOffset = parseDimension(properties['verticalOffset']);
     final preferBelow = properties['preferBelow'] as bool?;
     final excludeFromSemantics = properties['excludeFromSemantics'] as bool?;
     final decoration = _parseDecoration(properties['decoration'], context);
@@ -43,7 +43,7 @@ class TooltipWidgetFactory extends WidgetFactory {
     Widget tooltip = Tooltip(
       message: richMessage != null ? '' : message,
       richMessage: richMessage,
-      constraints: BoxConstraints(minHeight: height),
+      constraints: height != null ? BoxConstraints(minHeight: height) : null,
       padding: padding,
       margin: margin,
       verticalOffset: verticalOffset,
@@ -96,7 +96,7 @@ class TooltipWidgetFactory extends WidgetFactory {
     if (style is Map<String, dynamic>) {
       return TextStyle(
         color: parseColor(context.resolve(style['color'])),
-        fontSize: style['fontSize']?.toDouble(),
+        fontSize: parseDimension(style['fontSize']),
         fontWeight: style['fontWeight'] == 'bold' ? FontWeight.bold : null,
       );
     }
@@ -154,7 +154,7 @@ class TooltipWidgetFactory extends WidgetFactory {
     if (value == null) return null;
 
     if (value is num) {
-      return BorderRadius.circular(value.toDouble());
+      return BorderRadius.circular(parseDimension(value) ?? 0);
     }
 
     return null;
@@ -167,11 +167,11 @@ class TooltipWidgetFactory extends WidgetFactory {
       return [
         BoxShadow(
           color: parseColor(context.resolve(shadow['color'])) ?? Colors.black,
-          blurRadius: shadow['blur']?.toDouble() ?? 0,
-          spreadRadius: shadow['spread']?.toDouble() ?? 0,
+          blurRadius: parseDimension(shadow['blur']) ?? 0,
+          spreadRadius: parseDimension(shadow['spread']) ?? 0,
           offset: Offset(
-            shadow['offsetX']?.toDouble() ?? 0,
-            shadow['offsetY']?.toDouble() ?? 0,
+            parseDimension(shadow['offsetX']) ?? 0,
+            parseDimension(shadow['offsetY']) ?? 0,
           ),
         ),
       ];

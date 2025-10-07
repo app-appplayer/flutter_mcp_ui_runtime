@@ -11,11 +11,11 @@ class PopupMenuButtonWidgetFactory extends WidgetFactory {
 
     // Extract properties
     final tooltip = context.resolve<String?>(properties['tooltip']);
-    final elevation = properties['elevation']?.toDouble();
+    final elevation = parseDimension(properties['elevation']);
     final padding =
         parseEdgeInsets(properties['padding']) ?? const EdgeInsets.all(8.0);
-    final splashRadius = properties['splashRadius']?.toDouble();
-    final iconSize = properties['iconSize']?.toDouble();
+    final splashRadius = parseDimension(properties['splashRadius']);
+    final iconSize = parseDimension(properties['iconSize']);
     final offset = _parseOffset(properties['offset']);
     final enabled = properties['enabled'] as bool? ?? true;
     final shape = _parseShapeBorder(properties['shape']);

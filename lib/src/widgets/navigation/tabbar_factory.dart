@@ -30,7 +30,7 @@ class TabBarWidgetFactory extends WidgetFactory {
     final padding = parseEdgeInsets(properties['padding']);
     final indicatorColor =
         parseColor(context.resolve(properties['indicatorColor']));
-    final indicatorWeight = properties['indicatorWeight']?.toDouble() ?? 2.0;
+    final indicatorWeight = parseDimension(properties['indicatorWeight']) ?? 2.0;
     final indicatorPadding =
         parseEdgeInsets(properties['indicatorPadding']) ?? EdgeInsets.zero;
     final indicator = _parseDecoration(properties['indicator'], context);
