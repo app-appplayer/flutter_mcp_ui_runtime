@@ -21,13 +21,23 @@ class GridViewWidgetFactory extends WidgetFactory {
     final crossAxisCount =
         (properties['columns'] ?? properties['crossAxisCount']) as int?;
     final maxCrossAxisExtent = parseDimension(properties['maxCrossAxisExtent']);
-    // Support both 'spacing' (MCP UI DSL v1.0) and individual spacing properties
+    // Spec §2.7.2 canonical `rowGap` / `columnGap`; legacy
+    // `mainAxisSpacing` / `crossAxisSpacing` (Flutter field names) and
+    // `spacing` (shared shorthand) accepted.
     final spacing = parseDimension(properties['spacing']);
     final mainAxisSpacing =
-        parseDimension(properties['mainAxisSpacing']) ?? spacing ?? 0.0;
-    final crossAxisSpacing =
-        parseDimension(properties['crossAxisSpacing']) ?? spacing ?? 0.0;
-    final childAspectRatio = parseDimension(properties['childAspectRatio']) ?? 1.0;
+        parseDimension(properties['rowGap'] ?? properties['mainAxisSpacing']) ??
+            spacing ??
+            0.0;
+    final crossAxisSpacing = parseDimension(
+            properties['columnGap'] ?? properties['crossAxisSpacing']) ??
+        spacing ??
+        0.0;
+    // Spec §2.7.2 canonical `itemAspectRatio`; `childAspectRatio` kept as
+    // legacy Flutter-style alias.
+    final childAspectRatio = parseDimension(
+            properties['itemAspectRatio'] ?? properties['childAspectRatio']) ??
+        1.0;
     final mainAxisExtent = parseDimension(properties['mainAxisExtent']);
 
     // Get data source

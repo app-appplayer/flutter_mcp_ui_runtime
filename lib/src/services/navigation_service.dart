@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../runtime/service_registry.dart';
+import '../utils/mcp_logger.dart';
 
 /// Navigation service for managing app navigation
 class NavigationService extends RuntimeService {
@@ -9,6 +10,8 @@ class NavigationService extends RuntimeService {
     _instance ??= NavigationService._internal();
     return _instance!;
   }
+
+  static final _logger = MCPLogger('NavigationService');
 
   NavigationService._internal();
 
@@ -22,6 +25,8 @@ class NavigationService extends RuntimeService {
   final Map<String, WidgetBuilder> _routes = {};
   final Map<String, dynamic> _routeGuards = {};
   bool _preventNavigation = false;
+  int _currentIndex = 0;
+  final List<void Function(int index)> _indexListeners = [];
 
   /// Gets the current navigator state
   NavigatorState? get navigator => navigatorKey.currentState;
@@ -45,7 +50,7 @@ class NavigationService extends RuntimeService {
   }) async {
     if (_preventNavigation) {
       if (enableDebugMode) {
-        debugPrint('NavigationService: Navigation prevented');
+        _logger.debug('Navigation prevented');
       }
       return null;
     }
@@ -53,8 +58,8 @@ class NavigationService extends RuntimeService {
     // Check route guard
     if (!await _checkRouteGuard(routeName, arguments)) {
       if (enableDebugMode) {
-        debugPrint(
-            'NavigationService: Route guard prevented navigation to "$routeName"');
+        _logger.debug(
+            'Route guard prevented navigation to "$routeName"');
       }
       return null;
     }
@@ -83,8 +88,8 @@ class NavigationService extends RuntimeService {
       }
     } catch (error) {
       if (enableDebugMode) {
-        debugPrint(
-            'NavigationService: Error navigating to "$routeName": $error');
+        _logger.error(
+            'Error navigating to "$routeName": $error');
       }
       rethrow;
     }
@@ -100,7 +105,7 @@ class NavigationService extends RuntimeService {
       navigator!.pop<T>(result);
     } else {
       if (enableDebugMode) {
-        debugPrint('NavigationService: Cannot go back - no routes to pop');
+        _logger.debug('Cannot go back - no routes to pop');
       }
     }
   }
@@ -108,6 +113,70 @@ class NavigationService extends RuntimeService {
   /// Checks if navigation can go back
   bool canGoBack() {
     return navigator?.canPop() ?? false;
+  }
+
+  /// Pops all routes and returns to the initial (root) route
+  void popToRoot() {
+    if (navigator == null) {
+      throw StateError('Navigator not initialized');
+    }
+
+    navigator!.popUntil((route) => route.isFirst);
+  }
+
+  /// Sets the current tab/page index for indexed navigation (e.g., tabs, bottom nav)
+  void setIndex(int index) {
+    _currentIndex = index;
+    for (final listener in _indexListeners) {
+      listener(index);
+    }
+    if (enableDebugMode) {
+      _logger.debug('Set navigation index to $index');
+    }
+  }
+
+  /// Gets the current navigation index
+  int get currentIndex => _currentIndex;
+
+  /// Adds a listener for index changes
+  void addIndexListener(void Function(int index) listener) {
+    _indexListeners.add(listener);
+  }
+
+  /// Removes an index change listener
+  void removeIndexListener(void Function(int index) listener) {
+    _indexListeners.remove(listener);
+  }
+
+  /// Pushes a new route and clears the entire navigation stack (new root)
+  Future<T?> pushAndClear<T>(
+    String routeName, {
+    Map<String, dynamic>? params,
+  }) async {
+    if (_preventNavigation) {
+      if (enableDebugMode) {
+        _logger.debug('Navigation prevented');
+      }
+      return null;
+    }
+
+    if (navigator == null) {
+      throw StateError('Navigator not initialized');
+    }
+
+    try {
+      return await navigator!.pushNamedAndRemoveUntil<T>(
+        routeName,
+        (route) => false,
+        arguments: params,
+      );
+    } catch (error) {
+      if (enableDebugMode) {
+        _logger.error(
+            'Error navigating to "$routeName": $error');
+      }
+      rethrow;
+    }
   }
 
   /// Pops routes until a specific route is reached
@@ -124,7 +193,7 @@ class NavigationService extends RuntimeService {
     _routes[name] = builder;
 
     if (enableDebugMode) {
-      debugPrint('NavigationService: Registered route "$name"');
+      _logger.debug('Registered route "$name"');
     }
   }
 
@@ -133,7 +202,7 @@ class NavigationService extends RuntimeService {
     _routes.addAll(routes);
 
     if (enableDebugMode) {
-      debugPrint('NavigationService: Registered ${routes.length} routes');
+      _logger.debug('Registered ${routes.length} routes');
     }
   }
 
@@ -145,7 +214,7 @@ class NavigationService extends RuntimeService {
     _routeGuards[routeName] = guard;
 
     if (enableDebugMode) {
-      debugPrint('NavigationService: Added route guard for "$routeName"');
+      _logger.debug('Added route guard for "$routeName"');
     }
   }
 
@@ -154,7 +223,7 @@ class NavigationService extends RuntimeService {
     _routeGuards.remove(routeName);
 
     if (enableDebugMode) {
-      debugPrint('NavigationService: Removed route guard for "$routeName"');
+      _logger.debug('Removed route guard for "$routeName"');
     }
   }
 
@@ -163,7 +232,7 @@ class NavigationService extends RuntimeService {
     _preventNavigation = true;
 
     if (enableDebugMode) {
-      debugPrint('NavigationService: Navigation prevented');
+      _logger.debug('Navigation prevented');
     }
   }
 
@@ -172,7 +241,7 @@ class NavigationService extends RuntimeService {
     _preventNavigation = false;
 
     if (enableDebugMode) {
-      debugPrint('NavigationService: Navigation allowed');
+      _logger.debug('Navigation allowed');
     }
   }
 
@@ -279,22 +348,22 @@ class NavigationService extends RuntimeService {
       onPushed: (route, previousRoute) {
         _routeStack.add(route);
         if (enableDebugMode) {
-          debugPrint(
-              'NavigationService: Pushed route "${route.settings.name}"');
+          _logger.debug(
+              'Pushed route "${route.settings.name}"');
         }
       },
       onPopped: (route, previousRoute) {
         _routeStack.remove(route);
         if (enableDebugMode) {
-          debugPrint(
-              'NavigationService: Popped route "${route.settings.name}"');
+          _logger.debug(
+              'Popped route "${route.settings.name}"');
         }
       },
       onRemoved: (route, previousRoute) {
         _routeStack.remove(route);
         if (enableDebugMode) {
-          debugPrint(
-              'NavigationService: Removed route "${route.settings.name}"');
+          _logger.debug(
+              'Removed route "${route.settings.name}"');
         }
       },
       onReplaced: (newRoute, oldRoute) {
@@ -303,8 +372,8 @@ class NavigationService extends RuntimeService {
           _routeStack[index] = newRoute!;
         }
         if (enableDebugMode) {
-          debugPrint(
-              'NavigationService: Replaced route "${oldRoute.settings.name}" with "${newRoute?.settings.name}"');
+          _logger.debug(
+              'Replaced route "${oldRoute.settings.name}" with "${newRoute?.settings.name}"');
         }
       },
     );
@@ -317,8 +386,8 @@ class NavigationService extends RuntimeService {
     if (routesConfig != null) {
       // Routes would be created from JSON definitions
       if (enableDebugMode) {
-        debugPrint(
-            'NavigationService: Configured ${routesConfig.length} routes');
+        _logger.debug(
+            'Configured ${routesConfig.length} routes');
       }
     }
 
@@ -327,8 +396,8 @@ class NavigationService extends RuntimeService {
     if (guardsConfig != null) {
       // Guards would be created from JSON definitions
       if (enableDebugMode) {
-        debugPrint(
-            'NavigationService: Configured ${guardsConfig.length} route guards');
+        _logger.debug(
+            'Configured ${guardsConfig.length} route guards');
       }
     }
   }
@@ -339,6 +408,8 @@ class NavigationService extends RuntimeService {
     _routeGuards.clear();
     _routeStack.clear();
     _preventNavigation = false;
+    _currentIndex = 0;
+    _indexListeners.clear();
   }
 
   /// Reset singleton instance (for testing only)
@@ -356,8 +427,8 @@ class NavigationService extends RuntimeService {
       return await (guard as Future<bool> Function(Object?))(arguments);
     } catch (error) {
       if (enableDebugMode) {
-        debugPrint(
-            'NavigationService: Error in route guard for "$routeName": $error');
+        _logger.error(
+            'Error in route guard for "$routeName": $error');
       }
       return false;
     }

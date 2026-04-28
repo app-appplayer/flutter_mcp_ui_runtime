@@ -46,7 +46,7 @@ void main() {
                 {
                   'type': 'button',
                   'label': 'Change Name',
-                  'click': {
+                  'onTap': {
                     'type': 'state',
                     'action': 'set',
                     'path': 'user.name',  // v1.0 spec: 'path' parameter
@@ -91,7 +91,7 @@ void main() {
                 {
                   'type': 'button',
                   'label': 'Update',
-                  'click': {
+                  'onTap': {
                     'type': 'state',
                     'action': 'set',
                     'binding': 'message',  // backward compatibility
@@ -138,7 +138,7 @@ void main() {
                 {
                   'type': 'button',
                   'label': 'Increment',
-                  'click': {
+                  'onTap': {
                     'type': 'state',
                     'action': 'increment',
                     'path': 'counter',
@@ -148,7 +148,7 @@ void main() {
                 {
                   'type': 'button',
                   'label': 'Increment by 5',
-                  'click': {
+                  'onTap': {
                     'type': 'state',
                     'action': 'increment',
                     'path': 'counter',
@@ -200,7 +200,7 @@ void main() {
                 {
                   'type': 'button',
                   'label': 'Decrement',
-                  'click': {
+                  'onTap': {
                     'type': 'state',
                     'action': 'decrement',
                     'path': 'counter',
@@ -247,7 +247,7 @@ void main() {
                 {
                   'type': 'button',
                   'label': 'Toggle',
-                  'click': {
+                  'onTap': {
                     'type': 'state',
                     'action': 'toggle',
                     'path': 'isEnabled',
@@ -298,7 +298,7 @@ void main() {
                 {
                   'type': 'button',
                   'label': 'Add C',
-                  'click': {
+                  'onTap': {
                     'type': 'state',
                     'action': 'append',
                     'path': 'items',
@@ -308,7 +308,7 @@ void main() {
                 {
                   'type': 'button',
                   'label': 'Add Multiple',
-                  'click': {
+                  'onTap': {
                     'type': 'state',
                     'action': 'append',
                     'path': 'items',
@@ -360,7 +360,7 @@ void main() {
                 {
                   'type': 'button',
                   'label': 'Remove B',
-                  'click': {
+                  'onTap': {
                     'type': 'state',
                     'action': 'remove',
                     'path': 'items',
@@ -405,7 +405,7 @@ void main() {
                 {
                   'type': 'button',
                   'label': 'Remove at index 1',
-                  'click': {
+                  'onTap': {
                     'type': 'state',
                     'action': 'remove',
                     'path': 'items',
@@ -439,7 +439,7 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'Call Tool',
-            'click': {
+            'onTap': {
               'type': 'tool',
               'tool': 'myTool',
               'params': {  // v1.0 spec: 'params' instead of 'args'
@@ -488,7 +488,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Subscribe',
-                'click': {
+                'onTap': {
                   'type': 'resource',
                   'action': 'subscribe',
                   'uri': 'data://temperature',
@@ -498,7 +498,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Unsubscribe',
-                'click': {
+                'onTap': {
                   'type': 'resource',
                   'action': 'unsubscribe',
                   'uri': 'data://temperature',
@@ -554,7 +554,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Push',
-                'click': {
+                'onTap': {
                   'type': 'navigation',
                   'action': 'push',
                   'route': '/details',
@@ -564,7 +564,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Pop',
-                'click': {
+                'onTap': {
                   'type': 'navigation',
                   'action': 'pop',
                 },
@@ -579,7 +579,7 @@ void main() {
         final content = definition?['content'] as Map<String, dynamic>;
         final children = content['children'] as List<dynamic>;
         final pushButton = children[0] as Map<String, dynamic>;
-        final pushClick = pushButton['click'] as Map<String, dynamic>;
+        final pushClick = pushButton['onTap'] as Map<String, dynamic>;
         
         expect(pushClick['type'], 'navigation');
         expect(pushClick['action'], 'push');
@@ -587,7 +587,7 @@ void main() {
         expect(pushClick['params'], {'id': '123'});
         
         final popButton = children[1] as Map<String, dynamic>;
-        final popClick = popButton['click'] as Map<String, dynamic>;
+        final popClick = popButton['onTap'] as Map<String, dynamic>;
         
         expect(popClick['type'], 'navigation');
         expect(popClick['action'], 'pop');
@@ -619,7 +619,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Run Batch',
-                'click': {
+                'onTap': {
                   'type': 'batch',
                   'parallel': false,  // sequential execution
                   'actions': [
@@ -690,7 +690,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Run Parallel',
-                'click': {
+                'onTap': {
                   'type': 'batch',
                   'parallel': true,  // parallel execution
                   'actions': [
@@ -756,7 +756,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Conditional Action',
-                'click': {
+                'onTap': {
                   'type': 'conditional',
                   'condition': '{{isEnabled}}',
                   'then': {
@@ -812,7 +812,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Conditional Action',
-                'click': {
+                'onTap': {
                   'type': 'conditional',
                   'condition': '{{isEnabled}}',
                   'then': {

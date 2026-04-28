@@ -19,6 +19,10 @@ class RenderContext {
   final Map<String, dynamic> localVariables;
   final List<String> _idPath;
   final BuildContext? buildContext;
+
+  /// The RuntimeEngine instance. Typed as dynamic to avoid circular import
+  /// (RuntimeEngine imports render_context.dart). Use [runtimeEngine] getter
+  /// for type-safe access.
   final dynamic engine;
   final bool Function(String action, String route, Map<String, dynamic> params)?
       navigationHandler;
@@ -41,6 +45,12 @@ class RenderContext {
     List<String>? idPath,
   })  : localVariables = localVariables ?? {},
         _idPath = idPath ?? [];
+
+  /// Type-safe access to the RuntimeEngine instance.
+  /// Returns the engine cast to its actual type. Avoids circular import
+  /// since RuntimeEngine imports render_context.dart.
+  /// Usage: context.runtimeEngine (instead of context.engine)
+  T getEngine<T>() => engine as T;
 
   /// Create a child context with additional local variables
   RenderContext createChildContext({
@@ -258,6 +268,36 @@ class RenderContext {
   /// Set a local variable
   void setLocal(String key, dynamic value) {
     localVariables[key] = value;
+  }
+
+  /// Get the current list item (from list/grid context)
+  dynamic get item => getLocal<dynamic>('item');
+
+  /// Get the current list index
+  int? get index => getLocal<int>('index');
+
+  /// Check if this is the first item in the list
+  bool? get isFirst => getLocal<bool>('isFirst');
+
+  /// Check if this is the last item in the list
+  bool? get isLast => getLocal<bool>('isLast');
+
+  /// Check if this item is at an even index
+  bool? get isEven => getLocal<bool>('isEven');
+
+  /// Check if this item is at an odd index
+  bool? get isOdd => getLocal<bool>('isOdd');
+
+  /// Create a child context with list item data
+  RenderContext withItem(dynamic item, int index, int total) {
+    return createChildContext(variables: {
+      'item': item,
+      'index': index,
+      'isFirst': index == 0,
+      'isLast': index == total - 1,
+      'isEven': index.isEven,
+      'isOdd': index.isOdd,
+    });
   }
 
   /// Check if a condition is true

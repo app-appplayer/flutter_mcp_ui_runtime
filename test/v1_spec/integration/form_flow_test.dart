@@ -90,7 +90,7 @@ void main() {
                     'label': 'First Name',
                     'value': '{{form.firstName}}',
                     'placeholder': 'John',
-                    'change': {
+                    'onChange': {
                       'type': 'state',
                       'action': 'set',
                       'path': 'form.firstName',
@@ -110,7 +110,7 @@ void main() {
                     'label': 'Last Name',
                     'value': '{{form.lastName}}',
                     'placeholder': 'Doe',
-                    'change': {
+                    'onChange': {
                       'type': 'state',
                       'action': 'set',
                       'path': 'form.lastName',
@@ -141,7 +141,7 @@ void main() {
               'value': '{{form.email}}',
               'placeholder': 'john.doe@example.com',
               'keyboardType': 'emailAddress',
-              'change': {
+              'onChange': {
                 'type': 'state',
                 'action': 'set',
                 'path': 'form.email',
@@ -158,7 +158,7 @@ void main() {
               'value': '{{form.password}}',
               'placeholder': 'Min 8 characters',
               'obscureText': true,
-              'change': {
+              'onChange': {
                 'type': 'state',
                 'action': 'set',
                 'path': 'form.password',
@@ -175,7 +175,7 @@ void main() {
               'label': 'Confirm Password',
               'value': '{{form.confirmPassword}}',
               'obscureText': true,
-              'change': {
+              'onChange': {
                 'type': 'state',
                 'action': 'set',
                 'path': 'form.confirmPassword',
@@ -215,7 +215,7 @@ void main() {
                   'max': 100,
                   'divisions': 87,
                   'label': '{{form.age}}',
-                  'change': {
+                  'onChange': {
                     'type': 'state',
                     'action': 'set',
                     'path': 'form.age',
@@ -240,7 +240,7 @@ void main() {
                 {'value': 'AU', 'label': 'Australia'},
                 {'value': 'OTHER', 'label': 'Other'},
               ],
-              'change': {
+              'onChange': {
                 'type': 'state',
                 'action': 'set',
                 'path': 'form.country',
@@ -260,7 +260,7 @@ void main() {
                     'type': 'checkbox',
                     'label': 'I agree to the Terms and Conditions',
                     'value': '{{form.agreeToTerms}}',
-                    'change': {
+                    'onChange': {
                       'type': 'state',
                       'action': 'set',
                       'path': 'form.agreeToTerms',
@@ -271,7 +271,7 @@ void main() {
                     'type': 'checkbox',
                     'label': 'Send me newsletter and updates',
                     'value': '{{form.newsletter}}',
-                    'change': {
+                    'onChange': {
                       'type': 'state',
                       'action': 'set',
                       'path': 'form.newsletter',
@@ -306,7 +306,7 @@ void main() {
                 'type': 'button',
                 'label': '{{ui.isSubmitting ? "Creating Account..." : "Create Account"}}',
                 'enabled': '{{form.agreeToTerms && !ui.isSubmitting}}',
-                'click': {
+                'onTap': {
                   'type': 'conditional',
                   'condition': '{{form.firstName != "" && form.lastName != "" && form.email != "" && form.password != "" && form.confirmPassword != "" && form.password == form.confirmPassword}}',
                   'then': {
@@ -457,8 +457,9 @@ void main() {
       await tester.drag(find.byType(Slider), const Offset(50, 0));
       await tester.pumpAndSettle();
       
-      // Select country
-      await tester.tap(find.byType(DropdownButton<dynamic>));
+      // Select country — runtime renders `select`/`dropdown` as a
+      // PopupMenuButton-backed compact selector.
+      await tester.tap(find.byType(PopupMenuButton<int>));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Canada').last);
       await tester.pumpAndSettle();
@@ -510,7 +511,7 @@ void main() {
               'type': 'textInput',
               'label': 'Email',
               'value': '{{email}}',
-              'change': {
+              'onChange': {
                 'type': 'state',
                 'action': 'set',
                 'path': 'email',
@@ -526,7 +527,7 @@ void main() {
               'label': 'Password',
               'value': '{{password}}',
               'obscureText': true,
-              'change': {
+              'onChange': {
                 'type': 'state',
                 'action': 'set',
                 'path': 'password',
@@ -540,7 +541,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Submit',
-              'click': {
+              'onTap': {
                 'type': 'batch',
                 'actions': [
                   {

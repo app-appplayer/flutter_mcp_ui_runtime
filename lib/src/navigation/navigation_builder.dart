@@ -1,22 +1,58 @@
 import 'package:flutter/material.dart';
+import '../form_factor/form_factor.dart';
 import '../models/ui_definition.dart';
+import '../utils/icon_resolver.dart';
 
-/// Builds navigation UI based on NavigationDefinition
+/// Builds navigation UI based on [NavigationDefinition].
+///
+/// When the DSL declares `navigation: drawer` the builder returns one of
+/// three equivalent Material containers picked from the active
+/// [FormFactor] (responsive-rendering plan §3.2 tier B allow-list):
+///
+/// - `compact` → modal [Drawer] opened from the AppBar
+/// - `medium` → [NavigationRail] beside the body
+/// - `expanded` / `large` → permanent side drawer in a [Row]
+///
+/// `tabs` and `bottom` navigation types are not in the auto-swap
+/// allow-list and render identically regardless of form factor.
 class NavigationBuilder {
   static Widget buildNavigation({
     required NavigationDefinition navDefinition,
     required Widget body,
     required Function(String route) onNavigate,
     String? currentRoute,
+    FormFactor? formFactor,
   }) {
     switch (navDefinition.type) {
       case 'drawer':
-        return _buildDrawerNavigation(
-          navDefinition: navDefinition,
-          body: body,
-          onNavigate: onNavigate,
-          currentRoute: currentRoute,
-        );
+        final ff = formFactor ?? FormFactor.compact;
+        switch (ff) {
+          case FormFactor.compact:
+          case FormFactor.embedded:
+            return _buildDrawerNavigation(
+              navDefinition: navDefinition,
+              body: body,
+              onNavigate: onNavigate,
+              currentRoute: currentRoute,
+            );
+          case FormFactor.medium:
+            return _buildRailNavigation(
+              navDefinition: navDefinition,
+              body: body,
+              onNavigate: onNavigate,
+              currentRoute: currentRoute,
+              extended: false,
+            );
+          case FormFactor.expanded:
+          case FormFactor.large:
+          case FormFactor.extraLarge:
+            return _buildPermanentDrawerNavigation(
+              navDefinition: navDefinition,
+              body: body,
+              onNavigate: onNavigate,
+              currentRoute: currentRoute,
+            );
+        }
       case 'tabs':
         return _buildTabNavigation(
           navDefinition: navDefinition,
@@ -24,6 +60,7 @@ class NavigationBuilder {
           onNavigate: onNavigate,
           currentRoute: currentRoute,
         );
+      case 'bottomNavigation':
       case 'bottom':
         return _buildBottomNavigation(
           navDefinition: navDefinition,
@@ -46,31 +83,89 @@ class NavigationBuilder {
       appBar: AppBar(
         title: const Text('MCP Application'),
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.blue,
-              ),
-              child: Text(
-                'Navigation',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                ),
-              ),
-            ),
-            ...navDefinition.items.map((item) => _buildDrawerItem(
-                  item: item,
-                  onNavigate: onNavigate,
-                  isSelected: currentRoute == item.route,
-                )),
-          ],
+      drawer: Builder(
+        builder: (bctx) => Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              _buildDrawerHeader(bctx),
+              ...navDefinition.items.map((item) => _buildDrawerItem(
+                    item: item,
+                    onNavigate: onNavigate,
+                    isSelected: currentRoute == item.route,
+                  )),
+            ],
+          ),
         ),
       ),
       body: body,
+    );
+  }
+
+  static Widget _buildRailNavigation({
+    required NavigationDefinition navDefinition,
+    required Widget body,
+    required Function(String route) onNavigate,
+    String? currentRoute,
+    required bool extended,
+  }) {
+    final selectedIndex =
+        navDefinition.items.indexWhere((item) => item.route == currentRoute);
+    return Scaffold(
+      appBar: AppBar(title: const Text('MCP Application')),
+      body: Row(
+        children: [
+          NavigationRail(
+            extended: extended,
+            selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
+            onDestinationSelected: (index) =>
+                onNavigate(navDefinition.items[index].route),
+            labelType:
+                extended ? NavigationRailLabelType.none : NavigationRailLabelType.all,
+            destinations: navDefinition.items
+                .map((item) => NavigationRailDestination(
+                      icon: Icon(_getIconData(item.icon ?? 'home')),
+                      label: Text(item.title),
+                    ))
+                .toList(),
+          ),
+          const VerticalDivider(thickness: 1, width: 1),
+          Expanded(child: body),
+        ],
+      ),
+    );
+  }
+
+  static Widget _buildPermanentDrawerNavigation({
+    required NavigationDefinition navDefinition,
+    required Widget body,
+    required Function(String route) onNavigate,
+    String? currentRoute,
+  }) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('MCP Application')),
+      body: Row(
+        children: [
+          Builder(
+            builder: (bctx) => Drawer(
+              elevation: 0,
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _buildDrawerHeader(bctx),
+                  ...navDefinition.items.map((item) => _buildDrawerItem(
+                        item: item,
+                        onNavigate: onNavigate,
+                        isSelected: currentRoute == item.route,
+                      )),
+                ],
+              ),
+            ),
+          ),
+          const VerticalDivider(thickness: 1, width: 1),
+          Expanded(child: body),
+        ],
+      ),
     );
   }
 
@@ -134,6 +229,23 @@ class NavigationBuilder {
     );
   }
 
+  /// Drawer header uses the active theme's primary swatch + onPrimary
+  /// text so it reads correctly in both light and dark modes rather than
+  /// pinning to a Material-2 blue.
+  static Widget _buildDrawerHeader(BuildContext bctx) {
+    final cs = Theme.of(bctx).colorScheme;
+    return DrawerHeader(
+      decoration: BoxDecoration(color: cs.primary),
+      child: Text(
+        'Navigation',
+        style: TextStyle(
+          color: cs.onPrimary,
+          fontSize: 24,
+        ),
+      ),
+    );
+  }
+
   static Widget _buildDrawerItem({
     required NavigationItem item,
     required Function(String route) onNavigate,
@@ -147,71 +259,5 @@ class NavigationBuilder {
     );
   }
 
-  static IconData _getIconData(String iconName) {
-    switch (iconName.toLowerCase()) {
-      case 'home':
-      case 'dashboard':
-        return Icons.home;
-      case 'settings':
-        return Icons.settings;
-      case 'person':
-      case 'profile':
-        return Icons.person;
-      case 'menu':
-        return Icons.menu;
-      case 'search':
-        return Icons.search;
-      case 'favorite':
-      case 'heart':
-        return Icons.favorite;
-      case 'star':
-        return Icons.star;
-      case 'add':
-        return Icons.add;
-      case 'edit':
-        return Icons.edit;
-      case 'delete':
-        return Icons.delete;
-      case 'info':
-        return Icons.info;
-      case 'warning':
-        return Icons.warning;
-      case 'error':
-        return Icons.error;
-      case 'check':
-        return Icons.check;
-      case 'close':
-        return Icons.close;
-      case 'arrow_back':
-        return Icons.arrow_back;
-      case 'arrow_forward':
-        return Icons.arrow_forward;
-      case 'refresh':
-        return Icons.refresh;
-      case 'download':
-        return Icons.download;
-      case 'upload':
-        return Icons.upload;
-      case 'share':
-        return Icons.share;
-      case 'email':
-        return Icons.email;
-      case 'phone':
-        return Icons.phone;
-      case 'location':
-        return Icons.location_on;
-      case 'calendar':
-        return Icons.calendar_today;
-      case 'clock':
-        return Icons.access_time;
-      case 'calculate':
-      case 'calculator':
-        return Icons.calculate;
-      case 'thermostat':
-      case 'temperature':
-        return Icons.thermostat;
-      default:
-        return Icons.circle;
-    }
-  }
+  static IconData _getIconData(String iconName) => resolveIconData(iconName);
 }

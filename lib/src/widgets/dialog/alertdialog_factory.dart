@@ -13,11 +13,11 @@ class AlertDialogWidgetFactory extends WidgetFactory {
     final titleData = properties['title'];
     final contentData = properties['content'];
     final backgroundColor =
-        parseColor(context.resolve(properties['backgroundColor']));
+        parseColor(context.resolve(properties['backgroundColor']), context);
     final elevation = properties['elevation']?.toDouble();
-    final shadowColor = parseColor(context.resolve(properties['shadowColor']));
+    final shadowColor = parseColor(context.resolve(properties['shadowColor']), context);
     final surfaceTintColor =
-        parseColor(context.resolve(properties['surfaceTintColor']));
+        parseColor(context.resolve(properties['surfaceTintColor']), context);
     final shape = _parseShapeBorder(properties['shape']);
     final alignment = parseAlignment(properties['alignment']);
     final insetPadding = parseEdgeInsets(properties['insetPadding']) ??
@@ -37,14 +37,18 @@ class AlertDialogWidgetFactory extends WidgetFactory {
 
           return TextButton(
             onPressed: () {
-              if (action['onTap'] != null) {
-                context.actionHandler.execute(action['onTap'], context);
+              final clickAction = action['onTap'] ?? action['onTap'];
+              if (clickAction != null) {
+                context.actionHandler.execute(clickAction, context);
               }
             },
             child: Text(
               label,
               style: TextStyle(
-                color: isDestructiveAction ? Colors.red : null,
+                color: isDestructiveAction
+                    ? (context.themeManager.getColorValue('error') ??
+                        Colors.red)
+                    : null,
                 fontWeight: isDefaultAction ? FontWeight.bold : null,
               ),
             ),

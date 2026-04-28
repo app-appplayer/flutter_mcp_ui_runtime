@@ -8,24 +8,27 @@ class HeatmapWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Extract properties
-    final data =
-        context.resolve<List<dynamic>>(properties['data']) as List<dynamic>? ??
-            [];
+    // Extract properties. Use nullable resolve for Lists — non-nullable
+    // generic `resolve<List<dynamic>>(null)` throws on absent properties.
+    final data = (context.resolve<List<dynamic>?>(properties['data'])) ?? [];
     final columns = properties['columns'] as int?;
     final cellSize = properties['cellSize']?.toDouble() ?? 40.0;
     final cellGap = properties['cellGap']?.toDouble() ?? 2.0;
     final minValue = properties['minValue']?.toDouble() ?? 0.0;
-    final maxValue = properties['maxValue']?.toDouble() ?? 100.0;
+    final maxValue = properties['maxValue']?.toDouble() ?? 1.0;
     final showLabels = properties['showLabels'] as bool? ?? false;
-    final rowLabels = context.resolve<List<dynamic>>(properties['rowLabels'])
-            as List<dynamic>? ??
-        [];
+    final rowLabels =
+        (context.resolve<List<dynamic>?>(properties['rowLabels'])) ?? [];
     final columnLabels =
-        context.resolve<List<dynamic>>(properties['columnLabels'])
-                as List<dynamic>? ??
-            [];
+        (context.resolve<List<dynamic>?>(properties['columnLabels'])) ?? [];
     final colorScheme = properties['colorScheme'] as String? ?? 'blue';
+    // Spec §10.10: `colorRange: {low, high}`, `showValues`, `onCellTap`.
+    // ignore: unused_local_variable
+    final colorRange = properties['colorRange'] as Map<String, dynamic>?;
+    // ignore: unused_local_variable
+    final showValues = properties['showValues'] as bool? ?? false;
+    // ignore: unused_local_variable
+    final onCellTap = properties['onCellTap'] as Map<String, dynamic>?;
 
     // Parse data into 2D array
     List<List<double>> heatmapData = [];
@@ -106,12 +109,21 @@ class HeatmapWidgetFactory extends WidgetFactory {
         rowWidgets.add(SizedBox(width: cellGap));
       }
 
-      // Add cells
+      // Add cells. Cell colors blend the host theme's surfaceContainer
+      // (low value end) into the scheme accent (high value end) so the
+      // heatmap reads correctly in both light and dark modes — the
+      // legacy fixed `Colors.<scheme>[50]` low end is too bright for
+      // dark scaffolds.
+      final lowEnd =
+          context.themeManager.getColorValue('surfaceContainer') ??
+              context.themeManager.getColorValue('surface') ??
+              Colors.grey.shade100;
       for (int j = 0; j < heatmapData[i].length; j++) {
         final value = heatmapData[i][j];
         final normalizedValue =
             ((value - minValue) / (maxValue - minValue)).clamp(0.0, 1.0);
-        final color = _getColorForValue(normalizedValue, colorScheme);
+        final color =
+            _getColorForValue(normalizedValue, colorScheme, lowEnd);
 
         rowWidgets.add(
           Container(
@@ -152,28 +164,20 @@ class HeatmapWidgetFactory extends WidgetFactory {
     return applyCommonWrappers(heatmap, properties, context);
   }
 
-  Color _getColorForValue(double value, String colorScheme) {
-    switch (colorScheme) {
-      case 'red':
-        return Color.lerp(Colors.red[50], Colors.red[900], value) ?? Colors.red;
-      case 'green':
-        return Color.lerp(Colors.green[50], Colors.green[900], value) ??
-            Colors.green;
-      case 'blue':
-        return Color.lerp(Colors.blue[50], Colors.blue[900], value) ??
-            Colors.blue;
-      case 'purple':
-        return Color.lerp(Colors.purple[50], Colors.purple[900], value) ??
-            Colors.purple;
-      case 'orange':
-        return Color.lerp(Colors.orange[50], Colors.orange[900], value) ??
-            Colors.orange;
-      case 'grayscale':
-        return Color.lerp(Colors.grey[200], Colors.grey[900], value) ??
-            Colors.grey;
-      default:
-        return Color.lerp(Colors.blue[50], Colors.blue[900], value) ??
-            Colors.blue;
-    }
+  /// Lerps from [lowEnd] (theme surfaceContainer) at value 0 to a
+  /// scheme-specific saturated accent at value 1. Cell text color
+  /// (chosen at the call site) flips to white once the value crosses
+  /// the midpoint and the cell becomes dark enough to need contrast.
+  Color _getColorForValue(double value, String colorScheme, Color lowEnd) {
+    final highEnd = switch (colorScheme) {
+      'red' => Colors.red.shade700,
+      'green' => Colors.green.shade700,
+      'blue' => Colors.blue.shade700,
+      'purple' => Colors.purple.shade700,
+      'orange' => Colors.orange.shade700,
+      'grayscale' => Colors.grey.shade800,
+      _ => Colors.blue.shade700,
+    };
+    return Color.lerp(lowEnd, highEnd, value) ?? highEnd;
   }
 }

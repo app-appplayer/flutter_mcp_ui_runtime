@@ -85,7 +85,7 @@ void main() {
           'type': 'button',
           'label': 'Click Me',
           'style': 'elevated',
-          'click': {
+          'onTap': {
             'type': 'tool',
             'tool': 'test_action',
             'params': {'test': 'value'},

@@ -41,7 +41,7 @@ void main() {
                   {'type': 'required', 'message': 'Name is required'},
                 ],
                 'error': '{{errors.name}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'binding': 'form.name',
@@ -51,7 +51,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Submit',
-                'click': {
+                'onTap': {
                   'type': 'tool',
                   'tool': 'validateForm',
                 },
@@ -135,7 +135,7 @@ void main() {
                   {'type': 'required'},
                 ],
                 'error': '{{errors.firstName}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'binding': 'form.firstName',
@@ -150,7 +150,7 @@ void main() {
                   {'type': 'required'},
                 ],
                 'error': '{{errors.lastName}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'binding': 'form.lastName',
@@ -166,7 +166,7 @@ void main() {
                   {'type': 'email'},
                 ],
                 'error': '{{errors.email}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'binding': 'form.email',
@@ -176,7 +176,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Submit',
-                'click': {
+                'onTap': {
                   'type': 'tool',
                   'tool': 'validateAllFields',
                 },
@@ -254,13 +254,13 @@ void main() {
                   {'type': 'email', 'message': 'Please enter a valid email'},
                 ],
                 'error': '{{emailError}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'binding': 'email',
                   'value': '{{event.value}}',
                 },
-                'blur': {
+                'onBlur': {
                   'type': 'tool',
                   'tool': 'validateEmail',
                 },
@@ -361,7 +361,7 @@ void main() {
                   {'type': 'minLength', 'value': 8, 'message': 'Password must be at least 8 characters'},
                 ],
                 'error': '{{passwordError}}',
-                'change': {
+                'onChange': {
                   'type': 'tool',
                   'tool': 'validatePassword',
                   'params': {
@@ -443,7 +443,7 @@ void main() {
             ],
             'maxLength': 15, // Also enforce in UI
             'error': '{{usernameError}}',
-            'change': {
+            'onChange': {
               'type': 'tool',
               'tool': 'validateUsername',
               'params': {
@@ -513,13 +513,13 @@ void main() {
                   {'type': 'pattern', 'value': r'^\d{3}-\d{3}-\d{4}$', 'message': 'Please use format: 123-456-7890'},
                 ],
                 'error': '{{phoneError}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'binding': 'phone',
                   'value': '{{event.value}}',
                 },
-                'blur': {
+                'onBlur': {
                   'type': 'tool',
                   'tool': 'validatePhone',
                 },
@@ -591,7 +591,7 @@ void main() {
                 'label': 'Password',
                 'value': '{{password}}',
                 'obscureText': true,
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'binding': 'password',
@@ -607,7 +607,7 @@ void main() {
                   {'type': 'custom', 'value': 'passwordMatch', 'message': 'Passwords do not match'},
                 ],
                 'error': '{{confirmError}}',
-                'change': {
+                'onChange': {
                   'type': 'tool',
                   'tool': 'checkPasswordMatch',
                   'params': {
@@ -686,7 +686,7 @@ void main() {
                 'type': 'textInput',
                 'label': 'Username',
                 'value': '{{username}}',
-                'change': {
+                'onChange': {
                   'type': 'tool',
                   'tool': 'checkUsername',
                   'params': {
@@ -801,7 +801,7 @@ void main() {
                       {'type': 'required'},
                     ],
                     'error': '{{errors.name}}',
-                    'change': {
+                    'onChange': {
                       'type': 'state',
                       'action': 'set',
                       'binding': 'form.name',
@@ -817,7 +817,7 @@ void main() {
                       {'type': 'email'},
                     ],
                     'error': '{{errors.email}}',
-                    'change': {
+                    'onChange': {
                       'type': 'state',
                       'action': 'set',
                       'binding': 'form.email',
@@ -835,7 +835,7 @@ void main() {
                       {'type': 'max', 'value': 100},
                     ],
                     'error': '{{errors.age}}',
-                    'change': {
+                    'onChange': {
                       'type': 'state',
                       'action': 'set',
                       'binding': 'form.age',
@@ -845,7 +845,7 @@ void main() {
                   {
                     'type': 'button',
                     'label': 'Submit',
-                    'click': {
+                    'onTap': {
                       'type': 'tool',
                       'tool': 'submitForm',
                     },
@@ -987,7 +987,7 @@ void main() {
                   {'type': 'max', 'value': 100, 'message': 'Maximum quantity is 100'},
                 ],
                 'error': '{{quantityError}}',
-                'change': {
+                'onChange': {
                   'type': 'tool',
                   'tool': 'validateQuantity',
                   'params': {
@@ -1076,7 +1076,7 @@ void main() {
                   {'type': 'required', 'message': 'Start date is required'},
                 ],
                 'error': '{{dateError}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'binding': 'startDate',
@@ -1088,7 +1088,7 @@ void main() {
                 'label': 'End Date',
                 'value': '{{endDate}}',
                 'minDate': '{{startDate}}',
-                'change': {
+                'onChange': {
                   'type': 'tool',
                   'tool': 'validateEndDate',
                   'params': {
@@ -1163,7 +1163,7 @@ void main() {
                 'type': 'colorPicker',
                 'label': 'Primary Color',
                 'value': '{{primaryColor}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'binding': 'primaryColor',
@@ -1178,7 +1178,7 @@ void main() {
                   {'type': 'required', 'message': 'Secondary color is required'},
                 ],
                 'error': '{{colorError}}',
-                'change': {
+                'onChange': {
                   'type': 'tool',
                   'tool': 'validateColor',
                   'params': {

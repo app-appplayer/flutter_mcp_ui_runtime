@@ -31,12 +31,9 @@ void main() {
         'type': 'page',
         'title': 'Test Page',
         'content': {
-          'type': 'scaffold',
-          'body': {
-            'type': 'text',
-            'content': 'Page Content'
-          }
-        }
+          'type': 'text',
+          'content': 'Page Content',
+        },
       };
 
       final runtime = MCPUIRuntime();
@@ -83,7 +80,8 @@ void main() {
       await runtime.destroy();
       
       expect(runtime.isInitialized, isFalse);
-      expect(runtime.engine, isNull);
+      // Engine is eagerly initialized in constructor and never nulled
+      expect(runtime.engine, isNotNull);
     });
 
     test('runtime builds UI correctly', () async {
@@ -194,7 +192,9 @@ void main() {
     });
 
     testWidgets('handles initialization errors', (WidgetTester tester) async {
-      // Invalid definition that might cause an error
+      // Negative test: deliberately invalid DSL. Use the runtime directly so
+      // we can opt out of schema validation and exercise the fallback
+      // unknown-widget container.
       final definition = {
         'type': 'page',
         'metadata': {
@@ -205,10 +205,11 @@ void main() {
         }
       };
 
+      final runtime = MCPUIRuntime();
+      await runtime.initialize(definition, validateSchema: false);
+
       await tester.pumpWidget(
-        MaterialApp(
-          home: MCPUIRuntimeHelper.render(definition),
-        ),
+        MaterialApp(home: Scaffold(body: runtime.buildUI())),
       );
 
       await tester.pumpAndSettle();
@@ -263,7 +264,7 @@ void main() {
           'child': {
             'type': 'button',
             'label': 'Call Tool',
-            'click': {
+            'onTap': {
               'type': 'tool',
               'tool': 'test_tool',
               'params': {'param': 'value'}

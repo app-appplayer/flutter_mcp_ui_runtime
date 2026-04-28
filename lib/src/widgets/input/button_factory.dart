@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart' as core;
 
 import '../../renderer/render_context.dart';
+import '../../utils/icon_resolver.dart';
 import '../widget_factory.dart';
 
 /// Factory for Button widgets
@@ -10,16 +11,20 @@ class ButtonWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Extract button properties
-    final label =
-        context.resolve<String>(properties[core.PropertyKeys.label] ?? '');
+    // Extract button properties.
+    // Canonical key is `label` per spec 17_Naming §17.3.2; `text` is a legacy
+    // alias on the button widget.
+    final label = context.resolve<String>(
+        properties[core.PropertyKeys.label] ??
+            properties[core.PropertyKeys.text] ??
+            '');
     final iconValue = properties[core.PropertyKeys.icon];
     final icon = iconValue is String ? iconValue : null;
     final iconPosValue = properties['iconPosition'];
     final iconPosition = iconPosValue is String ? iconPosValue : 'start';
 
-    // MCP UI DSL v1.0 uses 'variant' property for button styles
-    final variantValue = properties['variant'];
+    // Canonical `variant` (spec v1.0); §17.3.2 legacy alias `style`.
+    final variantValue = properties['variant'] ?? properties['style'];
     final variant = variantValue is String ? variantValue : 'elevated';
 
     final sizeValue = properties['size'];
@@ -27,7 +32,16 @@ class ButtonWidgetFactory extends WidgetFactory {
     final fullWidthValue = properties['fullWidth'];
     final fullWidth = fullWidthValue is bool ? fullWidthValue : false;
     final loading = context.resolve<bool>(properties['loading'] ?? false);
-    final enabled = context.resolve(properties['enabled'] ?? true) as bool;
+    // Design doc uses 'disabled'; support legacy 'enabled' with inversion
+    final bool disabled;
+    if (properties.containsKey('disabled')) {
+      disabled = context.resolve<bool>(properties['disabled']);
+    } else if (properties['enabled'] != null) {
+      final enabled = context.resolve<bool>(properties['enabled']);
+      disabled = !enabled;
+    } else {
+      disabled = false;
+    }
 
     // Extract style properties from the properties directly
     final backgroundColor = properties['backgroundColor'];
@@ -36,17 +50,21 @@ class ButtonWidgetFactory extends WidgetFactory {
     final borderColor = properties['borderColor'];
     final borderWidth = properties['borderWidth'];
 
-    // MCP UI DSL v1.0 event handlers
-    final onClick =
-        properties[core.PropertyKeys.click] as Map<String, dynamic>?;
-    final onDoubleClick =
-        properties[core.PropertyKeys.doubleClick] as Map<String, dynamic>?;
+    // MCP UI DSL callback properties (on + PascalCase, event name fallback)
+    final onTap =
+        (properties[core.PropertyKeys.onTap] ?? properties[core.PropertyKeys.click]) as Map<String, dynamic>?;
+    final onDoubleTap =
+        (properties[core.PropertyKeys.onDoubleTap] ?? properties[core.PropertyKeys.doubleClick] ??
+            properties[core.PropertyKeys.doubleClickLegacy])
+            as Map<String, dynamic>?;
     final onLongPress =
-        properties[core.PropertyKeys.longPress] as Map<String, dynamic>?;
-    final submit = properties['submit'] as Map<String, dynamic>?;
+        (properties[core.PropertyKeys.onLongPress] ?? properties[core.PropertyKeys.longPress] ??
+            properties[core.PropertyKeys.longPressLegacy])
+            as Map<String, dynamic>?;
+    final submit = (properties['onSubmit'] ?? properties['submit']) as Map<String, dynamic>?;
 
     // Use click or submit action
-    final primaryAction = onClick ?? submit;
+    final primaryAction = onTap ?? submit;
 
     // Build button content
     Widget buttonChild;
@@ -59,7 +77,8 @@ class ButtonWidgetFactory extends WidgetFactory {
     }
 
     // Get aria-label for semantic override
-    final ariaLabel = context.resolve<String?>(properties['aria-label']);
+    final ariaLabel = context.resolve<String?>(
+        properties['ariaLabel'] ?? properties['aria-label']);
 
     // Build button
     Widget button;
@@ -68,14 +87,14 @@ class ButtonWidgetFactory extends WidgetFactory {
     if (variant == 'icon' && icon != null) {
       button = IconButton(
         icon: Icon(_parseIcon(icon)),
-        onPressed: !loading && enabled
+        onPressed: !loading && !disabled
             ? (primaryAction != null
                 ? () async {
                     await context.handleAction(primaryAction);
                   }
-                : () {}) // Empty handler when no action but enabled
+                : () {}) // Empty handler when no action but not disabled
             : null,
-        color: foregroundColor != null ? parseColor(foregroundColor) : null,
+        color: foregroundColor != null ? parseColor(foregroundColor, context) : null,
         iconSize: _getIconSize(size),
         tooltip: ariaLabel ?? label,
       );
@@ -83,7 +102,7 @@ class ButtonWidgetFactory extends WidgetFactory {
       button = _buildButton(
         style: variant,
         child: buttonChild,
-        onPressed: !loading && enabled
+        onPressed: !loading && !disabled
             ? (primaryAction != null
                 ? () async {
                     // Handle special submit action
@@ -110,9 +129,10 @@ class ButtonWidgetFactory extends WidgetFactory {
                       await context.handleAction(primaryAction);
                     }
                   }
-                : () {}) // Empty handler when no action but enabled
+                : () {}) // Empty handler when no action but not disabled
             : null,
         size: size,
+        context: context,
         semanticLabel: ariaLabel,
         backgroundColor: backgroundColor,
         foregroundColor: foregroundColor,
@@ -123,12 +143,12 @@ class ButtonWidgetFactory extends WidgetFactory {
     }
 
     // Wrap with gesture detector for additional events
-    if (onDoubleClick != null || onLongPress != null) {
+    if (onDoubleTap != null || onLongPress != null) {
       button = GestureDetector(
-        onDoubleTap: onDoubleClick != null && !loading && enabled
-            ? () async => await context.handleAction(onDoubleClick)
+        onDoubleTap: onDoubleTap != null && !loading && !disabled
+            ? () async => await context.handleAction(onDoubleTap)
             : null,
-        onLongPress: onLongPress != null && !loading && enabled
+        onLongPress: onLongPress != null && !loading && !disabled
             ? () async => await context.handleAction(onLongPress)
             : null,
         child: button,
@@ -145,7 +165,9 @@ class ButtonWidgetFactory extends WidgetFactory {
 
     // If aria-label was already applied, remove it from properties to avoid double application
     final propsForWrapper = ariaLabel != null
-        ? (Map<String, dynamic>.from(properties)..remove('aria-label'))
+        ? (Map<String, dynamic>.from(properties)
+          ..remove('ariaLabel')
+          ..remove('aria-label'))
         : properties;
 
     return applyCommonWrappers(button, propsForWrapper, context);
@@ -156,6 +178,7 @@ class ButtonWidgetFactory extends WidgetFactory {
     required Widget child,
     required VoidCallback? onPressed,
     required String size,
+    required RenderContext context,
     String? semanticLabel,
     dynamic backgroundColor,
     dynamic foregroundColor,
@@ -172,14 +195,14 @@ class ButtonWidgetFactory extends WidgetFactory {
           style: ElevatedButton.styleFrom(
             padding: padding,
             backgroundColor:
-                backgroundColor != null ? parseColor(backgroundColor) : null,
+                backgroundColor != null ? parseColor(backgroundColor, context) : null,
             foregroundColor:
-                foregroundColor != null ? parseColor(foregroundColor) : null,
+                foregroundColor != null ? parseColor(foregroundColor, context) : null,
             elevation: elevation?.toDouble(),
             side: borderColor != null || borderWidth != null
                 ? BorderSide(
                     color: borderColor != null
-                        ? parseColor(borderColor)!
+                        ? parseColor(borderColor, context)!
                         : Colors.transparent,
                     width: borderWidth?.toDouble() ?? 1.0,
                   )
@@ -201,14 +224,14 @@ class ButtonWidgetFactory extends WidgetFactory {
           style: FilledButton.styleFrom(
             padding: padding,
             backgroundColor:
-                backgroundColor != null ? parseColor(backgroundColor) : null,
+                backgroundColor != null ? parseColor(backgroundColor, context) : null,
             foregroundColor:
-                foregroundColor != null ? parseColor(foregroundColor) : null,
+                foregroundColor != null ? parseColor(foregroundColor, context) : null,
             elevation: elevation?.toDouble(),
             side: borderColor != null || borderWidth != null
                 ? BorderSide(
                     color: borderColor != null
-                        ? parseColor(borderColor)!
+                        ? parseColor(borderColor, context)!
                         : Colors.transparent,
                     width: borderWidth?.toDouble() ?? 1.0,
                   )
@@ -230,15 +253,16 @@ class ButtonWidgetFactory extends WidgetFactory {
           style: OutlinedButton.styleFrom(
             padding: padding,
             backgroundColor:
-                backgroundColor != null ? parseColor(backgroundColor) : null,
+                backgroundColor != null ? parseColor(backgroundColor, context) : null,
             foregroundColor:
-                foregroundColor != null ? parseColor(foregroundColor) : null,
+                foregroundColor != null ? parseColor(foregroundColor, context) : null,
             elevation: elevation?.toDouble(),
             side: borderColor != null || borderWidth != null
                 ? BorderSide(
                     color: borderColor != null
-                        ? parseColor(borderColor)!
-                        : Colors.grey,
+                        ? parseColor(borderColor, context)!
+                        : (context.themeManager.getColorValue('outlineVariant') ??
+                            Colors.grey),
                     width: borderWidth?.toDouble() ?? 1.0,
                   )
                 : null,
@@ -259,14 +283,14 @@ class ButtonWidgetFactory extends WidgetFactory {
           style: TextButton.styleFrom(
             padding: padding,
             backgroundColor:
-                backgroundColor != null ? parseColor(backgroundColor) : null,
+                backgroundColor != null ? parseColor(backgroundColor, context) : null,
             foregroundColor:
-                foregroundColor != null ? parseColor(foregroundColor) : null,
+                foregroundColor != null ? parseColor(foregroundColor, context) : null,
             elevation: elevation?.toDouble(),
             side: borderColor != null || borderWidth != null
                 ? BorderSide(
                     color: borderColor != null
-                        ? parseColor(borderColor)!
+                        ? parseColor(borderColor, context)!
                         : Colors.transparent,
                     width: borderWidth?.toDouble() ?? 1.0,
                   )
@@ -288,14 +312,14 @@ class ButtonWidgetFactory extends WidgetFactory {
           style: ElevatedButton.styleFrom(
             padding: padding,
             backgroundColor:
-                backgroundColor != null ? parseColor(backgroundColor) : null,
+                backgroundColor != null ? parseColor(backgroundColor, context) : null,
             foregroundColor:
-                foregroundColor != null ? parseColor(foregroundColor) : null,
+                foregroundColor != null ? parseColor(foregroundColor, context) : null,
             elevation: elevation?.toDouble(),
             side: borderColor != null || borderWidth != null
                 ? BorderSide(
                     color: borderColor != null
-                        ? parseColor(borderColor)!
+                        ? parseColor(borderColor, context)!
                         : Colors.transparent,
                     width: borderWidth?.toDouble() ?? 1.0,
                   )
@@ -315,12 +339,19 @@ class ButtonWidgetFactory extends WidgetFactory {
 
   Widget _buildLoadingContent(String size) {
     final indicatorSize = _getLoadingSize(size);
+    // Spinner colour reads `onPrimary` from the active theme — the
+    // loading indicator sits on a filled primary surface, so hardcoding
+    // white would invert wrongly against alternate brand schemes.
     return SizedBox(
       width: indicatorSize,
       height: indicatorSize,
-      child: const CircularProgressIndicator(
-        strokeWidth: 2,
-        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+      child: Builder(
+        builder: (bctx) => CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation<Color>(
+            Theme.of(bctx).colorScheme.onPrimary,
+          ),
+        ),
       ),
     );
   }
@@ -391,38 +422,5 @@ class ButtonWidgetFactory extends WidgetFactory {
     }
   }
 
-  IconData _parseIcon(String iconName) {
-    // This is a simplified icon mapping
-    // In a real implementation, you would have a comprehensive icon mapping
-    switch (iconName) {
-      case 'add':
-        return Icons.add;
-      case 'edit':
-        return Icons.edit;
-      case 'delete':
-        return Icons.delete;
-      case 'save':
-        return Icons.save;
-      case 'close':
-        return Icons.close;
-      case 'check':
-        return Icons.check;
-      case 'arrow_back':
-        return Icons.arrow_back;
-      case 'arrow_forward':
-        return Icons.arrow_forward;
-      case 'refresh':
-        return Icons.refresh;
-      case 'search':
-        return Icons.search;
-      case 'settings':
-        return Icons.settings;
-      case 'home':
-        return Icons.home;
-      case 'star':
-        return Icons.star;
-      default:
-        return Icons.circle;
-    }
-  }
+  IconData _parseIcon(String iconName) => resolveIconData(iconName);
 }

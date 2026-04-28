@@ -9,10 +9,17 @@ class StepperWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Extract properties
-    final currentStep = properties['currentStep'] as int? ?? 0;
+    // Spec §2.6.0/§2.6.20: `binding` shorthand maps to the active step index.
+    // Legacy `currentStep` property remains a one-way read-only source.
+    final binding = properties['binding'] as String?;
+    final int currentStep = binding != null
+        ? (context.getState(binding) as int? ??
+            (properties['currentStep'] as int? ?? 0))
+        : (properties['currentStep'] as int? ?? 0);
+    // Spec §2.6.20 canonical `stepperType`; `type` kept as legacy alias.
     final stepperType =
-        _parseStepperType(properties['type']) ?? StepperType.vertical;
+        _parseStepperType(properties['stepperType'] ?? properties['type']) ??
+            StepperType.vertical;
     final physics = _parseScrollPhysics(properties['physics']);
     final margin = parseEdgeInsets(properties['margin']);
 
@@ -28,18 +35,24 @@ class StepperWidgetFactory extends WidgetFactory {
     final onStepCancel = properties['onStepCancel'] as Map<String, dynamic>?;
 
     Widget stepper = Stepper(
-      currentStep: currentStep.clamp(0, steps.length - 1),
+      currentStep: currentStep.clamp(0, steps.isEmpty ? 0 : steps.length - 1),
       type: stepperType,
       physics: physics,
       margin: margin,
       steps: steps,
-      onStepTapped: onStepTapped != null
+      onStepTapped: (binding != null || onStepTapped != null)
           ? (step) {
-              final eventData = Map<String, dynamic>.from(onStepTapped);
-              if (eventData['step'] == '{{event.step}}') {
-                eventData['step'] = step;
+              if (binding != null) {
+                context.setValue(binding, step);
               }
-              context.actionHandler.execute(eventData, context);
+              if (onStepTapped != null) {
+                final eventContext = context.createChildContext(
+                  variables: {
+                    'event': {'index': step, 'step': step, 'type': 'stepTapped'},
+                  },
+                );
+                context.actionHandler.execute(onStepTapped, eventContext);
+              }
             }
           : null,
       onStepContinue: onStepContinue != null

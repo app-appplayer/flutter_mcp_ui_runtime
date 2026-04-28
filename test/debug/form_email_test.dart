@@ -43,7 +43,7 @@ void main() {
               'type': 'textInput',
               'label': 'Email',
               'value': '{{form.email}}',
-              'change': {
+              'onChange': {
                 'type': 'state',
                 'action': 'set',
                 'path': 'form.email',

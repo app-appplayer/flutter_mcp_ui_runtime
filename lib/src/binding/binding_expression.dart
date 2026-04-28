@@ -9,8 +9,19 @@ class BindingExpression {
   final BindingExpression? falseValue;
   final String? transform;
   final dynamic value;
+
+  /// Whether this expression has an explicit value (distinguishes null literal from no value)
+  final bool hasValue;
   final String? methodName;
   final List<BindingExpression>? arguments;
+
+  /// Lambda parameter name (e.g., 'item' in `item => item.price > 100`)
+  final String? parameterName;
+
+  /// The original expression string before parsing, useful for debugging
+  /// and logging purposes. Only set on the root expression returned by
+  /// [parse]; sub-expressions will have this as `null`.
+  final String? source;
 
   BindingExpression({
     required this.type,
@@ -22,12 +33,40 @@ class BindingExpression {
     this.falseValue,
     this.transform,
     this.value,
+    this.hasValue = false,
     this.methodName,
     this.arguments,
+    this.parameterName,
+    this.source,
   });
 
-  /// Parse a binding expression string
+  /// Parse a binding expression string.
+  ///
+  /// The returned root expression has [source] set to the original
+  /// input string for debugging and logging purposes.
   static BindingExpression parse(String expression) {
+    final result = _parse(expression.trim());
+    // Attach the original source to the root expression only
+    return BindingExpression(
+      type: result.type,
+      path: result.path,
+      operator: result.operator,
+      left: result.left,
+      right: result.right,
+      trueValue: result.trueValue,
+      falseValue: result.falseValue,
+      transform: result.transform,
+      value: result.value,
+      hasValue: result.hasValue,
+      methodName: result.methodName,
+      arguments: result.arguments,
+      parameterName: result.parameterName,
+      source: expression,
+    );
+  }
+
+  /// Internal recursive parser (does not set [source]).
+  static BindingExpression _parse(String expression) {
     // Remove whitespace
     expression = expression.trim();
 
@@ -120,10 +159,10 @@ class BindingExpression {
         return BindingExpression(
           type: ExpressionType.conditional,
           path: '',
-          left: parse(condition),
-          trueValue: parse(trueVal), // Parse both values recursively
+          left: _parse(condition),
+          trueValue: _parse(trueVal), // Parse both values recursively
           falseValue:
-              parse(falseVal), // Parse recursively to handle nested expressions
+              _parse(falseVal), // Parse recursively to handle nested expressions
           transform: transform,
         );
       }
@@ -140,9 +179,10 @@ class BindingExpression {
       '??': 0, // Null coalescing has lowest precedence
       '||': 1,
       '&&': 2,
-      '==': 3, '!=': 3, '>': 3, '<': 3, '>=': 3, '<=': 3,
-      '+': 4, '-': 4,
-      '*': 5, '/': 5, '%': 5,
+      '==': 3, '!=': 3,
+      '>': 4, '<': 4, '>=': 4, '<=': 4,
+      '+': 5, '-': 5,
+      '*': 6, '/': 6, '%': 6,
     };
 
     // Scan for operators outside parentheses and strings
@@ -172,17 +212,20 @@ class BindingExpression {
       } else if (char == ')') {
         parenDepth--;
       } else if (parenDepth == 0) {
-        // Check for two-character operators first
+        // Check for two-character operators first to ensure multi-char
+        // operators (<=, >=, ==, !=, &&, ||, ??) are matched before
+        // their single-char prefixes (<, >, !, &, |, ?)
         if (i < baseExpr.length - 1) {
           final twoChar = baseExpr.substring(i, i + 2);
           if (precedenceMap.containsKey(twoChar)) {
             final precedence = precedenceMap[twoChar]!;
-            if (precedence < lowestPrecedence) {
+            if (precedence <= lowestPrecedence) {
+              // Use <= for left-to-right associativity at same precedence
               lowestPrecedence = precedence;
               lowestPrecedenceOp = twoChar;
               lowestPrecedenceOpIndex = i;
             }
-            i++; // Skip next character
+            i++; // Skip next character since we consumed two chars
             continue;
           }
         }
@@ -192,7 +235,7 @@ class BindingExpression {
         if (precedenceMap.containsKey(oneChar)) {
           final precedence = precedenceMap[oneChar]!;
           if (precedence <= lowestPrecedence) {
-            // Use <= for right-to-left associativity
+            // Use <= for left-to-right associativity at same precedence
             lowestPrecedence = precedence;
             lowestPrecedenceOp = oneChar;
             lowestPrecedenceOpIndex = i;
@@ -224,8 +267,8 @@ class BindingExpression {
         type: exprType,
         path: '',
         operator: lowestPrecedenceOp,
-        left: parse(left),
-        right: parse(right),
+        left: _parse(left),
+        right: _parse(right),
         transform: transform,
       );
     }
@@ -237,7 +280,7 @@ class BindingExpression {
         type: ExpressionType.logical,
         path: '',
         operator: '!',
-        left: parse(operand),
+        left: _parse(operand),
         transform: transform,
       );
     }
@@ -277,6 +320,40 @@ class BindingExpression {
       }
     }
 
+    // Check for unary minus/plus operators
+    if (baseExpr.startsWith('-') || baseExpr.startsWith('+')) {
+      final rest = baseExpr.substring(1).trim();
+      // Only treat as unary if the rest is not empty and starts with a valid token
+      if (rest.isNotEmpty && !rest.startsWith('-') && !rest.startsWith('+')) {
+        final numLiteral = num.tryParse(baseExpr);
+        if (numLiteral != null) {
+          // It is a negative/positive number literal
+          return BindingExpression(
+            type: ExpressionType.simple,
+            path: '',
+            value: numLiteral,
+            hasValue: true,
+            transform: transform,
+          );
+        }
+        // Unary operator on an expression: treat as arithmetic with 0
+        final operand = _parse(rest);
+        return BindingExpression(
+          type: ExpressionType.arithmetic,
+          path: '',
+          operator: baseExpr[0] == '-' ? '-' : '+',
+          left: BindingExpression(
+            type: ExpressionType.simple,
+            path: '',
+            value: 0,
+            hasValue: true,
+          ),
+          right: operand,
+          transform: transform,
+        );
+      }
+    }
+
     // Check for string literal
     if ((baseExpr.startsWith("'") && baseExpr.endsWith("'")) ||
         (baseExpr.startsWith('"') && baseExpr.endsWith('"'))) {
@@ -284,6 +361,7 @@ class BindingExpression {
         type: ExpressionType.simple,
         path: '',
         value: baseExpr.substring(1, baseExpr.length - 1),
+        hasValue: true,
         transform: transform,
       );
     }
@@ -295,6 +373,7 @@ class BindingExpression {
         type: ExpressionType.simple,
         path: '',
         value: number,
+        hasValue: true,
         transform: transform,
       );
     }
@@ -305,6 +384,40 @@ class BindingExpression {
         type: ExpressionType.simple,
         path: '',
         value: baseExpr == 'true',
+        hasValue: true,
+        transform: transform,
+      );
+    }
+
+    // Check for null literal
+    if (baseExpr == 'null') {
+      return BindingExpression(
+        type: ExpressionType.simple,
+        path: '',
+        value: null,
+        hasValue: true,
+        transform: transform,
+      );
+    }
+
+    // Check for optional chaining (?.) - convert to a safe path access
+    if (baseExpr.contains('?.')) {
+      return BindingExpression(
+        type: ExpressionType.optionalChaining,
+        path: baseExpr.replaceAll('?.', '.'),
+        transform: transform,
+      );
+    }
+
+    // Check for index access (e.g., items[0], data['key'])
+    final indexMatch = RegExp(r'^([\w\.]+)\[(.+)\]$').firstMatch(baseExpr);
+    if (indexMatch != null) {
+      final objectPath = indexMatch.group(1)!;
+      final indexExpr = indexMatch.group(2)!;
+      return BindingExpression(
+        type: ExpressionType.indexAccess,
+        path: objectPath,
+        left: _parse(indexExpr),
         transform: transform,
       );
     }
@@ -357,6 +470,22 @@ class BindingExpression {
   static BindingExpression _parseValue(String value) {
     value = value.trim();
 
+    // Check for lambda expression: param => body
+    final arrowIndex = value.indexOf('=>');
+    if (arrowIndex > 0) {
+      final paramPart = value.substring(0, arrowIndex).trim();
+      final bodyPart = value.substring(arrowIndex + 2).trim();
+      // Validate parameter name is a simple identifier
+      if (RegExp(r'^[a-zA-Z_]\w*$').hasMatch(paramPart) && bodyPart.isNotEmpty) {
+        return BindingExpression(
+          type: ExpressionType.lambda,
+          path: '',
+          parameterName: paramPart,
+          left: _parse(bodyPart),
+        );
+      }
+    }
+
     // Check for unary logical operators
     if (value.startsWith('!')) {
       final operand = value.substring(1).trim();
@@ -368,6 +497,33 @@ class BindingExpression {
       );
     }
 
+    // Check for unary minus/plus on expressions
+    if ((value.startsWith('-') || value.startsWith('+')) && value.length > 1) {
+      final numLiteral = num.tryParse(value);
+      if (numLiteral != null) {
+        return BindingExpression(
+          type: ExpressionType.simple,
+          path: '',
+          value: numLiteral,
+          hasValue: true,
+        );
+      }
+      // Unary on a non-literal expression
+      final rest = value.substring(1).trim();
+      return BindingExpression(
+        type: ExpressionType.arithmetic,
+        path: '',
+        operator: value[0] == '-' ? '-' : '+',
+        left: BindingExpression(
+          type: ExpressionType.simple,
+          path: '',
+          value: 0,
+          hasValue: true,
+        ),
+        right: _parseValue(rest),
+      );
+    }
+
     // String literal
     if ((value.startsWith("'") && value.endsWith("'")) ||
         (value.startsWith('"') && value.endsWith('"'))) {
@@ -375,6 +531,7 @@ class BindingExpression {
         type: ExpressionType.simple,
         path: '',
         value: value.substring(1, value.length - 1),
+        hasValue: true,
       );
     }
 
@@ -385,6 +542,7 @@ class BindingExpression {
         type: ExpressionType.simple,
         path: '',
         value: number,
+        hasValue: true,
       );
     }
 
@@ -394,6 +552,17 @@ class BindingExpression {
         type: ExpressionType.simple,
         path: '',
         value: value == 'true',
+        hasValue: true,
+      );
+    }
+
+    // Null literal
+    if (value == 'null') {
+      return BindingExpression(
+        type: ExpressionType.simple,
+        path: '',
+        value: null,
+        hasValue: true,
       );
     }
 
@@ -415,4 +584,7 @@ enum ExpressionType {
   nullCoalescing, // Null coalescing: {{a ?? b}}
   methodCall, // Method call: {{value.method(args)}}
   functionCall, // Function call: {{func(args)}}
+  optionalChaining, // Optional chaining: {{a?.b?.c}}
+  indexAccess, // Index access: {{items[0]}}, {{data['key']}}
+  lambda, // Lambda: item => item.price > 100
 }

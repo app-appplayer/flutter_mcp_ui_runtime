@@ -10,6 +10,9 @@ class RouteManager {
   final Function(String uri) pageLoader;
   final RuntimeEngine runtimeEngine;
 
+  /// Page stack for tracking push/pop navigation and page pause/resume
+  final List<String> _pageStack = [];
+
   RouteManager({
     required this.appDefinition,
     required this.pageLoader,
@@ -45,6 +48,9 @@ class RouteManager {
   String get initialRoute => appDefinition.initialRoute;
 
   /// Navigate to a route with parameters
+  ///
+  /// Push navigation: old page receives pagePause, new page receives enter.
+  /// Replace navigation: old page receives leave, new page receives enter.
   Future<T?> navigateTo<T>(
     BuildContext context,
     String route, {
@@ -53,13 +59,35 @@ class RouteManager {
   }) async {
     final routeWithParams = _buildRouteWithParams(route, params);
 
+    // Execute pagePause on the current page (push) or leave (replace)
+    if (_pageStack.isNotEmpty) {
+      final currentRoute = _pageStack.last;
+      final currentPageUri = appDefinition.routes[currentRoute];
+      if (currentPageUri != null && _loadedPages.containsKey(currentPageUri)) {
+        final currentPage = _loadedPages[currentPageUri]!;
+        final lifecycle = currentPage.lifecycleDefinition;
+        if (replace) {
+          if (lifecycle?.onLeave != null) {
+            runtimeEngine.lifecycle.executeOnLeave(lifecycle!.onLeave!);
+          }
+        } else {
+          if (lifecycle?.onPause != null) {
+            runtimeEngine.lifecycle.executeOnPagePause(lifecycle!.onPause!);
+          }
+        }
+      }
+    }
+
     if (replace) {
+      if (_pageStack.isNotEmpty) _pageStack.removeLast();
+      _pageStack.add(routeWithParams);
       return Navigator.pushReplacementNamed<T, T>(
         context,
         routeWithParams,
         arguments: params,
       );
     } else {
+      _pageStack.add(routeWithParams);
       return Navigator.pushNamed<T>(
         context,
         routeWithParams,
@@ -69,12 +97,45 @@ class RouteManager {
   }
 
   /// Navigate back
+  ///
+  /// Pop navigation: current page receives leave, previous page receives pageResume.
   void navigateBack<T>(BuildContext context, [T? result]) {
+    // Execute leave on the current page
+    if (_pageStack.isNotEmpty) {
+      final currentRoute = _pageStack.last;
+      final currentPageUri = appDefinition.routes[currentRoute];
+      if (currentPageUri != null && _loadedPages.containsKey(currentPageUri)) {
+        final currentPage = _loadedPages[currentPageUri]!;
+        final lifecycle = currentPage.lifecycleDefinition;
+        if (lifecycle?.onLeave != null) {
+          runtimeEngine.lifecycle.executeOnLeave(lifecycle!.onLeave!);
+        }
+      }
+      _pageStack.removeLast();
+    }
+
+    // Execute pageResume on the previous (now visible) page
+    if (_pageStack.isNotEmpty) {
+      final previousRoute = _pageStack.last;
+      final previousPageUri = appDefinition.routes[previousRoute];
+      if (previousPageUri != null && _loadedPages.containsKey(previousPageUri)) {
+        final previousPage = _loadedPages[previousPageUri]!;
+        final lifecycle = previousPage.lifecycleDefinition;
+        if (lifecycle?.onResume != null) {
+          runtimeEngine.lifecycle.executeOnPageResume(lifecycle!.onResume!);
+        }
+      }
+    }
+
     Navigator.pop(context, result);
   }
 
   /// Pop to root
   void popToRoot(BuildContext context) {
+    // Clear page stack except first
+    if (_pageStack.length > 1) {
+      _pageStack.removeRange(1, _pageStack.length);
+    }
     Navigator.popUntil(context, (route) => route.isFirst);
   }
 

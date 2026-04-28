@@ -36,22 +36,36 @@ class StackWidgetFactory extends WidgetFactory {
 
   AlignmentGeometry _parseAlignment(String? value) {
     switch (value) {
-      case 'topLeft':
-        return Alignment.topLeft;
+      // Design spec names (DSL v1.0)
+      case 'topStart':
+        return AlignmentDirectional.topStart;
       case 'topCenter':
         return Alignment.topCenter;
+      case 'topEnd':
+        return AlignmentDirectional.topEnd;
+      case 'centerStart':
+        return AlignmentDirectional.centerStart;
+      case 'center':
+        return Alignment.center;
+      case 'centerEnd':
+        return AlignmentDirectional.centerEnd;
+      case 'bottomStart':
+        return AlignmentDirectional.bottomStart;
+      case 'bottomCenter':
+        return Alignment.bottomCenter;
+      case 'bottomEnd':
+        return AlignmentDirectional.bottomEnd;
+      // Legacy Flutter names (backward compat)
+      case 'topLeft':
+        return Alignment.topLeft;
       case 'topRight':
         return Alignment.topRight;
       case 'centerLeft':
         return Alignment.centerLeft;
-      case 'center':
-        return Alignment.center;
       case 'centerRight':
         return Alignment.centerRight;
       case 'bottomLeft':
         return Alignment.bottomLeft;
-      case 'bottomCenter':
-        return Alignment.bottomCenter;
       case 'bottomRight':
         return Alignment.bottomRight;
       default:

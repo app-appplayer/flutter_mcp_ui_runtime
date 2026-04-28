@@ -42,7 +42,9 @@ class TextFormFieldWidgetFactory extends WidgetFactory {
     final readOnly = properties['readOnly'] as bool? ?? false;
     final maxLines = properties['maxLines'] as int? ?? 1;
     final maxLength = properties['maxLength'] as int?;
-    final keyboardType = _parseKeyboardType(properties['keyboardType']);
+    // spec v1.0: 'inputType', legacy: 'keyboardType'
+    final keyboardType = _parseKeyboardType(
+        properties['inputType'] ?? properties['keyboardType']);
     final textInputAction =
         _parseTextInputAction(properties['textInputAction']);
 
@@ -64,8 +66,8 @@ class TextFormFieldWidgetFactory extends WidgetFactory {
     }
 
     // Handle onChange action
-    final changeAction = properties['onChange'];
-    final submitAction = properties['onSubmit'];
+    final changeAction = properties['onChange'] ?? properties['change'];
+    final submitAction = properties['onSubmit'] ?? properties['submit'];
 
     // Build validator
     String? Function(String?)? validator;
@@ -89,7 +91,7 @@ class TextFormFieldWidgetFactory extends WidgetFactory {
         );
 
         final result = customValidator.validate(value, context);
-        return result.isValid ? null : result.error;
+        return result.isValid ? null : result.message;
       };
     } else if (customValidation != null) {
       validator = (value) {
@@ -99,7 +101,7 @@ class TextFormFieldWidgetFactory extends WidgetFactory {
         );
 
         final result = customValidator.validate(value, context);
-        return result.isValid ? null : result.error;
+        return result.isValid ? null : result.message;
       };
     }
 
@@ -265,7 +267,7 @@ class _AsyncValidatedTextFieldState extends State<_AsyncValidatedTextField>
     final enabled = properties['enabled'] as bool? ?? true;
 
     // Handle onChange action
-    final changeAction = properties['onChange'];
+    final changeAction = properties['onChange'] ?? properties['change'];
     final path = properties['binding'] as String?;
 
     return AnimatedBuilder(

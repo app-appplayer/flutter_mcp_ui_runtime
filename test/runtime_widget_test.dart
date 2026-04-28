@@ -80,7 +80,7 @@ void main() {
           'child': {
             'type': 'button',
             'label': 'Click Me',
-            'click': {
+            'onTap': {
               'type': 'tool',
               'tool': 'testClick',
               'params': {},
@@ -133,7 +133,7 @@ void main() {
           'child': {
             'type': 'linear',
           'direction': 'vertical',
-            'mainAxisAlignment': 'center',
+            'distribution': 'center',
             'children': [
               {
                 'type': 'text',
@@ -162,7 +162,7 @@ void main() {
       expect(find.text('Count: 42'), findsOneWidget);
     });
 
-    testWidgets('renders list with itemBuilder', (WidgetTester tester) async {
+    testWidgets('renders list with itemTemplate', (WidgetTester tester) async {
       final definition = {
         'type': 'page',
         'metadata': {
@@ -184,12 +184,12 @@ void main() {
         'content': {
           'type': 'list',
           'shrinkWrap': true,
-          'itemCount': '{{items.length}}',
-          'itemBuilder': {
+          'items': '{{items}}',
+          'itemTemplate': {
             'type': 'listTile',
             'title': {
               'type': 'text',
-              'content': '{{items[index].name}}',
+              'content': '{{item.name}}',
             },
           },
         },
@@ -204,7 +204,7 @@ void main() {
       );
 
       await tester.pumpAndSettle();
-      
+
       expect(find.text('Item 1'), findsOneWidget);
       expect(find.text('Item 2'), findsOneWidget);
       expect(find.text('Item 3'), findsOneWidget);

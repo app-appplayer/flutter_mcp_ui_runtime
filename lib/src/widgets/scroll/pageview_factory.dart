@@ -9,9 +9,10 @@ class PageViewWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Extract properties
+    // Spec §2.9.4 canonical `direction`; `scrollDirection` kept as legacy alias.
     final scrollDirection =
-        _parseAxis(properties['scrollDirection']) ?? Axis.horizontal;
+        _parseAxis(properties['direction'] ?? properties['scrollDirection']) ??
+            Axis.horizontal;
     final reverse = properties['reverse'] as bool? ?? false;
     final pageSnapping = properties['pageSnapping'] as bool? ?? true;
     final allowImplicitScrolling =
@@ -20,7 +21,6 @@ class PageViewWidgetFactory extends WidgetFactory {
     final clipBehavior =
         _parseClip(properties['clipBehavior']) ?? Clip.hardEdge;
 
-    // Extract children
     final childrenDef = properties['children'] as List<dynamic>? ??
         definition['children'] as List<dynamic>?;
     final children = childrenDef
@@ -28,8 +28,10 @@ class PageViewWidgetFactory extends WidgetFactory {
             .toList() ??
         [];
 
-    // Extract action handlers
-    final onPageChanged = properties['onPageChanged'] as Map<String, dynamic>?;
+    // Spec §2.9.4 canonical `onPageChanged`. `onChange` accepted as alias.
+    final onPageChanged =
+        (properties['onPageChanged'] ?? properties['onChange'])
+            as Map<String, dynamic>?;
 
     Widget pageView = PageView(
       scrollDirection: scrollDirection,
@@ -40,11 +42,12 @@ class PageViewWidgetFactory extends WidgetFactory {
       clipBehavior: clipBehavior,
       onPageChanged: onPageChanged != null
           ? (index) {
-              final eventData = Map<String, dynamic>.from(onPageChanged);
-              if (eventData['index'] == '{{event.index}}') {
-                eventData['index'] = index;
-              }
-              context.actionHandler.execute(eventData, context);
+              final eventContext = context.createChildContext(
+                variables: {
+                  'event': {'page': index, 'index': index, 'type': 'pageChanged'},
+                },
+              );
+              context.actionHandler.execute(onPageChanged, eventContext);
             }
           : null,
       children: children,

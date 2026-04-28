@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'runtime_engine.dart';
 import 'widget_registry.dart';
+import '../widgets/widget_factory.dart';
 import '../renderer/renderer.dart';
 import '../actions/action_handler.dart';
 import '../state/state_manager.dart';
@@ -10,8 +11,20 @@ import '../theme/theme_manager.dart';
 import '../i18n/i18n_manager.dart';
 import '../utils/mcp_logger.dart';
 import '../services/navigation_service.dart';
+import '../permissions/permission_manager.dart';
+import '../channels/channel_manager.dart';
+import '../binding/binding_engine.dart';
 
-/// Main MCP UI Runtime class that provides the entry point for using the runtime
+/// Main MCP UI Runtime class that provides the entry point for using the runtime.
+///
+/// **Deprecated:** Use the canonical [MCPUIRuntime] from
+/// `package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart` instead.
+/// This duplicate class uses untyped [Function] for action registration
+/// (`registerToolExecutor`) whereas the canonical version uses the type-safe
+/// [ActionExecutor] typedef (`registerAction`/`registerExecutor`).
+/// This class will be removed in a future release.
+@Deprecated('Use MCPUIRuntime from package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart instead. '
+    'This duplicate in src/runtime/ uses untyped Function signatures and will be removed.')
 class MCPUIRuntime {
   MCPUIRuntime({
     this.enableDebugMode = kDebugMode,
@@ -65,8 +78,11 @@ class MCPUIRuntime {
   /// Gets whether the runtime is initialized
   bool get isInitialized => _isInitialized;
 
+  /// Gets whether the runtime is ready for rendering
+  bool get isReady => _isInitialized && _engine.isReady;
+
   /// Register a custom widget
-  void registerWidget(String type, factory) {
+  void registerWidget(String type, WidgetFactory factory) {
     _widgetRegistry.register(type, factory);
   }
 
@@ -85,6 +101,7 @@ class MCPUIRuntime {
   Future<void> initialize(
     Map<String, dynamic> definition, {
     Function(String)? pageLoader,
+    bool useCache = true,
   }) async {
     if (_isInitialized) {
       throw StateError('MCP UI Runtime is already initialized');
@@ -93,6 +110,7 @@ class MCPUIRuntime {
     await _engine.initialize(
       definition: definition,
       pageLoader: pageLoader,
+      useCache: useCache,
     );
 
     _isInitialized = true;
@@ -116,6 +134,8 @@ class MCPUIRuntime {
     BuildContext? context,
     Map<String, dynamic>? initialState,
     Function(String, Map<String, dynamic>)? onToolCall,
+    Function(String, String)? onResourceSubscribe,
+    Function(String)? onResourceUnsubscribe,
   }) {
     if (!_isInitialized) {
       throw StateError('MCP UI Runtime must be initialized before building UI');
@@ -129,6 +149,14 @@ class MCPUIRuntime {
     // Set initial state if provided
     if (initialState != null) {
       _stateManager.setState(initialState);
+    }
+
+    // Wire resource subscription callbacks to the engine
+    if (onResourceSubscribe != null || onResourceUnsubscribe != null) {
+      _engine.setResourceHandlers(
+        onResourceSubscribe: onResourceSubscribe,
+        onResourceUnsubscribe: onResourceUnsubscribe,
+      );
     }
 
     // Register tool call handler as a default fallback
@@ -229,10 +257,111 @@ class MCPUIRuntime {
     _logger.info('Navigation handler registered');
   }
 
+  /// Gets the theme manager from the engine
+  ThemeManager get themeManager => _engine.themeManager;
+
+  /// Gets the channel manager from the engine
+  ChannelManager get channelManager => _engine.channelManager;
+
+  /// Gets the permission manager
+  ///
+  /// Creates a PermissionManager on demand since the engine does not
+  /// maintain one directly.
+  PermissionManager? _permissionManager;
+  PermissionManager get permissionManager {
+    _permissionManager ??= PermissionManager(null);
+    return _permissionManager!;
+  }
+
+  /// Gets the UI definition from the engine
+  Map<String, dynamic>? getUIDefinition() => _engine.uiDefinition;
+
+  /// Handles a notification by forwarding to the engine
+  ///
+  /// If [resourceReader] is provided, the engine can read the resource content
+  /// when the notification doesn't include inline content (standard mode).
+  Future<void> handleNotification(
+    Map<String, dynamic> notification, {
+    Function(String)? resourceReader,
+  }) async {
+    if (resourceReader != null) {
+      await _engine.handleMCPNotification(
+        notification,
+        resourceReader: resourceReader,
+      );
+    } else {
+      final uri = notification['uri'] as String? ?? '';
+      _engine.handleNotification(uri, notification);
+    }
+  }
+
+  /// Registers an action executor by type
+  void registerAction(String type, Function handler) {
+    _engine.actionHandler.registerToolExecutor(type, handler);
+  }
+
+  /// Registers a resource subscription with a binding expression
+  /// The binding expression specifies where to store resource data in state.
+  void registerResourceSubscription(String uri, String binding) {
+    _engine.registerResourceSubscription(uri, binding);
+  }
+
+  /// Unregisters a resource subscription
+  void unregisterResourceSubscription(String uri) {
+    _engine.unregisterResourceSubscription(uri);
+  }
+
+  /// Gets the binding for a resource URI
+  dynamic getBindingForUri(String uri) {
+    return _engine.getBindingForUri(uri);
+  }
+
+  /// Handles an error with optional stack trace
+  void handleError(dynamic error, [StackTrace? stackTrace]) {
+    _logger.error('Runtime error', error, stackTrace);
+  }
+
+  /// Registers a permission handler for custom permission prompts
+  void registerPermissionHandler(Function handler) {
+    _engine.permissionHandler = handler;
+    _logger.debug('Permission handler registered');
+  }
+
+  /// Registers a client action handler for a specific action type
+  void registerClientActionHandler(String actionType, Function handler) {
+    _engine.actionHandler.registerToolExecutor(actionType, handler);
+  }
+
+  /// Renders the current loaded UI definition
+  /// When called without arguments, renders the currently loaded definition.
+  /// When called with a definition map, renders that specific definition.
+  Widget render([Map<String, dynamic>? definition]) {
+    if (definition != null) {
+      return _engine.renderer.renderPage(definition);
+    }
+    return buildUI();
+  }
+
+  /// Disposes the runtime (alias for destroy)
+  Future<void> dispose() async {
+    await destroy();
+  }
+
   /// Destroys the runtime and cleans up resources
   Future<void> destroy() async {
+    if (!_isInitialized) return;
+
     await _engine.destroy();
     _isInitialized = false;
+
+    // Clean up permission manager if created
+    _permissionManager = null;
+
+    // Clear navigation handler reference
+    _navigationHandler = null;
+
+    // Clear resource handlers
+    _resourceHandlers.clear();
 
     // Clear global navigation handler to prevent state leaking between tests
     NavigationActionExecutor.clearGlobalNavigationHandler();
@@ -243,11 +372,22 @@ class MCPUIRuntime {
     // Clear i18n manager
     I18nManager.instance.clear();
 
+    // Reset NavigationService singleton state
+    await NavigationService.instance.onDispose();
+
+    // Clear BindingEngine static caches
+    BindingEngine.clearStaticCaches();
+
     _logger.info('Destroyed');
   }
 }
 
-/// Widget that renders the MCP UI using the runtime engine
+/// Widget that renders the MCP UI using the runtime engine.
+///
+/// **Deprecated:** This is part of the duplicate runtime in src/runtime/.
+/// Use the canonical [MCPRuntimeWidget] from src/mcp_ui_runtime.dart instead.
+@Deprecated('Use MCPRuntimeWidget from src/mcp_ui_runtime.dart instead. '
+    'This duplicate in src/runtime/ will be removed.')
 class MCPRuntimeWidget extends StatefulWidget {
   const MCPRuntimeWidget({
     super.key,
@@ -311,6 +451,14 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
   }
 
   @override
+  void didChangePlatformBrightness() {
+    super.didChangePlatformBrightness();
+    // Spec §5.2 — `system` mode must track host brightness without a
+    // shell re-render. Forward the platform event to the ThemeManager.
+    widget.engine.themeManager.notifyBrightnessChanged();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: widget.engine,
@@ -320,6 +468,13 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
             child: CircularProgressIndicator(),
           );
         }
+
+        // Inject host environment theme for client.theme.* bindings.
+        // Theme.of(context) here captures the embedding app's theme,
+        // before the runtime creates its own MaterialApp.
+        final hostTheme = Theme.of(context);
+        widget.engine.bindingEngine.clientBindingResolver
+            .setHostTheme(hostTheme);
 
         try {
           // Check if this is an application type
@@ -459,7 +614,12 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
   }
 }
 
-/// Helper class for quick runtime usage
+/// Helper class for quick runtime usage.
+///
+/// **Deprecated:** This is part of the duplicate runtime in src/runtime/.
+/// Use the canonical [MCPUIRuntimeHelper] from src/mcp_ui_runtime.dart instead.
+@Deprecated('Use MCPUIRuntimeHelper from src/mcp_ui_runtime.dart instead. '
+    'This duplicate in src/runtime/ will be removed.')
 class MCPUIRuntimeHelper {
   /// Renders an MCP UI specification directly
   static Widget render(

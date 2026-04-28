@@ -102,7 +102,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Increment',
-              'click': {
+              'onTap': {
                 'type': 'state',
                 'action': 'increment',
                 'path': 'counter',
@@ -112,7 +112,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Set to 100',
-              'click': {
+              'onTap': {
                 'type': 'state',
                 'action': 'set',
                 'path': 'counter',
@@ -185,7 +185,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Tool Increment',
-              'click': {
+              'onTap': {
                 'type': 'tool',
                 'tool': 'increment',
                 'params': {},

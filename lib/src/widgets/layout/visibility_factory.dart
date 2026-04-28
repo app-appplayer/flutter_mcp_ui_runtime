@@ -7,14 +7,25 @@ class VisibilityWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
+
+    // Support both 'child' (single widget, design doc spec) and 'children' (legacy array)
+    final childDef = properties['child'] as Map<String, dynamic>?;
     final children = definition['children'] as List<dynamic>? ?? [];
 
-    Widget child = children.isNotEmpty
-        ? context.buildWidget(children.first as Map<String, dynamic>)
-        : Container();
+    Widget child;
+    if (childDef != null) {
+      child = context.buildWidget(childDef);
+    } else if (children.isNotEmpty) {
+      child = context.buildWidget(children.first as Map<String, dynamic>);
+    } else {
+      child = Container();
+    }
+
+    // Resolve visible through binding expressions
+    final visible = context.resolve<bool>(properties['visible'] ?? true);
 
     return Visibility(
-      visible: properties['visible'] == true,
+      visible: visible,
       maintainSize: properties['maintainSize'] == true,
       maintainAnimation: properties['maintainAnimation'] == true,
       maintainState: properties['maintainState'] == true,

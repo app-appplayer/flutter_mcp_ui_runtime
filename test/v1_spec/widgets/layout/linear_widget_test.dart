@@ -43,8 +43,12 @@ void main() {
         
         expect(second.dy, greaterThan(first.dy));
         expect(third.dy, greaterThan(second.dy));
-        expect(first.dx, equals(second.dx));
-        expect(second.dx, equals(third.dx));
+        // Compare left edges since items have different text widths
+        final firstLeft = tester.getTopLeft(find.text('First')).dx;
+        final secondLeft = tester.getTopLeft(find.text('Second')).dx;
+        final thirdLeft = tester.getTopLeft(find.text('Third')).dx;
+        expect(firstLeft, equals(secondLeft));
+        expect(secondLeft, equals(thirdLeft));
       });
       
       testWidgets('should support horizontal direction', (WidgetTester tester) async {

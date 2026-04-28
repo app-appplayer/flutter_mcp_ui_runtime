@@ -10,8 +10,9 @@ class TimePickerWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     // Extract properties
-    final label = context.resolve<String>(properties['label']) as String? ??
-        'Select Time';
+    final label = properties['label'] != null
+        ? context.resolve<String>(properties['label'])
+        : 'Select Time';
     final initialTime = properties['initialTime'] != null
         ? (_parseTimeOfDay(properties['initialTime']) ?? TimeOfDay.now())
         : TimeOfDay.now();
@@ -20,15 +21,18 @@ class TimePickerWidgetFactory extends WidgetFactory {
     final icon = properties['icon'] as String? ?? 'access_time';
     final use24HourFormat = properties['use24HourFormat'] as bool? ?? true;
 
-    // Get current value from state if bound
-    final bindTo = properties['bindTo'] as String?;
+    // Spec §2.6.0: canonical `binding`; accept legacy `bindTo` alias.
+    final binding = (properties['binding'] as String?) ??
+        (properties['bindTo'] as String?);
     String? currentValue;
-    if (bindTo != null) {
-      currentValue = context.getValue(bindTo) as String?;
+    if (binding != null) {
+      currentValue = context.getValue(binding) as String?;
+    } else if (properties['value'] != null) {
+      currentValue = context.resolve<String?>(properties['value']);
     }
 
     // Extract action handler
-    final onChange = properties['onChange'] as Map<String, dynamic>?;
+    final onChange = (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
 
     Widget timePicker = StatefulBuilder(
       builder: (buildContext, setState) {
@@ -64,9 +68,8 @@ class TimePickerWidgetFactory extends WidgetFactory {
               final formattedTime =
                   _formatTime(picked, timeFormat, use24HourFormat);
 
-              // Update state if bindTo is specified
-              if (bindTo != null) {
-                context.setValue(bindTo, formattedTime);
+              if (binding != null) {
+                context.setValue(binding, formattedTime);
               }
 
               // Execute onChange action

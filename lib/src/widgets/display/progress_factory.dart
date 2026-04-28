@@ -7,12 +7,13 @@ class ProgressWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
+    // Design: type → Implementation: indicatorType
     final type =
-        context.resolve<String>(properties['indicatorType'] ?? 'circular');
+        context.resolve<String>(properties['type'] ?? properties['indicatorType'] ?? 'circular');
     final value = context.resolve<double?>(properties['value']);
     final backgroundColor =
-        parseColor(context.resolve(properties['backgroundColor']));
-    final color = parseColor(context.resolve(properties['color']));
+        parseColor(context.resolve(properties['backgroundColor']), context);
+    final color = parseColor(context.resolve(properties['color']), context);
 
     if (type == 'linear') {
       return LinearProgressIndicator(
@@ -53,8 +54,8 @@ class CircularProgressWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
     final value = context.resolve<double?>(properties['value']);
     final backgroundColor =
-        parseColor(context.resolve(properties['backgroundColor']));
-    final color = parseColor(context.resolve(properties['color']));
+        parseColor(context.resolve(properties['backgroundColor']), context);
+    final color = parseColor(context.resolve(properties['color']), context);
     final strokeWidth =
         parseDimension(context.resolve(properties['strokeWidth'])) ?? 4.0;
     final size = parseDimension(context.resolve(properties['size']));
@@ -86,8 +87,8 @@ class LinearProgressWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
     final value = context.resolve<double?>(properties['value']);
     final backgroundColor =
-        parseColor(context.resolve(properties['backgroundColor']));
-    final color = parseColor(context.resolve(properties['color']));
+        parseColor(context.resolve(properties['backgroundColor']), context);
+    final color = parseColor(context.resolve(properties['color']), context);
     final height = parseDimension(context.resolve(properties['height'])) ??
         parseDimension(context.resolve(properties['minHeight']));
 

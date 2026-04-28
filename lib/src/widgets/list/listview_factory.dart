@@ -9,14 +9,21 @@ class ListViewWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Extract properties
-    final scrollDirection = _parseAxis(properties['scrollDirection']);
+    // Extract properties (spec v1.0: 'orientation', legacy: 'scrollDirection')
+    final scrollDirection = _parseAxis(
+        properties['orientation'] ?? properties['scrollDirection']);
     final reverse = properties['reverse'] as bool? ?? false;
     // Follow MCP UI DSL v1.0 spec: shrinkWrap defaults to false
     final shrinkWrap = properties['shrinkWrap'] as bool? ?? false;
     final physics = _parseScrollPhysics(properties['physics']);
     final padding = parseEdgeInsets(properties['padding']);
-    final itemSpacing = parseDimension(properties['itemSpacing']) ?? 0.0;
+    // spec v1.0: 'spacing', legacy: 'itemSpacing'
+    final itemSpacing = parseDimension(
+        properties['spacing'] ?? properties['itemSpacing']) ?? 0.0;
+    final emptyMessage = context.resolve<String?>(properties['emptyMessage']);
+    final virtual = properties['virtual'] as bool? ?? false;
+    final cacheExtent = parseDimension(properties['cacheExtent']);
+    final itemExtent = parseDimension(properties['itemExtent']);
 
     // Get data source - support both static children and dynamic items
     final childrenProp = definition['children'];
@@ -49,6 +56,7 @@ class ListViewWidgetFactory extends WidgetFactory {
         shrinkWrap: shrinkWrap,
         physics: physics,
         padding: padding,
+        cacheExtent: cacheExtent,
         itemCount: itemCount,
         separatorBuilder: itemSpacing > 0
             ? (context, index) => scrollDirection == Axis.horizontal
@@ -75,34 +83,73 @@ class ListViewWidgetFactory extends WidgetFactory {
       // Dynamic list with data binding
       final items = resolvedItems as List<dynamic>? ?? [];
 
-      listView = ListView.separated(
-        scrollDirection: scrollDirection,
-        reverse: reverse,
-        shrinkWrap: shrinkWrap,
-        physics: physics,
-        padding: padding,
-        itemCount: items.length,
-        separatorBuilder: itemSpacing > 0
-            ? (context, index) => scrollDirection == Axis.horizontal
-                ? SizedBox(width: itemSpacing)
-                : SizedBox(height: itemSpacing)
-            : (context, index) => Container(),
-        itemBuilder: (buildContext, index) {
-          // Create child context with item data
-          final childContext = context.createChildContext(
-            variables: {
-              'item': items[index],
-              'index': index,
-              'isFirst': index == 0,
-              'isLast': index == items.length - 1,
-              'isEven': index % 2 == 0,
-              'isOdd': index % 2 == 1,
-            },
-          );
+      // Show emptyMessage when items list is empty
+      if (items.isEmpty && emptyMessage != null && emptyMessage.isNotEmpty) {
+        listView = Center(
+          child: Padding(
+            padding: padding ?? EdgeInsets.zero,
+            child: Text(
+              emptyMessage,
+              style: TextStyle(color: Theme.of(context.buildContext!).colorScheme.onSurface.withValues(alpha: 0.6)),
+            ),
+          ),
+        );
+      } else if (virtual && itemExtent != null) {
+        // Virtualized rendering with fixed item extent
+        listView = ListView.builder(
+          scrollDirection: scrollDirection,
+          reverse: reverse,
+          shrinkWrap: shrinkWrap,
+          physics: physics,
+          padding: padding,
+          cacheExtent: cacheExtent,
+          itemExtent: itemExtent,
+          itemCount: items.length,
+          itemBuilder: (buildContext, index) {
+            final childContext = context.createChildContext(
+              variables: {
+                'item': items[index],
+                'index': index,
+                'isFirst': index == 0,
+                'isLast': index == items.length - 1,
+                'isEven': index % 2 == 0,
+                'isOdd': index % 2 == 1,
+              },
+            );
+            return context.renderer.renderWidget(itemTemplate, childContext);
+          },
+        );
+      } else {
+        listView = ListView.separated(
+          scrollDirection: scrollDirection,
+          reverse: reverse,
+          shrinkWrap: shrinkWrap,
+          physics: physics,
+          padding: padding,
+          cacheExtent: cacheExtent,
+          itemCount: items.length,
+          separatorBuilder: itemSpacing > 0
+              ? (context, index) => scrollDirection == Axis.horizontal
+                  ? SizedBox(width: itemSpacing)
+                  : SizedBox(height: itemSpacing)
+              : (context, index) => Container(),
+          itemBuilder: (buildContext, index) {
+            // Create child context with item data
+            final childContext = context.createChildContext(
+              variables: {
+                'item': items[index],
+                'index': index,
+                'isFirst': index == 0,
+                'isLast': index == items.length - 1,
+                'isEven': index % 2 == 0,
+                'isOdd': index % 2 == 1,
+              },
+            );
 
-          return context.renderer.renderWidget(itemTemplate, childContext);
-        },
-      );
+            return context.renderer.renderWidget(itemTemplate, childContext);
+          },
+        );
+      }
     } else if (directItems != null && directItems.isNotEmpty) {
       // Direct items list (like in showcase_definition.dart)
       final items = directItems;
@@ -113,6 +160,7 @@ class ListViewWidgetFactory extends WidgetFactory {
         shrinkWrap: shrinkWrap,
         physics: physics,
         padding: padding,
+        cacheExtent: cacheExtent,
         itemCount: items.length,
         separatorBuilder: itemSpacing > 0
             ? (buildContext, index) => scrollDirection == Axis.horizontal
@@ -138,6 +186,7 @@ class ListViewWidgetFactory extends WidgetFactory {
           shrinkWrap: shrinkWrap,
           physics: physics,
           padding: padding,
+          cacheExtent: cacheExtent,
           itemCount: children.length,
           separatorBuilder: (context, index) =>
               scrollDirection == Axis.horizontal
@@ -153,16 +202,30 @@ class ListViewWidgetFactory extends WidgetFactory {
           shrinkWrap: shrinkWrap,
           physics: physics,
           padding: padding,
+          cacheExtent: cacheExtent,
+          itemExtent: itemExtent,
           children: children,
         );
       }
     } else {
-      // Empty list
-      listView = ListView(
-        shrinkWrap: shrinkWrap,
-        physics: physics,
-        padding: padding,
-      );
+      // Empty list - show emptyMessage if provided
+      if (emptyMessage != null && emptyMessage.isNotEmpty) {
+        listView = Center(
+          child: Padding(
+            padding: padding ?? EdgeInsets.zero,
+            child: Text(
+              emptyMessage,
+              style: TextStyle(color: Theme.of(context.buildContext!).colorScheme.onSurface.withValues(alpha: 0.6)),
+            ),
+          ),
+        );
+      } else {
+        listView = ListView(
+          shrinkWrap: shrinkWrap,
+          physics: physics,
+          padding: padding,
+        );
+      }
     }
 
     // Ensure ListView has proper constraints for stability

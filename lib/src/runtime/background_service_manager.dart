@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import '../models/ui_definition.dart';
 import '../actions/action_handler.dart';
 import '../state/state_manager.dart';
@@ -52,7 +51,7 @@ class BackgroundServiceManager {
     await runner.start();
 
     if (enableDebugMode) {
-      debugPrint('BackgroundServiceManager: Started service "$id"');
+      _logger.debug('Started service "$id"');
     }
   }
 
@@ -63,7 +62,7 @@ class BackgroundServiceManager {
       await runner.stop();
 
       if (enableDebugMode) {
-        debugPrint('BackgroundServiceManager: Stopped service "$id"');
+        _logger.debug('Stopped service "$id"');
       }
     }
   }
@@ -78,7 +77,7 @@ class BackgroundServiceManager {
     }
 
     if (enableDebugMode) {
-      debugPrint('BackgroundServiceManager: Stopped all services');
+      _logger.debug('Stopped all services');
     }
   }
 
@@ -156,8 +155,8 @@ class BackgroundServiceRunner {
     final interval = definition.interval;
     if (interval == null || interval <= 0) {
       if (enableDebugMode) {
-        debugPrint(
-            'BackgroundService: Invalid interval for periodic service ${definition.id}');
+        _logger.error(
+            'Invalid interval for periodic service ${definition.id}');
       }
       return;
     }

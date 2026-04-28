@@ -504,7 +504,7 @@ final Map<String, dynamic> _inputPage = {
                 'type': 'button',
                 'label': 'Elevated',
                 'variant': 'elevated',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'increment',
                   'binding': 'counter',
@@ -515,7 +515,7 @@ final Map<String, dynamic> _inputPage = {
                 'type': 'button',
                 'label': 'Outlined',
                 'variant': 'outlined',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'decrement',
                   'binding': 'counter',
@@ -526,7 +526,7 @@ final Map<String, dynamic> _inputPage = {
                 'type': 'button',
                 'label': 'Text',
                 'variant': 'text',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'set',
                   'binding': 'counter',
@@ -561,7 +561,7 @@ final Map<String, dynamic> _inputPage = {
                 'value': '{{textInput}}',
                 'label': 'Enter text',
                 'placeholder': 'Type something...',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'binding': 'textInput',
@@ -590,7 +590,7 @@ final Map<String, dynamic> _inputPage = {
               {
                 'type': 'toggle',
                 'value': '{{toggleValue}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'toggle',
                   'binding': 'toggleValue',
@@ -618,7 +618,7 @@ final Map<String, dynamic> _inputPage = {
                 'type': 'button',
                 'label': 'Alert Dialog',
                 'variant': 'elevated',
-                'click': {
+                'onTap': {
                   'type': 'dialog',
                   'dialog': {
                     'type': 'alert',
@@ -639,7 +639,7 @@ final Map<String, dynamic> _inputPage = {
                 'type': 'button',
                 'label': 'Confirm Dialog',
                 'variant': 'outlined',
-                'click': {
+                'onTap': {
                   'type': 'dialog',
                   'dialog': {
                     'type': 'alert',
@@ -686,7 +686,7 @@ final Map<String, dynamic> _inputPage = {
                 'value': '{{sliderValue}}',
                 'min': 0,
                 'max': 100,
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'binding': 'sliderValue',
@@ -719,7 +719,7 @@ final Map<String, dynamic> _inputPage = {
                   {'value': 'option2', 'label': 'Option 2'},
                   {'value': 'option3', 'label': 'Option 3'},
                 ],
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'binding': 'selectedOption',
@@ -779,7 +779,7 @@ final Map<String, dynamic> _listsPage = {
                   'type': 'icon',
                   'icon': 'arrow_forward',
                 },
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'set',
                   'binding': 'selectedOption',
@@ -887,7 +887,7 @@ final Map<String, dynamic> _navigationPage = {
                 'type': 'button',
                 'label': 'Navigate to Home',
                 'variant': 'elevated',
-                'click': {
+                'onTap': {
                   'type': 'navigation',
                   'action': 'push',
                   'route': '/home',
@@ -898,7 +898,7 @@ final Map<String, dynamic> _navigationPage = {
                 'type': 'button',
                 'label': 'Open Dialog',
                 'variant': 'outlined',
-                'click': {
+                'onTap': {
                   'type': 'dialog',
                   'dialog': {
                     'title': 'Sample Dialog',
@@ -1117,7 +1117,7 @@ final Map<String, dynamic> _actionsPage = {
             'type': 'button',
             'label': 'Execute Batch Action',
             'style': 'elevated',
-            'click': {
+            'onTap': {
               'type': 'batch',
               'actions': [
                 {'type': 'state', 'action': 'set', 'binding': 'counter', 'value': 0},
@@ -1161,7 +1161,7 @@ final Map<String, dynamic> _advancedPage = {
                 'type': 'button',
                 'label': 'Toggle Visibility',
                 'variant': 'elevated',
-                'click': {'type': 'state', 'action': 'toggle', 'binding': 'toggleValue'},
+                'onTap': {'type': 'state', 'action': 'toggle', 'binding': 'toggleValue'},
               },
               {'type': 'box', 'height': 10},
               {
@@ -1239,7 +1239,7 @@ final Map<String, dynamic> _advancedPage = {
                   'type': 'button',
                   'label': 'Submit Form',
                   'variant': 'elevated',
-                  'click': {
+                  'onTap': {
                     'type': 'form',
                     'action': 'submit',
                     'form': 'sampleForm',

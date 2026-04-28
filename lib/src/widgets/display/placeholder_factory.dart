@@ -10,18 +10,25 @@ class PlaceholderWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     // Extract properties
-    final color = parseColor(context.resolve(properties['color'])) ??
-        const Color(0xFF455A64); // Default grey
+    final color = parseColor(context.resolve(properties['color']), context) ??
+        context.themeManager.getColorValue('onSurface') ??
+        const Color(0xFF455A64); // Theme-aware grey stroke
     final strokeWidth = parseDimension(properties['strokeWidth']) ?? 2.0;
     final fallbackWidth = parseDimension(properties['fallbackWidth']) ?? 400.0;
     final fallbackHeight = parseDimension(properties['fallbackHeight']) ?? 400.0;
 
-    // Extract child widget (usually not used for Placeholder)
-    final childrenDef = properties['children'] as List<dynamic>? ??
-        definition['children'] as List<dynamic>?;
+    // Spec §2.5.12 canonical `child`. Accept legacy `children[0]`.
+    final childDef = (properties['child'] ?? definition['child'])
+        as Map<String, dynamic>?;
     Widget? child;
-    if (childrenDef != null && childrenDef.isNotEmpty) {
-      child = context.buildWidget(childrenDef.first as Map<String, dynamic>);
+    if (childDef != null) {
+      child = context.buildWidget(childDef);
+    } else {
+      final childrenDef = properties['children'] as List<dynamic>? ??
+          definition['children'] as List<dynamic>?;
+      if (childrenDef != null && childrenDef.isNotEmpty) {
+        child = context.buildWidget(childrenDef.first as Map<String, dynamic>);
+      }
     }
 
     Widget placeholder = Placeholder(

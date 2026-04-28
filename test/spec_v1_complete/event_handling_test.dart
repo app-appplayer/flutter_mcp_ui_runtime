@@ -24,7 +24,7 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'Click Me',
-            'click': {
+            'onTap': {
               'type': 'tool',
               'tool': 'incrementCounter',
               'params': {},
@@ -81,7 +81,7 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'Click to Capture',
-            'click': {
+            'onTap': {
               'type': 'tool',
               'tool': 'captureEvent',
               'params': {
@@ -123,11 +123,11 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'Double Click Me',
-            'click': {
+            'onTap': {
               'type': 'tool',
               'tool': 'handleClick',
             },
-            'doubleClick': {
+            'onDoubleTap': {
               'type': 'tool',
               'tool': 'handleDoubleClick',
             },
@@ -177,7 +177,7 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'Long Press Me',
-            'longPress': {
+            'onLongPress': {
               'type': 'tool',
               'tool': 'handleLongPress',
             },
@@ -215,7 +215,7 @@ void main() {
           'content': {
             'type': 'textInput',
             'label': 'Enter text',
-            'change': {
+            'onChange': {
               'type': 'tool',
               'tool': 'handleChange',
               'params': {
@@ -265,7 +265,7 @@ void main() {
             'type': 'checkbox',
             'label': 'Agree to terms',
             'value': '{{isChecked}}',
-            'change': {
+            'onChange': {
               'type': 'state',
               'action': 'set',
               'path': 'isChecked',
@@ -315,7 +315,7 @@ void main() {
                 'min': 0,
                 'max': 100,
                 'value': '{{sliderValue}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'sliderValue',
@@ -367,11 +367,11 @@ void main() {
               {
                 'type': 'textInput',
                 'label': 'Field 1',
-                'focus': {
+                'onFocus': {
                   'type': 'tool',
                   'tool': 'handleFocus',
                 },
-                'blur': {
+                'onBlur': {
                   'type': 'tool',
                   'tool': 'handleBlur',
                 },
@@ -440,7 +440,7 @@ void main() {
               {
                 'type': 'textInput',
                 'label': 'Type something',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'capturedText',
@@ -486,7 +486,7 @@ void main() {
               {'value': 'opt3', 'label': 'Option 3'},
             ],
             'value': 'opt1',
-            'change': {
+            'onChange': {
               'type': 'tool',
               'tool': 'handleSelect',
               'params': {
@@ -513,10 +513,11 @@ void main() {
         
         await tester.pump();
         
-        // Open dropdown
-        await tester.tap(find.byType(DropdownButton<dynamic>));
+        // Open dropdown — runtime renders a PopupMenuButton-backed
+        // compact selector instead of Material's DropdownButton.
+        await tester.tap(find.byType(PopupMenuButton<int>));
         await tester.pumpAndSettle();
-        
+
         // Select Option 2
         await tester.tap(find.text('Option 2').last);
         await tester.pumpAndSettle();
@@ -547,7 +548,7 @@ void main() {
           },
           'content': {
             'type': 'form',
-            'submit': {
+            'onSubmit': {
               'type': 'tool',
               'tool': 'handleSubmit',
               'params': {
@@ -560,7 +561,7 @@ void main() {
                 'type': 'textInput',
                 'label': 'Name',
                 'value': '{{form.name}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'form.name',
@@ -571,7 +572,7 @@ void main() {
                 'type': 'textInput',
                 'label': 'Email',
                 'value': '{{form.email}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'form.email',
@@ -581,7 +582,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Submit',
-                'click': {
+                'onTap': {
                   'type': 'submit',
                 },
               },

@@ -10,7 +10,7 @@ class TableWidgetFactory extends WidgetFactory {
     final rows = definition['rows'] as List<dynamic>? ?? [];
 
     return Table(
-      border: _resolveTableBorder(properties['border']),
+      border: _resolveTableBorder(properties['border'], context),
       defaultColumnWidth: _resolveColumnWidth(properties['defaultColumnWidth']),
       textDirection: _resolveTextDirection(properties['textDirection']),
       textBaseline: _resolveTextBaseline(properties['textBaseline']),
@@ -21,7 +21,7 @@ class TableWidgetFactory extends WidgetFactory {
         final cells = rowData['cells'] as List<dynamic>? ?? [];
 
         return TableRow(
-          decoration: _resolveBoxDecoration(rowData['decoration']),
+          decoration: _resolveBoxDecoration(rowData['decoration'], context),
           children: cells.map((cell) {
             if (cell is Map<String, dynamic>) {
               return context.buildWidget(cell);
@@ -34,11 +34,13 @@ class TableWidgetFactory extends WidgetFactory {
     );
   }
 
-  TableBorder? _resolveTableBorder(dynamic border) {
+  TableBorder? _resolveTableBorder(dynamic border, RenderContext context) {
     if (border == null) return null;
     if (border is Map<String, dynamic>) {
       return TableBorder.all(
-        color: parseColor(border['color']) ?? Colors.grey,
+        color: parseColor(border['color'], context) ??
+            context.themeManager.getColorValue('outlineVariant') ??
+            Colors.grey,
         width: border['width']?.toDouble() ?? 1.0,
       );
     }
@@ -116,14 +118,16 @@ class TableWidgetFactory extends WidgetFactory {
     }
   }
 
-  BoxDecoration? _resolveBoxDecoration(dynamic decoration) {
+  BoxDecoration? _resolveBoxDecoration(dynamic decoration, RenderContext context) {
     if (decoration == null) return null;
     if (decoration is Map<String, dynamic>) {
       return BoxDecoration(
-        color: parseColor(decoration['color']),
+        color: parseColor(decoration['color'], context),
         border: decoration['border'] != null
             ? Border.all(
-                color: parseColor(decoration['border']['color']) ?? Colors.grey,
+                color: parseColor(decoration['border']['color'], context) ??
+                    context.themeManager.getColorValue('outlineVariant') ??
+                    Colors.grey,
                 width: decoration['border']['width']?.toDouble() ?? 1.0,
               )
             : null,

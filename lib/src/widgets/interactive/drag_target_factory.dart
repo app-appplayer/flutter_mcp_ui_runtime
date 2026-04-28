@@ -6,23 +6,25 @@ import '../../renderer/render_context.dart';
 class DragTargetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
-    // Get builder definition
-    final builderDef = definition['builder'];
+    // Canonical `builder` per spec §2.10.4; `child` accepted as legacy alias.
+    final builderDef = definition['builder'] ?? definition['child'];
     if (builderDef == null) {
-      throw Exception('DragTarget requires a builder property');
+      throw Exception('DragTarget requires a builder (or child) property');
     }
 
-    // Get event handlers
-    final onWillAccept = definition['onWillAccept'];
-    final onAccept = definition['onAccept'];
-    final onLeave = definition['onLeave'];
-    final onMove = definition['onMove'];
+    // Event handlers — canonical `onDrop` per spec, `onAccept` accepted as
+    // Flutter-terminology alias.
+    final onDrop =
+        definition['onDrop'] ?? definition['onAccept'] ?? definition['drop'];
+    final canDrop = definition['canDrop'];
+    final onDragEnter = definition['onDragEnter'] ?? definition['dragEnter'];
+    final onDragLeave = definition['onDragLeave'] ?? definition['dragLeave'];
 
     return DragTarget<Object>(
       builder: (BuildContext dragContext, List<Object?> candidateData,
           List<dynamic> rejectedData) {
         // Create context with drag state variables
-        final dragContext = context.createChildContext(
+        final childContext = context.createChildContext(
           variables: {
             'dragData': {
               'candidateData': candidateData,
@@ -31,11 +33,11 @@ class DragTargetFactory extends WidgetFactory {
             },
           },
         );
-        return context.renderer.renderWidget(builderDef, dragContext);
+        return context.renderer.renderWidget(builderDef, childContext);
       },
       onWillAcceptWithDetails: (details) {
-        if (onWillAccept != null) {
-          // Create context with drag data
+        // Maps to spec's onDragEnter (fired when draggable enters target area)
+        if (onDragEnter != null) {
           final eventContext = context.createChildContext(
             variables: {
               'event': {
@@ -47,14 +49,18 @@ class DragTargetFactory extends WidgetFactory {
               },
             },
           );
-          context.actionHandler.execute(onWillAccept, eventContext);
-          return true;
+          context.actionHandler.execute(onDragEnter, eventContext);
+        }
+        // canDrop: binding expression evaluating drop eligibility
+        if (canDrop != null) {
+          final resolved = context.resolve(canDrop);
+          return resolved == true || resolved == 'true';
         }
         return true;
       },
       onAcceptWithDetails: (details) {
-        if (onAccept != null) {
-          // Create context with drag data
+        // Maps to spec's onDrop (fired when item is dropped)
+        if (onDrop != null) {
           final eventContext = context.createChildContext(
             variables: {
               'event': {
@@ -66,12 +72,12 @@ class DragTargetFactory extends WidgetFactory {
               },
             },
           );
-          context.actionHandler.execute(onAccept, eventContext);
+          context.actionHandler.execute(onDrop, eventContext);
         }
       },
       onLeave: (data) {
-        if (onLeave != null) {
-          // Create context with leaving data
+        // Maps to spec's onDragLeave (fired when draggable leaves target area)
+        if (onDragLeave != null) {
           final eventContext = context.createChildContext(
             variables: {
               'event': {
@@ -79,24 +85,7 @@ class DragTargetFactory extends WidgetFactory {
               },
             },
           );
-          context.actionHandler.execute(onLeave, eventContext);
-        }
-      },
-      onMove: (details) {
-        if (onMove != null) {
-          // Create context with move details
-          final eventContext = context.createChildContext(
-            variables: {
-              'event': {
-                'data': details.data,
-                'offset': {
-                  'dx': details.offset.dx,
-                  'dy': details.offset.dy,
-                },
-              },
-            },
-          );
-          context.actionHandler.execute(onMove, eventContext);
+          context.actionHandler.execute(onDragLeave, eventContext);
         }
       },
     );

@@ -10,11 +10,33 @@ class TextWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Extract and resolve text value
-    final content = properties[core.PropertyKeys.content] ??
+    // Extract and resolve text value.
+    // Canonical key is `text` per spec 17_Naming §17.3.2; `content` and `value`
+    // are legacy aliases accepted for backward compatibility.
+    final textValue = properties[core.PropertyKeys.text] ??
+        properties[core.PropertyKeys.content] ??
         properties[core.PropertyKeys.value] ??
         '';
-    final value = context.resolve<String>(content);
+    var value = context.resolve<String>(textValue);
+
+    // Apply text transform
+    final textTransform =
+        context.resolve<String?>(properties['textTransform']);
+    if (textTransform != null) {
+      switch (textTransform) {
+        case 'uppercase':
+          value = value.toUpperCase();
+          break;
+        case 'lowercase':
+          value = value.toLowerCase();
+          break;
+        case 'capitalize':
+          if (value.isNotEmpty) {
+            value = value[0].toUpperCase() + value.substring(1);
+          }
+          break;
+      }
+    }
 
     // Build text widget
     Widget text = Text(
@@ -33,7 +55,7 @@ class TextWidgetFactory extends WidgetFactory {
           : null,
       semanticsLabel:
           context.resolve(properties['semanticsLabel']) as String? ??
-              context.resolve(properties['aria-label']) as String?,
+              context.resolve(properties['ariaLabel'] ?? properties['aria-label']) as String?,
     );
 
     return applyCommonWrappers(text, properties, context);
@@ -45,7 +67,7 @@ class TextWidgetFactory extends WidgetFactory {
     if (style is Map<String, dynamic>) {
       final colorValue = style[core.PropertyKeys.color];
       final resolvedColor = context.resolve(colorValue);
-      final parsedColor = parseColor(resolvedColor);
+      final parsedColor = parseColor(resolvedColor, context);
 
       return TextStyle(
         fontSize:
@@ -58,7 +80,7 @@ class TextWidgetFactory extends WidgetFactory {
         wordSpacing: parseDimension(context.resolve(style['wordSpacing'])),
         height: parseDimension(context.resolve(style['height'])),
         decoration: _parseTextDecoration(context.resolve(style['decoration'])),
-        decorationColor: parseColor(context.resolve(style['decorationColor'])),
+        decorationColor: parseColor(context.resolve(style['decorationColor']), context),
         decorationStyle: _parseTextDecorationStyle(
             context.resolve(style['decorationStyle'])),
         decorationThickness:
@@ -215,7 +237,7 @@ class TextWidgetFactory extends WidgetFactory {
       if (shadow is Map<String, dynamic>) {
         final offset = shadow['offset'] as Map<String, dynamic>?;
         return Shadow(
-          color: parseColor(context.resolve(shadow['color'])) ?? Colors.black,
+          color: parseColor(context.resolve(shadow['color']), context) ?? Colors.black,
           offset: offset != null
               ? Offset(
                   parseDimension(context.resolve(offset['x'])) ?? 0,

@@ -9,11 +9,12 @@ class BadgeWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Extract properties
+    // Extract properties - support both design doc keys and implementation keys
     final label = context.resolve<String?>(properties['label']);
+    // Design: color → Implementation: backgroundColor
     final backgroundColor =
-        parseColor(context.resolve(properties['backgroundColor']));
-    final textColor = parseColor(context.resolve(properties['textColor']));
+        parseColor(context.resolve(properties['color'] ?? properties['backgroundColor']), context);
+    final textColor = parseColor(context.resolve(properties['textColor']), context);
     final smallSize = properties['smallSize'] as bool? ?? false;
     final isLabelVisible = properties['isLabelVisible'] as bool? ?? true;
     final offset = _parseOffset(properties['offset']);

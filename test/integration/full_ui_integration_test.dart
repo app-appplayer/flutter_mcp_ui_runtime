@@ -32,13 +32,13 @@ void main() {
               {
                 'type': 'linear',
                 'direction': 'horizontal',
-                'mainAxisAlignment': 'center',
+                'distribution': 'center',
                 'children': [
                   {
                     'type': 'button',
                     'label': '-',
                     'variant': 'elevated',
-                    'click': {
+                    'onTap': {
                       'type': 'tool',
                       'tool': 'decrement',
                       'params': {},
@@ -48,7 +48,7 @@ void main() {
                     'type': 'button',
                     'label': '+',
                     'variant': 'elevated',
-                    'click': {
+                    'onTap': {
                       'type': 'tool',
                       'tool': 'increment',
                       'params': {},
@@ -58,7 +58,7 @@ void main() {
                     'type': 'button',
                     'label': 'Reset',
                     'variant': 'outlined',
-                    'click': {
+                    'onTap': {
                       'type': 'tool',
                       'tool': 'reset',
                       'params': {},
@@ -146,7 +146,8 @@ void main() {
       final stateDemo = {
         'type': 'page',
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'text',
@@ -163,7 +164,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Update User',
-              'click': {
+              'onTap': {
                 'type': 'tool',
                 'tool': 'updateUser',
                 'params': {'name': 'John Doe', 'status': 'active'},
@@ -244,7 +245,7 @@ void main() {
                         'child': {
                           'type': 'linear',
             'direction': 'vertical',
-                          'crossAxisAlignment': 'start',
+                          'alignment': 'start',
                           'children': [
                             {
                               'type': 'text',
@@ -261,7 +262,7 @@ void main() {
                       {
                         'type': 'button',
                         'label': 'Action',
-                        'click': {
+                        'onTap': {
                           'type': 'tool',
                           'tool': 'cardAction',
                           'params': {'card': 'first'},
@@ -334,7 +335,8 @@ void main() {
       final errorDemo = {
         'type': 'page',
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             {
               'type': 'text',
@@ -343,7 +345,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Cause Error',
-              'click': {
+              'onTap': {
                 'type': 'tool',
                 'tool': 'errorTool',
                 'params': {},
@@ -391,7 +393,8 @@ void main() {
       final allWidgetsDemo = {
         'type': 'page',
         'content': {
-          'type': 'column',
+          'type': 'linear',
+          'direction': 'vertical',
           'children': [
             // Text widget
             {'type': 'text', 'content': 'Simple text'},

@@ -21,7 +21,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Subscribe',
-              'click': {
+              'onTap': {
                 'type': 'resource',
                 'action': 'subscribe',
                 'uri': 'mcp://server/cpu',

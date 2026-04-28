@@ -1,23 +1,34 @@
 import 'package:flutter/foundation.dart';
+import '../utils/mcp_logger.dart';
 
 /// Enumeration of lifecycle events supported by the runtime
 enum LifecycleEvent {
+  /// App-level initialization (called once on application start)
   initialize,
+
+  /// Page-level initialization (called on each page enter/mount)
+  pageInit,
+
   ready,
   pause,
   resume,
   destroy,
   mount,
   unmount,
+  enter,
+  leave,
+  pagePause,
+  pageResume,
 }
 
 /// Manages component and runtime lifecycle events
 class LifecycleManager {
   LifecycleManager({
     this.enableDebugMode = kDebugMode,
-  });
+  }) : _logger = MCPLogger('LifecycleManager', enableLogging: enableDebugMode);
 
   final bool enableDebugMode;
+  final MCPLogger _logger;
   final Map<LifecycleEvent, List<Function>> _eventListeners = {};
 
   // Action handler for executing lifecycle hooks
@@ -35,7 +46,7 @@ class LifecycleManager {
     _eventListeners.putIfAbsent(event, () => []).add(listener);
 
     if (enableDebugMode) {
-      debugPrint('LifecycleManager: Added listener for ${event.name}');
+      _logger.debug(' Added listener for ${event.name}');
     }
   }
 
@@ -44,7 +55,7 @@ class LifecycleManager {
     _eventListeners[event]?.remove(listener);
 
     if (enableDebugMode) {
-      debugPrint('LifecycleManager: Removed listener for ${event.name}');
+      _logger.debug(' Removed listener for ${event.name}');
     }
   }
 
@@ -54,8 +65,7 @@ class LifecycleManager {
     List<dynamic> hooks,
   ) async {
     if (enableDebugMode) {
-      debugPrint(
-          'LifecycleManager: Executing ${hooks.length} hooks for ${event.name}');
+      _logger.debug(' Executing ${hooks.length} hooks for ${event.name}');
     }
 
     // Execute registered listeners first
@@ -70,8 +80,7 @@ class LifecycleManager {
           }
         } catch (error) {
           if (enableDebugMode) {
-            debugPrint(
-                'LifecycleManager: Error in listener for ${event.name}: $error');
+            _logger.debug(' Error in listener for ${event.name}: $error');
           }
         }
       }
@@ -83,22 +92,21 @@ class LifecycleManager {
         await _executeHook(event, hook);
       } catch (error) {
         if (enableDebugMode) {
-          debugPrint(
-              'LifecycleManager: Error executing hook for ${event.name}: $error');
+          _logger.debug(' Error executing hook for ${event.name}: $error');
         }
         // Continue with other hooks even if one fails
       }
     }
 
     if (enableDebugMode) {
-      debugPrint('LifecycleManager: Completed hooks for ${event.name}');
+      _logger.debug(' Completed hooks for ${event.name}');
     }
   }
 
   /// Triggers a lifecycle event and executes associated hooks
   Future<void> triggerEvent(LifecycleEvent event, [dynamic data]) async {
     if (enableDebugMode) {
-      debugPrint('LifecycleManager: Triggering ${event.name}');
+      _logger.debug(' Triggering ${event.name}');
     }
 
     // Execute registered listeners
@@ -117,8 +125,7 @@ class LifecycleManager {
           }
         } catch (error) {
           if (enableDebugMode) {
-            debugPrint(
-                'LifecycleManager: Error in listener for ${event.name}: $error');
+            _logger.debug(' Error in listener for ${event.name}: $error');
           }
         }
       }
@@ -129,7 +136,7 @@ class LifecycleManager {
   Future<void> _executeHook(LifecycleEvent event, dynamic hook) async {
     if (hook is! Map<String, dynamic>) {
       if (enableDebugMode) {
-        debugPrint('LifecycleManager: Invalid hook format for ${event.name}');
+        _logger.debug(' Invalid hook format for ${event.name}');
       }
       return;
     }
@@ -139,7 +146,7 @@ class LifecycleManager {
 
     if (actionType == null) {
       if (enableDebugMode) {
-        debugPrint('LifecycleManager: Hook missing type for ${event.name}');
+        _logger.debug(' Hook missing type for ${event.name}');
       }
       return;
     }
@@ -160,27 +167,75 @@ class LifecycleManager {
       case 'notification':
         await _executeNotificationHook(hookMap);
         break;
+      case 'resource':
+        await _executeResourceHook(hookMap);
+        break;
       default:
-        if (enableDebugMode) {
-          debugPrint('LifecycleManager: Unknown hook type: $actionType');
+        // Delegate unknown hook types to ActionHandler so any action type
+        // can be used as a lifecycle hook
+        if (_actionHandler != null && _renderContext != null) {
+          try {
+            await _actionHandler.execute(hookMap, _renderContext);
+          } catch (e) {
+            if (enableDebugMode) {
+              _logger.debug(' Error executing hook type $actionType: $e');
+            }
+          }
+        } else {
+          if (enableDebugMode) {
+            _logger.debug(' ActionHandler not available for hook type: $actionType');
+          }
         }
         break;
     }
   }
 
-  /// Executes a state-related lifecycle hook
-  Future<void> _executeStateHook(Map<String, dynamic> hook) async {
-    // Placeholder implementation
-    // This would interact with the StateService
+  /// Executes a resource-related lifecycle hook via ActionHandler
+  Future<void> _executeResourceHook(Map<String, dynamic> hook) async {
     if (enableDebugMode) {
-      debugPrint('LifecycleManager: Executing state hook: ${hook['action']}');
+      _logger.debug(' Executing resource hook: ${hook['resource']}');
+    }
+
+    if (_actionHandler != null && _renderContext != null) {
+      try {
+        await _actionHandler.execute(hook, _renderContext);
+      } catch (e) {
+        if (enableDebugMode) {
+          _logger.debug(' Error executing resource hook: $e');
+        }
+      }
+    } else {
+      if (enableDebugMode) {
+        _logger.debug(' ActionHandler not available for resource execution');
+      }
+    }
+  }
+
+  /// Executes a state-related lifecycle hook via ActionHandler
+  Future<void> _executeStateHook(Map<String, dynamic> hook) async {
+    if (enableDebugMode) {
+      _logger.debug(' Executing state hook: ${hook['action']}');
+    }
+
+    if (_actionHandler != null && _renderContext != null) {
+      try {
+        await _actionHandler.execute(hook, _renderContext);
+      } catch (e) {
+        if (enableDebugMode) {
+          _logger.debug(' Error executing state hook: $e');
+        }
+      }
+    } else {
+      if (enableDebugMode) {
+        _logger.debug(' ActionHandler not available for state execution');
+      }
     }
   }
 
   /// Executes a tool-related lifecycle hook
   Future<void> _executeToolHook(Map<String, dynamic> hook) async {
     if (enableDebugMode) {
-      debugPrint('LifecycleManager: Executing tool hook: ${hook['tool']}');
+      _logger.debug(' Executing tool hook: ${hook['tool']}');
     }
 
     // Execute the tool action using ActionHandler if available
@@ -189,35 +244,116 @@ class LifecycleManager {
         await _actionHandler.execute(hook, _renderContext);
       } catch (e) {
         if (enableDebugMode) {
-          debugPrint('LifecycleManager: Error executing tool hook: $e');
+          _logger.debug(' Error executing tool hook: $e');
         }
       }
     } else {
       if (enableDebugMode) {
-        debugPrint(
-            'LifecycleManager: ActionHandler not available for tool execution');
+        _logger.debug(' ActionHandler not available for tool execution');
       }
     }
   }
 
-  /// Executes a service-related lifecycle hook
+  /// Executes a service-related lifecycle hook via ActionHandler
   Future<void> _executeServiceHook(Map<String, dynamic> hook) async {
-    // Placeholder implementation
-    // This would interact with the ServiceRegistry
     if (enableDebugMode) {
-      debugPrint(
-          'LifecycleManager: Executing service hook: ${hook['service']}');
+      _logger.debug(' Executing service hook: ${hook['service']}');
+    }
+
+    if (_actionHandler != null && _renderContext != null) {
+      try {
+        await _actionHandler.execute(hook, _renderContext);
+      } catch (e) {
+        if (enableDebugMode) {
+          _logger.debug(' Error executing service hook: $e');
+        }
+      }
+    } else {
+      if (enableDebugMode) {
+        _logger.debug(' ActionHandler not available for service execution');
+      }
     }
   }
 
-  /// Executes a notification-related lifecycle hook
+  /// Executes a notification-related lifecycle hook via ActionHandler
   Future<void> _executeNotificationHook(Map<String, dynamic> hook) async {
-    // Placeholder implementation
-    // This would interact with the NotificationManager
     if (enableDebugMode) {
-      debugPrint(
-          'LifecycleManager: Executing notification hook: ${hook['action']}');
+      _logger.debug(' Executing notification hook: ${hook['action']}');
     }
+
+    if (_actionHandler != null && _renderContext != null) {
+      try {
+        await _actionHandler.execute(hook, _renderContext);
+      } catch (e) {
+        if (enableDebugMode) {
+          _logger.debug(' Error executing notification hook: $e');
+        }
+      }
+    } else {
+      if (enableDebugMode) {
+        _logger.debug(' ActionHandler not available for notification execution');
+      }
+    }
+  }
+
+  /// Convenience method: execute onInitialize lifecycle hooks (app-level)
+  Future<void> executeOnInitialize(List<dynamic> hooks) async {
+    await executeLifecycleHooks(LifecycleEvent.initialize, hooks);
+  }
+
+  /// Convenience method: execute onInit lifecycle hooks (page-level)
+  Future<void> executeOnInit(List<dynamic> hooks) async {
+    await executeLifecycleHooks(LifecycleEvent.pageInit, hooks);
+  }
+
+  /// Convenience method: execute onReady lifecycle hooks
+  Future<void> executeOnReady(List<dynamic> hooks) async {
+    await executeLifecycleHooks(LifecycleEvent.ready, hooks);
+  }
+
+  /// Convenience method: execute onPause lifecycle hooks
+  Future<void> executeOnPause(List<dynamic> hooks) async {
+    await executeLifecycleHooks(LifecycleEvent.pause, hooks);
+  }
+
+  /// Convenience method: execute onResume lifecycle hooks
+  Future<void> executeOnResume(List<dynamic> hooks) async {
+    await executeLifecycleHooks(LifecycleEvent.resume, hooks);
+  }
+
+  /// Convenience method: execute onDispose lifecycle hooks
+  Future<void> executeOnDispose(List<dynamic> hooks) async {
+    await executeLifecycleHooks(LifecycleEvent.destroy, hooks);
+  }
+
+  /// Convenience method: execute onMount lifecycle hooks
+  Future<void> executeOnMount(List<dynamic> hooks) async {
+    await executeLifecycleHooks(LifecycleEvent.mount, hooks);
+  }
+
+  /// Convenience method: execute onUnmount lifecycle hooks
+  Future<void> executeOnUnmount(List<dynamic> hooks) async {
+    await executeLifecycleHooks(LifecycleEvent.unmount, hooks);
+  }
+
+  /// Convenience method: execute onEnter lifecycle hooks (page navigation enter)
+  Future<void> executeOnEnter(List<dynamic> hooks) async {
+    await executeLifecycleHooks(LifecycleEvent.enter, hooks);
+  }
+
+  /// Convenience method: execute onLeave lifecycle hooks (page navigation leave)
+  Future<void> executeOnLeave(List<dynamic> hooks) async {
+    await executeLifecycleHooks(LifecycleEvent.leave, hooks);
+  }
+
+  /// Convenience method: execute page-level onPause lifecycle hooks
+  Future<void> executeOnPagePause(List<dynamic> hooks) async {
+    await executeLifecycleHooks(LifecycleEvent.pagePause, hooks);
+  }
+
+  /// Convenience method: execute page-level onResume lifecycle hooks
+  Future<void> executeOnPageResume(List<dynamic> hooks) async {
+    await executeLifecycleHooks(LifecycleEvent.pageResume, hooks);
   }
 
   /// Creates a component lifecycle handler
@@ -234,7 +370,7 @@ class LifecycleManager {
     _eventListeners.clear();
 
     if (enableDebugMode) {
-      debugPrint('LifecycleManager: Disposed');
+      _logger.debug(' Disposed');
     }
   }
 }
@@ -250,6 +386,10 @@ class ComponentLifecycleHandler {
   final String componentId;
   final LifecycleManager lifecycleManager;
   final bool enableDebugMode;
+  late final MCPLogger _logger = MCPLogger(
+    'ComponentLifecycle:$componentId',
+    enableLogging: enableDebugMode,
+  );
 
   bool _isMounted = false;
   Map<String, dynamic>? _lifecycleConfig;
@@ -269,7 +409,7 @@ class ComponentLifecycleHandler {
     _isMounted = true;
 
     if (enableDebugMode) {
-      debugPrint('ComponentLifecycleHandler: Component $componentId mounted');
+      _logger.debug('Mounted');
     }
 
     // Execute onMount hooks if defined
@@ -290,8 +430,7 @@ class ComponentLifecycleHandler {
     if (!_isMounted) return;
 
     if (enableDebugMode) {
-      debugPrint(
-          'ComponentLifecycleHandler: Component $componentId unmounting');
+      _logger.debug('Unmounting');
     }
 
     // Execute onUnmount hooks if defined
@@ -309,7 +448,7 @@ class ComponentLifecycleHandler {
     _isMounted = false;
 
     if (enableDebugMode) {
-      debugPrint('ComponentLifecycleHandler: Component $componentId unmounted');
+      _logger.debug('Unmounted');
     }
   }
 }

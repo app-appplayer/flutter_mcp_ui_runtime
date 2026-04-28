@@ -1,11 +1,17 @@
 library ui_definition;
 
 import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart' as core;
+import 'app_metadata.dart';
 
-/// Core models for MCP UI DSL v1.0
+/// Core models for MCP UI DSL.
 ///
-/// This file defines the core data structures for UI definitions
-/// according to the MCP UI DSL v1.0 specification.
+/// This file defines the data structures used by the runtime to parse
+/// application / page definitions. The DSL carries a version stamp on the
+/// root (resolved via [core.MCPUIDSLVersion]), but the runtime does not
+/// gate features on the version today — feature availability is decided
+/// by the presence of the relevant block (e.g. `channels`,
+/// `permissions`). Version-based negotiation logic will be added when a
+/// real breaking-change pivot requires it.
 
 /// Type of UI definition
 enum UIDefinitionType {
@@ -27,6 +33,17 @@ class UIDefinition {
   final Map<String, dynamic>? services;
   final Map<String, dynamic>? content;
 
+  /// DSL version tag that appeared in the root `"version"` field,
+  /// resolved against [core.MCPUIDSLVersion.supported]. Unknown or
+  /// missing stamps collapse to [core.MCPUIDSLVersion.current].
+  final String dslVersion;
+
+  /// Permission configuration for client actions.
+  final PermissionsConfig? permissions;
+
+  /// Channel definitions for bidirectional communication.
+  final Map<String, ChannelConfig>? channels;
+
   UIDefinition({
     required this.type,
     required this.properties,
@@ -36,6 +53,9 @@ class UIDefinition {
     this.lifecycle,
     this.services,
     this.content,
+    this.dslVersion = core.MCPUIDSLVersion.current,
+    this.permissions,
+    this.channels,
   });
 
   factory UIDefinition.fromJson(Map<String, dynamic> json) {
@@ -60,6 +80,24 @@ class UIDefinition {
       if (json['initialRoute'] != null)
         properties['initialRoute'] = json['initialRoute'];
       if (json['theme'] != null) properties['theme'] = json['theme'];
+      // Spec §11 bundle metadata + §11.9 dashboard + §9 templates —
+      // passed through verbatim so ApplicationDefinition can materialise
+      // DslAppMetadata / DashboardConfig snapshots.
+      const passthroughKeys = <String>[
+        'id',
+        'description',
+        'icon',
+        'category',
+        'publisher',
+        'timestamps',
+        'screenshots',
+        'splash',
+        'dashboard',
+        'templates',
+      ];
+      for (final k in passthroughKeys) {
+        if (json[k] != null) properties[k] = json[k];
+      }
     } else if (type == UIDefinitionType.page) {
       // Add page-specific properties
       if (json['title'] != null) properties['title'] = json['title'];
@@ -71,6 +109,17 @@ class UIDefinition {
     // Merge with explicit properties if any
     if (json['properties'] != null) {
       properties.addAll(Map<String, dynamic>.from(json['properties'] as Map));
+    }
+
+    // Parse v1.1 channels
+    Map<String, ChannelConfig>? channels;
+    if (json['channels'] != null) {
+      channels = {};
+      final channelsJson = json['channels'] as Map<String, dynamic>;
+      for (final entry in channelsJson.entries) {
+        channels[entry.key] =
+            ChannelConfig.fromJson(entry.value as Map<String, dynamic>);
+      }
     }
 
     return UIDefinition(
@@ -99,12 +148,27 @@ class UIDefinition {
       content: json['content'] != null
           ? Map<String, dynamic>.from(json['content'] as Map)
           : null,
+      dslVersion: core.MCPUIDSLVersion.resolve(json['version']),
+      permissions: json['permissions'] != null
+          ? PermissionsConfig.fromJson(
+              json['permissions'] as Map<String, dynamic>)
+          : null,
+      channels: channels,
     );
   }
 
   Map<String, dynamic> toJson() {
+    Map<String, dynamic>? channelsJson;
+    if (channels != null) {
+      channelsJson = {};
+      for (final entry in channels!.entries) {
+        channelsJson[entry.key] = entry.value.toJson();
+      }
+    }
+
     return {
       'type': type == UIDefinitionType.application ? 'application' : 'page',
+      'version': dslVersion,
       'properties': properties,
       if (routes != null) 'routes': routes,
       if (state != null) 'state': state,
@@ -112,6 +176,8 @@ class UIDefinition {
       if (lifecycle != null) 'lifecycle': lifecycle,
       if (services != null) 'services': services,
       if (content != null) 'content': content,
+      if (permissions != null) 'permissions': permissions!.toJson(),
+      if (channelsJson != null) 'channels': channelsJson,
     };
   }
 }
@@ -121,6 +187,21 @@ class ApplicationDefinition extends core.ApplicationConfig {
   final NavigationDefinition? navigationDef;
   final LifecycleDefinition? lifecycleDef;
   final ServicesDefinition? servicesDef;
+
+  /// Bundle metadata (spec §11): icon, description, publisher, etc.
+  /// Parsed from the DSL root — null when none of the optional §11
+  /// fields are present.
+  final DslAppMetadata? metadata;
+
+  /// Spec §11.9 dashboard rendering configuration. Null when the app
+  /// does not declare a compact dashboard view; embedders should fall
+  /// back to a default card from [metadata].
+  final core.DashboardConfig? dashboard;
+
+  /// Templates declared at the application root (spec §9 / §11.9.4)
+  /// kept as raw JSON so the renderer's template resolver can read them
+  /// during both full and dashboard rendering modes.
+  final Map<String, dynamic>? templates;
 
   ApplicationDefinition({
     required super.title,
@@ -132,6 +213,9 @@ class ApplicationDefinition extends core.ApplicationConfig {
     this.navigationDef,
     this.lifecycleDef,
     this.servicesDef,
+    this.metadata,
+    this.dashboard,
+    this.templates,
   }) : super(
           state: initialState != null ? {'initial': initialState} : null,
           navigation: navigationDef?.toJson(),
@@ -169,7 +253,34 @@ class ApplicationDefinition extends core.ApplicationConfig {
       servicesDef: definition.services != null
           ? ServicesDefinition.fromJson(definition.services!)
           : null,
+      metadata: _parseMetadata(props),
+      dashboard: props['dashboard'] is Map<String, dynamic>
+          ? core.DashboardConfig.fromJson(
+              props['dashboard'] as Map<String, dynamic>)
+          : null,
+      templates: props['templates'] is Map<String, dynamic>
+          ? Map<String, dynamic>.from(props['templates'] as Map)
+          : null,
     );
+  }
+
+  /// Picks the §11 metadata fields off the DSL root. Returns null when
+  /// no metadata-bearing field is present so embedders can distinguish
+  /// "no metadata declared" from "empty metadata".
+  static DslAppMetadata? _parseMetadata(Map<String, dynamic> props) {
+    const metadataKeys = <String>{
+      'id',
+      'description',
+      'icon',
+      'category',
+      'publisher',
+      'timestamps',
+      'screenshots',
+      'splash',
+    };
+    final hasAny = metadataKeys.any(props.containsKey);
+    if (!hasAny) return null;
+    return DslAppMetadata.fromJson(props);
   }
 
   NavigationDefinition? get navigationDefinition => navigationDef;
@@ -186,6 +297,12 @@ class ApplicationDefinition extends core.ApplicationConfig {
 class PageDefinition extends core.PageConfig {
   final LifecycleDefinition? lifecycleDef;
 
+  /// Channels declared at page scope (spec §4.13 + §Channel Lifecycle).
+  /// Populated by [fromUIDefinition]; registered into the runtime's
+  /// channel manager when the page becomes active and disposed when it
+  /// unmounts (if `autoDispose` is true).
+  final Map<String, ChannelConfig>? channels;
+
   PageDefinition({
     super.title,
     super.route,
@@ -193,6 +310,7 @@ class PageDefinition extends core.PageConfig {
     super.themeOverride,
     Map<String, dynamic>? initialState,
     this.lifecycleDef,
+    this.channels,
   }) : super(
           state: initialState != null ? {'initial': initialState} : null,
           lifecycle: lifecycleDef?.toJson(),
@@ -221,6 +339,7 @@ class PageDefinition extends core.PageConfig {
       lifecycleDef: definition.lifecycle != null
           ? LifecycleDefinition.fromJson(definition.lifecycle!)
           : null,
+      channels: definition.channels,
     );
   }
 
@@ -478,4 +597,311 @@ enum BackgroundServiceType {
   continuous, // Runs continuously
   event, // Triggered by events
   oneoff, // Runs once after delay
+}
+
+// ============================================================================
+// v1.1 Definitions
+// ============================================================================
+
+/// v1.1: Permission configuration for client actions
+class PermissionsConfig {
+  /// File read permission settings
+  final FilePermissionConfig? fileRead;
+
+  /// File write permission settings
+  final FilePermissionConfig? fileWrite;
+
+  /// HTTP permission settings
+  final HttpPermissionConfig? http;
+
+  /// Shell execution permission settings
+  final ShellPermissionConfig? shell;
+
+  /// Clipboard permission settings
+  final bool? clipboard;
+
+  /// Notification permission settings
+  final bool? notification;
+
+  /// System info permission settings
+  final bool? systemInfo;
+
+  PermissionsConfig({
+    this.fileRead,
+    this.fileWrite,
+    this.http,
+    this.shell,
+    this.clipboard,
+    this.notification,
+    this.systemInfo,
+  });
+
+  /// Accept both dotted spec naming (e.g., 'network.http', 'system.clipboard')
+  /// and short implementation naming (e.g., 'http', 'clipboard')
+  factory PermissionsConfig.fromJson(Map<String, dynamic> json) {
+    return PermissionsConfig(
+      fileRead: (json['file.read'] ?? json['fileRead']) != null
+          ? FilePermissionConfig.fromJson(
+              (json['file.read'] ?? json['fileRead']) as Map<String, dynamic>)
+          : null,
+      fileWrite: (json['file.write'] ?? json['fileWrite']) != null
+          ? FilePermissionConfig.fromJson(
+              (json['file.write'] ?? json['fileWrite']) as Map<String, dynamic>)
+          : null,
+      http: (json['network.http'] ?? json['http']) != null
+          ? HttpPermissionConfig.fromJson(
+              (json['network.http'] ?? json['http']) as Map<String, dynamic>)
+          : null,
+      shell: (json['system.exec'] ?? json['shell']) != null
+          ? ShellPermissionConfig.fromJson(
+              (json['system.exec'] ?? json['shell']) as Map<String, dynamic>)
+          : null,
+      clipboard: (json['system.clipboard'] ?? json['clipboard']) as bool?,
+      notification: json['notification'] as bool?,
+      systemInfo: (json['system.info'] ?? json['systemInfo']) as bool?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (fileRead != null) 'file.read': fileRead!.toJson(),
+      if (fileWrite != null) 'file.write': fileWrite!.toJson(),
+      if (http != null) 'http': http!.toJson(),
+      if (shell != null) 'shell': shell!.toJson(),
+      if (clipboard != null) 'clipboard': clipboard,
+      if (notification != null) 'notification': notification,
+      if (systemInfo != null) 'systemInfo': systemInfo,
+    };
+  }
+}
+
+/// File permission configuration
+class FilePermissionConfig {
+  /// Allowed paths for file access
+  final List<String>? allowedPaths;
+
+  /// Allowed file extensions
+  final List<String>? allowedExtensions;
+
+  /// Maximum file size in bytes (for write)
+  final int? maxSize;
+
+  /// Whether to require user confirmation
+  final bool? requireConfirmation;
+
+  FilePermissionConfig({
+    this.allowedPaths,
+    this.allowedExtensions,
+    this.maxSize,
+    this.requireConfirmation,
+  });
+
+  factory FilePermissionConfig.fromJson(Map<String, dynamic> json) {
+    return FilePermissionConfig(
+      allowedPaths: (json['allowedPaths'] as List<dynamic>?)?.cast<String>(),
+      allowedExtensions:
+          (json['allowedExtensions'] as List<dynamic>?)?.cast<String>(),
+      maxSize: json['maxSize'] as int?,
+      requireConfirmation: json['requireConfirmation'] as bool?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (allowedPaths != null) 'allowedPaths': allowedPaths,
+      if (allowedExtensions != null) 'allowedExtensions': allowedExtensions,
+      if (maxSize != null) 'maxSize': maxSize,
+      if (requireConfirmation != null) 'requireConfirmation': requireConfirmation,
+    };
+  }
+}
+
+/// HTTP permission configuration
+class HttpPermissionConfig {
+  /// Allowed domains for HTTP requests
+  final List<String>? allowedDomains;
+
+  /// Blocked domains
+  final List<String>? blockedDomains;
+
+  /// Allowed HTTP methods
+  final List<String>? allowedMethods;
+
+  /// Whether to block localhost by default
+  final bool blockLocalhost;
+
+  HttpPermissionConfig({
+    this.allowedDomains,
+    this.blockedDomains,
+    this.allowedMethods,
+    this.blockLocalhost = true,
+  });
+
+  factory HttpPermissionConfig.fromJson(Map<String, dynamic> json) {
+    return HttpPermissionConfig(
+      allowedDomains:
+          (json['allowedDomains'] as List<dynamic>?)?.cast<String>(),
+      blockedDomains:
+          (json['blockedDomains'] as List<dynamic>?)?.cast<String>(),
+      allowedMethods:
+          (json['allowedMethods'] as List<dynamic>?)?.cast<String>(),
+      blockLocalhost: json['blockLocalhost'] as bool? ?? true,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (allowedDomains != null) 'allowedDomains': allowedDomains,
+      if (blockedDomains != null) 'blockedDomains': blockedDomains,
+      if (allowedMethods != null) 'allowedMethods': allowedMethods,
+      'blockLocalhost': blockLocalhost,
+    };
+  }
+}
+
+/// Shell execution permission configuration
+class ShellPermissionConfig {
+  /// Allowed commands (exact match or prefix)
+  final List<String>? allowedCommands;
+
+  /// Allowed working directories
+  final List<String>? allowedWorkingDirs;
+
+  /// Maximum execution timeout in milliseconds
+  final int? timeout;
+
+  /// Whether to require user confirmation
+  final bool requireConfirmation;
+
+  /// Denied argument values (PM-13)
+  final List<String>? denyArgs;
+
+  /// Allowed argument regex patterns (PM-13)
+  final List<String>? allowArgPatterns;
+
+  ShellPermissionConfig({
+    this.allowedCommands,
+    this.allowedWorkingDirs,
+    this.timeout,
+    this.requireConfirmation = true,
+    this.denyArgs,
+    this.allowArgPatterns,
+  });
+
+  factory ShellPermissionConfig.fromJson(Map<String, dynamic> json) {
+    // Support nested args config: { "args": { "deny": [...], "allowPatterns": [...] } }
+    final argsConfig = json['args'] as Map<String, dynamic>?;
+
+    return ShellPermissionConfig(
+      allowedCommands:
+          (json['allowedCommands'] as List<dynamic>?)?.cast<String>(),
+      allowedWorkingDirs:
+          (json['allowedWorkingDirs'] as List<dynamic>?)?.cast<String>(),
+      timeout: json['timeout'] as int?,
+      requireConfirmation: json['requireConfirmation'] as bool? ?? true,
+      denyArgs: (argsConfig?['deny'] as List<dynamic>?)?.cast<String>() ??
+          (json['denyArgs'] as List<dynamic>?)?.cast<String>(),
+      allowArgPatterns:
+          (argsConfig?['allowPatterns'] as List<dynamic>?)?.cast<String>() ??
+              (json['allowArgPatterns'] as List<dynamic>?)?.cast<String>(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (allowedCommands != null) 'allowedCommands': allowedCommands,
+      if (allowedWorkingDirs != null) 'allowedWorkingDirs': allowedWorkingDirs,
+      if (timeout != null) 'timeout': timeout,
+      'requireConfirmation': requireConfirmation,
+      if (denyArgs != null || allowArgPatterns != null)
+        'args': {
+          if (denyArgs != null) 'deny': denyArgs,
+          if (allowArgPatterns != null) 'allowPatterns': allowArgPatterns,
+        },
+    };
+  }
+}
+
+/// v1.1: Channel configuration for bidirectional communication
+class ChannelConfig {
+  /// Channel type (watchFile, watchDirectory, systemMonitor, poll)
+  final String type;
+
+  /// Channel-specific parameters
+  final Map<String, dynamic>? params;
+
+  /// Action to execute when channel receives data
+  final Map<String, dynamic>? onData;
+
+  /// Action to execute on error
+  final Map<String, dynamic>? onError;
+
+  /// State path to store channel data
+  final String? statePath;
+
+  /// Whether channel is initially active (from lifecycle.autoStart or autoStart)
+  final bool autoStart;
+
+  /// Whether channel is automatically cleaned up when screen is destroyed
+  /// (from lifecycle.autoDispose or autoDispose, default: true per spec)
+  final bool autoDispose;
+
+  /// Backpressure configuration for high-frequency channels
+  final Map<String, dynamic>? backpressure;
+
+  /// Full lifecycle configuration map (autoStart, autoDispose, restartOnError, etc.)
+  final Map<String, dynamic>? lifecycle;
+
+  ChannelConfig({
+    required this.type,
+    this.params,
+    this.onData,
+    this.onError,
+    this.statePath,
+    this.autoStart = false,
+    this.autoDispose = false,
+    this.backpressure,
+    this.lifecycle,
+  });
+
+  factory ChannelConfig.fromJson(Map<String, dynamic> json) {
+    // Support both flat format and lifecycle sub-object format (spec §Channel Lifecycle)
+    final lifecycle = json['lifecycle'] as Map<String, dynamic>?;
+    final autoStart =
+        lifecycle?['autoStart'] as bool? ?? json['autoStart'] as bool? ?? false;
+    final autoDispose =
+        lifecycle?['autoDispose'] as bool? ?? json['autoDispose'] as bool? ?? false;
+
+    // Merge lifecycle fields into params for channel_manager to read (backward compat)
+    Map<String, dynamic>? params = json['params'] as Map<String, dynamic>?;
+    if (lifecycle != null) {
+      params = {...?params, ...lifecycle};
+    }
+
+    return ChannelConfig(
+      type: json['type'] as String,
+      params: params,
+      onData: json['onData'] as Map<String, dynamic>?,
+      onError: json['onError'] as Map<String, dynamic>?,
+      statePath: json['statePath'] as String?,
+      autoStart: autoStart,
+      autoDispose: autoDispose,
+      backpressure: json['backpressure'] as Map<String, dynamic>?,
+      lifecycle: lifecycle,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type,
+      if (params != null) 'params': params,
+      if (onData != null) 'onData': onData,
+      if (onError != null) 'onError': onError,
+      if (statePath != null) 'statePath': statePath,
+      'autoStart': autoStart,
+      'autoDispose': autoDispose,
+      if (backpressure != null) 'backpressure': backpressure,
+      if (lifecycle != null) 'lifecycle': lifecycle,
+    };
+  }
 }

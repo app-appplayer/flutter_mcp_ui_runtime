@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../renderer/render_context.dart';
+import '../../utils/icon_resolver.dart';
 import '../widget_factory.dart';
 
 /// Factory for NavigationRail widgets
@@ -9,8 +10,12 @@ class NavigationRailWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Extract properties
-    final selectedIndex = properties['selectedIndex'] as int? ?? 0;
+    // Extract properties. `selectedIndex` may be a binding expression; the
+    // factory resolves through the render context before clamping.
+    final selectedIndexRaw = context.resolve(properties['selectedIndex']);
+    final selectedIndex = selectedIndexRaw is int
+        ? selectedIndexRaw
+        : (selectedIndexRaw is num ? selectedIndexRaw.toInt() : 0);
     final extended = properties['extended'] as bool? ?? false;
     final minWidth = properties['minWidth']?.toDouble();
     final minExtendedWidth = properties['minExtendedWidth']?.toDouble();
@@ -25,11 +30,11 @@ class NavigationRailWidgetFactory extends WidgetFactory {
     final selectedIconTheme =
         _parseIconThemeData(properties['selectedIconTheme'], context);
     final backgroundColor =
-        parseColor(context.resolve(properties['backgroundColor']));
+        parseColor(context.resolve(properties['backgroundColor']), context);
     final elevation = properties['elevation']?.toDouble();
 
     // Extract destinations
-    final destinationsData = properties['destinations'] as List<dynamic>? ?? [];
+    final destinationsData = (properties['items'] ?? properties['destinations']) as List<dynamic>? ?? [];
     final destinations = destinationsData
         .map((dest) => _buildDestination(dest, context))
         .toList();
@@ -44,7 +49,7 @@ class NavigationRailWidgetFactory extends WidgetFactory {
 
     // Extract action handler
     final onDestinationSelected =
-        properties['onDestinationSelected'] as Map<String, dynamic>?;
+        (properties['onChange'] ?? properties['onSelect'] ?? properties['change'] ?? properties['select'] ?? properties['onDestinationSelected']) as Map<String, dynamic>?;
 
     Widget navigationRail = NavigationRail(
       selectedIndex: selectedIndex.clamp(0, destinations.length - 1),
@@ -126,22 +131,7 @@ class NavigationRailWidgetFactory extends WidgetFactory {
     return const Icon(Icons.home);
   }
 
-  IconData _parseIconData(String iconName) {
-    switch (iconName) {
-      case 'home':
-        return Icons.home;
-      case 'search':
-        return Icons.search;
-      case 'favorite':
-        return Icons.favorite;
-      case 'settings':
-        return Icons.settings;
-      case 'person':
-        return Icons.person;
-      default:
-        return Icons.circle;
-    }
-  }
+  IconData _parseIconData(String iconName) => resolveIconData(iconName);
 
   NavigationRailLabelType? _parseLabelType(String? value) {
     switch (value) {
@@ -161,7 +151,7 @@ class NavigationRailWidgetFactory extends WidgetFactory {
 
     if (style is Map<String, dynamic>) {
       return TextStyle(
-        color: parseColor(context.resolve(style['color'])),
+        color: parseColor(context.resolve(style['color']), context),
         fontSize: style['fontSize']?.toDouble(),
         fontWeight: style['fontWeight'] == 'bold' ? FontWeight.bold : null,
       );
@@ -175,7 +165,7 @@ class NavigationRailWidgetFactory extends WidgetFactory {
 
     if (theme is Map<String, dynamic>) {
       return IconThemeData(
-        color: parseColor(context.resolve(theme['color'])),
+        color: parseColor(context.resolve(theme['color']), context),
         size: theme['size']?.toDouble(),
         opacity: theme['opacity']?.toDouble(),
       );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../runtime/service_registry.dart';
 import '../notifications/notification_manager.dart';
 import '../notifications/notification_types.dart';
+import '../utils/mcp_logger.dart';
 
 /// Service for managing notifications within the runtime
 class NotificationService extends RuntimeService {
@@ -9,6 +10,8 @@ class NotificationService extends RuntimeService {
     required NotificationManager notificationManager,
     super.enableDebugMode,
   }) : _manager = notificationManager;
+
+  static final _logger = MCPLogger('NotificationService');
 
   final NotificationManager _manager;
   final Map<String, NotificationChannel> _channels = {};
@@ -155,7 +158,7 @@ class NotificationService extends RuntimeService {
     _manager.addChannel(channel);
 
     if (enableDebugMode) {
-      debugPrint('NotificationService: Created channel "$id"');
+      _logger.debug('Created channel "$id"');
     }
   }
 
@@ -164,8 +167,8 @@ class NotificationService extends RuntimeService {
     _actionHandlers[actionId] = handler;
 
     if (enableDebugMode) {
-      debugPrint(
-          'NotificationService: Registered action handler for "$actionId"');
+      _logger.debug(
+          'Registered action handler for "$actionId"');
     }
   }
 
@@ -244,8 +247,8 @@ class NotificationService extends RuntimeService {
     _manager.addListener(_handleNotificationEvent);
 
     if (enableDebugMode) {
-      debugPrint(
-          'NotificationService: Initialized with ${_channels.length} channels');
+      _logger.debug(
+          'Initialized with ${_channels.length} channels');
     }
   }
 
@@ -263,8 +266,8 @@ class NotificationService extends RuntimeService {
     String? actionId,
   ) {
     if (enableDebugMode) {
-      debugPrint(
-          'NotificationService: Event "$event" for notification "${notification.id}"');
+      _logger.debug(
+          'Event "$event" for notification "${notification.id}"');
     }
 
     // Handle action tap
@@ -273,8 +276,8 @@ class NotificationService extends RuntimeService {
       if (handler != null) {
         handler();
       } else if (enableDebugMode) {
-        debugPrint(
-            'NotificationService: No handler registered for action "$actionId"');
+        _logger.debug(
+            'No handler registered for action "$actionId"');
       }
     }
 
@@ -283,7 +286,7 @@ class NotificationService extends RuntimeService {
       // Could navigate to specific screen based on notification data
       final route = notification.data['route'] as String?;
       if (route != null && enableDebugMode) {
-        debugPrint('NotificationService: Would navigate to route "$route"');
+        _logger.debug('Would navigate to route "$route"');
       }
     }
   }

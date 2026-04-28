@@ -314,7 +314,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Show Message',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'message',
@@ -523,7 +523,7 @@ void main() {
                 'error': '{{emailError}}',
                 'aria-invalid': '{{emailError != null}}',
                 'aria-describedby': 'email-error',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'email',
@@ -544,7 +544,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Validate',
-                'click': {
+                'onTap': {
                   'type': 'tool',
                   'tool': 'validateEmail',
                 },
@@ -598,7 +598,7 @@ void main() {
                 'type': 'button',
                 'label': 'Open Dialog',
                 'aria-label': 'Open settings dialog',
-                'click': {
+                'onTap': {
                   'type': 'tool',
                   'tool': 'openDialog',
                 },

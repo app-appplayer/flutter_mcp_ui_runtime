@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../utils/mcp_logger.dart';
 
 /// Represents a function that is called when a watched state value changes
 typedef StateChangeCallback = Future<void> Function(
@@ -12,7 +13,7 @@ class StateWatcher {
     this.condition,
     this.debounceMs = 0,
     this.enableDebugMode = kDebugMode,
-  });
+  }) : _logger = MCPLogger('StateWatcher', enableLogging: enableDebugMode);
 
   /// The state path to watch
   final String path;
@@ -28,6 +29,8 @@ class StateWatcher {
 
   /// Whether debug mode is enabled
   final bool enableDebugMode;
+
+  final MCPLogger _logger;
 
   DateTime? _lastTriggerTime;
   dynamic _lastValue;
@@ -83,16 +86,15 @@ class StateWatcher {
   Future<void> _executeTrigger(dynamic newValue, dynamic oldValue) async {
     try {
       if (enableDebugMode) {
-        debugPrint(
-            'StateWatcher: Triggering for path "$path": $oldValue -> $newValue');
+        _logger.debug(
+            'Triggering for path "$path": $oldValue -> $newValue');
       }
 
       await onChange(newValue, oldValue);
     } catch (error, stackTrace) {
       if (enableDebugMode) {
-        debugPrint(
-            'StateWatcher: Error in onChange callback for path "$path": $error');
-        debugPrint('Stack trace: $stackTrace');
+        _logger.error(
+            'Error in onChange callback for path "$path"', error, stackTrace);
       }
       rethrow;
     }
@@ -130,10 +132,11 @@ class StateWatcherGroup {
   StateWatcherGroup({
     this.name,
     this.enableDebugMode = kDebugMode,
-  });
+  }) : _logger = MCPLogger('StateWatcherGroup', enableLogging: enableDebugMode);
 
   final String? name;
   final bool enableDebugMode;
+  final MCPLogger _logger;
   final List<StateWatcher> _watchers = [];
 
   /// Gets all watchers in this group
@@ -144,8 +147,8 @@ class StateWatcherGroup {
     _watchers.add(watcher);
 
     if (enableDebugMode) {
-      debugPrint(
-          'StateWatcherGroup: Added watcher for path "${watcher.path}" to group "${name ?? 'unnamed'}"');
+      _logger.debug(
+          'Added watcher for path "${watcher.path}" to group "${name ?? 'unnamed'}"');
     }
   }
 
@@ -154,8 +157,8 @@ class StateWatcherGroup {
     _watchers.remove(watcher);
 
     if (enableDebugMode) {
-      debugPrint(
-          'StateWatcherGroup: Removed watcher for path "${watcher.path}" from group "${name ?? 'unnamed'}"');
+      _logger.debug(
+          'Removed watcher for path "${watcher.path}" from group "${name ?? 'unnamed'}"');
     }
   }
 
@@ -166,8 +169,8 @@ class StateWatcherGroup {
         await watcher.trigger(newValue, oldValue);
       } catch (error) {
         if (enableDebugMode) {
-          debugPrint(
-              'StateWatcherGroup: Error triggering watcher for path "${watcher.path}": $error');
+          _logger.error(
+              'Error triggering watcher for path "${watcher.path}": $error');
         }
       }
     }
@@ -178,8 +181,8 @@ class StateWatcherGroup {
     _watchers.clear();
 
     if (enableDebugMode) {
-      debugPrint(
-          'StateWatcherGroup: Cleared all watchers from group "${name ?? 'unnamed'}"');
+      _logger.debug(
+          'Cleared all watchers from group "${name ?? 'unnamed'}"');
     }
   }
 

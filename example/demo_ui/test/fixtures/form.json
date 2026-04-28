@@ -1,0 +1,246 @@
+{
+  "type": "page",
+  "metadata": {
+    "title": "Form",
+    "description": "Form widget showcase"
+  },
+  "state": {
+    "initial": {
+      "gender": "male",
+      "interests": [],
+      "viewMode": "grid",
+      "quantity": 1,
+      "rating": 3,
+      "formName": "",
+      "formEmail": ""
+    }
+  },
+  "content": {
+    "type": "singleChildScrollView",
+    "padding": {
+      "all": 16
+    },
+    "child": {
+      "type": "linear",
+      "direction": "vertical",
+      "spacing": 16,
+      "children": [
+        {
+          "type": "text",
+          "content": "radioGroup",
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#2196F3"
+          }
+        },
+        {
+          "type": "radioGroup",
+          "label": "Gender",
+          "binding": "gender",
+          "options": [
+            {
+              "value": "male",
+              "label": "Male"
+            },
+            {
+              "value": "female",
+              "label": "Female"
+            },
+            {
+              "value": "other",
+              "label": "Other"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "content": "Selected: {{gender}}",
+          "style": {
+            "fontSize": 12,
+            "color": "#666666"
+          }
+        },
+        {
+          "type": "text",
+          "content": "checkboxGroup",
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#2196F3"
+          }
+        },
+        {
+          "type": "checkboxGroup",
+          "label": "Interests",
+          "binding": "interests",
+          "options": [
+            {
+              "value": "flutter",
+              "label": "Flutter"
+            },
+            {
+              "value": "mcp",
+              "label": "MCP"
+            },
+            {
+              "value": "ai",
+              "label": "AI"
+            },
+            {
+              "value": "web",
+              "label": "Web"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "content": "segmentedControl",
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#2196F3"
+          }
+        },
+        {
+          "type": "segmentedControl",
+          "binding": "viewMode",
+          "options": [
+            {
+              "value": "grid",
+              "label": "Grid"
+            },
+            {
+              "value": "list",
+              "label": "List"
+            },
+            {
+              "value": "card",
+              "label": "Card"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "content": "Mode: {{viewMode}}",
+          "style": {
+            "fontSize": 12,
+            "color": "#666666"
+          }
+        },
+        {
+          "type": "text",
+          "content": "numberField",
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#2196F3"
+          }
+        },
+        {
+          "type": "numberField",
+          "label": "Quantity",
+          "binding": "quantity",
+          "min": 0,
+          "max": 100
+        },
+        {
+          "type": "text",
+          "content": "textFormField (with validation)",
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#2196F3"
+          }
+        },
+        {
+          "type": "form",
+          "children": [
+            {
+              "type": "textFormField",
+              "label": "Name",
+              "placeholder": "Enter name",
+              "binding": "formName",
+              "validation": [
+                {
+                  "rule": "required",
+                  "message": "Name is required"
+                }
+              ]
+            },
+            {
+              "type": "sizedBox",
+              "height": 8
+            },
+            {
+              "type": "textFormField",
+              "label": "Email",
+              "placeholder": "user@example.com",
+              "inputType": "email",
+              "binding": "formEmail",
+              "validation": [
+                {
+                  "rule": "required",
+                  "message": "Email is required"
+                },
+                {
+                  "rule": "email",
+                  "message": "Invalid email format"
+                }
+              ]
+            },
+            {
+              "type": "sizedBox",
+              "height": 12
+            },
+            {
+              "type": "button",
+              "label": "Submit",
+              "variant": "filled",
+              "onTap": {
+                "type": "tool",
+                "tool": "submitForm",
+                "params": {
+                  "name": "{{formName}}",
+                  "email": "{{formEmail}}"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "content": "dateField",
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#2196F3"
+          }
+        },
+        {
+          "type": "dateField",
+          "label": "Select date",
+          "binding": "selectedDate"
+        },
+        {
+          "type": "text",
+          "content": "timePicker",
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#2196F3"
+          }
+        },
+        {
+          "type": "timePicker",
+          "label": "Select time",
+          "binding": "selectedTime"
+        },
+        {
+          "type": "sizedBox",
+          "height": 24
+        }
+      ]
+    }
+  }
+}

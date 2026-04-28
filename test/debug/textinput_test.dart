@@ -46,7 +46,7 @@ void main() {
               'type': 'textInput',
               'label': 'Enter Text',
               'value': '{{text}}',
-              'change': {
+              'onChange': {
                 'type': 'state',
                 'action': 'set',
                 'path': 'text',

@@ -9,19 +9,24 @@ class GestureDetectorWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Extract child widget
+    // Extract child widget (support both 'child' and 'children')
+    final childDef = definition['child'] as Map<String, dynamic>?;
     final childrenDef = properties['children'] as List<dynamic>? ??
         definition['children'] as List<dynamic>?;
     Widget? child;
-    if (childrenDef != null && childrenDef.isNotEmpty) {
+    if (childDef != null) {
+      child = context.buildWidget(childDef);
+    } else if (childrenDef != null && childrenDef.isNotEmpty) {
       child = context.buildWidget(childrenDef.first as Map<String, dynamic>);
     }
 
     // Extract action handlers
-    final onTap = properties['onTap'] as Map<String, dynamic>?;
-    final onDoubleTap = properties['onDoubleTap'] as Map<String, dynamic>?;
-    final onLongPress = properties['onLongPress'] as Map<String, dynamic>?;
+    final onTap = (properties['onTap'] ?? properties['click'] ?? properties['onTap']) as Map<String, dynamic>?;
+    final onDoubleTap = (properties['onDoubleTap'] ?? properties['double-click'] ?? properties['onDoubleTap']) as Map<String, dynamic>?;
+    final onLongPress = (properties['onLongPress'] ?? properties['long-press'] ?? properties['longPress']) as Map<String, dynamic>?;
     final onPanUpdate = properties['onPanUpdate'] as Map<String, dynamic>?;
+    final panStartAction = (properties['panStart'] ?? properties['onPanStart']) as Map<String, dynamic>?;
+    final panEndAction = (properties['panEnd'] ?? properties['onPanEnd']) as Map<String, dynamic>?;
     final onScaleUpdate = properties['onScaleUpdate'] as Map<String, dynamic>?;
 
     Widget gestureDetector = GestureDetector(
@@ -38,6 +43,16 @@ class GestureDetectorWidgetFactory extends WidgetFactory {
       onLongPress: onLongPress != null
           ? () {
               context.actionHandler.execute(onLongPress, context);
+            }
+          : null,
+      onPanStart: panStartAction != null
+          ? (details) {
+              context.actionHandler.execute(panStartAction, context);
+            }
+          : null,
+      onPanEnd: panEndAction != null
+          ? (details) {
+              context.actionHandler.execute(panEndAction, context);
             }
           : null,
       onPanUpdate: onPanUpdate != null

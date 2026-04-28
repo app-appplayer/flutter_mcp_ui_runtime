@@ -12,25 +12,26 @@ class RadioWidgetFactory extends WidgetFactory {
     // Extract properties
     final value = context.resolve(properties['value']);
     final groupValue = context.resolve(properties['groupValue']);
-    final activeColor = parseColor(context.resolve(properties['activeColor']));
+    final activeColor = parseColor(context.resolve(properties['activeColor']), context);
     final fillColor = properties['fillColor'] != null
         ? WidgetStateProperty.all(
-            parseColor(context.resolve(properties['fillColor'])))
+            parseColor(context.resolve(properties['fillColor']), context))
         : null;
-    final focusColor = parseColor(context.resolve(properties['focusColor']));
-    final hoverColor = parseColor(context.resolve(properties['hoverColor']));
+    final focusColor = parseColor(context.resolve(properties['focusColor']), context);
+    final hoverColor = parseColor(context.resolve(properties['hoverColor']), context);
     final splashRadius = properties['splashRadius']?.toDouble();
 
     // Extract action handler
-    final onChange = properties['onChange'] as Map<String, dynamic>?;
+    final onChange = (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
 
     Widget radio = Radio<dynamic>(
       value: value,
       groupValue: groupValue,
       onChanged: onChange != null
           ? (newValue) {
-              // Update state if bindTo is specified
-              final path = properties['bindTo'] as String?;
+              // Spec §2.6.0: canonical `binding`; accept legacy `bindTo`.
+              final path = (properties['binding'] as String?) ??
+                  (properties['bindTo'] as String?);
               if (path != null) {
                 context.setValue(path, newValue);
               }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../actions/action_handler.dart';
 import '../models/ui_definition.dart';
 import '../runtime/runtime_engine.dart';
 import '../runtime/lifecycle_manager.dart';
@@ -84,8 +85,21 @@ class _MCPPageWidgetState extends State<MCPPageWidget> {
       });
     }
 
-    // Execute page onMount lifecycle
+    // Register channels declared at page scope (spec §4.13 +
+    // §Channel Lifecycle). autoDispose channels are torn down in [dispose].
+    final channels = widget.pageDefinition.channels;
+    if (channels != null && channels.isNotEmpty) {
+      widget.runtimeEngine.channelManager.initializeChannels(channels);
+    }
+
     final lifecycle = widget.pageDefinition.lifecycleDefinition;
+
+    // Execute page onEnter lifecycle (before onMount per spec)
+    if (lifecycle?.onEnter != null) {
+      widget.runtimeEngine.lifecycle.executeOnEnter(lifecycle!.onEnter!);
+    }
+
+    // Execute page onMount lifecycle
     if (lifecycle?.onMount != null) {
       widget.runtimeEngine.lifecycle.executeLifecycleHooks(
         LifecycleEvent.mount,
@@ -96,8 +110,17 @@ class _MCPPageWidgetState extends State<MCPPageWidget> {
 
   @override
   void dispose() {
-    // Execute page onUnmount lifecycle
     final lifecycle = widget.pageDefinition.lifecycleDefinition;
+
+    // Execute page onLeave lifecycle (before onUnmount per spec)
+    if (lifecycle?.onLeave != null) {
+      widget.runtimeEngine.lifecycle.executeOnLeave(lifecycle!.onLeave!);
+    }
+
+    // Dispose auto-dispose channels for this page (P7)
+    widget.runtimeEngine.channelManager.disposeAutoChannels();
+
+    // Execute page onUnmount lifecycle
     if (lifecycle?.onUnmount != null) {
       widget.runtimeEngine.lifecycle.executeLifecycleHooks(
         LifecycleEvent.unmount,
@@ -120,10 +143,46 @@ class _MCPPageWidgetState extends State<MCPPageWidget> {
       engine: widget.runtimeEngine,
     );
 
-    // Build the page content using the renderer
-    return widget.runtimeEngine.renderer.renderWidget(
+    final body = widget.runtimeEngine.renderer.renderWidget(
       widget.pageDefinition.content,
       renderContext,
+    );
+
+    // Every page gets its own Scaffold so the Flutter pipeline always
+    // has a DefaultTextStyle / Material ancestor for the widget tree.
+    // Without this, Text widgets draw with `DefaultTextStyle.fallback`
+    // (red glyphs with a yellow underline) because a plain MaterialApp
+    // does not provide one to its route bodies.
+    //
+    // The AppBar, however, is suppressed when an outer shell already
+    // provides chrome: ApplicationShell wraps each page in its own
+    // Scaffold for drawer / tabs / bottomNav apps, and hosts (AppPlayer
+    // renderer) add a close-button AppBar outside the runtime. In
+    // either case we want the content scaffolding without a duplicate
+    // title bar.
+    final outerScaffold = Scaffold.maybeOf(context);
+    final title = widget.pageDefinition.title;
+    final suppressAppBar = outerScaffold != null ||
+        title == null ||
+        title.isEmpty;
+    return Scaffold(
+      appBar: suppressAppBar
+          ? null
+          : AppBar(
+              automaticallyImplyLeading: false,
+              title: Text(title),
+              actions: NavigationActionExecutor.hasOnExit
+                  ? <Widget>[
+                      IconButton(
+                        key: const Key('mcp.page.close'),
+                        icon: const Icon(Icons.close),
+                        tooltip: 'Close',
+                        onPressed: NavigationActionExecutor.invokeOnExit,
+                      ),
+                    ]
+                  : const <Widget>[],
+            ),
+      body: body,
     );
   }
 }

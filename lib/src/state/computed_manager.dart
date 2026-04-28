@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import '../state/state_manager.dart';
 import '../binding/binding_engine.dart';
+import '../actions/action_handler.dart';
 import '../renderer/render_context.dart';
+import '../renderer/renderer.dart';
+import '../theme/theme_manager.dart';
 import '../utils/mcp_logger.dart';
 
 /// Configuration for computed property
@@ -28,8 +32,10 @@ class WatcherConfig {
   });
 }
 
-/// Computed property implementation
-class ComputedProperty {
+/// Managed computed property that delegates evaluation to BindingEngine.
+/// Named ManagedComputedProperty to distinguish from the standalone
+/// ComputedProperty in computed_property.dart which has its own expression evaluation.
+class ManagedComputedProperty {
   final String key;
   final String expression;
   final List<String> dependencies;
@@ -39,7 +45,7 @@ class ComputedProperty {
   dynamic _cachedValue;
   bool _isDirty = true;
 
-  ComputedProperty({
+  ManagedComputedProperty({
     required this.key,
     required this.expression,
     required this.dependencies,
@@ -135,7 +141,7 @@ class Watcher {
 
 /// Manager for computed properties and watchers
 class ComputedManager {
-  final Map<String, ComputedProperty> _computedProperties = {};
+  final Map<String, ManagedComputedProperty> _computedProperties = {};
   final Map<String, List<Watcher>> _watchers = {};
   final StateManager _stateManager;
   final BindingEngine _bindingEngine;
@@ -150,7 +156,7 @@ class ComputedManager {
 
   /// Register a computed property
   void registerComputed(String key, ComputedConfig config) {
-    final computed = ComputedProperty(
+    final computed = ManagedComputedProperty(
       key: key,
       expression: config.expression,
       dependencies: config.dependencies,
@@ -238,7 +244,12 @@ class ComputedManager {
   }
 }
 
-/// Simple context for computed property evaluation
+/// Minimal context for computed property evaluation.
+///
+/// Implements only the [RenderContext] methods needed by [BindingEngine]
+/// during computed property resolution. Methods that are not applicable
+/// in this context throw [UnsupportedError] instead of silently returning
+/// null, making misuse easier to detect during development.
 class SimpleComputedContext implements RenderContext {
   final StateManager _stateManager;
 
@@ -257,7 +268,6 @@ class SimpleComputedContext implements RenderContext {
     return value as T;
   }
 
-  // These are not used in computed property evaluation
   @override
   T? getState<T>(String path) => getValue(path) as T?;
 
@@ -272,5 +282,53 @@ class SimpleComputedContext implements RenderContext {
   }
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => null;
+  dynamic get engine => throw UnsupportedError(
+      'SimpleComputedContext does not provide a runtime engine');
+
+  @override
+  BuildContext? get buildContext => null;
+
+  @override
+  Renderer get renderer =>
+      throw UnsupportedError('SimpleComputedContext does not support rendering');
+
+  @override
+  StateManager get stateManager => _stateManager;
+
+  @override
+  BindingEngine get bindingEngine => throw UnsupportedError(
+      'SimpleComputedContext does not expose bindingEngine directly');
+
+  @override
+  ActionHandler get actionHandler => throw UnsupportedError(
+      'SimpleComputedContext does not support action handling');
+
+  @override
+  ThemeManager get themeManager => throw UnsupportedError(
+      'SimpleComputedContext does not support theme access');
+
+  @override
+  ThemeData get theme => throw UnsupportedError(
+      'SimpleComputedContext does not support theme access');
+
+  @override
+  String? get parentId => null;
+
+  @override
+  Map<String, dynamic> get localVariables => const {};
+
+  @override
+  String get contextId => 'computed';
+
+  @override
+  RenderContext createChildContext({String? id, Map<String, dynamic>? variables}) {
+    throw UnsupportedError(
+        'SimpleComputedContext does not support child contexts');
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    throw UnsupportedError(
+        'SimpleComputedContext does not implement ${invocation.memberName}');
+  }
 }

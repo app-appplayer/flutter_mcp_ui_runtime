@@ -12,15 +12,21 @@ class ChipWidgetFactory extends WidgetFactory {
     // Extract properties
     final label = context.resolve<String>(properties['label']) as String? ?? '';
     final avatar = properties['avatar'] as Map<String, dynamic>?;
+    final selected = context.resolve<bool>(properties['selected'] ?? false);
+    final variant = context.resolve<String?>(properties['variant']);
     final deleteIcon = properties['deleteIcon'] as String?;
-    final onDeleted = properties['onDeleted'] as Map<String, dynamic>?;
-    final onPressed = properties['onPressed'] as Map<String, dynamic>?;
+    // Per DDD spec §5.9, canonical name is 'onDelete'
+    final onDelete = properties['onDelete'] as Map<String, dynamic>?;
+    final onDeleteLegacy = properties['onDeleted'] as Map<String, dynamic>?;
+    final deleteAlias = properties['delete'] as Map<String, dynamic>?;
+    final effectiveDeleteAction = onDelete ?? onDeleteLegacy ?? deleteAlias;
+    final onPressed = (properties['onTap'] ?? properties['click'] ?? properties['onPressed']) as Map<String, dynamic>?;
     final backgroundColor =
-        parseColor(context.resolve(properties['backgroundColor']));
+        parseColor(context.resolve(properties['backgroundColor']), context);
     final labelStyle = _parseTextStyle(properties['labelStyle'], context);
     final padding = parseEdgeInsets(properties['padding']);
     final elevation = properties['elevation']?.toDouble();
-    final shadowColor = parseColor(context.resolve(properties['shadowColor']));
+    final shadowColor = parseColor(context.resolve(properties['shadowColor']), context);
     final side = _parseBorderSide(properties['side'], context);
     final shape = _parseOutlinedBorder(properties['shape']);
 
@@ -55,31 +61,69 @@ class ChipWidgetFactory extends WidgetFactory {
       deleteIconWidget = Icon(_parseIconData(deleteIcon), size: 18);
     }
 
-    Widget chip = Chip(
-      label: Text(label),
-      avatar: avatarWidget,
-      deleteIcon: deleteIconWidget,
-      onDeleted: onDeleted != null
-          ? () {
-              context.actionHandler.execute(onDeleted, context);
-            }
-          : null,
-      backgroundColor: backgroundColor,
-      labelStyle: labelStyle,
-      padding: padding,
-      elevation: elevation,
-      shadowColor: shadowColor,
-      side: side,
-      shape: shape,
-    );
-
-    // Wrap in GestureDetector if onPressed is provided
-    if (onPressed != null) {
-      chip = GestureDetector(
-        onTap: () {
-          context.actionHandler.execute(onPressed, context);
-        },
-        child: chip,
+    // Build the appropriate chip variant
+    Widget chip;
+    if (variant == 'outlined') {
+      // Outlined variant: ensure border side is visible
+      final outlinedSide = side ?? const BorderSide();
+      chip = RawChip(
+        label: Text(label),
+        avatar: avatarWidget,
+        deleteIcon: deleteIconWidget,
+        selected: selected,
+        showCheckmark: false,
+        onDeleted: effectiveDeleteAction != null
+            ? () {
+                context.actionHandler
+                    .execute(effectiveDeleteAction, context);
+              }
+            : null,
+        onPressed: onPressed != null
+            ? () {
+                context.actionHandler.execute(onPressed, context);
+              }
+            : null,
+        backgroundColor: Colors.transparent,
+        selectedColor: backgroundColor?.withValues(alpha: 0.12),
+        labelStyle: labelStyle,
+        padding: padding,
+        elevation: 0,
+        shadowColor: shadowColor,
+        side: outlinedSide,
+        shape: shape,
+      );
+    } else {
+      // Default / 'filled' variant
+      chip = RawChip(
+        label: Text(label),
+        avatar: avatarWidget,
+        deleteIcon: deleteIconWidget,
+        selected: selected,
+        showCheckmark: false,
+        onDeleted: effectiveDeleteAction != null
+            ? () {
+                context.actionHandler
+                    .execute(effectiveDeleteAction, context);
+              }
+            : null,
+        onPressed: onPressed != null
+            ? () {
+                context.actionHandler.execute(onPressed, context);
+              }
+            : null,
+        backgroundColor: backgroundColor,
+        // Selected state reuses the chip's own bg if set; otherwise a
+        // soft primary tint from the active theme (keeps contrast in
+        // both light and dark modes).
+        selectedColor: backgroundColor?.withValues(alpha: 0.87) ??
+            (context.themeManager.getColorValue('primary')?.withValues(alpha: 0.2)) ??
+            Colors.blue.shade100,
+        labelStyle: labelStyle,
+        padding: padding,
+        elevation: elevation,
+        shadowColor: shadowColor,
+        side: side,
+        shape: shape,
       );
     }
 
@@ -91,7 +135,7 @@ class ChipWidgetFactory extends WidgetFactory {
     if (style == null) return null;
 
     return TextStyle(
-      color: parseColor(context.resolve(style['color'])),
+      color: parseColor(context.resolve(style['color']), context),
       fontSize: style['fontSize']?.toDouble(),
       fontWeight: _parseFontWeight(style['fontWeight']),
     );
@@ -113,7 +157,9 @@ class ChipWidgetFactory extends WidgetFactory {
     if (side == null) return null;
 
     return BorderSide(
-      color: parseColor(context.resolve(side['color'])) ?? Colors.black,
+      color: parseColor(context.resolve(side['color']), context) ??
+          context.themeManager.getColorValue('outlineVariant') ??
+          Colors.black,
       width: side['width']?.toDouble() ?? 1.0,
     );
   }

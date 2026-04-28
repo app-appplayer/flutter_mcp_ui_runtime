@@ -5,6 +5,7 @@ import '../actions/action_handler.dart';
 import '../state/state_manager.dart';
 import '../utils/mcp_logger.dart';
 import '../widgets/widget_factory.dart';
+import 'plugin_hooks.dart';
 
 /// Plugin context provided to plugins during initialization
 class PluginContext {
@@ -56,6 +57,10 @@ abstract class MCPPlugin {
 
   /// Called when plugin is disabled
   void onDisabled() {}
+
+  /// Configure the plugin with a configuration map.
+  /// Called before initialize() to provide plugin-specific settings.
+  void configure(Map<String, dynamic> config) {}
 }
 
 /// Plugin manager for loading and managing plugins
@@ -63,12 +68,21 @@ class PluginManager {
   static PluginManager? _instance;
   static PluginManager get instance => _instance ??= PluginManager._();
 
+  /// Allow resetting for tests
+  static void resetInstance() {
+    _instance = null;
+  }
+
   PluginManager._();
 
   final Map<String, MCPPlugin> _plugins = {};
   final Map<String, bool> _pluginStates = {};
+  final Map<String, Map<String, dynamic>> _pluginConfigs = {};
   final List<String> _loadOrder = [];
   final MCPLogger _logger = MCPLogger('PluginManager');
+
+  /// Hook manager for plugin event subscriptions
+  final PluginHookManager hookManager = PluginHookManager.instance;
 
   late StateManager _stateManager;
   late ServiceLocator _serviceLocator;
@@ -88,6 +102,11 @@ class PluginManager {
     _actionHandler = actionHandler;
 
     _logger.debug('Plugin manager initialized');
+  }
+
+  /// Set configuration for a plugin before loading
+  void setPluginConfig(String pluginName, Map<String, dynamic> config) {
+    _pluginConfigs[pluginName] = config;
   }
 
   /// Register a plugin
@@ -131,19 +150,45 @@ class PluginManager {
         actionHandler: _actionHandler,
       );
 
+      // Fire lifecycle hook: initializing
+      await hookManager.fireHook(PluginHookType.onLifecycle, data: {
+        'pluginName': plugin.name,
+        'event': 'initializing',
+      });
+
+      // Configure plugin if config is available
+      final config = _pluginConfigs[pluginName];
+      if (config != null) {
+        plugin.configure(config);
+      }
+
       // Initialize plugin
       await plugin.initialize(context);
+
+      // Fire lifecycle hook: initialized
+      await hookManager.fireHook(PluginHookType.onLifecycle, data: {
+        'pluginName': plugin.name,
+        'event': 'initialized',
+      });
 
       // Register widgets
       plugin.widgets?.forEach((type, factory) {
         _widgetRegistry.register(type, factory);
         _logger.debug('Registered widget from ${plugin.name}: $type');
+        hookManager.fireHook(PluginHookType.onWidgetRegister, data: {
+          'pluginName': plugin.name,
+          'widgetType': type,
+        });
       });
 
       // Register actions
       plugin.actions?.forEach((type, executor) {
         _actionHandler.registerToolExecutor(type, executor);
         _logger.debug('Registered action from ${plugin.name}: $type');
+        hookManager.fireHook(PluginHookType.onActionRegister, data: {
+          'pluginName': plugin.name,
+          'actionType': type,
+        });
       });
 
       // Register services
@@ -192,8 +237,23 @@ class PluginManager {
       // Call disabled hook
       plugin.onDisabled();
 
+      // Fire lifecycle hook: disposing
+      await hookManager.fireHook(PluginHookType.onLifecycle, data: {
+        'pluginName': plugin.name,
+        'event': 'disposing',
+      });
+
       // Dispose plugin
       await plugin.dispose();
+
+      // Unregister all hooks from this plugin
+      hookManager.unregisterPlugin(pluginName);
+
+      // Fire lifecycle hook: disposed
+      await hookManager.fireHook(PluginHookType.onLifecycle, data: {
+        'pluginName': plugin.name,
+        'event': 'disposed',
+      });
 
       // Unregister widgets
       plugin.widgets?.forEach((type, _) {
@@ -203,9 +263,8 @@ class PluginManager {
 
       // Unregister actions
       plugin.actions?.forEach((type, _) {
-        // TODO: Add unregisterToolExecutor method to ActionHandler
-        // For now, we'll skip unregistering actions
-        _logger.debug('TODO: Unregister action from ${plugin.name}: $type');
+        _actionHandler.unregisterToolExecutor(type);
+        _logger.debug('Unregistered action from ${plugin.name}: $type');
       });
 
       // Unregister services

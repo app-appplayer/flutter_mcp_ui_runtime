@@ -1,0 +1,110 @@
+{
+  "type": "page",
+  "metadata": {
+    "title": "Realtime",
+    "description": "Resource subscription showcase"
+  },
+  "state": {
+    "initial": {
+      "temperature": 33.3,
+      "status": "Not subscribed"
+    }
+  },
+  "content": {
+    "type": "center",
+    "child": {
+      "type": "linear",
+      "direction": "vertical",
+      "alignment": "center",
+      "spacing": 16,
+      "children": [
+        {
+          "type": "text",
+          "content": "Realtime Subscription",
+          "style": {
+            "fontSize": 22,
+            "fontWeight": "bold"
+          }
+        },
+        {
+          "type": "card",
+          "child": {
+            "type": "box",
+            "padding": {
+              "all": 24
+            },
+            "child": {
+              "type": "linear",
+              "direction": "vertical",
+              "alignment": "center",
+              "spacing": 8,
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Temperature",
+                  "style": {
+                    "fontSize": 14,
+                    "color": "#666666"
+                  }
+                },
+                {
+                  "type": "text",
+                  "content": "{{temperature}}°C",
+                  "style": {
+                    "fontSize": 48,
+                    "fontWeight": "bold",
+                    "color": "#2196F3"
+                  }
+                },
+                {
+                  "type": "text",
+                  "content": "{{status}}",
+                  "style": {
+                    "fontSize": 12,
+                    "color": "#999999"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "linear",
+          "direction": "horizontal",
+          "spacing": 8,
+          "children": [
+            {
+              "type": "button",
+              "label": "Subscribe",
+              "variant": "filled",
+              "onTap": {
+                "type": "resource",
+                "action": "subscribe",
+                "uri": "data://temperature",
+                "binding": "temperature"
+              }
+            },
+            {
+              "type": "button",
+              "label": "Unsubscribe",
+              "variant": "outlined",
+              "onTap": {
+                "type": "resource",
+                "action": "unsubscribe",
+                "uri": "data://temperature"
+              }
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "content": "Subscribe to see live temperature updates every second.",
+          "style": {
+            "fontSize": 12,
+            "color": "#999999"
+          }
+        }
+      ]
+    }
+  }
+}

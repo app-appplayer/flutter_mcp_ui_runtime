@@ -454,7 +454,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Update',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'status',

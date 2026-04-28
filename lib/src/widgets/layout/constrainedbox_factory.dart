@@ -13,11 +13,15 @@ class ConstrainedBoxWidgetFactory extends WidgetFactory {
     final constraints =
         parseConstraints(properties['constraints']) ?? const BoxConstraints();
 
-    // Extract child widget - check both properties and definition level
+    // Extract child widget (support both 'child' and 'children' per MCP UI DSL spec)
+    final childDef = (properties['child'] ?? definition['child'])
+        as Map<String, dynamic>?;
     final childrenDef = properties['children'] as List<dynamic>? ??
         definition['children'] as List<dynamic>?;
     Widget? child;
-    if (childrenDef != null && childrenDef.isNotEmpty) {
+    if (childDef != null) {
+      child = context.buildWidget(childDef);
+    } else if (childrenDef != null && childrenDef.isNotEmpty) {
       child = context.buildWidget(childrenDef.first as Map<String, dynamic>);
     }
 

@@ -11,11 +11,11 @@ class DialogWidgetFactory extends WidgetFactory {
 
     // Extract properties
     final backgroundColor =
-        parseColor(context.resolve(properties['backgroundColor']));
+        parseColor(context.resolve(properties['backgroundColor']), context);
     final elevation = properties['elevation']?.toDouble();
-    final shadowColor = parseColor(context.resolve(properties['shadowColor']));
+    final shadowColor = parseColor(context.resolve(properties['shadowColor']), context);
     final surfaceTintColor =
-        parseColor(context.resolve(properties['surfaceTintColor']));
+        parseColor(context.resolve(properties['surfaceTintColor']), context);
     final insetPadding = parseEdgeInsets(properties['insetPadding']) ??
         const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0);
     final clipBehavior = _parseClip(properties['clipBehavior']);
@@ -73,8 +73,9 @@ class DialogWidgetFactory extends WidgetFactory {
         if (action is Map<String, dynamic>) {
           return TextButton(
             onPressed: () {
-              if (action['onTap'] != null) {
-                context.actionHandler.execute(action['onTap'], context);
+              final clickAction = action['onTap'] ?? action['onTap'];
+              if (clickAction != null) {
+                context.actionHandler.execute(clickAction, context);
               }
             },
             child: Text(action['label'] ?? 'OK'),
@@ -89,7 +90,7 @@ class DialogWidgetFactory extends WidgetFactory {
       content: content != null ? Text(content) : null,
       actions: actions,
       backgroundColor:
-          parseColor(context.resolve(properties['backgroundColor'])),
+          parseColor(context.resolve(properties['backgroundColor']), context),
       elevation: properties['elevation']?.toDouble(),
       shape: _parseShapeBorder(properties['shape']),
     );
@@ -113,7 +114,7 @@ class DialogWidgetFactory extends WidgetFactory {
     return SimpleDialog(
       title: title != null ? Text(title) : null,
       backgroundColor:
-          parseColor(context.resolve(properties['backgroundColor'])),
+          parseColor(context.resolve(properties['backgroundColor']), context),
       elevation: properties['elevation']?.toDouble(),
       shape: _parseShapeBorder(properties['shape']),
       children: children,

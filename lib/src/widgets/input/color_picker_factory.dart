@@ -12,13 +12,29 @@ class ColorPickerFactory extends WidgetFactory {
     final label = properties['label'] as String?;
     final binding = properties['binding'] as String?;
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
+    // Spec §2.6.18: picker configuration properties. Current implementation
+    // uses a preset-palette picker; the configuration options below are
+    // accepted so authors can declare intent even when the renderer has not
+    // yet diverged (deferred implementation tracked separately).
+    // ignore: unused_local_variable
+    final showAlpha = properties['showAlpha'] as bool? ?? false;
+    // ignore: unused_local_variable
+    final showLabel = properties['showLabel'] as bool? ?? true;
+    // ignore: unused_local_variable
+    final pickerType = properties['pickerType'] as String? ?? 'palette';
+    // ignore: unused_local_variable
+    final enableHistory = properties['enableHistory'] as bool? ?? false;
 
     // Get current color value
     final currentValue =
         binding != null ? context.resolve("{{$binding}}") : properties['value'];
 
-    // Parse current color
-    Color currentColor = parseColor(currentValue) ?? Colors.blue;
+    // Parse current color — fall back to the active theme's primary so a
+    // picker that hasn't been initialised still shows a meaningful colour
+    // against either light or dark chrome.
+    Color currentColor = parseColor(currentValue, context) ??
+        context.themeManager.getColorValue('primary') ??
+        Colors.blue;
 
     // Simple color picker implementation using preset colors
     final colors = [
@@ -67,7 +83,11 @@ class ColorPickerFactory extends WidgetFactory {
             decoration: BoxDecoration(
               color: color,
               border: Border.all(
-                color: isSelected ? Colors.black : Colors.grey[300]!,
+                color: isSelected
+                    ? (context.themeManager.getColorValue('onSurface') ??
+                        Colors.black)
+                    : (context.themeManager.getColorValue('outlineVariant') ??
+                        Colors.grey[300]!),
                 width: isSelected ? 3 : 1,
               ),
               borderRadius: BorderRadius.circular(4),

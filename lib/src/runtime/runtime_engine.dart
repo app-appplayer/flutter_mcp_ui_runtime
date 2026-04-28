@@ -15,11 +15,22 @@ import '../services/dialog_service.dart';
 import '../services/notification_service.dart';
 import '../notifications/notification_manager.dart';
 import '../models/ui_definition.dart';
+import '../models/app_metadata.dart';
 import '../routing/route_manager.dart';
 import 'background_service_manager.dart';
 import '../theme/theme_manager.dart';
 import '../utils/mcp_logger.dart';
 import '../state/computed_manager.dart';
+import '../channels/channel_manager.dart';
+import '../templates/template_registry.dart';
+import '../responsive/responsive_resolver.dart';
+import '../events/event_system.dart';
+import '../offline/sync_manager.dart';
+import '../offline/connectivity_manager.dart';
+import '../offline/offline_queue.dart';
+import '../plugins/plugin_system.dart';
+import '../animations/animation_service.dart';
+import '../permissions/permission_manager.dart';
 
 /// The main runtime engine that manages the MCP UI Runtime lifecycle
 /// and coordinates all runtime services.
@@ -40,6 +51,17 @@ class RuntimeEngine with ChangeNotifier {
   late final NotificationManager _notificationManager;
   late final CacheManager _cacheManager;
   late final BackgroundServiceManager _backgroundServiceManager;
+  late final ChannelManager _channelManager;
+  late final TemplateRegistry _templateRegistry;
+
+  // v1.1 services
+  late final ResponsiveResolver _responsiveResolver;
+  late final EventBus _eventBus;
+  late final ConnectivityManager _connectivityManager;
+  late final OfflineQueue _offlineQueue;
+  late final SyncManager _syncManager;
+  late final PluginManager _pluginManager;
+  late final AnimationService _animationService;
 
   // Modern rendering system
   late final WidgetRegistry _widgetRegistry;
@@ -57,7 +79,21 @@ class RuntimeEngine with ChangeNotifier {
   BindingEngine get bindingEngine => _bindingEngine;
   ActionHandler get actionHandler => _actionHandler;
   ThemeManager get themeManager => _themeManager;
+  ChannelManager get channelManager => _channelManager;
+  TemplateRegistry get templateRegistry => _templateRegistry;
   LifecycleManager get lifecycle => _lifecycleManager;
+  ResponsiveResolver get responsiveResolver => _responsiveResolver;
+  EventBus get eventBus => _eventBus;
+  ConnectivityManager get connectivityManager => _connectivityManager;
+  OfflineQueue get offlineQueue => _offlineQueue;
+  SyncManager get syncManager => _syncManager;
+  PluginManager get pluginManager => _pluginManager;
+  AnimationService get animationService => _animationService;
+
+  /// Permission manager for runtime permission checks
+  PermissionManager? get permissionManager => _actionHandler.permissionManager;
+  BackgroundServiceManager get backgroundServiceManager => _backgroundServiceManager;
+  ComputedManager get computedManager => _computedManager;
 
   // Runtime state
   bool _isInitialized = false;
@@ -71,9 +107,18 @@ class RuntimeEngine with ChangeNotifier {
   RouteManager? _routeManager;
   Function(String)? _pageLoader;
 
+  // App metadata (spec §11): cached snapshot exposed as a ValueListenable.
+  // Populated during `initialize` from the parsed ApplicationDefinition
+  // and replaced when `ui://app/info` notifies a change.
+  final ValueNotifier<DslAppMetadata?> _appMetadataNotifier =
+      ValueNotifier<DslAppMetadata?>(null);
+
   // Resource handlers
   Function(String, String)? _onResourceSubscribe;
   Function(String)? _onResourceUnsubscribe;
+
+  /// Permission handler for custom permission prompts
+  Function? permissionHandler;
 
   // Resource subscription tracking
   final Map<String, String> _resourceSubscriptions = {}; // URI -> binding
@@ -91,6 +136,13 @@ class RuntimeEngine with ChangeNotifier {
   RouteManager? get routeManager => _routeManager;
   bool get isApplication => _applicationDefinition != null;
   WidgetRegistry get widgetRegistry => _widgetRegistry;
+
+  /// Observable snapshot of the current application metadata
+  /// (spec §11). `value` is null before `initialize` completes and
+  /// whenever the runtime holds a non-application (page-only) DSL.
+  /// Listeners fire whenever the cache is replaced — for example
+  /// when `ui://app/info` emits a resource-update notification.
+  ValueListenable<DslAppMetadata?> get appMetadata => _appMetadataNotifier;
 
   // Resource handler getters
   Function(String, String)? get onResourceSubscribe => _onResourceSubscribe;
@@ -200,8 +252,10 @@ class RuntimeEngine with ChangeNotifier {
         _logger.info('Initialization complete');
       }
 
-      // Automatically mark as ready after initialization - this will notify listeners
-      await markReady();
+      // onReady is fired from the mounting widget (MCPRuntimeWidget /
+      // _DashboardHost) after resource / tool / brightness handlers are
+      // registered. Firing here would run onReady's resource.subscribe
+      // before handlers exist → silently dropped subscription.
     } catch (error, stackTrace) {
       if (enableDebugMode) {
         _logger.error('Initialization failed', error, stackTrace);
@@ -216,6 +270,13 @@ class RuntimeEngine with ChangeNotifier {
     RenderContext? context,
   ) async {
     // Check if this is a new v1.0 format (application or page)
+    // Accept 'screen' as alias for 'page' per design spec
+    if (definition['type'] == 'screen') {
+      final normalized = Map<String, dynamic>.from(definition);
+      normalized['type'] = 'page';
+      await _initializeV1Format(normalized, context);
+      return;
+    }
     if (definition['type'] == 'application' || definition['type'] == 'page') {
       await _initializeV1Format(definition, context);
       return;
@@ -242,6 +303,12 @@ class RuntimeEngine with ChangeNotifier {
       _uiDefinition = definition;
     }
 
+    // Apply sandbox configuration from definition if present
+    final sandboxConfig = definition['sandbox'] as Map<String, dynamic>?;
+    if (sandboxConfig != null) {
+      _bindingEngine.sandbox = ExpressionSandbox.fromJson(sandboxConfig);
+    }
+
     // Set the state manager in theme manager for custom theme values
     _themeManager.setStateManager(_stateManager);
 
@@ -266,6 +333,66 @@ class RuntimeEngine with ChangeNotifier {
     // Register core services
     await _registerCoreServices();
 
+    // Wire ChannelManager to ActionHandler unconditionally. Channels may
+    // be declared either at application root or at page scope; either way
+    // the dispatch path (ChannelActionExecutor.channelManager) needs the
+    // manager reference, so the wire-up is a one-time infrastructure step
+    // rather than a feature-gated concern.
+    _actionHandler.setChannelManager(_channelManager);
+
+    // v1.1: Wire permissions config to ActionHandler for client actions
+    if (_parsedUIDefinition!.permissions != null) {
+      _actionHandler.setPermissionsConfig(_parsedUIDefinition!.permissions);
+
+      // Wire system.info permission to ClientBindingResolver for env bindings
+      _bindingEngine.clientBindingResolver.setSystemInfoPermission(
+        _parsedUIDefinition!.permissions!.systemInfo == true,
+      );
+    }
+
+    // v1.1: Wire channel event handlers unconditionally. Channels may be
+    // declared at application root (parsed into _parsedUIDefinition.channels
+    // and registered here) or at page scope (registered by PageStateScope
+    // when the page mounts). Either way, config is looked up through the
+    // ChannelManager registry so both scopes dispatch `onData` / `onError`
+    // uniformly.
+    _channelManager.onData = (channelId, data) {
+      final channelConfig = _channelManager.getConfig(channelId);
+      if (channelConfig == null) return;
+
+      if (channelConfig.statePath != null) {
+        _stateManager.set(channelConfig.statePath!, data);
+      }
+
+      if (channelConfig.onData != null) {
+        final rootContext = _renderer
+            .createRootContext(null)
+            .createChildContext(variables: {
+          'data': data,
+          'channelId': channelId,
+        });
+        _actionHandler.execute(channelConfig.onData!, rootContext);
+      }
+    };
+
+    _channelManager.onError = (channelId, error) {
+      _logger.error('Channel "$channelId" error: $error');
+      final channelConfig = _channelManager.getConfig(channelId);
+      if (channelConfig?.onError != null) {
+        final rootContext = _renderer
+            .createRootContext(null)
+            .createChildContext(variables: {
+          'error': error.toString(),
+          'channelId': channelId,
+        });
+        _actionHandler.execute(channelConfig!.onError!, rootContext);
+      }
+    };
+
+    if (_parsedUIDefinition!.channels != null) {
+      await _channelManager.initializeChannels(_parsedUIDefinition!.channels);
+    }
+
     // Set up lifecycle manager with action handler and render context
     final rootContext = _renderer.createRootContext(null);
     _lifecycleManager.setActionHandler(_actionHandler, rootContext);
@@ -278,6 +405,11 @@ class RuntimeEngine with ChangeNotifier {
 
       _applicationDefinition =
           ApplicationDefinition.fromUIDefinition(_parsedUIDefinition!);
+
+      // Seed the metadata cache from the DSL root (spec §11).
+      if (_applicationDefinition!.metadata != null) {
+        _appMetadataNotifier.value = _applicationDefinition!.metadata;
+      }
 
       // Create route manager
       _routeManager = RouteManager(
@@ -333,11 +465,18 @@ class RuntimeEngine with ChangeNotifier {
       final pageDefinition =
           PageDefinition.fromUIDefinition(_parsedUIDefinition!);
 
+      // Initialize state from page definition (state.initial format)
+      if (pageDefinition.initialState != null &&
+          pageDefinition.initialState!.isNotEmpty) {
+        _stateManager.initialize(pageDefinition.initialState!);
+        _logger.debug('Page state initialized from state.initial');
+      }
+
       // Initialize services from page runtime definition if present
       final runtimeServices =
           definition['runtime']?['services'] as Map<String, dynamic>?;
       if (runtimeServices != null) {
-        // Initialize state if present
+        // Initialize state if present (overrides state.initial)
         final stateConfig = runtimeServices['state'] as Map<String, dynamic>?;
         if (stateConfig != null && stateConfig['initialState'] != null) {
           final initialState =
@@ -346,8 +485,7 @@ class RuntimeEngine with ChangeNotifier {
           // Initialize StateManager directly (this is what the renderer uses)
           _stateManager.initialize(initialState);
 
-          // StateManager is already initialized above
-          _logger.debug('Page state initialized in StateManager');
+          _logger.debug('Page state initialized from runtime services');
         }
       }
 
@@ -436,6 +574,53 @@ class RuntimeEngine with ChangeNotifier {
     }
   }
 
+  /// Public getter for NavigationService
+  NavigationService? get navigationService =>
+      _serviceRegistry.get<NavigationService>('navigation');
+
+  /// Loads a page by route using the registered page loader.
+  ///
+  /// Executes lifecycle hooks in the correct order:
+  /// 1. onLeave hooks of the current page
+  /// 2. onDestroy hooks of the current page
+  /// 3. Load the new page
+  /// 4. Initialize page state
+  /// 5. onEnter hooks of the new page
+  /// 6. onInit hooks of the new page
+  Future<void> loadPage(String route) async {
+    if (_pageLoader == null) {
+      throw StateError('No page loader registered. Cannot load page: $route');
+    }
+
+    _logger.debug('Loading page for route: $route');
+
+    // Step 1: Execute onLeave hooks for the current page
+    final currentLifecycle =
+        _parsedUIDefinition?.type == UIDefinitionType.page
+            ? PageDefinition.fromUIDefinition(_parsedUIDefinition!)
+                .lifecycleDefinition
+            : null;
+
+    if (currentLifecycle?.onLeave != null) {
+      await _lifecycleManager.executeOnLeave(currentLifecycle!.onLeave!);
+    }
+
+    // Step 2: Execute onDestroy hooks for the current page
+    if (currentLifecycle?.onDestroy != null) {
+      await _lifecycleManager.executeLifecycleHooks(
+        LifecycleEvent.destroy,
+        currentLifecycle!.onDestroy!,
+      );
+    }
+
+    // Step 3: Load the new page
+    await _pageLoader!(route);
+
+    // Step 4-6: State initialization, onEnter and onInit hooks are executed
+    // by the page loader callback (which calls initialize on the new page)
+    // onEnter is wired in page_state_scope.dart _initializePage()
+  }
+
   /// Handles MCP notification for resource updates
   void handleNotification(String uri, Map<String, dynamic> data) {
     _logger.debug(
@@ -465,6 +650,16 @@ class RuntimeEngine with ChangeNotifier {
     final uri = params['uri'] as String?;
     if (uri == null) {
       _logger.warning('No URI in notification params');
+      return;
+    }
+
+    // Well-known `ui://app/info` updates feed the appMetadata cache
+    // (spec §11.6). Handled independently of DSL-declared bindings so
+    // embedders see new icon / publisher / timestamps without the
+    // author having to declare the resource in the page.
+    if (uri == 'ui://app/info') {
+      await _refreshDslAppMetadataFromNotification(params,
+          resourceReader: resourceReader);
       return;
     }
 
@@ -560,6 +755,57 @@ class RuntimeEngine with ChangeNotifier {
     }
 
     _logger.debug('=== MCP NOTIFICATION END ===');
+  }
+
+  /// Handle `notifications/resources/updated` for `ui://app/info`.
+  ///
+  /// Supports both Standard mode (URI only → runtime re-reads) and
+  /// Extended mode (content included in the notification payload) per
+  /// spec §6.4. New metadata is published through the [appMetadata]
+  /// notifier; equal snapshots are suppressed to avoid needless
+  /// listener churn.
+  Future<void> _refreshDslAppMetadataFromNotification(
+    Map<String, dynamic> params, {
+    Function(String)? resourceReader,
+  }) async {
+    Map<String, dynamic>? payload;
+
+    if (params.containsKey('content')) {
+      final content = params['content'];
+      if (content is Map<String, dynamic>) {
+        if (content['text'] is String) {
+          try {
+            final decoded = jsonDecode(content['text'] as String);
+            if (decoded is Map<String, dynamic>) {
+              payload = decoded;
+            }
+          } catch (e) {
+            _logger.error('Failed to decode ui://app/info content: $e');
+          }
+        } else {
+          payload = content;
+        }
+      }
+    } else if (resourceReader != null) {
+      try {
+        final raw = await resourceReader('ui://app/info');
+        final decoded = jsonDecode(raw);
+        if (decoded is Map<String, dynamic>) {
+          payload = decoded;
+        }
+      } catch (e) {
+        _logger.error('Failed to re-read ui://app/info: $e');
+      }
+    } else {
+      _logger.warning(
+          'ui://app/info updated but no resource reader available');
+      return;
+    }
+
+    if (payload == null) return;
+    final next = DslAppMetadata.fromJson(payload);
+    if (_appMetadataNotifier.value == next) return;
+    _appMetadataNotifier.value = next;
   }
 
   /// Marks the runtime as ready and executes onReady lifecycle hooks
@@ -671,15 +917,23 @@ class RuntimeEngine with ChangeNotifier {
     }
 
     // Cleanup services
+    await _channelManager.dispose();
     await _backgroundServiceManager.dispose();
     await _serviceRegistry.dispose();
     await _notificationManager.dispose();
     _lifecycleManager.dispose();
 
+    // Cleanup v1.1 services
+    _syncManager.dispose();
+    _connectivityManager.dispose();
+    _eventBus.dispose();
+    _animationService.dispose();
+
     _isInitialized = false;
     _isReady = false;
     _runtimeConfig = null;
     _uiDefinition = null;
+    _appMetadataNotifier.value = null;
 
     if (enableDebugMode) {
       _logger.info('Destroyed');
@@ -845,20 +1099,33 @@ class RuntimeEngine with ChangeNotifier {
   }
 
   /// Initialize watchers
+  /// Accepts both DSL spec keys (watch/condition/actions) and implementation keys (path/handler/immediate/deep)
   void _initializeWatchers(List<dynamic> watchers) {
     for (final watcherDef in watchers) {
       if (watcherDef is Map<String, dynamic>) {
-        final path = watcherDef['path'] as String?;
-        final handler = watcherDef['handler'] as Map<String, dynamic>?;
+        // Accept both DSL spec keys and implementation keys
+        final path = watcherDef['watch'] as String? ??
+            watcherDef['path'] as String?;
+        // Support both List and Map for actions (P6 backward compatibility)
+        final rawActions = watcherDef['actions'] ?? watcherDef['handler'];
+        final List<Map<String, dynamic>> actionsList;
+        if (rawActions is List) {
+          actionsList = rawActions.whereType<Map<String, dynamic>>().toList();
+        } else if (rawActions is Map<String, dynamic>) {
+          actionsList = [rawActions];
+        } else {
+          actionsList = [];
+        }
+        final condition = watcherDef['condition'] as String?;
         final immediate = watcherDef['immediate'] as bool? ?? false;
         final deep = watcherDef['deep'] as bool? ?? false;
 
-        if (path != null && handler != null) {
+        if (path != null && actionsList.isNotEmpty) {
           _computedManager.registerWatcher(
             path,
             WatcherConfig(
               handler: (value, oldValue) {
-                // Execute the handler action
+                // Build context with current value and old value
                 final watchContext =
                     renderer.createRootContext(null).createChildContext(
                   variables: {
@@ -866,7 +1133,20 @@ class RuntimeEngine with ChangeNotifier {
                     'oldValue': oldValue,
                   },
                 );
-                _actionHandler.execute(handler, watchContext);
+
+                // Evaluate condition expression if provided
+                if (condition != null) {
+                  final conditionResult =
+                      _bindingEngine.resolve<dynamic>(condition, watchContext);
+                  if (!_isTruthy(conditionResult)) {
+                    return;
+                  }
+                }
+
+                // Execute each action in the list
+                for (final action in actionsList) {
+                  _actionHandler.execute(action, watchContext);
+                }
               },
               immediate: immediate,
               deep: deep,
@@ -875,6 +1155,17 @@ class RuntimeEngine with ChangeNotifier {
         }
       }
     }
+  }
+
+  /// Check if a value is truthy (non-null, non-false, non-zero, non-empty)
+  bool _isTruthy(dynamic value) {
+    if (value == null) return false;
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) return value.isNotEmpty;
+    if (value is List) return value.isNotEmpty;
+    if (value is Map) return value.isNotEmpty;
+    return true;
   }
 
   /// Initialize core components that need to be available immediately
@@ -897,6 +1188,21 @@ class RuntimeEngine with ChangeNotifier {
       stateManager: _stateManager,
       bindingEngine: _bindingEngine,
     );
+
+    _channelManager = ChannelManager();
+    _templateRegistry = TemplateRegistry();
+
+    // v1.1 services
+    _responsiveResolver = ResponsiveResolver();
+    _eventBus = EventBus();
+    _connectivityManager = ConnectivityManager();
+    _offlineQueue = OfflineQueue();
+    _syncManager = SyncManager(_offlineQueue, _connectivityManager);
+    _pluginManager = PluginManager.instance;
+    _animationService = AnimationService();
+
+    // Register template widgets (v1.1 TM-01)
+    DefaultWidgets.registerTemplateWidgets(_widgetRegistry, _templateRegistry);
 
     _notificationManager = NotificationManager(
       enableDebugMode: enableDebugMode,

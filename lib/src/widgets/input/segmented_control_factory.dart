@@ -13,6 +13,13 @@ class SegmentedControlFactory extends WidgetFactory {
     final binding = properties['binding'] as String?;
     final options = properties['options'] as List<dynamic>? ?? [];
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
+    // Spec §2.6.19: `variant` (segmented / tabs / buttons). Current
+    // implementation renders all variants as Material SegmentedButton;
+    // the property is accepted so authors can declare intent and future
+    // variant-specific rendering can swap without DSL breakage.
+    // ignore: unused_local_variable
+    final variant =
+        (properties['variant'] as String?) ?? 'segmented';
 
     // Get current value
     final currentValue =

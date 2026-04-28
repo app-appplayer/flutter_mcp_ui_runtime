@@ -14,7 +14,7 @@ class DividerWidgetFactory extends WidgetFactory {
     final thickness = parseDimension(properties['thickness']) ?? 1.0;
     final indent = parseDimension(properties['indent']) ?? 0.0;
     final endIndent = parseDimension(properties['endIndent']) ?? 0.0;
-    final color = parseColor(context.resolve(properties['color']));
+    final color = parseColor(context.resolve(properties['color']), context);
     final isVertical = properties['vertical'] as bool? ?? false;
 
     Widget divider;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart' as core show WidgetDefinition, PageDefinition;
 
 import '../runtime/widget_registry.dart';
 import '../binding/binding_engine.dart';
@@ -7,6 +8,7 @@ import '../actions/action_handler.dart';
 import '../state/state_manager.dart';
 import '../theme/theme_manager.dart';
 import '../optimization/widget_cache.dart';
+import '../plugins/plugin_hooks.dart';
 import '../utils/mcp_logger.dart';
 import 'render_context.dart';
 
@@ -38,7 +40,20 @@ class Renderer {
     final type = pageDefinition['type'] as String? ?? 'single';
     final properties =
         pageDefinition['properties'] as Map<String, dynamic>? ?? {};
-    final content = pageDefinition['content'] as Map<String, dynamic>?;
+    // Support both List and Map for children, plus content for v1.0 compatibility (P6)
+    final rawChildren = pageDefinition['children'] ?? pageDefinition['content'];
+    final Map<String, dynamic>? content;
+    if (rawChildren is List) {
+      // Multiple children: wrap in a Column widget
+      content = <String, dynamic>{
+        'type': 'column',
+        'children': rawChildren,
+      };
+    } else if (rawChildren is Map<String, dynamic>) {
+      content = rawChildren;
+    } else {
+      content = null;
+    }
 
     // Handle both formats: appBar in properties or at root level
     final appBar = pageDefinition['appBar'] ?? properties['appBar'];
@@ -150,6 +165,20 @@ class Renderer {
       return _errorWidget('Widget type is required', definition);
     }
 
+    // Check visible property - return empty widget if explicitly hidden
+    // Skip for 'visibility' type which handles visible property itself
+    if (type != 'visibility') {
+      final properties =
+          definition['properties'] as Map<String, dynamic>? ?? definition;
+      final visible = properties['visible'];
+      if (visible != null) {
+        final resolvedVisible = bindingEngine.resolve<bool>(visible, context);
+        if (resolvedVisible == false) {
+          return const SizedBox.shrink();
+        }
+      }
+    }
+
     // Check cache first if caching is enabled and widget is cacheable
     if (_widgetCache.enabled && _isCacheable(definition, type)) {
       final contextData = _extractCacheableContext(context);
@@ -169,7 +198,19 @@ class Renderer {
     }
 
     try {
+      // Fire plugin onRender hook before rendering
+      PluginHookManager.instance.fireHookSync(
+        PluginHookType.onRender,
+        data: {'type': type, 'phase': 'before'},
+      );
+
       final widget = factory.build(definition, context);
+
+      // Fire plugin onRender hook after rendering
+      PluginHookManager.instance.fireHookSync(
+        PluginHookType.onRender,
+        data: {'type': type, 'phase': 'after'},
+      );
 
       // Cache the widget if caching is enabled and it's cacheable
       if (_widgetCache.enabled && _isCacheable(definition, type)) {
@@ -182,8 +223,52 @@ class Renderer {
       if (kDebugMode) {
         _logger.error('Error rendering widget $type', e, stackTrace);
       }
+
+      // Fire plugin onError hook
+      PluginHookManager.instance.fireHookSync(
+        PluginHookType.onError,
+        data: {'source': 'renderer', 'widgetType': type, 'error': e.toString()},
+      );
+
       return _errorWidget('Error rendering $type: $e', definition);
     }
+  }
+
+  /// Render multiple child widget definitions
+  List<Widget> renderChildren(
+      List<Map<String, dynamic>> children, RenderContext context) {
+    return children.map((child) => renderWidget(child, context)).toList();
+  }
+
+  /// Render a single optional child widget definition
+  Widget? renderChild(Map<String, dynamic>? child, RenderContext context) {
+    if (child == null) return null;
+    return renderWidget(child, context);
+  }
+
+  /// Render a strongly-typed WidgetDefinition
+  /// Converts to JSON internally for backward compatibility with factories.
+  Widget renderDefinition(core.WidgetDefinition definition, RenderContext context) {
+    return renderWidget(definition.toJson(), context);
+  }
+
+  /// Render a strongly-typed PageDefinition
+  Widget renderPageDefinition(core.PageDefinition definition) {
+    return renderPage(definition.toJson());
+  }
+
+  /// Render dashboard summary widget (v1.3)
+  ///
+  /// Renders the compact dashboard widget tree without routing or navigation.
+  /// Returns an empty SizedBox if no dashboard config is provided.
+  Widget renderDashboard(Map<String, dynamic>? dashboardConfig) {
+    if (dashboardConfig == null) return const SizedBox.shrink();
+
+    final content = dashboardConfig['content'] as Map<String, dynamic>?;
+    if (content == null) return const SizedBox.shrink();
+
+    final context = createRootContext(null);
+    return renderWidget(content, context);
   }
 
   /// Create root render context
@@ -909,7 +994,8 @@ class Renderer {
       'stateData': context.stateManager.getState(),
       'themeData': {
         'mode': context.themeManager.themeMode,
-        'primaryColor': context.themeManager.getThemeValue('colors.primary'),
+        'primaryColor':
+            context.themeManager.getThemeValue('color.primary'),
       },
       // Include only serializable context variables
       'variables': cleanVariables,
@@ -970,20 +1056,29 @@ class Renderer {
   /// Check if properties contain event handlers
   bool _hasEventHandlers(Map<String, dynamic> properties) {
     const eventHandlers = {
-      'onPressed',
+      // Canonical v1.0 names (on + PascalCase)
       'onTap',
-      'onLongPress',
       'onDoubleTap',
+      'onLongPress',
+      'onChange',
+      'onSubmit',
+      'onFocus',
+      'onBlur',
+      'onHover',
+      // Legacy aliases (backward compatibility)
+      'onPressed',
+      'onClick',
+      'onDoubleClick',
+      'onChanged',
+      'onSubmitted',
+      'onEditingComplete',
+      'onEnter',
+      'onExit',
+      'click',
       'change',
       'submit',
       'focus',
       'blur',
-      'onChanged',
-      'onSubmitted',
-      'onEditingComplete',
-      'onHover',
-      'onEnter',
-      'onExit',
     };
 
     return properties.keys.any((key) => eventHandlers.contains(key));

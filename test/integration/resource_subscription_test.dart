@@ -21,7 +21,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Subscribe to CPU',
-              'click': {
+              'onTap': {
                 'type': 'resource',
                 'action': 'subscribe',
                 'uri': 'mcp://server/metrics/cpu',
@@ -31,7 +31,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Unsubscribe',
-              'click': {
+              'onTap': {
                 'type': 'resource',
                 'action': 'unsubscribe',
                 'uri': 'mcp://server/metrics/cpu',
@@ -245,7 +245,7 @@ void main() {
               'value': '{{monitoringEnabled}}',
               'label': 'Enable Monitoring',
               'bindTo': 'monitoringEnabled',
-              'change': {
+              'onChange': {
                 'type': 'conditional',
                 'condition': '{{monitoringEnabled}}',
                 'then': {

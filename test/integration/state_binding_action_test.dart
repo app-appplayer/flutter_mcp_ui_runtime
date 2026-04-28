@@ -84,7 +84,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Increment',
-              'click': {
+              'onTap': {
                 'type': 'state',
                 'action': 'increment',
                 'path': 'counter'
@@ -154,7 +154,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Decrement',
-              'click': {
+              'onTap': {
                 'type': 'state',
                 'action': 'decrement',
                 'path': 'counter'
@@ -217,7 +217,7 @@ void main() {
                 {
                   'type': 'button',
                   'label': '-',
-                  'click': {
+                  'onTap': {
                     'type': 'state',
                     'action': 'decrement',
                     'path': 'counter'
@@ -226,7 +226,7 @@ void main() {
                 {
                   'type': 'button',
                   'label': '+',
-                  'click': {
+                  'onTap': {
                     'type': 'state',
                     'action': 'increment',
                     'path': 'counter'
@@ -235,7 +235,7 @@ void main() {
                 {
                   'type': 'button',
                   'label': 'Reset',
-                  'click': {
+                  'onTap': {
                     'type': 'state',
                     'action': 'set',
                     'path': 'counter',

@@ -127,22 +127,24 @@ void main() {
     });
 
     group('Theme Support', () {
-      test('should support v1.0 textOn* color names', () {
+      test('should surface M3 onPrimary/onSecondary on Flutter ColorScheme', () {
         final themeData = {
-          'colors': {
+          'mode': 'light',
+          'color': {
             'primary': '#2196F3',
-            'textOnPrimary': '#FFFFFF',
+            'onPrimary': '#FFFFFF',
             'secondary': '#FF4081',
-            'textOnSecondary': '#000000',
+            'onSecondary': '#000000',
           },
         };
-        
+
         themeManager.setTheme(themeData);
-        
-        // Should use textOnPrimary for onPrimary
+
         final flutterTheme = themeManager.currentTheme;
-        expect(flutterTheme.colorScheme.onPrimary.toARGB32(), equals(0xFFFFFFFF));
-        expect(flutterTheme.colorScheme.onSecondary.toARGB32(), equals(0xFF000000));
+        expect(
+            flutterTheme.colorScheme.onPrimary.toARGB32(), equals(0xFFFFFFFF));
+        expect(
+            flutterTheme.colorScheme.onSecondary.toARGB32(), equals(0xFF000000));
       });
     });
 
@@ -183,11 +185,11 @@ void main() {
     });
 
     group('Event System', () {
-      test('should support v1.0 dash notation event names', () {
-        // PropertyKeys should define dash notation events
-        expect(rules.PropertyKeys.doubleClick, equals('doubleClick'));
-        expect(rules.PropertyKeys.rightClick, equals('rightClick'));
-        expect(rules.PropertyKeys.longPress, equals('longPress'));
+      test('should support v1.0 kebab-case event names', () {
+        // PropertyKeys should define kebab-case events per spec v1.0
+        expect(rules.PropertyKeys.doubleClick, equals('double-click'));
+        expect(rules.PropertyKeys.rightClick, equals('right-click'));
+        expect(rules.PropertyKeys.longPress, equals('long-press'));
       });
     });
   });

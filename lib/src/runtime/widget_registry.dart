@@ -36,6 +36,9 @@ class WidgetRegistry {
     return _factories.containsKey(type);
   }
 
+  /// Check if a factory exists for the given type (design doc compatibility alias)
+  bool hasFactory(String type) => has(type);
+
   /// Get all registered widget types
   List<String> get registeredTypes {
     return _factories.keys.toList()..sort();

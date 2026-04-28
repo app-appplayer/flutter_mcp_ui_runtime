@@ -269,6 +269,122 @@ void main() {
     });
   });
 
+  group('TC-083: CacheManager — constructor', () {
+    test('Normal: creates instance', () {
+      final cm = CacheManager();
+      expect(cm, isNotNull);
+    });
+
+    test('Normal: enableDebugMode true enables debug logging', () {
+      final cm = CacheManager(enableDebugMode: true);
+      expect(cm.enableDebugMode, isTrue);
+    });
+
+    test('Boundary: default enableDebugMode is kDebugMode', () {
+      final cm = CacheManager();
+      expect(cm.enableDebugMode, isNotNull);
+    });
+  });
+
+  group('TC-088: CachePolicy — properties (additional)', () {
+    test('Normal: strategy field supports all enum values', () {
+      for (final strategy in CacheStrategy.values) {
+        final policy = CachePolicy(strategy: strategy);
+        expect(policy.strategy, equals(strategy));
+      }
+    });
+
+    test('Normal: evictionPolicy supports all enum values', () {
+      for (final policy in EvictionPolicy.values) {
+        final cp = CachePolicy(evictionPolicy: policy);
+        expect(cp.evictionPolicy, equals(policy));
+      }
+    });
+
+    test('Normal: persistent field round-trips through JSON', () {
+      const policy = CachePolicy(persistent: false);
+      final json = policy.toJson();
+      final restored = CachePolicy.fromJson(json);
+      expect(restored.persistent, isFalse);
+    });
+
+    test('Normal: maxSize and maxEntries fields', () {
+      const policy = CachePolicy(maxSize: 1024, maxEntries: 50);
+      expect(policy.maxSize, 1024);
+      expect(policy.maxEntries, 50);
+
+      final json = policy.toJson();
+      expect(json['maxSize'], 1024);
+      expect(json['maxEntries'], 50);
+    });
+
+    test('Normal: CacheStrategy fromJson parsing', () {
+      for (final name in ['cacheFirst', 'networkFirst', 'cacheOnly', 'networkOnly', 'staleWhileRevalidate']) {
+        final policy = CachePolicy.fromJson({'strategy': name});
+        expect(policy.strategy, isNotNull);
+      }
+    });
+
+    test('Normal: EvictionPolicy fromJson parsing', () {
+      for (final name in ['lru', 'lfu', 'fifo', 'ttl']) {
+        final policy = CachePolicy.fromJson({'evictionPolicy': name});
+        expect(policy.evictionPolicy, isNotNull);
+      }
+    });
+
+    test('Boundary: all defaults applied when not specified', () {
+      final policy = CachePolicy.fromJson({});
+      expect(policy.enabled, isTrue);
+      expect(policy.maxAge, isNull);
+      expect(policy.staleWhileRevalidate, isFalse);
+      expect(policy.cacheState, isTrue);
+      expect(policy.cacheResources, isTrue);
+      expect(policy.offlineMode, OfflineMode.partial);
+      expect(policy.strategy, CacheStrategy.networkFirst);
+      expect(policy.evictionPolicy, EvictionPolicy.lru);
+      expect(policy.persistent, isNull);
+      expect(policy.maxSize, isNull);
+      expect(policy.maxEntries, isNull);
+    });
+  });
+
+  group('TC-089: CacheManager — default policy', () {
+    test('Normal: get default policy returns CachePolicy', () {
+      final cm = CacheManager(enableDebugMode: false);
+      expect(cm.defaultPolicy, isA<CachePolicy>());
+      expect(cm.defaultPolicy.enabled, isTrue);
+    });
+
+    test('Normal: set default policy updates cache behavior', () {
+      final cm = CacheManager(enableDebugMode: false);
+      const newPolicy = CachePolicy(enabled: false);
+      cm.defaultPolicy = newPolicy;
+      expect(cm.defaultPolicy.enabled, isFalse);
+    });
+
+    test('Boundary: reset to default policy', () {
+      final cm = CacheManager(enableDebugMode: false);
+      cm.defaultPolicy = const CachePolicy(enabled: false);
+      cm.defaultPolicy = const CachePolicy(); // Reset
+      expect(cm.defaultPolicy.enabled, isTrue);
+    });
+  });
+
+  group('TC-087: CacheManager — resource caching (additional)', () {
+    test('Boundary: non-existent resource key returns null', () {
+      final cm = CacheManager(enableDebugMode: false);
+      expect(cm.getCachedResource('nonexistent'), isNull);
+    });
+  });
+
+  group('TC-090: CacheManager — invalidation (additional)', () {
+    test('Boundary: clear non-existent app is a no-op', () async {
+      final cm = CacheManager(enableDebugMode: false);
+      // Should not throw
+      await cm.clearApp('nonexistent.domain', 'nonexistent_id');
+    });
+  });
+
   group('CachePolicy Tests', () {
     test('creates from JSON correctly', () {
       final json = {

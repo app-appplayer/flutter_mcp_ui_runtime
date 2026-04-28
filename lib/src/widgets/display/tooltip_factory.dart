@@ -95,7 +95,7 @@ class TooltipWidgetFactory extends WidgetFactory {
 
     if (style is Map<String, dynamic>) {
       return TextStyle(
-        color: parseColor(context.resolve(style['color'])),
+        color: parseColor(context.resolve(style['color']), context),
         fontSize: parseDimension(style['fontSize']),
         fontWeight: style['fontWeight'] == 'bold' ? FontWeight.bold : null,
       );
@@ -141,7 +141,7 @@ class TooltipWidgetFactory extends WidgetFactory {
 
     if (decoration is Map<String, dynamic>) {
       return BoxDecoration(
-        color: parseColor(context.resolve(decoration['color'])),
+        color: parseColor(context.resolve(decoration['color']), context),
         borderRadius: _parseBorderRadius(decoration['borderRadius']),
         boxShadow: _parseBoxShadow(decoration['shadow'], context),
       );
@@ -166,7 +166,7 @@ class TooltipWidgetFactory extends WidgetFactory {
     if (shadow is Map<String, dynamic>) {
       return [
         BoxShadow(
-          color: parseColor(context.resolve(shadow['color'])) ?? Colors.black,
+          color: parseColor(context.resolve(shadow['color']), context) ?? Colors.black,
           blurRadius: parseDimension(shadow['blur']) ?? 0,
           spreadRadius: parseDimension(shadow['spread']) ?? 0,
           offset: Offset(

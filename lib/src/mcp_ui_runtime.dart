@@ -31,56 +31,71 @@
 /// regardless of the navigation type (drawer/tabs/bottom/routes).
 library mcp_ui_runtime;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'runtime/runtime_engine.dart';
+import 'utils/icon_resolver.dart';
+import 'widgets/widget_factory.dart';
+import 'actions/action_handler.dart';
 import 'state/state_manager.dart';
 import 'renderer/render_context.dart';
 import 'routing/page_state_scope.dart';
 import 'theme/theme_manager.dart';
 import 'utils/mcp_logger.dart';
+import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart' as core
+    show
+        ApplicationDefinition,
+        DashboardConfig,
+        PageDefinition,
+        validateMcpUiDslWidget;
 import 'models/ui_definition.dart';
+import 'models/app_metadata.dart';
 import 'services/navigation_service.dart';
+import 'binding/binding_engine.dart';
+import 'channels/channel_manager.dart';
+import 'permissions/permission_manager.dart';
+import 'permissions/trust_level.dart';
 
 /// Main MCP UI Runtime class that provides the entry point for using the runtime
 class MCPUIRuntime {
   MCPUIRuntime({
     this.enableDebugMode = kDebugMode,
-  }) : _logger = MCPLogger('MCPUIRuntime', enableLogging: enableDebugMode);
+  }) : _logger = MCPLogger('MCPUIRuntime', enableLogging: enableDebugMode),
+       _engine = RuntimeEngine(enableDebugMode: enableDebugMode);
 
   final bool enableDebugMode;
   final MCPLogger _logger;
 
-  RuntimeEngine? _engine;
+  /// Engine is eagerly initialized in constructor so managers are always accessible
+  final RuntimeEngine _engine;
   bool _isInitialized = false;
 
-  /// Gets the runtime engine instance
-  RuntimeEngine? get engine => _engine;
+  /// Gets the runtime engine instance (always non-null, initialized in constructor)
+  RuntimeEngine get engine => _engine;
 
   /// Gets whether the runtime is initialized
   bool get isInitialized => _isInitialized;
 
-  /// Gets the state manager
-  StateManager get stateManager {
-    if (!_isInitialized || _engine == null) {
-      throw StateError(
-          'Runtime must be initialized before accessing stateManager');
-    }
-    return _engine!.stateManager;
-  }
+  /// Whether engine is ready for rendering
+  bool get isReady => _engine.isReady;
 
-  /// Gets the theme manager
-  ThemeManager get themeManager {
-    if (!_isInitialized || _engine == null) {
-      throw StateError(
-          'Runtime must be initialized before accessing themeManager');
-    }
-    return _engine!.themeManager;
-  }
+  /// Gets the state manager (accessible before initialize, returns uninitialized manager)
+  StateManager get stateManager => _engine.stateManager;
+
+  /// Gets the theme manager (accessible before initialize, returns uninitialized manager)
+  ThemeManager get themeManager => _engine.themeManager;
+
+  /// Observable application metadata (spec §11). `value` is null before
+  /// `initialize` completes or when the DSL is a standalone page.
+  /// Listeners fire when the cache is replaced — for example after a
+  /// `ui://app/info` resource-update notification.
+  ValueListenable<DslAppMetadata?> get appMetadata => _engine.appMetadata;
 
   /// Gets the UI definition
   Map<String, dynamic>? getUIDefinition() {
-    return _engine?.uiDefinition;
+    return _engine.uiDefinition;
   }
 
   /// Renders the UI widget
@@ -88,28 +103,118 @@ class MCPUIRuntime {
     return buildUI();
   }
 
-  /// Initializes the runtime with the provided definition
+  /// Initializes the runtime with the provided definition.
+  ///
+  /// [validateSchema] runs the generated widget-registry JSON Schema over
+  /// the DSL before wiring up services. **On by default** — the schema is
+  /// now complete enough (see `specs/mcp_ui_dsl/schema/widgets.schema.json`
+  /// and `widgets_schema.g.dart`) that every spec-conformant DSL passes,
+  /// and violations throw [StateError] with precise JSON paths. Pass
+  /// `validateSchema: false` to opt out — primarily for negative-path tests
+  /// that deliberately feed invalid DSL to exercise fallback behaviour.
+  ///
+  /// Additional enforcement channels outside the runtime:
+  ///
+  /// 1. `dart run tools/spec_codegen/bin/validate_bundle.dart <paths>` —
+  ///    author-side linter for JSON bundles.
+  /// 2. `dart run tools/spec_codegen/bin/conformance.dart` — CI gate that
+  ///    verifies spec ↔ factory drift is zero.
   Future<void> initialize(
     Map<String, dynamic> definition, {
     Function(String)? pageLoader,
     bool useCache = true,
+    bool validateSchema = true,
   }) async {
     if (_isInitialized) {
       throw StateError('MCP UI Runtime is already initialized');
     }
 
-    _engine = RuntimeEngine(
-      enableDebugMode: enableDebugMode,
-    );
+    if (validateSchema) {
+      final issues = _collectSchemaIssues(definition);
+      if (issues.isNotEmpty) {
+        final summary = issues.take(5).join('\n  ');
+        throw StateError(
+          'MCP UI DSL schema validation failed '
+          '(${issues.length} error(s)):\n  $summary',
+        );
+      }
+    }
 
-    await _engine!.initialize(
+    await _engine.initialize(
       definition: definition,
       pageLoader: pageLoader,
       useCache: useCache,
     );
     _isInitialized = true;
 
+    // Apply a trust level that the host set before `initialize` ran.
+    final pendingTrust = _pendingTrustLevel;
+    if (pendingTrust != null) {
+      final pm = _engine.actionHandler.permissionManager;
+      if (pm != null) {
+        pm.trustLevel = pendingTrust;
+        _pendingTrustLevel = null;
+      }
+    }
+
     _logger.info('Initialized successfully');
+  }
+
+  /// Walks the loaded definition and validates every widget subtree against
+  /// the generated registry schema. Returns a flat list of error strings
+  /// suitable for surfacing to DSL authors.
+  List<String> _collectSchemaIssues(Map<String, dynamic> definition) {
+    final issues = <String>[];
+
+    void validateNode(Object? node, String where) {
+      if (node is Map<String, dynamic>) {
+        final result = core.validateMcpUiDslWidget(node);
+        if (!result.isValid) {
+          for (final e in result.errors) {
+            issues.add('$where ${e.path}: ${e.message}');
+          }
+        }
+      }
+    }
+
+    // PageDefinition: `content` is the widget tree.
+    final content = definition['content'];
+    if (content is Map<String, dynamic>) validateNode(content, 'content');
+
+    // ApplicationDefinition: `dashboard.content` + route targets.
+    final dashboard = definition['dashboard'];
+    if (dashboard is Map<String, dynamic>) {
+      final dc = dashboard['content'];
+      if (dc is Map<String, dynamic>) validateNode(dc, 'dashboard.content');
+    }
+    return issues;
+  }
+
+  /// Initialize runtime from a strongly-typed ApplicationDefinition
+  /// Converts to JSON internally for backward compatibility with the existing pipeline.
+  Future<void> initializeFromDefinition(
+    core.ApplicationDefinition definition, {
+    Function(String)? pageLoader,
+    bool useCache = true,
+  }) async {
+    await initialize(
+      definition.toJson(),
+      pageLoader: pageLoader,
+      useCache: useCache,
+    );
+  }
+
+  /// Initialize runtime from a strongly-typed PageDefinition
+  Future<void> initializeFromPageDefinition(
+    core.PageDefinition definition, {
+    Function(String)? pageLoader,
+    bool useCache = true,
+  }) async {
+    await initialize(
+      definition.toJson(),
+      pageLoader: pageLoader,
+      useCache: useCache,
+    );
   }
 
   /// Builds the UI widget from the runtime configuration
@@ -119,32 +224,80 @@ class MCPUIRuntime {
     Function(String, Map<String, dynamic>)? onToolCall,
     Function(String, String)? onResourceSubscribe,
     Function(String)? onResourceUnsubscribe,
+    VoidCallback? onExit,
+    ValueListenable<Brightness>? hostBrightness,
   }) {
-    if (!_isInitialized || _engine == null) {
+    if (!_isInitialized) {
       throw StateError('MCP UI Runtime must be initialized before building UI');
     }
 
-    final uiDefinition = _engine!.uiDefinition;
+    final uiDefinition = _engine.uiDefinition;
     if (uiDefinition == null) {
       throw StateError('No UI definition found in runtime configuration');
     }
 
     return MCPRuntimeWidget(
-      engine: _engine!,
+      engine: _engine,
       uiDefinition: uiDefinition,
       initialState: initialState,
       onToolCall: onToolCall,
       onResourceSubscribe: onResourceSubscribe,
       onResourceUnsubscribe: onResourceUnsubscribe,
+      onExit: onExit,
+      hostBrightness: hostBrightness,
     );
   }
+
+  /// Spec §11.9 dashboard rendering entry point.
+  ///
+  /// Returns a widget that hosts the `dashboard.content` tree when the
+  /// initialised DSL declares a `dashboard` block; returns `null` when no
+  /// dashboard view is provided (embedders should fall back to a card
+  /// built from [appMetadata]'s icon / title per §11.9.1).
+  ///
+  /// `content` is rendered with the same binding / action / theme context
+  /// as full render mode — templates (§9), app state, channel payloads
+  /// and resource bindings all resolve normally (§11.9.4). When the DSL
+  /// specifies `refreshInterval`, the widget periodically invalidates
+  /// bindings to force re-evaluation.
+  Widget? buildDashboard({
+    BuildContext? context,
+    Function(String, Map<String, dynamic>)? onToolCall,
+    Function(String, String)? onResourceSubscribe,
+    Function(String)? onResourceUnsubscribe,
+    VoidCallback? onExit,
+    void Function(String? appId, String? route)? onOpenApp,
+    ValueListenable<Brightness>? hostBrightness,
+  }) {
+    if (!_isInitialized) {
+      throw StateError('MCP UI Runtime must be initialized before building UI');
+    }
+    final appDef = _engine.applicationDefinition;
+    final dashboard = appDef?.dashboard;
+    if (dashboard == null) return null;
+    return _DashboardHost(
+      engine: _engine,
+      dashboard: dashboard,
+      onToolCall: onToolCall,
+      onResourceSubscribe: onResourceSubscribe,
+      onResourceUnsubscribe: onResourceUnsubscribe,
+      onExit: onExit,
+      onOpenApp: onOpenApp,
+      hostBrightness: hostBrightness,
+    );
+  }
+
+  /// Returns true when the initialised DSL provides a `dashboard` block
+  /// (§11.9). Host embedders use this to decide between rendering
+  /// [buildDashboard] and the icon-only fallback tile.
+  bool get hasDashboard => _engine.applicationDefinition?.dashboard != null;
 
   /// Handles MCP notification
   Future<void> handleNotification(
     Map<String, dynamic> notification, {
     Function(String)? resourceReader,
   }) async {
-    if (!_isInitialized || _engine == null) {
+    if (!_isInitialized) {
       _logger.warning('Cannot handle notification - runtime not initialized');
       return;
     }
@@ -157,7 +310,7 @@ class MCPUIRuntime {
 
     if (method == 'notifications/resources/updated' && params != null) {
       // Handle resource update notification
-      await _engine!
+      await _engine
           .handleMCPNotification(params, resourceReader: resourceReader);
     } else {
       _logger.debug('Ignoring notification with method: $method');
@@ -166,34 +319,34 @@ class MCPUIRuntime {
 
   /// Register resource subscription for tracking
   void registerResourceSubscription(String uri, String binding) {
-    if (!_isInitialized || _engine == null) {
+    if (!_isInitialized) {
       throw StateError('Runtime must be initialized');
     }
-    _engine!.registerResourceSubscription(uri, binding);
+    _engine.registerResourceSubscription(uri, binding);
   }
 
   /// Unregister resource subscription
   void unregisterResourceSubscription(String uri) {
-    if (!_isInitialized || _engine == null) {
+    if (!_isInitialized) {
       throw StateError('Runtime must be initialized');
     }
-    _engine!.unregisterResourceSubscription(uri);
+    _engine.unregisterResourceSubscription(uri);
   }
 
   /// Get binding for a URI
   String? getBindingForUri(String uri) {
-    if (!_isInitialized || _engine == null) {
+    if (!_isInitialized) {
       return null;
     }
-    return _engine!.getBindingForUri(uri);
+    return _engine.getBindingForUri(uri);
   }
 
   /// Update state directly (for manual state updates)
   void updateState(String binding, dynamic value) {
-    if (!_isInitialized || _engine == null) {
+    if (!_isInitialized) {
       throw StateError('Runtime must be initialized');
     }
-    _engine!.stateManager.set(binding, value);
+    _engine.stateManager.set(binding, value);
   }
 
   /// Handle error
@@ -203,20 +356,128 @@ class MCPUIRuntime {
 
   /// Register a tool executor function
   void registerToolExecutor(String toolName, Function executor) {
-    if (!_isInitialized || _engine == null) {
+    if (!_isInitialized) {
       throw StateError(
           'Runtime must be initialized before registering tool executors');
     }
-    _engine!.actionHandler.registerToolExecutor(toolName, executor);
+    _engine.actionHandler.registerToolExecutor(toolName, executor);
+  }
+
+  /// Register a custom widget factory
+  void registerWidget(String type, WidgetFactory factory) {
+    if (!_isInitialized) {
+      throw StateError(
+          'Runtime must be initialized before registering widgets');
+    }
+    _engine.widgetRegistry.register(type, factory);
+  }
+
+  /// Register a custom action handler
+  void registerAction(String type, ActionExecutor executor) {
+    if (!_isInitialized) {
+      throw StateError(
+          'Runtime must be initialized before registering actions');
+    }
+    _engine.actionHandler.registerExecutor(type, executor);
+  }
+
+  /// Register navigation handler with 3-parameter callback returning bool (v1.1)
+  void registerNavigationHandler(
+    bool Function(String action, String route, Map<String, dynamic> params)
+        handler,
+  ) {
+    if (!_isInitialized) {
+      throw StateError(
+          'Runtime must be initialized before registering navigation handler');
+    }
+    _engine.actionHandler.registerNavigationHandler(handler);
+  }
+
+  /// Register permission handler for custom permission prompts (v1.1)
+  void registerPermissionHandler(Function handler) {
+    if (!_isInitialized) {
+      throw StateError(
+          'Runtime must be initialized before registering permission handler');
+    }
+    _engine.permissionHandler = handler;
+  }
+
+  /// Register client action handler for custom client action execution (v1.1)
+  /// [actionType] specifies the action type for precise dispatch (e.g. 'client')
+  void registerClientActionHandler(String actionType, Function handler) {
+    if (!_isInitialized) {
+      throw StateError(
+          'Runtime must be initialized before registering client action handler');
+    }
+    _engine.actionHandler.registerToolExecutor(actionType, handler);
+  }
+
+  /// Gets the permission manager (v1.1)
+  PermissionManager? get permissionManager {
+    if (!_isInitialized) {
+      return null;
+    }
+    return _engine.actionHandler.permissionManager;
+  }
+
+  /// Sets the trust level that governs which client actions the runtime
+  /// will even consider attempting (v1.1). The host grants a trust
+  /// level per app; the runtime's `PermissionManager` then refuses any
+  /// action whose required level exceeds the grant, before checking
+  /// the DSL's declared `permissions` config.
+  ///
+  /// Mapping: `basic` → system info / notification / clipboard-read;
+  /// `elevated` → also file-read / HTTP / clipboard-write; `full` →
+  /// also file-write / shell exec. `untrusted` blocks everything.
+  ///
+  /// Safe to call before or after `initialize`. No-op if the action
+  /// handler is not yet wired (calls after `initialize` are reliable).
+  void setTrustLevel(TrustLevel level) {
+    if (!_isInitialized) {
+      _pendingTrustLevel = level;
+      return;
+    }
+    final pm = _engine.actionHandler.permissionManager;
+    if (pm != null) {
+      pm.trustLevel = level;
+    } else {
+      _pendingTrustLevel = level;
+    }
+  }
+
+  TrustLevel? _pendingTrustLevel;
+
+  /// Gets the channel manager (v1.1)
+  ChannelManager? get channelManager {
+    if (!_isInitialized) {
+      return null;
+    }
+    return _engine.channelManager;
+  }
+
+  /// Dispose runtime resources (alias for destroy for spec compliance)
+  Future<void> dispose() async {
+    await destroy();
   }
 
   /// Destroys the runtime and cleans up resources
   Future<void> destroy() async {
-    if (_engine != null) {
-      await _engine!.destroy();
-      _engine = null;
-    }
+    if (!_isInitialized) return;
+
+    await _engine.destroy();
     _isInitialized = false;
+
+    // Clear global navigation handler to prevent state leaking between instances
+    NavigationActionExecutor.clearGlobalNavigationHandler();
+
+    // Reset NavigationService singleton state
+    await NavigationService.instance.onDispose();
+
+    // Reset theme manager singleton
+    ThemeManager.instance.reset();
+
+    // Clear BindingEngine static caches
+    BindingEngine.clearStaticCaches();
 
     _logger.info('Destroyed');
   }
@@ -232,6 +493,8 @@ class MCPRuntimeWidget extends StatefulWidget {
     this.onToolCall,
     this.onResourceSubscribe,
     this.onResourceUnsubscribe,
+    this.onExit,
+    this.hostBrightness,
   });
 
   final RuntimeEngine engine;
@@ -240,6 +503,16 @@ class MCPRuntimeWidget extends StatefulWidget {
   final Function(String, Map<String, dynamic>)? onToolCall;
   final Function(String, String)? onResourceSubscribe;
   final Function(String)? onResourceUnsubscribe;
+
+  /// Host callback invoked when exitApp navigation action is triggered
+  /// or when the app title is tapped.
+  final VoidCallback? onExit;
+
+  /// Host-provided brightness feed that resolves `mode: 'system'`
+  /// against the embedder's theme choice rather than the OS directly.
+  /// When null, `mode: 'system'` falls back to platform brightness.
+  /// Declared `mode: 'light'` / `mode: 'dark'` on the DSL are unaffected.
+  final ValueListenable<Brightness>? hostBrightness;
 
   @override
   State<MCPRuntimeWidget> createState() => _MCPRuntimeWidgetState();
@@ -266,6 +539,18 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
       onResourceUnsubscribe: widget.onResourceUnsubscribe,
     );
 
+    // Wire host brightness injection (spec §5.2 — embedder-driven
+    // system mode resolution).
+    if (widget.hostBrightness != null) {
+      widget.hostBrightness!.addListener(_applyHostBrightness);
+      _applyHostBrightness();
+    }
+
+    // Register onExit callback for exitApp navigation action and title tap
+    if (widget.onExit != null) {
+      NavigationActionExecutor.setOnExitCallback(widget.onExit!);
+    }
+
     // Initialize state if provided
     if (widget.initialState != null) {
       widget.engine.stateManager.setState(widget.initialState!);
@@ -280,7 +565,28 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    widget.hostBrightness?.removeListener(_applyHostBrightness);
+    widget.engine.themeManager.setHostBrightness(null);
     super.dispose();
+  }
+
+  void _applyHostBrightness() {
+    final value = widget.hostBrightness?.value;
+    widget.engine.themeManager.setHostBrightness(value);
+  }
+
+  @override
+  void didUpdateWidget(covariant MCPRuntimeWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.hostBrightness != widget.hostBrightness) {
+      oldWidget.hostBrightness?.removeListener(_applyHostBrightness);
+      if (widget.hostBrightness != null) {
+        widget.hostBrightness!.addListener(_applyHostBrightness);
+        _applyHostBrightness();
+      } else {
+        widget.engine.themeManager.setHostBrightness(null);
+      }
+    }
   }
 
   @override
@@ -301,6 +607,15 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
   }
 
   @override
+  void didChangePlatformBrightness() {
+    super.didChangePlatformBrightness();
+    // Spec §5.2 — in `system` mode the runtime MUST switch scheme without
+    // requiring a shell re-render. Forward the platform event so the
+    // ThemeManager re-resolves and notifies its listeners.
+    widget.engine.themeManager.notifyBrightnessChanged();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: widget.engine,
@@ -310,6 +625,13 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
             child: CircularProgressIndicator(),
           );
         }
+
+        // Inject host environment theme for client.theme.* bindings.
+        // Theme.of(context) here captures the embedding app's theme,
+        // before the runtime creates its own MaterialApp.
+        final hostTheme = Theme.of(context);
+        widget.engine.bindingEngine.clientBindingResolver
+            .setHostTheme(hostTheme);
 
         try {
           // Check if this is an application type
@@ -445,6 +767,7 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
 ///
 /// This allows buttons with navigation actions to work seamlessly with
 /// drawer/tab/bottom navigation, even though they use different systems.
+
 class _ApplicationShell extends StatefulWidget {
   final RuntimeEngine engine;
   final ApplicationDefinition appDefinition;
@@ -467,6 +790,21 @@ class _ApplicationShell extends StatefulWidget {
 class _ApplicationShellState extends State<_ApplicationShell> {
   int _currentIndex = 0;
   final Map<String, PageDefinition> _pageDefinitionCache = {};
+
+  /// Builds the host-inserted close button for the shell AppBar's `actions`
+  /// slot per spec §2.8.1 / §4.3.2. Returns `null` when `onExit` is not
+  /// registered. Shell AppBar is always on the root route, so the route-level
+  /// check is implicit here.
+  List<Widget>? _shellAppBarActions() {
+    if (!NavigationActionExecutor.hasOnExit) return null;
+    return <Widget>[
+      IconButton(
+        icon: const Icon(Icons.close),
+        tooltip: 'Close',
+        onPressed: NavigationActionExecutor.invokeOnExit,
+      ),
+    ];
+  }
 
   @override
   void initState() {
@@ -640,6 +978,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
               return Scaffold(
                 appBar: AppBar(
                   title: Text(widget.appDefinition.title),
+                  actions: _shellAppBarActions(),
                   bottom: TabBar(
                     tabs: navigation.items
                         .map((item) => Tab(
@@ -683,8 +1022,13 @@ class _ApplicationShellState extends State<_ApplicationShell> {
           ),
         );
 
+      case 'bottomNavigation':
       case 'bottom':
         return Scaffold(
+          appBar: AppBar(
+            title: Text(widget.appDefinition.title),
+            actions: _shellAppBarActions(),
+          ),
           body: FutureBuilder<PageDefinition>(
             key: ValueKey(currentRoute),
             future: _loadPageDefinition(currentRoute),
@@ -731,6 +1075,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
         return Scaffold(
           appBar: AppBar(
             title: Text(widget.appDefinition.title),
+            actions: _shellAppBarActions(),
           ),
           drawer: Drawer(
             child: ListView(
@@ -828,28 +1173,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
     );
   }
 
-  IconData _getIconData(String iconName) {
-    switch (iconName.toLowerCase()) {
-      case 'home':
-      case 'dashboard':
-        return Icons.home;
-      case 'settings':
-        return Icons.settings;
-      case 'person':
-      case 'profile':
-        return Icons.person;
-      case 'calculate':
-      case 'calculator':
-        return Icons.calculate;
-      case 'thermostat':
-      case 'temperature':
-        return Icons.thermostat;
-      case 'speed':
-        return Icons.speed;
-      default:
-        return Icons.circle;
-    }
-  }
+  IconData _getIconData(String iconName) => resolveIconData(iconName);
 }
 
 /// Convenience functions for quick runtime usage
@@ -879,6 +1203,163 @@ class MCPUIRuntimeHelper {
           context: context,
           initialState: initialState,
           onToolCall: onToolCall,
+        );
+      },
+    );
+  }
+}
+
+/// Widget that hosts `dashboard.content` rendering for spec §11.9.
+/// Wires the same tool / resource / brightness injection points as
+/// [MCPRuntimeWidget] but renders only the dashboard subtree, and drives
+/// a periodic rebuild when `dashboard.refreshInterval` is set.
+class _DashboardHost extends StatefulWidget {
+  const _DashboardHost({
+    required this.engine,
+    required this.dashboard,
+    this.onToolCall,
+    this.onResourceSubscribe,
+    this.onResourceUnsubscribe,
+    this.onExit,
+    this.onOpenApp,
+    this.hostBrightness,
+  });
+
+  final RuntimeEngine engine;
+  final core.DashboardConfig dashboard;
+  final Function(String, Map<String, dynamic>)? onToolCall;
+  final Function(String, String)? onResourceSubscribe;
+  final Function(String)? onResourceUnsubscribe;
+  final VoidCallback? onExit;
+  final void Function(String? appId, String? route)? onOpenApp;
+  final ValueListenable<Brightness>? hostBrightness;
+
+  @override
+  State<_DashboardHost> createState() => _DashboardHostState();
+}
+
+class _DashboardHostState extends State<_DashboardHost>
+    with WidgetsBindingObserver {
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
+    if (widget.onToolCall != null) {
+      widget.engine.actionHandler
+          .registerToolExecutor('default', widget.onToolCall!);
+    }
+    widget.engine.setResourceHandlers(
+      onResourceSubscribe: widget.onResourceSubscribe,
+      onResourceUnsubscribe: widget.onResourceUnsubscribe,
+    );
+    if (widget.onExit != null) {
+      NavigationActionExecutor.setOnExitCallback(widget.onExit!);
+    }
+    if (widget.onOpenApp != null) {
+      NavigationActionExecutor.setOnOpenAppCallback(widget.onOpenApp!);
+    }
+    if (widget.hostBrightness != null) {
+      widget.hostBrightness!.addListener(_applyHostBrightness);
+      _applyHostBrightness();
+    }
+    _startRefreshTimer();
+    // Fire onReady lifecycle hooks after the dashboard mounts so DSL
+    // authors can auto-start resource subscriptions that drive live
+    // streaming bindings (`{{temperature}}`, etc.). Handlers above are
+    // already registered, so subscribe actions reach the host.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.engine.markReady();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    widget.hostBrightness?.removeListener(_applyHostBrightness);
+    widget.engine.themeManager.setHostBrightness(null);
+    if (widget.onOpenApp != null) {
+      NavigationActionExecutor.clearOnOpenAppCallback();
+    }
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    super.didChangePlatformBrightness();
+    widget.engine.themeManager.notifyBrightnessChanged();
+  }
+
+  void _applyHostBrightness() {
+    widget.engine.themeManager.setHostBrightness(widget.hostBrightness?.value);
+  }
+
+  @override
+  void didUpdateWidget(covariant _DashboardHost oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Re-register host callbacks when the host passes fresh closures
+    // across rebuilds. The runtime stores these as static fields, so a
+    // stale closure captured at initState would keep pointing at a
+    // BuildContext that may be unmounted after round-trips through
+    // `context.push('/app/:id')`.
+    if (!identical(widget.onOpenApp, oldWidget.onOpenApp)) {
+      if (widget.onOpenApp != null) {
+        NavigationActionExecutor.setOnOpenAppCallback(widget.onOpenApp!);
+      } else {
+        NavigationActionExecutor.clearOnOpenAppCallback();
+      }
+    }
+    if (!identical(widget.onExit, oldWidget.onExit) &&
+        widget.onExit != null) {
+      NavigationActionExecutor.setOnExitCallback(widget.onExit!);
+    }
+  }
+
+  /// Spec §11.9.3: when `refreshInterval` is present, bindings referenced
+  /// by `dashboard.content` must be re-evaluated at that cadence. The
+  /// simplest implementation is a tick that forces a rebuild of the
+  /// subtree — bindings are pure functions of state at render time.
+  void _startRefreshTimer() {
+    final ms = widget.dashboard.refreshInterval;
+    if (ms == null || ms <= 0) return;
+    _refreshTimer = Timer.periodic(Duration(milliseconds: ms), (_) {
+      if (!mounted) return;
+      setState(() {});
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Re-assert host callbacks on every build. The runtime stores them
+    // as static fields, so another runtime mount (e.g. AppRendererScreen
+    // pushed on top and later popped) may overwrite or clear them.
+    // Re-registering here guarantees the dashboard's `openApp` /
+    // `exitApp` handlers are live whenever the dashboard is visible.
+    if (widget.onOpenApp != null) {
+      NavigationActionExecutor.setOnOpenAppCallback(widget.onOpenApp!);
+    }
+    if (widget.onExit != null) {
+      NavigationActionExecutor.setOnExitCallback(widget.onExit!);
+    }
+    return AnimatedBuilder(
+      animation: widget.engine,
+      builder: (context, _) {
+        final renderContext =
+            widget.engine.renderer.createRootContext(context);
+        final tree = widget.engine.renderer
+            .renderWidget(widget.dashboard.content, renderContext);
+        final onTap = widget.dashboard.onTap;
+        if (onTap == null) return tree;
+        // Spec §11.9.3: `onTap` is invoked when the dashboard card is
+        // tapped. GestureDetector here covers empty regions of the
+        // subtree; interactive descendants still consume their own taps.
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => widget.engine.actionHandler.execute(onTap, renderContext),
+          child: tree,
         );
       },
     );

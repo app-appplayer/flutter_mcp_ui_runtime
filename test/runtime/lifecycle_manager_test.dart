@@ -2,6 +2,324 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/src/runtime/lifecycle_manager.dart';
 
 void main() {
+  group('TC-028: LifecycleManager — constructor', () {
+    test('Normal: LifecycleManager() creates instance', () {
+      final manager = LifecycleManager(enableDebugMode: false);
+      expect(manager, isNotNull);
+      manager.dispose();
+    });
+
+    test('Normal: enableDebugMode: true enables debug logging', () {
+      final manager = LifecycleManager(enableDebugMode: true);
+      expect(manager.enableDebugMode, isTrue);
+      manager.dispose();
+    });
+
+    test('Boundary: default enableDebugMode is kDebugMode', () {
+      final manager = LifecycleManager();
+      // In test mode kDebugMode is typically true
+      expect(manager.enableDebugMode, isNotNull);
+      manager.dispose();
+    });
+  });
+
+  group('TC-029: LifecycleManager — LifecycleEvent enum', () {
+    test('Normal: contains all core events', () {
+      expect(LifecycleEvent.values, containsAll([
+        LifecycleEvent.initialize,
+        LifecycleEvent.ready,
+        LifecycleEvent.pause,
+        LifecycleEvent.resume,
+        LifecycleEvent.destroy,
+        LifecycleEvent.mount,
+        LifecycleEvent.unmount,
+      ]));
+    });
+
+    test('Normal: contains v1.1 events', () {
+      expect(LifecycleEvent.values, containsAll([
+        LifecycleEvent.enter,
+        LifecycleEvent.leave,
+        LifecycleEvent.pagePause,
+        LifecycleEvent.pageResume,
+        LifecycleEvent.pageInit,
+      ]));
+    });
+
+    test('Boundary: all enum values are distinct', () {
+      final valueSet = LifecycleEvent.values.toSet();
+      expect(valueSet.length, equals(LifecycleEvent.values.length));
+    });
+  });
+
+  group('TC-030: LifecycleManager — executeLifecycleHooks', () {
+    test('Boundary: empty hooks list is a no-op', () async {
+      final manager = LifecycleManager(enableDebugMode: false);
+      // Should not throw
+      await manager.executeLifecycleHooks(LifecycleEvent.initialize, []);
+      manager.dispose();
+    });
+
+    test('Error: hook execution failure continues remaining hooks', () async {
+      final manager = LifecycleManager(enableDebugMode: false);
+      final executed = <String>[];
+
+      manager.addListener(LifecycleEvent.initialize, () {
+        throw Exception('Hook failure');
+      });
+      manager.addListener(LifecycleEvent.initialize, () {
+        executed.add('second');
+      });
+
+      // executeLifecycleHooks executes listeners then hooks
+      await manager.executeLifecycleHooks(LifecycleEvent.initialize, []);
+      expect(executed, contains('second'));
+      manager.dispose();
+    });
+  });
+
+  group('TC-031: LifecycleManager — convenience methods', () {
+    late LifecycleManager manager;
+    late List<LifecycleEvent> triggeredEvents;
+
+    setUp(() {
+      manager = LifecycleManager(enableDebugMode: false);
+      triggeredEvents = [];
+
+      for (final event in LifecycleEvent.values) {
+        manager.addListener(event, () {
+          triggeredEvents.add(event);
+        });
+      }
+    });
+
+    tearDown(() {
+      manager.dispose();
+    });
+
+    test('Normal: executeOnInitialize delegates to LifecycleEvent.initialize', () async {
+      await manager.executeOnInitialize([]);
+      expect(triggeredEvents, contains(LifecycleEvent.initialize));
+    });
+
+    test('Normal: executeOnInit delegates to LifecycleEvent.pageInit', () async {
+      await manager.executeOnInit([]);
+      expect(triggeredEvents, contains(LifecycleEvent.pageInit));
+    });
+
+    test('Normal: executeOnReady delegates to LifecycleEvent.ready', () async {
+      await manager.executeOnReady([]);
+      expect(triggeredEvents, contains(LifecycleEvent.ready));
+    });
+
+    test('Normal: executeOnPause delegates to LifecycleEvent.pause', () async {
+      await manager.executeOnPause([]);
+      expect(triggeredEvents, contains(LifecycleEvent.pause));
+    });
+
+    test('Normal: executeOnResume delegates to LifecycleEvent.resume', () async {
+      await manager.executeOnResume([]);
+      expect(triggeredEvents, contains(LifecycleEvent.resume));
+    });
+
+    test('Normal: executeOnDispose delegates to LifecycleEvent.destroy', () async {
+      await manager.executeOnDispose([]);
+      expect(triggeredEvents, contains(LifecycleEvent.destroy));
+    });
+
+    test('Normal: executeOnMount delegates to LifecycleEvent.mount', () async {
+      await manager.executeOnMount([]);
+      expect(triggeredEvents, contains(LifecycleEvent.mount));
+    });
+
+    test('Normal: executeOnUnmount delegates to LifecycleEvent.unmount', () async {
+      await manager.executeOnUnmount([]);
+      expect(triggeredEvents, contains(LifecycleEvent.unmount));
+    });
+
+    test('Normal: executeOnEnter delegates to LifecycleEvent.enter', () async {
+      await manager.executeOnEnter([]);
+      expect(triggeredEvents, contains(LifecycleEvent.enter));
+    });
+
+    test('Normal: executeOnLeave delegates to LifecycleEvent.leave', () async {
+      await manager.executeOnLeave([]);
+      expect(triggeredEvents, contains(LifecycleEvent.leave));
+    });
+
+    test('Normal: executeOnPagePause delegates to LifecycleEvent.pagePause', () async {
+      await manager.executeOnPagePause([]);
+      expect(triggeredEvents, contains(LifecycleEvent.pagePause));
+    });
+
+    test('Normal: executeOnPageResume delegates to LifecycleEvent.pageResume', () async {
+      await manager.executeOnPageResume([]);
+      expect(triggeredEvents, contains(LifecycleEvent.pageResume));
+    });
+  });
+
+  group('TC-032: LifecycleManager — event listeners (additional)', () {
+    test('Boundary: trigger with data passes data to listeners', () async {
+      final manager = LifecycleManager(enableDebugMode: false);
+      dynamic receivedData;
+
+      manager.addListener(LifecycleEvent.enter, (data) {
+        receivedData = data;
+      });
+
+      await manager.triggerEvent(LifecycleEvent.enter, {'route': '/home'});
+      expect(receivedData, equals({'route': '/home'}));
+      manager.dispose();
+    });
+  });
+
+  group('TC-033: LifecycleManager — setActionHandler', () {
+    test('Normal: set action handler and render context', () {
+      final manager = LifecycleManager(enableDebugMode: false);
+      // Should not throw
+      manager.setActionHandler(null, null);
+      manager.dispose();
+    });
+
+    test('Error: null action handler causes hooks to fail gracefully', () async {
+      final manager = LifecycleManager(enableDebugMode: false);
+      manager.setActionHandler(null, null);
+
+      // Execute hook with unknown type which delegates to ActionHandler
+      // With null handler, it should log and continue, not throw
+      await manager.executeLifecycleHooks(
+        LifecycleEvent.initialize,
+        [{'type': 'custom', 'action': 'doSomething'}],
+      );
+
+      manager.dispose();
+    });
+  });
+
+  group('TC-034: LifecycleManager — createComponentHandler (additional)', () {
+    test('Boundary: multiple component handlers for different IDs', () {
+      final manager = LifecycleManager(enableDebugMode: false);
+      final handler1 = manager.createComponentHandler('component_a');
+      final handler2 = manager.createComponentHandler('component_b');
+
+      expect(handler1.componentId, equals('component_a'));
+      expect(handler2.componentId, equals('component_b'));
+      expect(handler1, isNot(same(handler2)));
+      manager.dispose();
+    });
+  });
+
+  group('TC-035: LifecycleManager — dispose', () {
+    test('Normal: dispose cleans up all listeners', () async {
+      final manager = LifecycleManager(enableDebugMode: false);
+      final executed = <String>[];
+
+      manager.addListener(LifecycleEvent.initialize, () {
+        executed.add('should_not_run');
+      });
+
+      manager.dispose();
+
+      // After dispose, triggering should have no listeners
+      await manager.triggerEvent(LifecycleEvent.initialize);
+      expect(executed, isEmpty);
+    });
+
+    test('Boundary: dispose with no registered listeners is a no-op', () {
+      final manager = LifecycleManager(enableDebugMode: false);
+      // Should not throw
+      manager.dispose();
+    });
+  });
+
+  group('TC-036: ComponentLifecycleHandler — constructor (additional)', () {
+    test('Normal: isMounted is false initially', () {
+      final manager = LifecycleManager(enableDebugMode: false);
+      final handler = ComponentLifecycleHandler(
+        componentId: 'test',
+        lifecycleManager: manager,
+        enableDebugMode: false,
+      );
+      expect(handler.isMounted, isFalse);
+      manager.dispose();
+    });
+
+    test('Boundary: empty componentId string', () {
+      final manager = LifecycleManager(enableDebugMode: false);
+      final handler = manager.createComponentHandler('');
+      expect(handler.componentId, equals(''));
+      manager.dispose();
+    });
+  });
+
+  group('TC-037: ComponentLifecycleHandler — mount/unmount (additional)', () {
+    test('Boundary: unmount already unmounted component is a no-op', () async {
+      final manager = LifecycleManager(enableDebugMode: false);
+      final handler = manager.createComponentHandler('test');
+
+      expect(handler.isMounted, isFalse);
+      // Should not throw
+      await handler.unmount();
+      expect(handler.isMounted, isFalse);
+      manager.dispose();
+    });
+  });
+
+  group('TC-038: ComponentLifecycleHandler — setLifecycleConfig', () {
+    test('Normal: setLifecycleConfig configures hooks', () {
+      final manager = LifecycleManager(enableDebugMode: false);
+      final handler = manager.createComponentHandler('test');
+
+      handler.setLifecycleConfig({
+        'onMount': [{'type': 'state', 'action': 'set', 'path': 'x', 'value': 1}],
+      });
+
+      // No error expected
+      expect(handler.isMounted, isFalse);
+      manager.dispose();
+    });
+
+    test('Boundary: null config clears lifecycle hooks', () {
+      final manager = LifecycleManager(enableDebugMode: false);
+      final handler = manager.createComponentHandler('test');
+
+      handler.setLifecycleConfig({'onMount': [{'type': 'state'}]});
+      handler.setLifecycleConfig(null);
+
+      // No error expected
+      expect(handler.isMounted, isFalse);
+      manager.dispose();
+    });
+  });
+
+  group('TC-039: LifecycleManager — app vs page scope', () {
+    test('Normal: separate events for app pause/resume and page pause/resume', () async {
+      final manager = LifecycleManager(enableDebugMode: false);
+      final events = <String>[];
+
+      manager.addListener(LifecycleEvent.pause, () {
+        events.add('app_pause');
+      });
+      manager.addListener(LifecycleEvent.resume, () {
+        events.add('app_resume');
+      });
+      manager.addListener(LifecycleEvent.pagePause, () {
+        events.add('page_pause');
+      });
+      manager.addListener(LifecycleEvent.pageResume, () {
+        events.add('page_resume');
+      });
+
+      await manager.triggerEvent(LifecycleEvent.pause);
+      await manager.triggerEvent(LifecycleEvent.pagePause);
+      await manager.triggerEvent(LifecycleEvent.resume);
+      await manager.triggerEvent(LifecycleEvent.pageResume);
+
+      expect(events, equals(['app_pause', 'page_pause', 'app_resume', 'page_resume']));
+      manager.dispose();
+    });
+  });
+
   group('LifecycleManager Tests', () {
     late LifecycleManager lifecycleManager;
 

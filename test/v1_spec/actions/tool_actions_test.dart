@@ -43,7 +43,7 @@ void main() {
                 'type': 'textInput',
                 'label': 'Message',
                 'value': '{{message}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'message',
@@ -53,7 +53,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Send',
-                'click': {
+                'onTap': {
                   'type': 'tool',
                   'tool': 'sendMessage',
                   'params': {  // v1.0 spec: uses 'params' not 'args'
@@ -110,7 +110,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Fetch Data',
-                'click': {
+                'onTap': {
                   'type': 'batch',
                   'actions': [
                     {
@@ -199,7 +199,7 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'Refresh',
-            'click': {
+            'onTap': {
               'type': 'tool',
               'tool': 'refresh',
               // No params provided
@@ -248,7 +248,7 @@ void main() {
                 'type': 'textInput',
                 'label': 'Search',
                 'value': '{{searchQuery}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'searchQuery',
@@ -258,7 +258,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Search',
-                'click': {
+                'onTap': {
                   'type': 'tool',
                   'tool': 'search',
                   'params': {
@@ -313,7 +313,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Execute',
-                'click': {
+                'onTap': {
                   'type': 'tool',
                   'tool': 'failingTool',
                   'params': {},
@@ -347,7 +347,7 @@ void main() {
         
         await tester.tap(find.text('Execute'));
         await tester.pump(const Duration(milliseconds: 100));
-        
+
         expect(find.text('Operation failed'), findsOneWidget);
       });
     });
@@ -412,7 +412,7 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'External Tool',
-            'click': {
+            'onTap': {
               'type': 'tool',
               'tool': 'externalTool',
               'params': {

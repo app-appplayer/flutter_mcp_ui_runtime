@@ -9,14 +9,19 @@ class AvatarWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Extract properties
-    final radius = parseDimension(properties['radius']) ?? 20.0;
-    final backgroundColor =
-        parseColor(context.resolve(properties['backgroundColor']));
+    // Extract properties - support both design doc keys and implementation keys
+    // Design: size (diameter) → Implementation: radius
+    final sizeValue = parseDimension(properties['size']);
+    final radius = sizeValue != null ? sizeValue / 2 : (parseDimension(properties['radius']) ?? 20.0);
+    // Spec §2.5.10 canonical `color`; §17.3.2 legacy alias `backgroundColor`.
+    final backgroundColor = parseColor(context.resolve(
+        properties['color'] ?? properties['backgroundColor']), context);
     final foregroundColor =
-        parseColor(context.resolve(properties['foregroundColor']));
-    final backgroundImage = properties['backgroundImage'] as String?;
-    final text = context.resolve<String?>(properties['text']);
+        parseColor(context.resolve(properties['foregroundColor']), context);
+    // Design: src → Implementation: backgroundImage
+    final backgroundImage = (properties['src'] ?? properties['backgroundImage']) as String?;
+    // Design: label → Implementation: text
+    final text = context.resolve<String?>(properties['label'] ?? properties['text']);
     final icon = properties['icon'] as String?;
 
     // Build child widget

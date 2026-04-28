@@ -12,12 +12,12 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
     // Extract properties
     final tooltip = context.resolve<String?>(properties['tooltip']);
     final foregroundColor =
-        parseColor(context.resolve(properties['foregroundColor']));
+        parseColor(context.resolve(properties['foregroundColor']), context);
     final backgroundColor =
-        parseColor(context.resolve(properties['backgroundColor']));
-    final focusColor = parseColor(context.resolve(properties['focusColor']));
-    final hoverColor = parseColor(context.resolve(properties['hoverColor']));
-    final splashColor = parseColor(context.resolve(properties['splashColor']));
+        parseColor(context.resolve(properties['backgroundColor']), context);
+    final focusColor = parseColor(context.resolve(properties['focusColor']), context);
+    final hoverColor = parseColor(context.resolve(properties['hoverColor']), context);
+    final splashColor = parseColor(context.resolve(properties['splashColor']), context);
     final heroTag = properties['heroTag'];
     final elevation = properties['elevation']?.toDouble();
     final focusElevation = properties['focusElevation']?.toDouble();
@@ -32,11 +32,15 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
         _parseMaterialTapTargetSize(properties['materialTapTargetSize']);
     final isExtended = properties['isExtended'] as bool? ?? false;
 
-    // Extract child widget or icon/label
+    // Extract child widget or icon/label (support 'child' and 'children')
+    final childDef = (properties['child'] ?? definition['child'])
+        as Map<String, dynamic>?;
     final childrenDef = properties['children'] as List<dynamic>? ??
         definition['children'] as List<dynamic>?;
     Widget? child;
-    if (childrenDef != null && childrenDef.isNotEmpty) {
+    if (childDef != null) {
+      child = context.buildWidget(childDef);
+    } else if (childrenDef != null && childrenDef.isNotEmpty) {
       child = context.buildWidget(childrenDef.first as Map<String, dynamic>);
     } else {
       // Build from icon and label
@@ -58,8 +62,8 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
     }
 
     // Extract action handler
-    final onPressed = properties['onPressed'] as Map<String, dynamic>?;
-    final onLongPress = properties['onLongPress'] as Map<String, dynamic>?;
+    final onPressed = (properties['onTap'] ?? properties['click'] ?? properties['onPressed']) as Map<String, dynamic>?;
+    final onLongPress = (properties['onLongPress'] ?? properties['long-press'] ?? properties['longPress']) as Map<String, dynamic>?;
 
     Widget fab;
 

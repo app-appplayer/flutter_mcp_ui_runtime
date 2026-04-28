@@ -9,19 +9,22 @@ class BottomNavigationBarWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Extract properties
+    // Spec §2.8.2 canonical `selectedIndex`; `currentIndex` kept as legacy
+    // Flutter-style alias.
     final currentIndex =
-        context.resolve<int>(properties['currentIndex']) as int? ?? 0;
+        context.resolve<int>(properties['selectedIndex'] ??
+                properties['currentIndex']) as int? ??
+            0;
     final elevation = parseDimension(properties['elevation']);
     final type = _parseBottomNavigationBarType(properties['type']);
-    final fixedColor = parseColor(context.resolve(properties['fixedColor']));
+    final fixedColor = parseColor(context.resolve(properties['fixedColor']), context);
     final backgroundColor =
-        parseColor(context.resolve(properties['backgroundColor']));
+        parseColor(context.resolve(properties['backgroundColor']), context);
     final iconSize = parseDimension(properties['iconSize']) ?? 24.0;
     final selectedItemColor =
-        parseColor(context.resolve(properties['selectedItemColor']));
+        parseColor(context.resolve(properties['selectedItemColor']), context);
     final unselectedItemColor =
-        parseColor(context.resolve(properties['unselectedItemColor']));
+        parseColor(context.resolve(properties['unselectedItemColor']), context);
     final selectedIconTheme =
         _parseIconThemeData(properties['selectedIconTheme'], context);
     final unselectedIconTheme =
@@ -46,9 +49,10 @@ class BottomNavigationBarWidgetFactory extends WidgetFactory {
           activeIcon: item['activeIcon'] != null
               ? _buildIcon(item['activeIcon'], context)
               : null,
-          label: item['label'] as String?,
+          // §17.3.2: canonical 'label', legacy alias 'title'.
+          label: (item['label'] ?? item['title']) as String?,
           tooltip: item['tooltip'] as String?,
-          backgroundColor: parseColor(context.resolve(item['backgroundColor'])),
+          backgroundColor: parseColor(context.resolve(item['backgroundColor']), context),
         );
       }
       return const BottomNavigationBarItem(
@@ -57,8 +61,9 @@ class BottomNavigationBarWidgetFactory extends WidgetFactory {
       );
     }).toList();
 
-    // Extract action handler
-    final onTap = properties['onTap'] as Map<String, dynamic>?;
+    // on + PascalCase optimal, legacy short names as fallback
+    final onTap = (properties['onChange'] ?? properties['onTap'] ?? properties['change'] ?? properties['click'])
+        as Map<String, dynamic>?;
 
     Widget bottomBar = BottomNavigationBar(
       items: items,
@@ -128,7 +133,7 @@ class BottomNavigationBarWidgetFactory extends WidgetFactory {
     if (data == null) return null;
 
     return IconThemeData(
-      color: parseColor(context.resolve(data['color'])),
+      color: parseColor(context.resolve(data['color']), context),
       size: data['size']?.toDouble(),
       opacity: data['opacity']?.toDouble(),
     );
@@ -139,7 +144,7 @@ class BottomNavigationBarWidgetFactory extends WidgetFactory {
     if (style == null) return null;
 
     return TextStyle(
-      color: parseColor(context.resolve(style['color'])),
+      color: parseColor(context.resolve(style['color']), context),
       fontSize: style['fontSize']?.toDouble(),
       fontWeight: _parseFontWeight(style['fontWeight']),
     );

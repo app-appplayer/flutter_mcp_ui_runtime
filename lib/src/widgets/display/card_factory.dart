@@ -11,10 +11,10 @@ class CardWidgetFactory extends WidgetFactory {
 
     // Extract properties
     final elevation = properties['elevation']?.toDouble() ?? 1.0;
-    final shadowColor = parseColor(context.resolve(properties['shadowColor']));
+    final shadowColor = parseColor(context.resolve(properties['shadowColor']), context);
     final surfaceTintColor =
-        parseColor(context.resolve(properties['surfaceTintColor']));
-    final color = parseColor(context.resolve(properties['color']));
+        parseColor(context.resolve(properties['surfaceTintColor']), context);
+    final color = parseColor(context.resolve(properties['color']), context);
     final shape = _parseShape(properties['shape']);
     final clipBehavior = _parseClipBehavior(properties['clipBehavior']);
     final semanticContainer = properties['semanticContainer'] as bool? ?? true;

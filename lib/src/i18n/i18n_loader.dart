@@ -1,10 +1,11 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'i18n_manager.dart';
+import '../utils/mcp_logger.dart';
 
 /// Loader for i18n translations
 class I18nLoader {
+  static final _logger = MCPLogger('I18nLoader');
   /// Load translations from a JSON asset
   static Future<void> loadFromAsset(String assetPath) async {
     try {
@@ -16,7 +17,7 @@ class I18nLoader {
         'translations': jsonData,
       });
     } catch (e) {
-      debugPrint('Error loading i18n translations from $assetPath: $e');
+      _logger.error('Error loading i18n translations from $assetPath: $e');
     }
   }
 

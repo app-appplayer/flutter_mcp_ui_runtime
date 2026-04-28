@@ -13,11 +13,15 @@ class SizedBoxWidgetFactory extends WidgetFactory {
     final width = parseDimension(properties['width']);
     final height = parseDimension(properties['height']);
 
-    // Build child - check both properties and definition level
+    // Build child (support both 'child' and 'children' per MCP UI DSL spec)
+    final childDef = (properties['child'] ?? definition['child'])
+        as Map<String, dynamic>?;
     final childrenData = properties['children'] as List<dynamic>? ??
         definition['children'] as List<dynamic>?;
     Widget? child;
-    if (childrenData != null && childrenData.isNotEmpty) {
+    if (childDef != null) {
+      child = context.renderer.renderWidget(childDef, context);
+    } else if (childrenData != null && childrenData.isNotEmpty) {
       child = context.renderer.renderWidget(childrenData.first, context);
     }
 

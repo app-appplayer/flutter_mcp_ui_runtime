@@ -13,7 +13,7 @@ class SnackBarWidgetFactory extends WidgetFactory {
     final content =
         context.resolve<String>(properties['content']) as String? ?? '';
     final backgroundColor =
-        parseColor(context.resolve(properties['backgroundColor']));
+        parseColor(context.resolve(properties['backgroundColor']), context);
     final elevation = parseDimension(properties['elevation']);
     final margin = parseEdgeInsets(properties['margin']);
     final padding = parseEdgeInsets(properties['padding']);
@@ -23,7 +23,7 @@ class SnackBarWidgetFactory extends WidgetFactory {
     final duration = Duration(milliseconds: properties['duration'] ?? 4000);
     final showCloseIcon = properties['showCloseIcon'] as bool? ?? false;
     final closeIconColor =
-        parseColor(context.resolve(properties['closeIconColor']));
+        parseColor(context.resolve(properties['closeIconColor']), context);
     final dismissDirection =
         _parseDismissDirection(properties['dismissDirection']);
 
@@ -33,12 +33,13 @@ class SnackBarWidgetFactory extends WidgetFactory {
     if (actionData != null) {
       action = SnackBarAction(
         label: actionData['label'] ?? 'ACTION',
-        textColor: parseColor(context.resolve(actionData['textColor'])),
+        textColor: parseColor(context.resolve(actionData['textColor']), context),
         backgroundColor:
-            parseColor(context.resolve(actionData['backgroundColor'])),
+            parseColor(context.resolve(actionData['backgroundColor']), context),
         onPressed: () {
-          if (actionData['onPressed'] != null) {
-            context.actionHandler.execute(actionData['onPressed'], context);
+          final clickAction = actionData['onTap'] ?? actionData['onPressed'];
+          if (clickAction != null) {
+            context.actionHandler.execute(clickAction, context);
           }
         },
       );
@@ -48,7 +49,7 @@ class SnackBarWidgetFactory extends WidgetFactory {
     Widget contentWidget = Text(
       content,
       style: TextStyle(
-        color: parseColor(context.resolve(properties['textColor'])),
+        color: parseColor(context.resolve(properties['textColor']), context),
       ),
     );
 

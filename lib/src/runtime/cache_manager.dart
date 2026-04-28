@@ -1,14 +1,16 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/mcp_logger.dart';
 
 /// Cache manager for MCP UI Runtime
 class CacheManager {
   CacheManager({
     this.enableDebugMode = kDebugMode,
-  });
+  }) : _logger = MCPLogger('CacheManager', enableLogging: enableDebugMode);
 
   final bool enableDebugMode;
+  final MCPLogger _logger;
 
   // In-memory cache for now, can be extended to use persistent storage
   final Map<String, CachedApp> _appCache = {};
@@ -25,7 +27,7 @@ class CacheManager {
   set defaultPolicy(CachePolicy policy) {
     _defaultPolicy = policy;
     if (enableDebugMode) {
-      debugPrint('CacheManager: Default policy updated');
+      _logger.debug('Default policy updated');
     }
   }
 
@@ -35,7 +37,7 @@ class CacheManager {
     _appCache[key] = app;
 
     if (enableDebugMode) {
-      debugPrint('CacheManager: Cached app $key v${app.version}');
+      _logger.debug('Cached app $key v${app.version}');
     }
   }
 
@@ -46,13 +48,13 @@ class CacheManager {
 
     if (app != null && _isAppValid(app)) {
       if (enableDebugMode) {
-        debugPrint('CacheManager: Cache hit for app $key');
+        _logger.debug('Cache hit for app $key');
       }
       return app;
     }
 
     if (enableDebugMode) {
-      debugPrint('CacheManager: Cache miss for app $key');
+      _logger.debug('Cache miss for app $key');
     }
     return null;
   }
@@ -68,25 +70,32 @@ class CacheManager {
   }
 
   /// Caches app state
+  ///
+  /// When the active cache policy has `persistent == true`, the state is also
+  /// persisted to SharedPreferences so it survives app restarts.
   Future<void> cacheState(String appKey, Map<String, dynamic> state) async {
     _stateCache[appKey] = Map<String, dynamic>.from(state);
 
     if (enableDebugMode) {
-      debugPrint('CacheManager: Cached state for $appKey');
+      _logger.debug('Cached state for $appKey');
     }
+
+    // Only persist when the policy allows it
+    final shouldPersist = _defaultPolicy.persistent ?? true;
+    if (!shouldPersist) return;
 
     // Persist to SharedPreferences
     try {
       final prefs = await SharedPreferences.getInstance();
       final stateJson = jsonEncode(state);
       await prefs.setString('mcp_ui_state_$appKey', stateJson);
-      
+
       if (enableDebugMode) {
-        debugPrint('CacheManager: Persisted state for $appKey');
+        _logger.debug('Persisted state for $appKey');
       }
     } catch (e) {
       if (enableDebugMode) {
-        debugPrint('CacheManager: Failed to persist state: $e');
+        _logger.error('Failed to persist state: $e');
       }
     }
   }
@@ -113,12 +122,12 @@ class CacheManager {
         _stateCache[appKey] = state; // Update memory cache
         
         if (enableDebugMode) {
-          debugPrint('CacheManager: Loaded persisted state for $appKey');
+          _logger.debug('Loaded persisted state for $appKey');
         }
       }
     } catch (e) {
       if (enableDebugMode) {
-        debugPrint('CacheManager: Failed to load persisted state: $e');
+        _logger.error('Failed to load persisted state: $e');
       }
     }
   }
@@ -128,7 +137,7 @@ class CacheManager {
     _resourceCache[key] = Map<String, dynamic>.from(data);
 
     if (enableDebugMode) {
-      debugPrint('CacheManager: Cached resource $key');
+      _logger.debug('Cached resource $key');
     }
   }
 
@@ -152,12 +161,12 @@ class CacheManager {
       }
     } catch (e) {
       if (enableDebugMode) {
-        debugPrint('CacheManager: Failed to clear persisted state: $e');
+        _logger.error('Failed to clear persisted state: $e');
       }
     }
 
     if (enableDebugMode) {
-      debugPrint('CacheManager: Cleared all caches');
+      _logger.debug('Cleared all caches');
     }
   }
 
@@ -173,12 +182,12 @@ class CacheManager {
       await prefs.remove('mcp_ui_state_$key');
     } catch (e) {
       if (enableDebugMode) {
-        debugPrint('CacheManager: Failed to clear persisted state for app: $e');
+        _logger.error('Failed to clear persisted state for app: $e');
       }
     }
 
     if (enableDebugMode) {
-      debugPrint('CacheManager: Cleared cache for app $key');
+      _logger.debug('Cleared cache for app $key');
     }
   }
 
@@ -314,6 +323,11 @@ class CachePolicy {
     this.cacheState = true,
     this.cacheResources = true,
     this.offlineMode = OfflineMode.partial,
+    this.strategy = CacheStrategy.networkFirst,
+    this.maxSize,
+    this.maxEntries,
+    this.evictionPolicy = EvictionPolicy.lru,
+    this.persistent,
   });
 
   final bool enabled;
@@ -322,6 +336,25 @@ class CachePolicy {
   final bool cacheState;
   final bool cacheResources;
   final OfflineMode offlineMode;
+
+  /// Caching strategy: how to decide between cache and network
+  final CacheStrategy strategy;
+
+  /// Maximum cache size in bytes
+  final int? maxSize;
+
+  /// Maximum number of cached entries
+  final int? maxEntries;
+
+  /// Policy for evicting entries when cache is full
+  final EvictionPolicy evictionPolicy;
+
+  /// Whether cached data should be persisted across sessions.
+  ///
+  /// When `true`, cache entries are stored/loaded via SharedPreferences so
+  /// they survive app restarts. When `false`, cache is memory-only. When
+  /// `null`, the cache manager decides based on its own defaults.
+  final bool? persistent;
 
   factory CachePolicy.fromJson(Map<String, dynamic> json) {
     return CachePolicy(
@@ -333,6 +366,12 @@ class CachePolicy {
       cacheState: json['cacheState'] as bool? ?? true,
       cacheResources: json['cacheResources'] as bool? ?? true,
       offlineMode: _parseOfflineMode(json['offlineMode'] as String?),
+      strategy: _parseCacheStrategy(json['strategy'] as String?),
+      maxSize: json['maxSize'] as int?,
+      maxEntries: json['maxEntries'] as int?,
+      evictionPolicy:
+          _parseEvictionPolicy(json['evictionPolicy'] as String?),
+      persistent: json['persistent'] as bool?,
     );
   }
 
@@ -344,6 +383,11 @@ class CachePolicy {
       'cacheState': cacheState,
       'cacheResources': cacheResources,
       'offlineMode': offlineMode.name,
+      'strategy': strategy.name,
+      if (maxSize != null) 'maxSize': maxSize,
+      if (maxEntries != null) 'maxEntries': maxEntries,
+      'evictionPolicy': evictionPolicy.name,
+      if (persistent != null) 'persistent': persistent,
     };
   }
 
@@ -359,6 +403,71 @@ class CachePolicy {
         return OfflineMode.partial;
     }
   }
+
+  static CacheStrategy _parseCacheStrategy(String? strategy) {
+    switch (strategy) {
+      case 'cacheFirst':
+        return CacheStrategy.cacheFirst;
+      case 'networkFirst':
+        return CacheStrategy.networkFirst;
+      case 'cacheOnly':
+        return CacheStrategy.cacheOnly;
+      case 'networkOnly':
+        return CacheStrategy.networkOnly;
+      case 'staleWhileRevalidate':
+        return CacheStrategy.staleWhileRevalidate;
+      default:
+        return CacheStrategy.networkFirst;
+    }
+  }
+
+  static EvictionPolicy _parseEvictionPolicy(String? policy) {
+    switch (policy) {
+      case 'lru':
+        return EvictionPolicy.lru;
+      case 'lfu':
+        return EvictionPolicy.lfu;
+      case 'fifo':
+        return EvictionPolicy.fifo;
+      case 'ttl':
+        return EvictionPolicy.ttl;
+      default:
+        return EvictionPolicy.lru;
+    }
+  }
+}
+
+/// Cache strategy for deciding between cache and network
+enum CacheStrategy {
+  /// Try cache first, fall back to network
+  cacheFirst,
+
+  /// Try network first, fall back to cache
+  networkFirst,
+
+  /// Only use cache, never network
+  cacheOnly,
+
+  /// Only use network, never cache
+  networkOnly,
+
+  /// Return stale cache immediately, revalidate in background
+  staleWhileRevalidate,
+}
+
+/// Eviction policy for removing cache entries
+enum EvictionPolicy {
+  /// Least Recently Used
+  lru,
+
+  /// Least Frequently Used
+  lfu,
+
+  /// First In, First Out
+  fifo,
+
+  /// Time-To-Live based
+  ttl,
 }
 
 /// Offline mode options

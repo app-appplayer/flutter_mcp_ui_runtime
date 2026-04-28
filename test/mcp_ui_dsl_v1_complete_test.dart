@@ -96,7 +96,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Navigate',
-                'click': {
+                'onTap': {
                   'type': 'navigation',
                   'action': 'push',
                   'route': '/profile',
@@ -160,7 +160,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Update Global',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'app.user.name',
@@ -170,7 +170,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Update Local',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'localCounter',
@@ -228,7 +228,7 @@ void main() {
               {
                 'type': 'textInput',
                 'value': '{{email}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'email',
@@ -238,7 +238,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Submit',
-                'click': {
+                'onTap': {
                   'type': 'conditional',
                   'condition': '{{email}}',
                   'then': {

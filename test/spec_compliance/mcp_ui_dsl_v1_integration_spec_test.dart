@@ -103,7 +103,7 @@ void main() {
                             'type': 'textInput',
                             'label': 'First Name',
                             'value': '{{form.firstName}}',
-                            'change': {
+                            'onChange': {
                               'type': 'state',
                               'action': 'set',
                               'path': 'form.firstName',
@@ -122,7 +122,7 @@ void main() {
                             'type': 'textInput',
                             'label': 'Last Name',
                             'value': '{{form.lastName}}',
-                            'change': {
+                            'onChange': {
                               'type': 'state',
                               'action': 'set',
                               'path': 'form.lastName',
@@ -142,7 +142,7 @@ void main() {
                       'placeholder': 'user@example.com',
                       'value': '{{form.email}}',
                       'keyboardType': 'emailAddress',
-                      'change': {
+                      'onChange': {
                         'type': 'state',
                         'action': 'set',
                         'path': 'form.email',
@@ -158,7 +158,7 @@ void main() {
                       'label': 'Password',
                       'obscureText': true,
                       'value': '{{form.password}}',
-                      'change': {
+                      'onChange': {
                         'type': 'state',
                         'action': 'set',
                         'path': 'form.password',
@@ -175,7 +175,7 @@ void main() {
                       'label': 'Confirm Password',
                       'obscureText': true,
                       'value': '{{form.confirmPassword}}',
-                      'change': {
+                      'onChange': {
                         'type': 'state',
                         'action': 'set',
                         'path': 'form.confirmPassword',
@@ -191,7 +191,7 @@ void main() {
                       'type': 'checkbox',
                       'label': 'I agree to the terms and conditions',
                       'value': '{{form.agreeToTerms}}',
-                      'change': {
+                      'onChange': {
                         'type': 'state',
                         'action': 'set',
                         'path': 'form.agreeToTerms',
@@ -217,7 +217,7 @@ void main() {
                       'style': {
                         'width': '100%',
                       },
-                      'click': {
+                      'onTap': {
                         'type': 'conditional',
                         'condition': '{{form.firstName && form.lastName && form.email && form.password && form.confirmPassword && form.agreeToTerms}}',
                         'then': {
@@ -393,7 +393,7 @@ void main() {
                     'label': 'Refresh',
                     'variant': 'icon',
                     'icon': 'refresh',
-                    'click': {
+                    'onTap': {
                       'type': 'tool',
                       'tool': 'refreshData',
                     },
@@ -669,7 +669,7 @@ void main() {
                         'type': 'textInput',
                         'label': 'Full Name',
                         'value': '{{wizardData.personal.name}}',
-                        'change': {
+                        'onChange': {
                           'type': 'state',
                           'action': 'set',
                           'path': 'wizardData.personal.name',
@@ -695,7 +695,7 @@ void main() {
                           'type': 'textInput',
                           'label': 'Street Address',
                           'value': '{{wizardData.address.street}}',
-                          'change': {
+                          'onChange': {
                             'type': 'state',
                             'action': 'set',
                             'path': 'wizardData.address.street',
@@ -718,7 +718,7 @@ void main() {
                           'type': 'textInput',
                           'label': 'Card Number',
                           'value': '{{wizardData.payment.cardNumber}}',
-                          'change': {
+                          'onChange': {
                             'type': 'state',
                             'action': 'set',
                             'path': 'wizardData.payment.cardNumber',
@@ -740,7 +740,7 @@ void main() {
                     'type': 'button',
                     'label': 'Previous',
                     'enabled': '{{currentStep > 0}}',
-                    'click': {
+                    'onTap': {
                       'type': 'state',
                       'action': 'decrement',
                       'path': 'currentStep',
@@ -752,7 +752,7 @@ void main() {
                     'then': {
                       'type': 'button',
                       'label': 'Next',
-                      'click': {
+                      'onTap': {
                         'type': 'state',
                         'action': 'increment',
                         'path': 'currentStep',
@@ -764,7 +764,7 @@ void main() {
                       'style': {
                         'backgroundColor': '#4CAF50',
                       },
-                      'click': {
+                      'onTap': {
                         'type': 'tool',
                         'tool': 'completeWizard',
                         'params': '{{wizardData}}',

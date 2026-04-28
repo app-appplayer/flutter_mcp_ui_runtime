@@ -1,36 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../renderer/render_context.dart';
+import '../../utils/icon_resolver.dart';
 import '../widget_factory.dart';
 
 /// Factory for Timeline widgets
 class TimelineWidgetFactory extends WidgetFactory {
-  IconData _parseIcon(String iconName) {
-    // Basic icon mapping
-    switch (iconName) {
-      case 'check':
-        return Icons.check;
-      case 'star':
-        return Icons.star;
-      case 'error':
-        return Icons.error;
-      case 'warning':
-        return Icons.warning;
-      case 'info':
-        return Icons.info;
-      case 'schedule':
-        return Icons.schedule;
-      case 'event':
-        return Icons.event;
-      case 'done':
-        return Icons.done;
-      case 'pending':
-        return Icons.pending;
-      case 'flag':
-        return Icons.flag;
-      default:
-        return Icons.circle;
-    }
-  }
+  IconData _parseIcon(String iconName) => resolveIconData(iconName);
 
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
@@ -42,10 +17,16 @@ class TimelineWidgetFactory extends WidgetFactory {
         [];
     final orientation = properties['orientation'] as String? ?? 'vertical';
     final lineColor =
-        parseColor(context.resolve(properties['lineColor'])) ?? Colors.grey;
+        parseColor(context.resolve(properties['lineColor']), context) ??
+            context.themeManager.getColorValue('outlineVariant') ??
+            Colors.grey;
+    final onSurface =
+        context.themeManager.getColorValue('onSurface') ?? Colors.black87;
     final lineWidth = properties['lineWidth']?.toDouble() ?? 2.0;
     final nodeSize = properties['nodeSize']?.toDouble() ?? 20.0;
     final spacing = properties['spacing']?.toDouble() ?? 20.0;
+    final itemTemplate =
+        properties['itemTemplate'] as Map<String, dynamic>?;
 
     // Build timeline items
     final List<Widget> timelineItems = [];
@@ -59,7 +40,56 @@ class TimelineWidgetFactory extends WidgetFactory {
       final subtitle = context.resolve(item['subtitle'] ?? '') as String?;
       final time = context.resolve(item['time'] ?? '') as String?;
       final icon = item['icon'] as String?;
-      final color = parseColor(context.resolve(item['color'])) ?? Colors.blue;
+      final color = parseColor(context.resolve(item['color']), context) ?? Colors.blue;
+
+      // Build content widget - use itemTemplate if provided
+      Widget contentWidget;
+      if (itemTemplate != null) {
+        final childContext = context.createChildContext(
+          variables: {
+            'item': item,
+            'index': i,
+            'isFirst': i == 0,
+            'isLast': isLast,
+          },
+        );
+        contentWidget = context.renderer.renderWidget(itemTemplate, childContext);
+      } else {
+        contentWidget = Column(
+          crossAxisAlignment: orientation == 'vertical'
+              ? CrossAxisAlignment.start
+              : CrossAxisAlignment.center,
+          children: [
+            if (time != null)
+              Text(
+                time,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: orientation == 'vertical' ? 16 : 14,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign:
+                  orientation == 'vertical' ? null : TextAlign.center,
+            ),
+            if (subtitle != null)
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: orientation == 'vertical' ? 14 : 12,
+                  color: onSurface.withValues(alpha: 0.7),
+                ),
+                textAlign:
+                    orientation == 'vertical' ? null : TextAlign.center,
+              ),
+          ],
+        );
+      }
 
       Widget timelineItem;
 
@@ -102,34 +132,7 @@ class TimelineWidgetFactory extends WidgetFactory {
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(bottom: isLast ? 0 : spacing),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (time != null)
-                        Text(
-                          time,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (subtitle != null)
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                    ],
-                  ),
+                  child: contentWidget,
                 ),
               ),
             ],
@@ -177,35 +180,7 @@ class TimelineWidgetFactory extends WidgetFactory {
               ),
               SizedBox(height: spacing),
               // Content
-              Column(
-                children: [
-                  if (time != null)
-                    Text(
-                      time,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[700],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                ],
-              ),
+              contentWidget,
             ],
           ),
         );

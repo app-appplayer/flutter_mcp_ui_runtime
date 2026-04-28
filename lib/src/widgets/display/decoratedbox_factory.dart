@@ -15,11 +15,15 @@ class DecoratedBoxWidgetFactory extends WidgetFactory {
     final position = _parseDecorationPosition(properties['position']) ??
         DecorationPosition.background;
 
-    // Extract child widget
+    // Extract child widget (support both 'child' and 'children' per MCP UI DSL spec)
+    final childDef = (properties['child'] ?? definition['child'])
+        as Map<String, dynamic>?;
     final childrenDef = properties['children'] as List<dynamic>? ??
         definition['children'] as List<dynamic>?;
     Widget? child;
-    if (childrenDef != null && childrenDef.isNotEmpty) {
+    if (childDef != null) {
+      child = context.buildWidget(childDef);
+    } else if (childrenDef != null && childrenDef.isNotEmpty) {
       child = context.buildWidget(childrenDef.first as Map<String, dynamic>);
     }
 
@@ -49,7 +53,7 @@ class DecoratedBoxWidgetFactory extends WidgetFactory {
 
       // Standard box decoration
       return BoxDecoration(
-        color: parseColor(context.resolve(decoration['color'])),
+        color: parseColor(context.resolve(decoration['color']), context),
         image: _parseDecorationImage(decoration['image'], context),
         borderRadius: _parseBorderRadius(decoration['borderRadius']),
         border: _parseBorder(decoration['border'], context),
@@ -68,7 +72,7 @@ class DecoratedBoxWidgetFactory extends WidgetFactory {
     final type = gradient['type'] as String? ?? 'linear';
     final colors = (gradient['colors'] as List<dynamic>?)
             ?.map((color) =>
-                parseColor(context.resolve(color)) ?? Colors.transparent)
+                parseColor(context.resolve(color), context) ?? Colors.transparent)
             .toList() ??
         [];
     final stops = (gradient['stops'] as List<dynamic>?)
@@ -149,8 +153,9 @@ class DecoratedBoxWidgetFactory extends WidgetFactory {
     if (border == null) return null;
 
     if (border is Map<String, dynamic>) {
-      final color =
-          parseColor(context.resolve(border['color'])) ?? Colors.black;
+      final color = parseColor(context.resolve(border['color']), context) ??
+          context.themeManager.getColorValue('outlineVariant') ??
+          Colors.black;
       final width = border['width']?.toDouble() ?? 1.0;
 
       return Border.all(color: color, width: width);
@@ -165,7 +170,7 @@ class DecoratedBoxWidgetFactory extends WidgetFactory {
     if (shadow is Map<String, dynamic>) {
       return [
         BoxShadow(
-          color: parseColor(context.resolve(shadow['color'])) ?? Colors.black,
+          color: parseColor(context.resolve(shadow['color']), context) ?? Colors.black,
           blurRadius: shadow['blur']?.toDouble() ?? 0,
           spreadRadius: shadow['spread']?.toDouble() ?? 0,
           offset: _parseOffset(shadow['offset']),
@@ -176,7 +181,7 @@ class DecoratedBoxWidgetFactory extends WidgetFactory {
     if (shadow is List) {
       return shadow
           .map((s) => BoxShadow(
-                color: parseColor(context.resolve(s['color'])) ?? Colors.black,
+                color: parseColor(context.resolve(s['color']), context) ?? Colors.black,
                 blurRadius: s['blur']?.toDouble() ?? 0,
                 spreadRadius: s['spread']?.toDouble() ?? 0,
                 offset: _parseOffset(s['offset']),

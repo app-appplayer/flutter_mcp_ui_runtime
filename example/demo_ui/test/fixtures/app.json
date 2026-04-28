@@ -1,0 +1,172 @@
+{
+  "type": "application",
+  "title": "UI Showcase",
+  "version": "1.0.0",
+  "initialRoute": "/layout",
+  "theme": {
+    "mode": "light",
+    "colors": {
+      "primary": "#2196F3",
+      "secondary": "#FF4081",
+      "background": "#FFFFFF",
+      "surface": "#F5F5F5",
+      "error": "#F44336",
+      "onPrimary": "#FFFFFF",
+      "onSecondary": "#000000",
+      "onBackground": "#212121",
+      "onSurface": "#212121",
+      "onError": "#FFFFFF"
+    },
+    "typography": {
+      "h1": {
+        "fontSize": 28,
+        "fontWeight": "bold"
+      },
+      "h2": {
+        "fontSize": 22,
+        "fontWeight": "bold"
+      },
+      "h3": {
+        "fontSize": 18,
+        "fontWeight": "bold"
+      },
+      "body1": {
+        "fontSize": 16,
+        "fontWeight": "normal"
+      },
+      "body2": {
+        "fontSize": 14,
+        "fontWeight": "normal"
+      },
+      "caption": {
+        "fontSize": 12,
+        "fontWeight": "normal"
+      }
+    },
+    "spacing": {
+      "xs": 4,
+      "sm": 8,
+      "md": 16,
+      "lg": 24,
+      "xl": 32
+    },
+    "borderRadius": {
+      "sm": 4,
+      "md": 8,
+      "lg": 16
+    }
+  },
+  "dashboard": {
+    "content": {
+      "type": "linear",
+      "direction": "vertical",
+      "spacing": 4,
+      "children": [
+        {
+          "type": "text",
+          "content": "{{app.title}}",
+          "style": {
+            "fontSize": 14,
+            "fontWeight": "bold"
+          }
+        },
+        {
+          "type": "linear",
+          "direction": "horizontal",
+          "spacing": 8,
+          "children": [
+            {
+              "type": "icon",
+              "icon": "thermostat",
+              "size": 16,
+              "color": "#2196F3"
+            },
+            {
+              "type": "text",
+              "content": "{{app.temperature}}°C",
+              "style": {
+                "fontSize": 12
+              }
+            }
+          ]
+        },
+        {
+          "type": "chip",
+          "label": "{{app.status}}"
+        }
+      ]
+    },
+    "onTap": {
+      "type": "navigation",
+      "action": "openApp"
+    }
+  },
+  "navigation": {
+    "type": "drawer",
+    "items": [
+      {
+        "title": "Layout",
+        "icon": "dashboard",
+        "route": "/layout"
+      },
+      {
+        "title": "Display",
+        "icon": "text_fields",
+        "route": "/display"
+      },
+      {
+        "title": "Input",
+        "icon": "touch_app",
+        "route": "/input"
+      },
+      {
+        "title": "Form",
+        "icon": "assignment",
+        "route": "/form"
+      },
+      {
+        "title": "List & Grid",
+        "icon": "list",
+        "route": "/list"
+      },
+      {
+        "title": "Dialog",
+        "icon": "chat_bubble",
+        "route": "/dialog"
+      },
+      {
+        "title": "Interactive",
+        "icon": "pan_tool",
+        "route": "/interactive"
+      },
+      {
+        "title": "Advanced",
+        "icon": "auto_awesome",
+        "route": "/advanced"
+      },
+      {
+        "title": "Realtime",
+        "icon": "sensors",
+        "route": "/realtime"
+      }
+    ]
+  },
+  "routes": {
+    "/layout": "ui://pages/layout",
+    "/display": "ui://pages/display",
+    "/input": "ui://pages/input",
+    "/form": "ui://pages/form",
+    "/list": "ui://pages/list",
+    "/dialog": "ui://pages/dialog",
+    "/interactive": "ui://pages/interactive",
+    "/advanced": "ui://pages/advanced",
+    "/realtime": "ui://pages/realtime"
+  },
+  "state": {
+    "initial": {
+      "appName": "MCP UI Showcase",
+      "temperature": 20.0,
+      "status": "Online"
+    }
+  }
+}

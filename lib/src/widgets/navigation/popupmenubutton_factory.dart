@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../../renderer/render_context.dart';
+import '../../theme/menu_tokens.dart';
 import '../widget_factory.dart';
 
-/// Factory for PopupMenuButton widgets
+/// Factory for PopupMenuButton widgets.
+///
+/// DSL props win where present; otherwise the runtime applies its
+/// shared compact menu tokens (radius / item height / item padding /
+/// menu padding / animation), resolved from
+/// `theme.component.menu` → `theme.shape` → hardcoded compact defaults.
+/// Material's bare PopupMenuButton ships visually loud defaults
+/// (8dp menu padding, 0 radius); the runtime overrides them so menus
+/// look right out of the box without per-instance config.
 class PopupMenuButtonWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
@@ -11,23 +20,40 @@ class PopupMenuButtonWidgetFactory extends WidgetFactory {
 
     // Extract properties
     final tooltip = context.resolve<String?>(properties['tooltip']);
-    final elevation = parseDimension(properties['elevation']);
     final padding =
         parseEdgeInsets(properties['padding']) ?? const EdgeInsets.all(8.0);
     final splashRadius = parseDimension(properties['splashRadius']);
     final iconSize = parseDimension(properties['iconSize']);
     final offset = _parseOffset(properties['offset']);
     final enabled = properties['enabled'] as bool? ?? true;
-    final shape = _parseShapeBorder(properties['shape']);
-    final color = parseColor(context.resolve(properties['color']));
-    final shadowColor = parseColor(context.resolve(properties['shadowColor']));
+    final color = parseColor(context.resolve(properties['color']), context);
+    final shadowColor = parseColor(context.resolve(properties['shadowColor']), context);
     final surfaceTintColor =
-        parseColor(context.resolve(properties['surfaceTintColor']));
+        parseColor(context.resolve(properties['surfaceTintColor']), context);
+
+    // Resolve compact menu tokens. Spec-bound popupMenuButton props are
+    // `{type, icon, items, onSelect}`; visual fine-tuning happens
+    // through `theme.component.menu.*` (free-form component tokens,
+    // spec §5.12) and the runtime's compact defaults. The DSL `shape`
+    // / `elevation` reads below are pre-existing factory inputs (kept
+    // for back-compat with bundles that already use them) — no new
+    // non-spec widget props are introduced.
+    final dslShape = _parseShapeBorder(properties['shape']);
+    final dslShapeRadius = _radiusOf(dslShape);
+    final dslElevation = parseDimension(properties['elevation']);
+    final tokens = MenuTokens.resolve(
+      context.themeManager,
+      radius: dslShapeRadius,
+      elevation: dslElevation,
+    );
+    // Use DSL `shape` map verbatim (supports per-corner) when present;
+    // otherwise build a uniform shape from the resolved radius.
+    final effectiveShape = dslShape ?? tokens.shape;
 
     // Extract items
     final itemsData = properties['items'] as List<dynamic>? ?? [];
     final items =
-        itemsData.map((item) => _buildPopupMenuItem(item, context)).toList();
+        itemsData.map((item) => _buildPopupMenuItem(item, context, tokens)).toList();
 
     // Extract child widget or icon
     final childrenDef = properties['children'] as List<dynamic>? ??
@@ -47,7 +73,7 @@ class PopupMenuButtonWidgetFactory extends WidgetFactory {
     }
 
     // Extract action handlers
-    final onSelected = properties['onSelected'] as Map<String, dynamic>?;
+    final onSelected = (properties['onSelected'] ?? properties['onChange'] ?? properties['onSelect'] ?? properties['select'] ?? properties['change']) as Map<String, dynamic>?;
     final onOpened = properties['onOpened'] as Map<String, dynamic>?;
     final onCanceled = properties['onCanceled'] as Map<String, dynamic>?;
 
@@ -73,16 +99,18 @@ class PopupMenuButtonWidgetFactory extends WidgetFactory {
             }
           : null,
       tooltip: tooltip,
-      elevation: elevation,
+      elevation: tokens.elevation,
       padding: padding,
+      menuPadding: tokens.menuPadding,
       splashRadius: splashRadius,
       iconSize: iconSize,
       offset: offset,
       enabled: enabled,
-      shape: shape,
+      shape: effectiveShape,
       color: color,
       shadowColor: shadowColor,
       surfaceTintColor: surfaceTintColor,
+      popUpAnimationStyle: tokens.popupAnimationStyle,
       child: child,
     );
 
@@ -90,44 +118,65 @@ class PopupMenuButtonWidgetFactory extends WidgetFactory {
   }
 
   PopupMenuItem<String> _buildPopupMenuItem(
-      dynamic itemData, RenderContext context) {
+      dynamic itemData, RenderContext context, MenuTokens tokens) {
+    // `null` itemHeight = no minimum. PopupMenuItem uses the value as
+    // a `minHeight` constraint (max is infinite), so passing 0 makes
+    // the item track text natural height + padding — items auto-grow
+    // with `textStyle.fontSize`.
+    final minHeight = tokens.itemHeight ?? 0;
+
     if (itemData is Map<String, dynamic>) {
       final value = context.resolve<String>(itemData['value']) as String? ?? '';
       final enabled = itemData['enabled'] as bool? ?? true;
-      final height = itemData['height']?.toDouble();
-      final padding = parseEdgeInsets(itemData['padding']);
-      final textStyle = _parseTextStyle(itemData['textStyle'], context);
+      final height = itemData['height']?.toDouble() ?? minHeight;
+      final padding =
+          parseEdgeInsets(itemData['padding']) ?? tokens.itemPadding;
+      final dslTextStyle = _parseTextStyle(itemData['textStyle'], context);
+      final label =
+          itemData['text']?.toString() ?? itemData['label']?.toString() ?? value;
 
-      final child = itemData['child'] != null
+      final Widget child = itemData['child'] != null
           ? context.renderer
               .renderWidget(itemData['child'] as Map<String, dynamic>, context)
-          : Text(context.resolve<String?>(itemData['text']) ?? value);
+          : Text(label);
 
-      // Only set height if it's not null, otherwise use default
-      if (height != null) {
-        return PopupMenuItem<String>(
-          value: value,
-          enabled: enabled,
-          height: height,
-          padding: padding,
-          textStyle: textStyle,
-          child: child,
-        );
-      } else {
-        return PopupMenuItem<String>(
-          value: value,
-          enabled: enabled,
-          padding: padding,
-          textStyle: textStyle,
-          child: child,
-        );
-      }
+      // Default item label = fontSize 13 (compact); DSL `textStyle`
+      // wins when given (already a spec-allowed item field).
+      return PopupMenuItem<String>(
+        value: value,
+        enabled: enabled,
+        height: height,
+        padding: padding,
+        textStyle: dslTextStyle ?? const TextStyle(fontSize: 13),
+        child: child,
+      );
     }
 
     return PopupMenuItem<String>(
       value: itemData.toString(),
+      height: minHeight,
+      padding: tokens.itemPadding,
+      textStyle: const TextStyle(fontSize: 13),
       child: Text(itemData.toString()),
     );
+  }
+
+  /// Extract the uniform corner radius from a [RoundedRectangleBorder]
+  /// so the menu-token resolver can apply it as the active radius.
+  /// Returns `null` for any other [ShapeBorder] shape.
+  double? _radiusOf(ShapeBorder? shape) {
+    if (shape is RoundedRectangleBorder) {
+      final br = shape.borderRadius;
+      if (br is BorderRadius) {
+        final r = br.topLeft.x;
+        if (r == br.topRight.x &&
+            r == br.bottomLeft.x &&
+            r == br.bottomRight.x) {
+          return r;
+        }
+      }
+    }
+    return null;
   }
 
   IconData _parseIconData(String iconName) {
@@ -185,7 +234,7 @@ class PopupMenuButtonWidgetFactory extends WidgetFactory {
 
     if (style is Map<String, dynamic>) {
       return TextStyle(
-        color: parseColor(context.resolve(style['color'])),
+        color: parseColor(context.resolve(style['color']), context),
         fontSize: style['fontSize']?.toDouble(),
         fontWeight: style['fontWeight'] == 'bold' ? FontWeight.bold : null,
       );

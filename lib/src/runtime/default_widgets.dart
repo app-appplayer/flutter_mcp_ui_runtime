@@ -22,6 +22,9 @@ import '../widgets/layout/constrainedbox_factory.dart';
 import '../widgets/layout/fittedbox_factory.dart';
 import '../widgets/layout/limitedbox_factory.dart';
 import '../widgets/layout/conditional_factory.dart';
+import '../widgets/layout/indexed_stack_factory.dart';
+import '../widgets/layout/use_template_factory.dart';
+import '../templates/template_registry.dart';
 
 // Display widgets
 import '../widgets/display/text_factory.dart';
@@ -44,14 +47,13 @@ import '../widgets/display/verticaldivider_factory.dart';
 import '../widgets/display/decoration_factory.dart';
 
 // Layout widgets (additional)
-import '../widgets/layout/table_factory.dart';
 import '../widgets/layout/flow_factory.dart';
 import '../widgets/layout/margin_factory.dart';
+import '../widgets/layout/layoutbuilder_factory.dart';
 
 // Input widgets
 import '../widgets/input/button_factory.dart';
 import '../widgets/input/textfield_factory.dart';
-import '../widgets/input/textformfield_factory.dart';
 import '../widgets/input/checkbox_factory.dart';
 import '../widgets/input/radio_factory.dart';
 import '../widgets/input/switch_factory.dart';
@@ -68,6 +70,9 @@ import '../widgets/input/segmented_control_factory.dart';
 import '../widgets/input/date_field_factory.dart';
 import '../widgets/input/time_field_factory.dart';
 import '../widgets/input/date_range_picker_factory.dart';
+import '../widgets/input/datepicker_factory.dart';
+import '../widgets/input/timepicker_factory.dart';
+import '../widgets/input/stepper_factory.dart';
 
 // List widgets
 import '../widgets/list/listview_factory.dart';
@@ -88,9 +93,16 @@ import '../widgets/navigation/tabbarview_factory.dart';
 import '../widgets/scroll/singlechildscrollview_factory.dart';
 import '../widgets/scroll/scrollbar_factory.dart';
 import '../widgets/scroll/scroll_view_factory.dart';
+import '../widgets/scroll/pageview_factory.dart';
 
 // Animation widgets
 import '../widgets/animation/animatedcontainer_factory.dart';
+import '../widgets/animation/opacity_factory.dart';
+import '../widgets/animation/transform_factory.dart';
+
+// v1.3 Display widgets
+import '../widgets/display/canvas_factory.dart';
+import '../widgets/display/dashboard_factory.dart';
 
 // Interactive widgets
 import '../widgets/interactive/gesturedetector_factory.dart';
@@ -102,8 +114,12 @@ import '../widgets/interactive/drag_target_factory.dart';
 import '../widgets/dialog/alertdialog_factory.dart';
 import '../widgets/dialog/snackbar_factory.dart';
 import '../widgets/dialog/bottomsheet_factory.dart';
+import '../widgets/dialog/simple_dialog_factory.dart';
+import '../widgets/dialog/dialog_factory.dart';
 
 // Advanced widgets
+import '../widgets/layout/table_factory.dart';
+import '../widgets/advanced/data_table_factory.dart';
 import '../widgets/advanced/chart_factory.dart';
 import '../widgets/advanced/map_factory.dart';
 import '../widgets/advanced/media_player_factory.dart';
@@ -112,10 +128,31 @@ import '../widgets/advanced/tree_factory.dart';
 import '../widgets/advanced/timeline_factory.dart';
 import '../widgets/advanced/gauge_factory.dart';
 import '../widgets/advanced/heatmap_factory.dart';
-import '../widgets/advanced/graph_factory.dart';
+// v1.1 Advanced widgets
+import '../widgets/advanced/code_editor_factory.dart';
+import '../widgets/advanced/terminal_factory.dart';
+import '../widgets/advanced/file_explorer_factory.dart';
+import '../widgets/advanced/markdown_factory.dart';
+import '../widgets/advanced/webview_factory.dart';
+import '../widgets/advanced/signature_factory.dart';
 
 // Accessibility widgets
 import '../widgets/accessibility/accessible_wrapper_factory.dart';
+
+// New v1.1 widget factories
+import '../widgets/advanced/graph_factory.dart';
+import '../widgets/advanced/network_graph_factory.dart';
+import '../widgets/layout/fractionally_sized_factory.dart';
+import '../widgets/layout/media_query_factory.dart';
+import '../widgets/layout/safe_area_factory.dart';
+import '../widgets/performance/lazy_factory.dart';
+import '../widgets/security/permission_prompt_factory.dart';
+import '../widgets/security/offline_fallback_factory.dart';
+import '../widgets/security/error_recovery_factory.dart';
+import '../widgets/layout/error_boundary_factory.dart';
+import '../widgets/animation/lottie_animation_factory.dart';
+import '../widgets/input/number_stepper_factory.dart';
+import '../widgets/input/rating_factory.dart';
 
 /// Default widget registration
 class DefaultWidgets {
@@ -148,9 +185,12 @@ class DefaultWidgets {
     registry.register('baseline', BaselineWidgetFactory());
     registry.register(
         'constrainedBox', ConstrainedBoxWidgetFactory()); // CamelCase
+    registry.register(
+        'constrained', ConstrainedBoxWidgetFactory()); // Spec alias
     registry.register('fittedBox', FittedBoxWidgetFactory()); // CamelCase
     registry.register('limitedBox', LimitedBoxWidgetFactory()); // CamelCase
     registry.register('conditional', ConditionalFactory()); // MCP UI DSL v1.0
+    registry.register('indexedStack', IndexedStackWidgetFactory()); // CamelCase
 
     // Display widgets
     registry.register('text', TextWidgetFactory());
@@ -170,16 +210,19 @@ class DefaultWidgets {
     registry.register('clipRRect', ClipRRectWidgetFactory()); // CamelCase
     registry.register('decoratedBox', DecoratedBoxWidgetFactory()); // CamelCase
 
-    // Progress indicators - MCP UI DSL v1.0 uses CamelCase
+    // Progress indicators - MCP UI DSL v1.0 uses CamelCase.
+    // Canonical: `progressBar` per §17.3.1. Aliases registered explicitly
+    // so factory schema conformance passes.
     registry.register('loadingIndicator', ProgressWidgetFactory());
-    registry.register('progressBar',
-        ProgressWidgetFactory()); // Also register progressBar for v1.0 spec
+    registry.register('progressBar', ProgressWidgetFactory());
+    registry.register('progress', ProgressWidgetFactory());
+    registry.register('linearProgressIndicator', ProgressWidgetFactory());
 
     // Input widgets - Spec v1.0 names
     registry.register(
         'textInput', TextFieldWidgetFactory()); // CamelCase per spec
     registry.register(
-        'switch', SwitchWidgetFactory()); // Spec v1.0: switch not toggle
+        'toggle', SwitchWidgetFactory()); // Spec v1.0: toggle (ARIA role: switch)
     registry.register('select', DropdownWidgetFactory()); // Spec v1.0
 
     // Common input widgets
@@ -189,9 +232,11 @@ class DefaultWidgets {
     registry.register('slider', SliderWidgetFactory());
     registry.register('rangeSlider', RangeSliderWidgetFactory()); // CamelCase
 
-    // Additional input widgets
-    registry.register(
-        'textFormField', TextFormFieldWidgetFactory()); // CamelCase
+    // Legacy alias for textInput per spec §17.3.1 (§17.5.2: runtimes MUST
+    // accept registered aliases). Form-aware behavior (binding, validation)
+    // is folded into `textInput` via TextFieldWidgetFactory, which supports
+    // both validation shapes per §7.2.1.
+    registry.register('textFormField', TextFieldWidgetFactory());
 
     // Additional input widgets
     registry.register('iconButton', IconButtonWidgetFactory()); // CamelCase
@@ -206,13 +251,17 @@ class DefaultWidgets {
     registry.register('dateField', DateFieldFactory());
     registry.register('timeField', TimeFieldFactory());
     registry.register('dateRangePicker', DateRangePickerFactory());
+    registry.register('datePicker', DatePickerWidgetFactory());
+    registry.register('timePicker', TimePickerWidgetFactory());
+    registry.register('stepper', StepperWidgetFactory());
 
     // List widgets - spec v1.0 names
     registry.register('list', ListViewWidgetFactory());
     registry.register('listView',
         ListViewWidgetFactory()); // Also register listView for v1.0 spec
     registry.register('grid', GridViewWidgetFactory());
-    registry.register('listTile', ListTileWidgetFactory()); // CamelCase
+    registry.register('listItem', ListTileWidgetFactory()); // Canonical per spec §17.2.1
+    registry.register('listTile', ListTileWidgetFactory()); // Legacy alias per §17.3.1
 
     // Navigation widgets - Spec v1.0 names
     registry.register('headerBar', AppBarWidgetFactory()); // CamelCase per spec
@@ -237,10 +286,17 @@ class DefaultWidgets {
     registry.register('singleChildScrollView',
         SingleChildScrollViewWidgetFactory()); // CamelCase
     registry.register('scrollBar', ScrollbarWidgetFactory()); // CamelCase
+    registry.register('pageView', PageViewWidgetFactory()); // CamelCase
 
     // Animation widgets
     registry.register(
         'animatedContainer', AnimatedContainerWidgetFactory()); // CamelCase
+    registry.register('opacity', OpacityWidgetFactory()); // v1.3
+    registry.register('transform', TransformWidgetFactory()); // v1.3
+
+    // v1.3 Display widgets
+    registry.register('canvas', CanvasWidgetFactory()); // v1.3
+    registry.register('dashboard', DashboardWidgetFactory()); // v1.3
 
     // Interactive widgets
     registry.register(
@@ -253,6 +309,8 @@ class DefaultWidgets {
     registry.register('alertDialog', AlertDialogWidgetFactory()); // CamelCase
     registry.register('snackBar', SnackBarWidgetFactory()); // CamelCase
     registry.register('bottomSheet', BottomSheetWidgetFactory()); // CamelCase
+    registry.register('simpleDialog', SimpleDialogWidgetFactory()); // CamelCase
+    registry.register('customDialog', DialogWidgetFactory()); // CamelCase
 
     // Additional display widgets
     registry.register(
@@ -260,11 +318,12 @@ class DefaultWidgets {
     registry.register('decoration', DecorationWidgetFactory());
 
     // Additional layout widgets
-    registry.register('table', TableWidgetFactory());
     registry.register('flow', FlowWidgetFactory());
     registry.register('margin', MarginWidgetFactory());
 
     // Advanced widgets - Spec v1.0
+    registry.register('table', TableWidgetFactory()); // Layout table
+    registry.register('dataTable', DataTableWidgetFactory()); // Data-bound table
     registry.register('chart', ChartWidgetFactory());
     registry.register('map', MapWidgetFactory());
     registry.register(
@@ -274,17 +333,43 @@ class DefaultWidgets {
     registry.register('timeline', TimelineWidgetFactory());
     registry.register('gauge', GaugeWidgetFactory());
     registry.register('heatmap', HeatmapWidgetFactory());
-    registry.register('graph', GraphWidgetFactory());
+    registry.register('graph', GraphWidgetFactory()); // Simple line/bar graph
+
+    // v1.1 Advanced widgets
+    registry.register('codeEditor', CodeEditorWidgetFactory());
+    registry.register('terminal', TerminalWidgetFactory());
+    registry.register('fileExplorer', FileExplorerWidgetFactory());
+    registry.register('markdown', MarkdownWidgetFactory());
+    registry.register('webView', WebViewWidgetFactory());
+    registry.register('signature', SignatureWidgetFactory());
 
     // Accessibility widgets
     registry.register('accessibleWrapper', AccessibleWrapperFactory());
 
-    // Legacy aliases for backward compatibility
+    // v1.1 New widget types
+    registry.register('networkGraph', NetworkGraphWidgetFactory()); // Network graph with nodes and edges
+    registry.register('fractionallySized', FractionallySizedWidgetFactory());
+    registry.register('lazy', LazyWidgetFactory());
+    registry.register('permissionPrompt', PermissionPromptWidgetFactory());
+    registry.register('offlineFallback', OfflineFallbackWidgetFactory());
+    registry.register('errorRecovery', ErrorRecoveryWidgetFactory());
+    registry.register('errorBoundary', ErrorBoundaryFactory()); // Utility widget (v1.1)
+    registry.register('lottieAnimation', LottieAnimationWidgetFactory());
+    registry.register('numberStepper', NumberStepperWidgetFactory());
+    registry.register('layoutBuilder', LayoutBuilderFactory());
+    registry.register('rating', RatingFactory());
+
+    // Responsive layout widgets (v1.1 Section 18)
+    registry.register('mediaQuery', MediaQueryWidgetFactory());
+    registry.register('safeArea', SafeAreaWidgetFactory());
+
+    // Legacy aliases for backward compatibility (semantic aliases)
     registry.register('container', ContainerWidgetFactory());
     registry.register(
         'column', LinearLayoutFactory()); // Column = vertical linear
     registry.register('row', LinearLayoutFactory()); // Row = horizontal linear
-    registry.register('toggle', SwitchWidgetFactory()); // Toggle = switch
+    registry.register('switch', SwitchWidgetFactory()); // Legacy alias for toggle
+    registry.register('textField', TextFieldWidgetFactory()); // Legacy alias for textInput
     registry.register('textfield', TextFieldWidgetFactory());
     registry.register('dropdown', DropdownWidgetFactory());
     registry.register('listview', ListViewWidgetFactory());
@@ -292,5 +377,28 @@ class DefaultWidgets {
     registry.register('appbar', AppBarWidgetFactory());
     registry.register(
         'bottomnavigationbar', BottomNavigationBarWidgetFactory());
+
+    // Kebab-case legacy aliases.
+    //
+    // Per spec §17.1.2 widget type names are canonical as camelCase. Only
+    // the three kebab forms explicitly listed in §17.3.1 Widget Type
+    // Aliases are accepted. All other previously-registered kebab spellings
+    // have been removed as out-of-spec; DSL authors must use the canonical
+    // camelCase widget type (or the lowercase/camelCase legacy aliases
+    // declared in §17.3.1).
+    registry.register('list-tile', ListTileWidgetFactory());
+    registry.register('progress-bar', ProgressWidgetFactory());
+    registry.register('loading-indicator', ProgressWidgetFactory());
+  }
+
+  /// Register template-related widgets (v1.1 TM-01)
+  static void registerTemplateWidgets(
+    WidgetRegistry registry,
+    TemplateRegistry templateRegistry,
+  ) {
+    registry.register(
+      'use',
+      UseTemplateFactory(templateRegistry: templateRegistry),
+    );
   }
 }

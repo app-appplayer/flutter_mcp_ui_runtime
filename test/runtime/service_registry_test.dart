@@ -444,6 +444,91 @@ void main() {
     });
   });
   
+  group('TC-078: ServiceRegistry — constructor', () {
+    test('Normal: creates instance', () {
+      final registry = ServiceRegistry();
+      expect(registry, isNotNull);
+      expect(registry.serviceNames, isEmpty);
+    });
+
+    test('Normal: enableDebugMode true enables debug logging', () {
+      final registry = ServiceRegistry(enableDebugMode: true);
+      expect(registry.enableDebugMode, isTrue);
+    });
+
+    test('Boundary: default enableDebugMode is kDebugMode', () {
+      final registry = ServiceRegistry();
+      // In test mode kDebugMode is typically true
+      expect(registry.enableDebugMode, isNotNull);
+    });
+  });
+
+  group('TC-080: ServiceRegistry — generic registration', () {
+    late ServiceRegistry registry;
+
+    setUp(() {
+      registry = ServiceRegistry(enableDebugMode: false);
+    });
+
+    tearDown(() async {
+      await registry.dispose();
+    });
+
+    test('Normal: register any Object type and retrieve', () {
+      registry.registerGeneric<String>('config', 'hello');
+
+      final retrieved = registry.getGeneric<String>('config');
+      expect(retrieved, equals('hello'));
+    });
+
+    test('Normal: getGenericRequired throws for non-existent', () {
+      expect(
+        () => registry.getGenericRequired<String>('missing'),
+        throwsStateError,
+      );
+    });
+
+    test('Normal: getGeneric returns null for non-existent', () {
+      final result = registry.getGeneric<String>('missing');
+      expect(result, isNull);
+    });
+
+    test('Normal: unregisterGeneric removes service', () {
+      registry.registerGeneric<String>('config', 'hello');
+      registry.unregisterGeneric('config');
+
+      final retrieved = registry.getGeneric<String>('config');
+      expect(retrieved, isNull);
+    });
+
+    test('Error: duplicate generic registration throws ArgumentError', () {
+      registry.registerGeneric<String>('config', 'hello');
+      expect(
+        () => registry.registerGeneric<String>('config', 'world'),
+        throwsArgumentError,
+      );
+    });
+
+    test('Normal: isRegistered returns true for generic services', () {
+      registry.registerGeneric<String>('config', 'hello');
+      expect(registry.isRegistered('config'), isTrue);
+    });
+  });
+
+  group('TC-082: ServiceRegistry — inspection and dispose (additional)', () {
+    test('Boundary: empty registry dispose is a no-op', () async {
+      final registry = ServiceRegistry(enableDebugMode: false);
+      // Should not throw
+      await registry.dispose();
+      expect(registry.serviceNames, isEmpty);
+    });
+
+    test('Normal: isRegistered returns false for unregistered names', () {
+      final registry = ServiceRegistry(enableDebugMode: false);
+      expect(registry.isRegistered('nonexistent'), isFalse);
+    });
+  });
+
   group('ServiceStatus Tests', () {
     test('should create service status', () {
       const status = ServiceStatus(

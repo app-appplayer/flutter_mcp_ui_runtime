@@ -13,7 +13,7 @@ class VerticalDividerWidgetFactory extends WidgetFactory {
       thickness: properties['thickness']?.toDouble(),
       indent: properties['indent']?.toDouble(),
       endIndent: properties['endIndent']?.toDouble(),
-      color: resolveColor(properties['color']),
+      color: resolveColor(properties['color'], context),
     );
   }
 }

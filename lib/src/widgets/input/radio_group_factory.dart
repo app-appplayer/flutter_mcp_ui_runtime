@@ -13,7 +13,10 @@ class RadioGroupFactory extends WidgetFactory {
     final binding = properties['binding'] as String?;
     final options = properties['options'] as List<dynamic>? ?? [];
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
-    final direction = properties['direction'] as String? ?? 'vertical';
+    // Spec §2.6.9 canonical `orientation`; `direction` kept as legacy alias.
+    final direction = (properties['orientation'] ?? properties['direction'])
+            as String? ??
+        'vertical';
 
     // Get current value
     final currentValue =

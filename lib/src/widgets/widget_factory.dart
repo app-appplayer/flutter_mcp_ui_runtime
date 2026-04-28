@@ -70,6 +70,18 @@ abstract class WidgetFactory {
     // Handle accessibility (MCP UI DSL v1.0)
     widget = _applyAccessibility(widget, properties, context);
 
+    // Handle key / testKey — wrap with KeyedSubtree for widget identity
+    // testKey takes precedence over key (design doc: testKey is for testing)
+    final testKey = properties['testKey'] as String?;
+    final keyProp = properties['key'] as String?;
+    final widgetKey = testKey ?? keyProp;
+    if (widgetKey != null) {
+      widget = KeyedSubtree(
+        key: ValueKey(widgetKey),
+        child: widget,
+      );
+    }
+
     return widget;
   }
 
@@ -80,13 +92,17 @@ abstract class WidgetFactory {
     RenderContext context,
   ) {
     // Get accessibility properties
-    final ariaLabel = context.resolve<String?>(properties['aria-label']);
-    final ariaHidden =
-        context.resolve<bool>(properties['aria-hidden'] ?? false);
-    final ariaRole = context.resolve<String?>(properties['aria-role']);
-    final ariaDescription =
-        context.resolve<String?>(properties['aria-description']);
-    final ariaLiveRegion = context.resolve<String?>(properties['aria-live']);
+    // Canonical camelCase keys with kebab-case fallback (backward compatibility)
+    final ariaLabel = context.resolve<String?>(
+        properties['ariaLabel'] ?? properties['aria-label']);
+    final ariaHidden = context.resolve<bool>(
+        properties['ariaHidden'] ?? properties['aria-hidden'] ?? false);
+    final ariaRole = context.resolve<String?>(
+        properties['ariaRole'] ?? properties['aria-role']);
+    final ariaDescription = context.resolve<String?>(
+        properties['ariaDescription'] ?? properties['aria-description']);
+    final ariaLiveRegion = context.resolve<String?>(
+        properties['ariaLive'] ?? properties['aria-live']);
 
     // If aria-hidden is true, exclude from semantics tree
     if (ariaHidden) {
@@ -159,9 +175,11 @@ abstract class WidgetFactory {
     return null;
   }
 
-  /// Resolve Color (alias for parseColor)
-  Color? resolveColor(dynamic value) {
-    return parseColor(value);
+  /// Resolve Color (alias for parseColor). Prefer passing [context] so
+  /// semantic theme slots (`primary`, `surface`, …) resolve against the
+  /// active light/dark scheme; otherwise only hex + Material names work.
+  Color? resolveColor(dynamic value, [RenderContext? context]) {
+    return parseColor(value, context);
   }
 
   /// Resolve EdgeInsets (alias for parseEdgeInsets)
@@ -174,8 +192,73 @@ abstract class WidgetFactory {
     return parseAlignment(value);
   }
 
-  /// Parse Color - supports 6-digit (#RRGGBB) and 8-digit (#AARRGGBB) hex formats
-  Color? parseColor(dynamic value) {
+  /// Canonical M3 28-role color slot names resolved by [parseColor] when a
+  /// [RenderContext] is provided. Spec §5.3 — `theme.color.<slot>`.
+  static const Set<String> _themeSlotNames = <String>{
+    // Primary family
+    'primary',
+    'onPrimary',
+    'primaryContainer',
+    'onPrimaryContainer',
+    // Secondary family
+    'secondary',
+    'onSecondary',
+    'secondaryContainer',
+    'onSecondaryContainer',
+    // Tertiary family
+    'tertiary',
+    'onTertiary',
+    'tertiaryContainer',
+    'onTertiaryContainer',
+    // Error family
+    'error',
+    'onError',
+    'errorContainer',
+    'onErrorContainer',
+    // Surface family
+    'surface',
+    'onSurface',
+    'onSurfaceVariant',
+    'surfaceTint',
+    'surfaceBright',
+    'surfaceDim',
+    'surfaceContainerLowest',
+    'surfaceContainerLow',
+    'surfaceContainer',
+    'surfaceContainerHigh',
+    'surfaceContainerHighest',
+    // Outline / inverse / misc
+    'outline',
+    'outlineVariant',
+    'inverseSurface',
+    'onInverseSurface',
+    'inversePrimary',
+    'scrim',
+    'shadow',
+    // Semantic (additions beyond M3).
+    'success',
+    'onSuccess',
+    'warning',
+    'onWarning',
+    'info',
+    'onInfo',
+  };
+
+  /// Parse a DSL color value into a Flutter [Color].
+  ///
+  /// Supported forms (spec §5 + FR-THEME-002):
+  ///   * 6-digit hex `#RRGGBB`
+  ///   * 8-digit hex `#AARRGGBB`
+  ///   * 3-digit hex shorthand `#RGB`
+  ///   * Material color names (`red`, `blue`, `grey` …) — 10 well-known names
+  ///   * Semantic theme slots (`primary`, `onSurface`, `error` …) — resolved
+  ///     against [RenderContext.themeManager] at the active light/dark mode.
+  ///     Requires [context] to be supplied; without it, slot names return
+  ///     null so the widget falls back to its Flutter default. This path
+  ///     is what makes dark-mode adapt for author-specified colors — DSL
+  ///     authors should prefer slots over literal hex for any color that
+  ///     needs to track theme.
+  Color? parseColor(dynamic value, [RenderContext? context]) {
     if (value == null) return null;
 
     if (value is String) {
@@ -183,21 +266,21 @@ abstract class WidgetFactory {
         String hex = value.substring(1);
 
         try {
-          // 8자리 AARRGGBB 형식
+          // 8-digit AARRGGBB format
           if (hex.length == 8) {
             return Color(int.parse(hex, radix: 16));
           }
-          // 6자리 RRGGBB 형식 (알파 채널 FF 추가)
+          // 6-digit RRGGBB format (add alpha channel FF)
           else if (hex.length == 6) {
             return Color(int.parse('FF$hex', radix: 16));
           }
-          // 3자리 RGB 축약형 지원
+          // 3-digit RGB shorthand
           else if (hex.length == 3) {
             String expanded = hex.split('').map((c) => '$c$c').join();
             return Color(int.parse('FF$expanded', radix: 16));
           }
         } catch (e) {
-          // 잘못된 hex 문자가 있는 경우 null 반환
+          // Return null if hex contains invalid characters
           return null;
         }
 
@@ -225,9 +308,16 @@ abstract class WidgetFactory {
         case 'grey':
         case 'gray':
           return Colors.grey;
-        default:
-          return null;
       }
+
+      // Spec §5.3 canonical scheme slot — adapts to the active
+      // light / dark mode of the host theme. Token names are matched
+      // case-sensitively to mirror the binding path `theme.colorScheme.<slot>`.
+      if (context != null && _themeSlotNames.contains(value)) {
+        return context.themeManager.getColorValue(value);
+      }
+
+      return null;
     }
 
     return null;
@@ -239,23 +329,30 @@ abstract class WidgetFactory {
 
     if (value is String) {
       switch (value) {
+        // v1.0 names (deprecated aliases)
         case 'topLeft':
+        case 'topStart': // v1.1 name
           return Alignment.topLeft;
         case 'topCenter':
           return Alignment.topCenter;
         case 'topRight':
+        case 'topEnd': // v1.1 name
           return Alignment.topRight;
         case 'centerLeft':
+        case 'centerStart': // v1.1 name
           return Alignment.centerLeft;
         case 'center':
           return Alignment.center;
         case 'centerRight':
+        case 'centerEnd': // v1.1 name
           return Alignment.centerRight;
         case 'bottomLeft':
+        case 'bottomStart': // v1.1 name
           return Alignment.bottomLeft;
         case 'bottomCenter':
           return Alignment.bottomCenter;
         case 'bottomRight':
+        case 'bottomEnd': // v1.1 name
           return Alignment.bottomRight;
         default:
           return null;

@@ -131,25 +131,43 @@ void main() {
         }
       });
       
-      test('should not have legacy hyphenated widget names', () {
-        // These legacy names should NOT be registered in v1.0
-        final legacyNames = [
-          'text-input',         // Should be textInput
-          'radio-group',        // Should be radioGroup
-          'list-tile',          // Should be listTile
-          'list-view',          // Should be listView
-          'header-bar',         // Should be headerBar
-          'bottom-nav',         // Should be bottomNav
-          'tab-bar',            // Should be tabBar
-          'loading-indicator',  // Should be loadingIndicator
-          'progress-bar',       // Should be progressBar
-        ];
-        
-        for (final legacyName in legacyNames) {
+      test('should register only the kebab-case aliases explicitly listed in §17.3.1', () {
+        // Per spec §17.1.2 widget type names are canonical as camelCase.
+        // §17.3.1 Widget Type Aliases lists exactly three kebab forms as
+        // legitimate legacy aliases; any other kebab spelling is out of spec
+        // and MUST NOT be registered.
+        final allowedKebab = <String>{
+          'list-tile',          // listItem alias
+          'progress-bar',       // progressBar alias
+          'loading-indicator',  // progressBar alias
+        };
+        for (final name in allowedKebab) {
           expect(
-            registry.has(legacyName),
+            registry.has(name),
+            isTrue,
+            reason: '§17.3.1 declares "$name" as a legacy alias — must be registered',
+          );
+        }
+        // Negative cases: previously-registered kebab forms that are NOT in
+        // §17.3.1 must not exist in the runtime registry.
+        final forbiddenKebab = <String>[
+          'text-input',
+          'list-item',
+          'header-bar',
+          'sized-box',
+          'icon-button',
+          'rich-text',
+          'scroll-view',
+          'page-view',
+          'alert-dialog',
+          'bottom-sheet',
+        ];
+        for (final name in forbiddenKebab) {
+          expect(
+            registry.has(name),
             isFalse,
-            reason: 'Legacy name "$legacyName" should not be registered in v1.0',
+            reason:
+                '"$name" is not sanctioned by §17.3.1 and must not be registered',
           );
         }
       });
@@ -243,5 +261,78 @@ void main() {
         expect(factory, isNotNull);
       });
     });
+
+    group('TC-153: WidgetRegistry — unregister', () {
+    test('Normal: unregister removes factory by type', () {
+      expect(registry.has('text'), isTrue);
+      registry.unregister('text');
+      expect(registry.has('text'), isFalse);
+      expect(registry.get('text'), isNull);
+    });
+
+    test('Boundary: unregister non-existent type → no error', () {
+      registry.unregister('nonexistent_widget_type_xyz');
+      // Should not throw
+    });
+  });
+
+  group('TC-154: WidgetRegistry — clear', () {
+    test('Normal: clear removes all registrations', () {
+      expect(registry.registeredTypes, isNotEmpty);
+      registry.clear();
+      expect(registry.registeredTypes, isEmpty);
+    });
+
+    test('Normal: re-register after clear works', () {
+      registry.clear();
+      expect(registry.has('text'), isFalse);
+      DefaultWidgets.registerAll(registry);
+      expect(registry.has('text'), isTrue);
+    });
+  });
+
+  group('TC-155: WidgetRegistry — registeredTypes getter', () {
+    test('Normal: returns sorted list of all registered types', () {
+      final types = registry.registeredTypes;
+      expect(types, isNotEmpty);
+      expect(types, contains('text'));
+      expect(types, contains('button'));
+      expect(types, contains('linear'));
+
+      // Verify sorted order
+      final sorted = List<String>.from(types)..sort();
+      expect(types, equals(sorted));
+    });
+
+    test('Boundary: empty registry → empty list', () {
+      registry.clear();
+      expect(registry.registeredTypes, isEmpty);
+    });
+  });
+
+  group('TC-156: WidgetRegistry — getTypesByCategory', () {
+    test('Normal: returns types for layout category', () {
+      final layoutTypes = registry.getTypesByCategory('layout');
+      expect(layoutTypes, isNotEmpty);
+      expect(layoutTypes, contains('linear'));
+    });
+
+    test('Normal: returns types for display category', () {
+      final displayTypes = registry.getTypesByCategory('display');
+      expect(displayTypes, isNotEmpty);
+      expect(displayTypes, contains('text'));
+    });
+
+    test('Normal: returns types for input category', () {
+      final inputTypes = registry.getTypesByCategory('input');
+      expect(inputTypes, isNotEmpty);
+      expect(inputTypes, contains('button'));
+    });
+
+    test('Boundary: unknown category → empty list', () {
+      final result = registry.getTypesByCategory('nonexistent_category');
+      expect(result, isEmpty);
+    });
+  });
   });
 }

@@ -105,12 +105,12 @@ void main() {
         
         void checkForActions(dynamic node) {
           if (node is Map) {
-            if (node['click'] != null && node['click'] is Map) {
-              final click = node['click'];
-              if (click['type'] == 'state') {
-                if (click['action'] == 'increment') hasIncrementAction = true;
-                if (click['action'] == 'decrement') hasDecrementAction = true;
-                if (click['action'] == 'set') hasSetAction = true;
+            if (node['onTap'] != null && node['onTap'] is Map) {
+              final onTap = node['onTap'];
+              if (onTap['type'] == 'state') {
+                if (onTap['action'] == 'increment') hasIncrementAction = true;
+                if (onTap['action'] == 'decrement') hasDecrementAction = true;
+                if (onTap['action'] == 'set') hasSetAction = true;
               }
             }
             node.values.forEach(checkForActions);
@@ -177,9 +177,9 @@ void main() {
         
         void checkForBatchActions(dynamic node) {
           if (node is Map) {
-            if (node['click'] != null && node['click'] is Map) {
-              final click = node['click'];
-              if (click['type'] == 'batch') hasBatchAction = true;
+            if (node['onTap'] != null && node['onTap'] is Map) {
+              final onTap = node['onTap'];
+              if (onTap['type'] == 'batch') hasBatchAction = true;
             }
             node.values.forEach(checkForBatchActions);
           } else if (node is List) {
@@ -201,12 +201,14 @@ void main() {
             if (node['type'] != null) {
               final type = node['type'];
               // These should NOT be found
-              expect(type, isNot('container')); // Should be 'box'
-              expect(type, isNot('column')); // Should be 'linear'
-              expect(type, isNot('row')); // Should be 'linear'
-              expect(type, isNot('toggle')); // Should be 'switch'
-              expect(type, isNot('dropdown')); // Should be 'select'
-              expect(type, isNot('listItem')); // Should be 'listTile'
+              // Spec v1.0 canonical names must be used (MCP UI DSL §Widgets).
+              // Deprecated/legacy aliases should not appear in new DSL.
+              expect(type, isNot('container')); // canonical: 'box'
+              expect(type, isNot('column')); // canonical: 'linear' (direction: vertical)
+              expect(type, isNot('row')); // canonical: 'linear' (direction: horizontal)
+              expect(type, isNot('switch')); // canonical: 'toggle' (ARIA role: switch)
+              expect(type, isNot('dropdown')); // canonical: 'select'
+              expect(type, isNot('listItem')); // canonical: 'listTile'
             }
             node.values.forEach(checkWidgetNames);
           } else if (node is List) {

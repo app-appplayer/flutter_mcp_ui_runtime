@@ -13,17 +13,32 @@ class GraphWidgetFactory extends WidgetFactory {
     final data =
         context.resolve<List<dynamic>>(properties['data']) as List<dynamic>? ??
             [];
-    final type = properties['type'] as String? ?? 'line';
+    // Spec §10.12 canonical `chartType`; `type` kept as legacy alias but
+    // collides with the widget-type discriminator, so `chartType` is the
+    // preferred form.
+    final type =
+        (properties['chartType'] ?? properties['type']) as String? ?? 'line';
     final width = properties['width']?.toDouble() ?? 300.0;
     final height = properties['height']?.toDouble() ?? 200.0;
     final showGrid = properties['showGrid'] as bool? ?? true;
     final showLabels = properties['showLabels'] as bool? ?? true;
+    final themePrimary =
+        context.themeManager.getColorValue('primary') ?? Colors.blue;
     final lineColor =
-        parseColor(context.resolve(properties['lineColor'])) ?? Colors.blue;
-    final fillColor = parseColor(context.resolve(properties['fillColor'])) ??
-        Colors.blue.withOpacity(0.3);
-    final gridColor = parseColor(context.resolve(properties['gridColor'])) ??
+        parseColor(context.resolve(properties['lineColor']), context) ??
+            themePrimary;
+    final fillColor = parseColor(context.resolve(properties['fillColor']), context) ??
+        themePrimary.withValues(alpha: 0.3);
+    final gridColor = parseColor(context.resolve(properties['gridColor']), context) ??
+        context.themeManager.getColorValue('outlineVariant') ??
         Colors.grey[300]!;
+    // Axis label colour — onSurface at reduced alpha so numbers remain
+    // legible on both light and dark chart backgrounds without drowning
+    // out the series itself.
+    final labelColor = parseColor(
+            context.resolve(properties['labelColor']), context) ??
+        context.themeManager.getColorValue('onSurface') ??
+        Colors.grey[600]!;
     final strokeWidth = properties['strokeWidth']?.toDouble() ?? 2.0;
 
     // Parse data points
@@ -57,6 +72,7 @@ class GraphWidgetFactory extends WidgetFactory {
           lineColor: lineColor,
           fillColor: fillColor,
           gridColor: gridColor,
+          labelColor: labelColor,
           strokeWidth: strokeWidth,
         ),
       ),
@@ -75,6 +91,7 @@ class _GraphPainter extends CustomPainter {
   final Color lineColor;
   final Color fillColor;
   final Color gridColor;
+  final Color labelColor;
   final double strokeWidth;
 
   _GraphPainter({
@@ -86,6 +103,7 @@ class _GraphPainter extends CustomPainter {
     required this.lineColor,
     required this.fillColor,
     required this.gridColor,
+    required this.labelColor,
     required this.strokeWidth,
   });
 
@@ -212,7 +230,8 @@ class _GraphPainter extends CustomPainter {
         final value = minValue + (valueRange * (5 - i) / 5);
         textPainter.text = TextSpan(
           text: value.toStringAsFixed(0),
-          style: TextStyle(color: Colors.grey[600], fontSize: 10),
+          style: TextStyle(
+              color: labelColor.withValues(alpha: 0.7), fontSize: 10),
         );
         textPainter.layout();
         final y = padding + (graphHeight * i / 5) - textPainter.height / 2;
@@ -224,7 +243,8 @@ class _GraphPainter extends CustomPainter {
         if (labels[i].isNotEmpty) {
           textPainter.text = TextSpan(
             text: labels[i],
-            style: TextStyle(color: Colors.grey[600], fontSize: 10),
+            style: TextStyle(
+              color: labelColor.withValues(alpha: 0.7), fontSize: 10),
           );
           textPainter.layout();
           final x = points[i].dx - textPainter.width / 2;

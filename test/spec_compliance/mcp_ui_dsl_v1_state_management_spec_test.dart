@@ -269,7 +269,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Increment Counter',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'increment',
                   'path': 'counter',
@@ -278,7 +278,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Add 10 to Score',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'increment',
                   'path': 'score',
@@ -327,7 +327,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Lose a Life',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'decrement',
                   'path': 'lives',
@@ -375,7 +375,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Toggle Visibility',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'toggle',
                   'path': 'isVisible',
@@ -384,7 +384,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Toggle Dark Mode',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'toggle',
                   'path': 'darkMode',
@@ -442,7 +442,7 @@ void main() {
                     {
                       'type': 'button',
                       'label': 'Remove',
-                      'click': {
+                      'onTap': {
                         'type': 'state',
                         'action': 'remove',
                         'path': 'todos',
@@ -456,7 +456,7 @@ void main() {
                 'type': 'textInput',
                 'label': 'New Task',
                 'value': '{{newTask}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'newTask',
@@ -466,7 +466,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Add Task',
-                'click': {
+                'onTap': {
                   'type': 'batch',
                   'actions': [
                     {

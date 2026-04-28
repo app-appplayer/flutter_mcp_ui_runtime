@@ -1,10 +1,14 @@
 import 'package:flutter/foundation.dart';
 
+import '../utils/mcp_logger.dart';
+
 /// Abstract base class for all runtime services
 abstract class RuntimeService {
-  RuntimeService({this.enableDebugMode = kDebugMode});
+  RuntimeService({this.enableDebugMode = kDebugMode})
+      : _logger = MCPLogger('RuntimeService', enableLogging: enableDebugMode);
 
   final bool enableDebugMode;
+  final MCPLogger _logger;
   bool _isInitialized = false;
 
   /// Gets whether this service has been initialized
@@ -20,7 +24,7 @@ abstract class RuntimeService {
     _isInitialized = true;
 
     if (enableDebugMode) {
-      debugPrint('RuntimeService: ${runtimeType.toString()} initialized');
+      _logger.debug('${runtimeType.toString()} initialized');
     }
   }
 
@@ -35,7 +39,7 @@ abstract class RuntimeService {
     _isInitialized = false;
 
     if (enableDebugMode) {
-      debugPrint('RuntimeService: ${runtimeType.toString()} disposed');
+      _logger.debug('${runtimeType.toString()} disposed');
     }
   }
 
@@ -47,10 +51,12 @@ abstract class RuntimeService {
 class ServiceRegistry {
   ServiceRegistry({
     this.enableDebugMode = kDebugMode,
-  });
+  }) : _logger = MCPLogger('ServiceRegistry', enableLogging: enableDebugMode);
 
   final bool enableDebugMode;
+  final MCPLogger _logger;
   final Map<String, RuntimeService> _services = {};
+  final Map<String, Object> _genericServices = {};
   final Map<String, List<String>> _dependencies = {};
 
   /// Gets all registered service names
@@ -65,7 +71,7 @@ class ServiceRegistry {
     _services[name] = service;
 
     if (enableDebugMode) {
-      debugPrint('ServiceRegistry: Registered service "$name"');
+      _logger.debug('Registered service "$name"');
     }
   }
 
@@ -77,7 +83,7 @@ class ServiceRegistry {
       _dependencies.remove(name);
 
       if (enableDebugMode) {
-        debugPrint('ServiceRegistry: Unregistered service "$name"');
+        _logger.debug('Unregistered service "$name"');
       }
     }
   }
@@ -100,9 +106,49 @@ class ServiceRegistry {
     return service;
   }
 
+  /// Registers any object as a service (not limited to RuntimeService subtypes)
+  void registerGeneric<T extends Object>(String name, T service) {
+    if (_genericServices.containsKey(name)) {
+      throw ArgumentError('Generic service "$name" is already registered');
+    }
+
+    _genericServices[name] = service;
+
+    if (enableDebugMode) {
+      _logger.debug('Registered generic service "$name"');
+    }
+  }
+
+  /// Gets a generic service by name
+  T? getGeneric<T extends Object>(String name) {
+    final service = _genericServices[name];
+    if (service is T) {
+      return service;
+    }
+    return null;
+  }
+
+  /// Gets a generic service by name, throwing if not found
+  T getGenericRequired<T extends Object>(String name) {
+    final service = getGeneric<T>(name);
+    if (service == null) {
+      throw StateError('Required generic service "$name" not found');
+    }
+    return service;
+  }
+
+  /// Unregisters a generic service by name
+  void unregisterGeneric(String name) {
+    _genericServices.remove(name);
+
+    if (enableDebugMode) {
+      _logger.debug('Unregistered generic service "$name"');
+    }
+  }
+
   /// Checks if a service is registered
   bool isRegistered(String name) {
-    return _services.containsKey(name);
+    return _services.containsKey(name) || _genericServices.containsKey(name);
   }
 
   /// Registers service dependencies
@@ -110,8 +156,7 @@ class ServiceRegistry {
     _dependencies.putIfAbsent(serviceName, () => []).add(dependsOn);
 
     if (enableDebugMode) {
-      debugPrint(
-          'ServiceRegistry: Service "$serviceName" depends on "$dependsOn"');
+      _logger.debug('Service "$serviceName" depends on "$dependsOn"');
     }
   }
 
@@ -128,8 +173,7 @@ class ServiceRegistry {
           await service.initialize(config);
         } catch (error) {
           if (enableDebugMode) {
-            debugPrint(
-                'ServiceRegistry: Failed to initialize service "$serviceName": $error');
+            _logger.error('Failed to initialize service "$serviceName": $error');
           }
           rethrow;
         }
@@ -137,7 +181,7 @@ class ServiceRegistry {
     }
 
     if (enableDebugMode) {
-      debugPrint('ServiceRegistry: All services initialized');
+      _logger.debug('All services initialized');
     }
   }
 
@@ -227,18 +271,18 @@ class ServiceRegistry {
           await service.dispose();
         } catch (error) {
           if (enableDebugMode) {
-            debugPrint(
-                'ServiceRegistry: Error disposing service "$serviceName": $error');
+            _logger.error('Error disposing service "$serviceName": $error');
           }
         }
       }
     }
 
     _services.clear();
+    _genericServices.clear();
     _dependencies.clear();
 
     if (enableDebugMode) {
-      debugPrint('ServiceRegistry: All services disposed');
+      _logger.debug('All services disposed');
     }
   }
 }

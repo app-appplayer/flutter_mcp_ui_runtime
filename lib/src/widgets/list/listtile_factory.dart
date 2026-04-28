@@ -16,14 +16,14 @@ class ListTileWidgetFactory extends WidgetFactory {
     final dense = properties['dense'] as bool? ?? false;
     final enabled = properties['enabled'] as bool? ?? true;
     final selected = properties['selected'] as bool? ?? false;
-    final iconColor = parseColor(context.resolve(properties['iconColor']));
-    final textColor = parseColor(context.resolve(properties['textColor']));
+    final iconColor = parseColor(context.resolve(properties['iconColor']), context);
+    final textColor = parseColor(context.resolve(properties['textColor']), context);
     final contentPadding = parseEdgeInsets(properties['contentPadding']);
-    final tileColor = parseColor(context.resolve(properties['tileColor']));
+    final tileColor = parseColor(context.resolve(properties['tileColor']), context);
     final selectedTileColor =
-        parseColor(context.resolve(properties['selectedTileColor']));
-    final focusColor = parseColor(context.resolve(properties['focusColor']));
-    final hoverColor = parseColor(context.resolve(properties['hoverColor']));
+        parseColor(context.resolve(properties['selectedTileColor']), context);
+    final focusColor = parseColor(context.resolve(properties['focusColor']), context);
+    final hoverColor = parseColor(context.resolve(properties['hoverColor']), context);
     final shape = _parseShapeBorder(properties['shape']);
 
     // Extract leading widget
@@ -33,8 +33,11 @@ class ListTileWidgetFactory extends WidgetFactory {
     Widget? trailing = _buildWidget(properties['trailing'], context);
 
     // Extract action handlers
-    final onTap = properties['onTap'] as Map<String, dynamic>?;
-    final onLongPress = properties['onLongPress'] as Map<String, dynamic>?;
+    // on + PascalCase optimal, legacy short names as fallback
+    final onTap = (properties['onTap'] ?? properties['click'] ??
+        properties['onTap']) as Map<String, dynamic>?;
+    final onLongPress = (properties['onLongPress'] ?? properties['long-press'] ??
+        properties['longPress']) as Map<String, dynamic>?;
 
     // Build title widget
     Widget? titleWidget;

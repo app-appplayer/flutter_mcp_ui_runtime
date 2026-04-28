@@ -422,7 +422,7 @@ void main() {
                 'type': 'textInput',
                 'label': 'Enter text',
                 'value': '{{inputText}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'inputText',
@@ -473,7 +473,7 @@ void main() {
                 'itemTemplate': {
                   'type': 'button',
                   'label': '{{item.label}}',
-                  'click': {
+                  'onTap': {
                     'type': 'state',
                     'action': 'set',
                     'path': 'lastClicked',
@@ -592,7 +592,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Increment',
-                'click': {
+                'onTap': {
                   'type': 'batch',
                   'actions': [
                     {
@@ -650,7 +650,7 @@ void main() {
                 'type': 'textInput',
                 'label': 'First Name',
                 'value': '{{form.input1}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'form.input1',
@@ -661,7 +661,7 @@ void main() {
                 'type': 'textInput',
                 'label': 'Last Name',
                 'value': '{{form.input2}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'form.input2',
@@ -671,7 +671,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Combine',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'form.combined',

@@ -1,0 +1,438 @@
+{
+  "type": "page",
+  "metadata": {
+    "title": "Layout",
+    "description": "Layout widget showcase"
+  },
+  "content": {
+    "type": "singleChildScrollView",
+    "padding": {
+      "all": 16
+    },
+    "child": {
+      "type": "linear",
+      "direction": "vertical",
+      "children": [
+        {
+          "type": "box",
+          "padding": {
+            "vertical": 8
+          },
+          "child": {
+            "type": "text",
+            "content": "linear (vertical + horizontal)",
+            "style": {
+              "fontSize": 16,
+              "fontWeight": "bold",
+              "color": "#2196F3"
+            }
+          }
+        },
+        {
+          "type": "linear",
+          "direction": "horizontal",
+          "spacing": 8,
+          "children": [
+            {
+              "type": "box",
+              "width": 60.0,
+              "height": 60.0,
+              "decoration": {
+                "color": "#2196F3",
+                "borderRadius": 6
+              },
+              "child": {
+                "type": "center",
+                "child": {
+                  "type": "text",
+                  "content": "A",
+                  "style": {
+                    "color": "#FFFFFF",
+                    "fontWeight": "bold"
+                  }
+                }
+              }
+            },
+            {
+              "type": "box",
+              "width": 60.0,
+              "height": 60.0,
+              "decoration": {
+                "color": "#FF4081",
+                "borderRadius": 6
+              },
+              "child": {
+                "type": "center",
+                "child": {
+                  "type": "text",
+                  "content": "B",
+                  "style": {
+                    "color": "#FFFFFF",
+                    "fontWeight": "bold"
+                  }
+                }
+              }
+            },
+            {
+              "type": "box",
+              "width": 60.0,
+              "height": 60.0,
+              "decoration": {
+                "color": "#4CAF50",
+                "borderRadius": 6
+              },
+              "child": {
+                "type": "center",
+                "child": {
+                  "type": "text",
+                  "content": "C",
+                  "style": {
+                    "color": "#FFFFFF",
+                    "fontWeight": "bold"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "sizedBox",
+          "height": 16.0
+        },
+        {
+          "type": "box",
+          "padding": {
+            "vertical": 8
+          },
+          "child": {
+            "type": "text",
+            "content": "center",
+            "style": {
+              "fontSize": 16,
+              "fontWeight": "bold",
+              "color": "#2196F3"
+            }
+          }
+        },
+        {
+          "type": "box",
+          "height": 80,
+          "decoration": {
+            "color": "#F5F5F5",
+            "borderRadius": 8
+          },
+          "child": {
+            "type": "center",
+            "child": {
+              "type": "text",
+              "content": "Centered content"
+            }
+          }
+        },
+        {
+          "type": "sizedBox",
+          "height": 16.0
+        },
+        {
+          "type": "box",
+          "padding": {
+            "vertical": 8
+          },
+          "child": {
+            "type": "text",
+            "content": "stack + positioned",
+            "style": {
+              "fontSize": 16,
+              "fontWeight": "bold",
+              "color": "#2196F3"
+            }
+          }
+        },
+        {
+          "type": "box",
+          "height": 120,
+          "decoration": {
+            "color": "#E3F2FD",
+            "borderRadius": 8
+          },
+          "child": {
+            "type": "stack",
+            "children": [
+              {
+                "type": "positioned",
+                "top": 8,
+                "left": 8,
+                "child": {
+                  "type": "box",
+                  "width": 40.0,
+                  "height": 40.0,
+                  "decoration": {
+                    "color": "#2196F3",
+                    "borderRadius": 6
+                  },
+                  "child": {
+                    "type": "center",
+                    "child": {
+                      "type": "text",
+                      "content": "1",
+                      "style": {
+                        "color": "#FFFFFF",
+                        "fontWeight": "bold"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "positioned",
+                "top": 30,
+                "left": 30,
+                "child": {
+                  "type": "box",
+                  "width": 40.0,
+                  "height": 40.0,
+                  "decoration": {
+                    "color": "#FF4081",
+                    "borderRadius": 6
+                  },
+                  "child": {
+                    "type": "center",
+                    "child": {
+                      "type": "text",
+                      "content": "2",
+                      "style": {
+                        "color": "#FFFFFF",
+                        "fontWeight": "bold"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "positioned",
+                "bottom": 8,
+                "right": 8,
+                "child": {
+                  "type": "box",
+                  "width": 40.0,
+                  "height": 40.0,
+                  "decoration": {
+                    "color": "#4CAF50",
+                    "borderRadius": 6
+                  },
+                  "child": {
+                    "type": "center",
+                    "child": {
+                      "type": "text",
+                      "content": "3",
+                      "style": {
+                        "color": "#FFFFFF",
+                        "fontWeight": "bold"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "sizedBox",
+          "height": 16.0
+        },
+        {
+          "type": "box",
+          "padding": {
+            "vertical": 8
+          },
+          "child": {
+            "type": "text",
+            "content": "wrap",
+            "style": {
+              "fontSize": 16,
+              "fontWeight": "bold",
+              "color": "#2196F3"
+            }
+          }
+        },
+        {
+          "type": "wrap",
+          "spacing": 8,
+          "runSpacing": 8,
+          "children": [
+            {
+              "type": "chip",
+              "label": "Tag 1"
+            },
+            {
+              "type": "chip",
+              "label": "Tag 2"
+            },
+            {
+              "type": "chip",
+              "label": "Tag 3"
+            },
+            {
+              "type": "chip",
+              "label": "Tag 4"
+            },
+            {
+              "type": "chip",
+              "label": "Tag 5"
+            },
+            {
+              "type": "chip",
+              "label": "Tag 6"
+            },
+            {
+              "type": "chip",
+              "label": "Tag 7"
+            },
+            {
+              "type": "chip",
+              "label": "Tag 8"
+            }
+          ]
+        },
+        {
+          "type": "sizedBox",
+          "height": 16.0
+        },
+        {
+          "type": "box",
+          "padding": {
+            "vertical": 8
+          },
+          "child": {
+            "type": "text",
+            "content": "expanded + flexible",
+            "style": {
+              "fontSize": 16,
+              "fontWeight": "bold",
+              "color": "#2196F3"
+            }
+          }
+        },
+        {
+          "type": "linear",
+          "direction": "horizontal",
+          "children": [
+            {
+              "type": "expanded",
+              "flex": 2,
+              "child": {
+                "type": "box",
+                "width": 40.0,
+                "height": 40.0,
+                "decoration": {
+                  "color": "#2196F3",
+                  "borderRadius": 6
+                },
+                "child": {
+                  "type": "center",
+                  "child": {
+                    "type": "text",
+                    "content": "flex:2",
+                    "style": {
+                      "color": "#FFFFFF",
+                      "fontWeight": "bold"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "sizedBox",
+              "width": 8
+            },
+            {
+              "type": "expanded",
+              "flex": 1,
+              "child": {
+                "type": "box",
+                "width": 40.0,
+                "height": 40.0,
+                "decoration": {
+                  "color": "#FF4081",
+                  "borderRadius": 6
+                },
+                "child": {
+                  "type": "center",
+                  "child": {
+                    "type": "text",
+                    "content": "flex:1",
+                    "style": {
+                      "color": "#FFFFFF",
+                      "fontWeight": "bold"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "sizedBox",
+          "height": 16.0
+        },
+        {
+          "type": "box",
+          "padding": {
+            "vertical": 8
+          },
+          "child": {
+            "type": "text",
+            "content": "conditional",
+            "style": {
+              "fontSize": 16,
+              "fontWeight": "bold",
+              "color": "#2196F3"
+            }
+          }
+        },
+        {
+          "type": "conditional",
+          "condition": "{{darkMode}}",
+          "then": {
+            "type": "text",
+            "content": "Dark mode is ON",
+            "style": {
+              "color": "#FF4081",
+              "fontWeight": "bold"
+            }
+          },
+          "else": {
+            "type": "text",
+            "content": "Dark mode is OFF",
+            "style": {
+              "color": "#2196F3"
+            }
+          }
+        },
+        {
+          "type": "sizedBox",
+          "height": 8
+        },
+        {
+          "type": "button",
+          "label": "Toggle dark mode",
+          "variant": "outlined",
+          "onTap": {
+            "type": "tool",
+            "tool": "toggleDarkMode",
+            "params": {}
+          }
+        },
+        {
+          "type": "sizedBox",
+          "height": 24.0
+        }
+      ]
+    }
+  },
+  "state": {
+    "initial": {
+      "darkMode": false
+    }
+  }
+}

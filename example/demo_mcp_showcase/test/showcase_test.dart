@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
 import 'package:demo_mcp_showcase/showcase_definition.dart';
+import '_runtime_test_helpers.dart';
 
 void main() {
   group('MCP UI DSL v1.0 Showcase Tests', () {
@@ -111,17 +112,17 @@ void main() {
 
     group('Widget Rendering Tests', () {
       testWidgets('should render application successfully', (tester) async {
-        await runtime.initialize(
+        await initRuntimeWithRealTime(tester, () => runtime.initialize(
           showcaseDefinition,
           pageLoader: (uri) async => showcasePages[uri] ?? {},
-        );
+        ));
 
         await tester.pumpWidget(
           MaterialApp(
             home: runtime.buildUI(),
           ),
         );
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Should show drawer navigation
         expect(find.byType(Drawer), findsOneWidget);
@@ -131,27 +132,27 @@ void main() {
       });
 
       testWidgets('should navigate between pages', (tester) async {
-        await runtime.initialize(
+        await initRuntimeWithRealTime(tester, () => runtime.initialize(
           showcaseDefinition,
           pageLoader: (uri) async => showcasePages[uri] ?? {},
-        );
+        ));
 
         await tester.pumpWidget(
           MaterialApp(
             home: runtime.buildUI(),
           ),
         );
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Open drawer
         final scaffold = find.byType(Scaffold);
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Navigate to Layout page
         await tester.tap(find.text('Layout Widgets'));
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Should show layout page content
         expect(find.text('Layout Widgets'), findsWidgets);
@@ -161,69 +162,69 @@ void main() {
 
     group('State Management Tests', () {
       testWidgets('should handle counter state actions', (tester) async {
-        await runtime.initialize(
+        await initRuntimeWithRealTime(tester, () => runtime.initialize(
           showcaseDefinition,
           pageLoader: (uri) async => showcasePages[uri] ?? {},
-        );
+        ));
 
         await tester.pumpWidget(
           MaterialApp(
             home: runtime.buildUI(),
           ),
         );
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Navigate to input page
         final scaffold = find.byType(Scaffold);
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         await tester.tap(find.text('Input Widgets'));
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Find counter display
         expect(find.text('Counter: 0'), findsOneWidget);
 
         // Test increment
         await tester.tap(find.text('Elevated'));
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
         expect(find.text('Counter: 1'), findsOneWidget);
 
         // Test decrement
         await tester.tap(find.text('Outlined'));
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
         expect(find.text('Counter: 0'), findsOneWidget);
 
         // Test reset
         await tester.tap(find.text('Elevated')); // increment to 1
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
         await tester.tap(find.text('Text')); // reset
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
         expect(find.text('Counter: 0'), findsOneWidget);
       });
 
       testWidgets('should handle text input state', (tester) async {
-        await runtime.initialize(
+        await initRuntimeWithRealTime(tester, () => runtime.initialize(
           showcaseDefinition,
           pageLoader: (uri) async => showcasePages[uri] ?? {},
-        );
+        ));
 
         await tester.pumpWidget(
           MaterialApp(
             home: runtime.buildUI(),
           ),
         );
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Navigate to input page
         final scaffold = find.byType(Scaffold);
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         await tester.tap(find.text('Input Widgets'));
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Find text input
         final textInput = find.byType(TextField).first;
@@ -231,66 +232,66 @@ void main() {
 
         // Type text
         await tester.enterText(textInput, 'Hello MCP!');
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Check state updated
         expect(find.text('You typed: Hello MCP!'), findsOneWidget);
       });
 
       testWidgets('should handle switch toggle', (tester) async {
-        await runtime.initialize(
+        await initRuntimeWithRealTime(tester, () => runtime.initialize(
           showcaseDefinition,
           pageLoader: (uri) async => showcasePages[uri] ?? {},
-        );
+        ));
 
         await tester.pumpWidget(
           MaterialApp(
             home: runtime.buildUI(),
           ),
         );
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Navigate to input page
         final scaffold = find.byType(Scaffold);
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         await tester.tap(find.text('Input Widgets'));
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Find switch
         expect(find.text('Toggle is OFF'), findsOneWidget);
 
         final switchWidget = find.byType(Switch).first;
         await tester.tap(switchWidget);
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Check state toggled
         expect(find.text('Toggle is ON'), findsOneWidget);
       });
 
       testWidgets('should handle slider value changes', (tester) async {
-        await runtime.initialize(
+        await initRuntimeWithRealTime(tester, () => runtime.initialize(
           showcaseDefinition,
           pageLoader: (uri) async => showcasePages[uri] ?? {},
-        );
+        ));
 
         await tester.pumpWidget(
           MaterialApp(
             home: runtime.buildUI(),
           ),
         );
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Navigate to input page
         final scaffold = find.byType(Scaffold);
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         await tester.tap(find.text('Input Widgets'));
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Find slider display
         expect(find.text('Value: 50'), findsOneWidget);
@@ -299,7 +300,7 @@ void main() {
         final slider = find.byType(Slider).first;
         final center = tester.getCenter(slider);
         await tester.dragFrom(center, const Offset(100, 0));
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Value should have changed
         final valueText = find.textContaining('Value: ');
@@ -311,26 +312,26 @@ void main() {
 
     group('Layout Widget Tests', () {
       testWidgets('should render all layout widgets', (tester) async {
-        await runtime.initialize(
+        await initRuntimeWithRealTime(tester, () => runtime.initialize(
           showcaseDefinition,
           pageLoader: (uri) async => showcasePages[uri] ?? {},
-        );
+        ));
 
         await tester.pumpWidget(
           MaterialApp(
             home: runtime.buildUI(),
           ),
         );
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Navigate to layout page
         final scaffold = find.byType(Scaffold);
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         await tester.tap(find.text('Layout Widgets'));
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Check for layout widget sections
         expect(find.text('Box Widget'), findsOneWidget);
@@ -345,26 +346,26 @@ void main() {
 
     group('Display Widget Tests', () {
       testWidgets('should render all display widgets', (tester) async {
-        await runtime.initialize(
+        await initRuntimeWithRealTime(tester, () => runtime.initialize(
           showcaseDefinition,
           pageLoader: (uri) async => showcasePages[uri] ?? {},
-        );
+        ));
 
         await tester.pumpWidget(
           MaterialApp(
             home: runtime.buildUI(),
           ),
         );
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Navigate to display page
         final scaffold = find.byType(Scaffold);
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         await tester.tap(find.text('Display Widgets'));
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Check for display widget sections
         expect(find.text('Text Widget'), findsOneWidget);
@@ -385,26 +386,26 @@ void main() {
 
     group('List Widget Tests', () {
       testWidgets('should render list and grid widgets', (tester) async {
-        await runtime.initialize(
+        await initRuntimeWithRealTime(tester, () => runtime.initialize(
           showcaseDefinition,
           pageLoader: (uri) async => showcasePages[uri] ?? {},
-        );
+        ));
 
         await tester.pumpWidget(
           MaterialApp(
             home: runtime.buildUI(),
           ),
         );
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Navigate to lists page
         final scaffold = find.byType(Scaffold);
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         await tester.tap(find.text('List Widgets'));
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Check list widget
         expect(find.text('List Widget'), findsOneWidget);
@@ -419,26 +420,26 @@ void main() {
 
     group('Advanced Feature Tests', () {
       testWidgets('should handle conditional rendering', (tester) async {
-        await runtime.initialize(
+        await initRuntimeWithRealTime(tester, () => runtime.initialize(
           showcaseDefinition,
           pageLoader: (uri) async => showcasePages[uri] ?? {},
-        );
+        ));
 
         await tester.pumpWidget(
           MaterialApp(
             home: runtime.buildUI(),
           ),
         );
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Navigate to advanced page
         final scaffold = find.byType(Scaffold);
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         await tester.tap(find.text('Advanced Features'));
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Check conditional rendering
         expect(find.text('This card is visible when toggle is OFF'), findsOneWidget);
@@ -446,7 +447,7 @@ void main() {
 
         // Toggle visibility
         await tester.tap(find.text('Toggle Visibility'));
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Check condition changed
         expect(find.text('This card is visible when toggle is OFF'), findsNothing);
@@ -454,30 +455,30 @@ void main() {
       });
 
       testWidgets('should handle batch actions', (tester) async {
-        await runtime.initialize(
+        await initRuntimeWithRealTime(tester, () => runtime.initialize(
           showcaseDefinition,
           pageLoader: (uri) async => showcasePages[uri] ?? {},
-        );
+        ));
 
         await tester.pumpWidget(
           MaterialApp(
             home: runtime.buildUI(),
           ),
         );
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Navigate to actions page
         final scaffold = find.byType(Scaffold);
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         await tester.tap(find.text('Actions & State'));
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Execute batch action
         await tester.tap(find.text('Execute Batch Action'));
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Check all actions were executed
         expect(runtime.stateManager.get('counter'), equals(0));
@@ -502,26 +503,26 @@ void main() {
       });
 
       testWidgets('should render theme showcase correctly', (tester) async {
-        await runtime.initialize(
+        await initRuntimeWithRealTime(tester, () => runtime.initialize(
           showcaseDefinition,
           pageLoader: (uri) async => showcasePages[uri] ?? {},
-        );
+        ));
 
         await tester.pumpWidget(
           MaterialApp(
             home: runtime.buildUI(),
           ),
         );
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Navigate to theme page
         final scaffold = find.byType(Scaffold);
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         await tester.tap(find.text('Theme System'));
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Check theme sections
         expect(find.text('Color Palette'), findsOneWidget);
@@ -532,26 +533,26 @@ void main() {
 
     group('Navigation Tests', () {
       testWidgets('should show navigation patterns', (tester) async {
-        await runtime.initialize(
+        await initRuntimeWithRealTime(tester, () => runtime.initialize(
           showcaseDefinition,
           pageLoader: (uri) async => showcasePages[uri] ?? {},
-        );
+        ));
 
         await tester.pumpWidget(
           MaterialApp(
             home: runtime.buildUI(),
           ),
         );
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Navigate to navigation page
         final scaffold = find.byType(Scaffold);
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         await tester.tap(find.text('Navigation').last);
-        await tester.pumpAndSettle();
+        await settleRuntime(tester);
 
         // Check navigation content
         expect(find.text('Navigation Patterns'), findsOneWidget);

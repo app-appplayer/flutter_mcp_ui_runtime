@@ -15,15 +15,37 @@ class GaugeWidgetFactory extends WidgetFactory {
     final maxValue = properties['max']?.toDouble() ?? 100.0;
     final size = properties['size']?.toDouble() ?? 200.0;
     final strokeWidth = properties['strokeWidth']?.toDouble() ?? 10.0;
+    // The gauge's background arc ("track") falls back to the theme's
+    // divider slot so it stays subtle in both light and dark modes
+    // (previously a hardcoded `Colors.grey[300]` that blended with
+    // dark surfaces).
     final backgroundColor =
-        parseColor(context.resolve(properties['backgroundColor'])) ??
+        parseColor(context.resolve(properties['backgroundColor']), context) ??
+            context.themeManager.getColorValue('outlineVariant') ??
             Colors.grey[300]!;
     final valueColor =
-        parseColor(context.resolve(properties['valueColor'])) ?? Colors.blue;
+        parseColor(context.resolve(properties['valueColor']), context) ??
+            context.themeManager.getColorValue('primary') ??
+            Colors.blue;
     final showLabel = properties['showLabel'] as bool? ?? true;
     final labelFormat = properties['labelFormat'] as String? ?? '{value}%';
     final startAngle = properties['startAngle']?.toDouble() ?? -220.0;
     final sweepAngle = properties['sweepAngle']?.toDouble() ?? 260.0;
+
+    // Parse segments: List of {from, to, color}
+    final segmentsData = properties['segments'] as List<dynamic>?;
+    final List<GaugeSegment> segments = [];
+    if (segmentsData != null) {
+      for (final seg in segmentsData) {
+        if (seg is Map<String, dynamic>) {
+          final from = (seg['from'] as num?)?.toDouble() ?? 0.0;
+          final to = (seg['to'] as num?)?.toDouble() ?? 0.0;
+          final segColor =
+              parseColor(context.resolve(seg['color']), context) ?? Colors.blue;
+          segments.add(GaugeSegment(from: from, to: to, color: segColor));
+        }
+      }
+    }
 
     // Calculate normalized value
     final normalizedValue =
@@ -40,6 +62,9 @@ class GaugeWidgetFactory extends WidgetFactory {
           strokeWidth: strokeWidth,
           startAngle: startAngle,
           sweepAngle: sweepAngle,
+          segments: segments,
+          minValue: minValue,
+          maxValue: maxValue,
         ),
         child: showLabel
             ? Center(
@@ -59,6 +84,15 @@ class GaugeWidgetFactory extends WidgetFactory {
   }
 }
 
+/// Data class for a colored gauge segment
+class GaugeSegment {
+  final double from;
+  final double to;
+  final Color color;
+
+  GaugeSegment({required this.from, required this.to, required this.color});
+}
+
 class _GaugePainter extends CustomPainter {
   final double value;
   final Color backgroundColor;
@@ -66,6 +100,9 @@ class _GaugePainter extends CustomPainter {
   final double strokeWidth;
   final double startAngle;
   final double sweepAngle;
+  final List<GaugeSegment> segments;
+  final double minValue;
+  final double maxValue;
 
   _GaugePainter({
     required this.value,
@@ -74,6 +111,9 @@ class _GaugePainter extends CustomPainter {
     required this.strokeWidth,
     required this.startAngle,
     required this.sweepAngle,
+    required this.segments,
+    required this.minValue,
+    required this.maxValue,
   });
 
   @override
@@ -96,20 +136,62 @@ class _GaugePainter extends CustomPainter {
       backgroundPaint,
     );
 
-    // Draw value arc
-    final valuePaint = Paint()
-      ..color = valueColor
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+    if (segments.isNotEmpty) {
+      // Draw colored segments
+      final range = maxValue - minValue;
+      for (final segment in segments) {
+        final segStart =
+            ((segment.from - minValue) / range).clamp(0.0, 1.0);
+        final segEnd =
+            ((segment.to - minValue) / range).clamp(0.0, 1.0);
+        final segPaint = Paint()
+          ..color = segment.color
+          ..strokeWidth = strokeWidth
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.butt;
 
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      _degreesToRadians(startAngle),
-      _degreesToRadians(sweepAngle * value),
-      false,
-      valuePaint,
-    );
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          _degreesToRadians(startAngle + sweepAngle * segStart),
+          _degreesToRadians(sweepAngle * (segEnd - segStart)),
+          false,
+          segPaint,
+        );
+      }
+
+      // Draw value indicator line on top of segments
+      final valuePaint = Paint()
+        ..color = valueColor
+        ..strokeWidth = strokeWidth + 2
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+
+      // Draw a small arc at the value position as indicator
+      final indicatorSweep = sweepAngle * 0.02;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        _degreesToRadians(
+            startAngle + sweepAngle * value - indicatorSweep / 2),
+        _degreesToRadians(indicatorSweep),
+        false,
+        valuePaint,
+      );
+    } else {
+      // Draw value arc (original behavior)
+      final valuePaint = Paint()
+        ..color = valueColor
+        ..strokeWidth = strokeWidth
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        _degreesToRadians(startAngle),
+        _degreesToRadians(sweepAngle * value),
+        false,
+        valuePaint,
+      );
+    }
   }
 
   double _degreesToRadians(double degrees) {
@@ -121,6 +203,7 @@ class _GaugePainter extends CustomPainter {
     return oldDelegate.value != value ||
         oldDelegate.backgroundColor != backgroundColor ||
         oldDelegate.valueColor != valueColor ||
-        oldDelegate.strokeWidth != strokeWidth;
+        oldDelegate.strokeWidth != strokeWidth ||
+        oldDelegate.segments.length != segments.length;
   }
 }

@@ -599,7 +599,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Submit',
-                'submit': {
+                'onSubmit': {
                   'type': 'tool',
                   'tool': 'submitForm',
                 },

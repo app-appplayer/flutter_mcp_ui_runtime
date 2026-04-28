@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/src/runtime/widget_registry.dart';
 import 'package:flutter_mcp_ui_runtime/src/runtime/default_widgets.dart';
+import 'package:flutter_mcp_ui_runtime/src/templates/template_registry.dart';
 
 void main() {
   group('Simple Widget Factory Tests', () {
@@ -9,6 +10,7 @@ void main() {
     setUp(() {
       registry = WidgetRegistry();
       DefaultWidgets.registerAll(registry);
+      DefaultWidgets.registerTemplateWidgets(registry, TemplateRegistry());
     });
 
     test('All Layout widgets are registered and instantiable', () {
@@ -151,25 +153,22 @@ void main() {
     test('Widget registry statistics are accurate', () {
       final stats = registry.getRegistrationStatus();
       final totalRegistered = registry.registeredTypes.length;
-      
-      expect(totalRegistered, greaterThanOrEqualTo(75), 
+
+      expect(totalRegistered, greaterThanOrEqualTo(75),
              reason: 'Should have at least 75 widgets registered');
-      
-      expect(stats['totalMissing'], equals(0), 
-             reason: 'Should have no missing widgets from expected set');
-      
-      expect(stats['percentage'], greaterThanOrEqualTo(100), 
-             reason: 'Should have 100% or more coverage of expected widgets');
-      
-      print('Total widgets registered: $totalRegistered');
-      print('Coverage percentage: ${stats['percentage']}%');
-      
+
+      // All widget types should have factories registered
+      expect(stats['totalMissing'], equals(0),
+             reason: 'All widget types should have factories');
+
+      expect(stats['percentage'], greaterThanOrEqualTo(100),
+             reason: 'Should have 100% coverage of expected widgets');
+
       final byCategory = stats['byCategory'] as Map<String, dynamic>;
       for (final category in byCategory.keys) {
         final categoryStats = byCategory[category] as Map<String, dynamic>;
-        print('Category $category: ${categoryStats['registered']}/${categoryStats['expected']} widgets (${categoryStats['percentage']}%)');
-        
-        expect(categoryStats['missing'], isEmpty, 
+        final missing = categoryStats['missing'] as List;
+        expect(missing, isEmpty,
                reason: 'Category $category should have no missing widgets');
       }
     });

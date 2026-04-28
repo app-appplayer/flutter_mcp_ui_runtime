@@ -11,7 +11,7 @@ class BottomSheetWidgetFactory extends WidgetFactory {
 
     // Extract properties
     final backgroundColor =
-        parseColor(context.resolve(properties['backgroundColor']));
+        parseColor(context.resolve(properties['backgroundColor']), context);
     final elevation = properties['elevation']?.toDouble();
     final shape = _parseShapeBorder(properties['shape']);
     final clipBehavior = _parseClip(properties['clipBehavior']);
@@ -19,9 +19,9 @@ class BottomSheetWidgetFactory extends WidgetFactory {
     final enableDrag = properties['enableDrag'] as bool? ?? true;
     final showDragHandle = properties['showDragHandle'] as bool? ?? false;
     final dragHandleColor =
-        parseColor(context.resolve(properties['dragHandleColor']));
+        parseColor(context.resolve(properties['dragHandleColor']), context);
     final dragHandleSize = _parseSize(properties['dragHandleSize']);
-    final shadowColor = parseColor(context.resolve(properties['shadowColor']));
+    final shadowColor = parseColor(context.resolve(properties['shadowColor']), context);
 
     // Extract action handlers
     final onClosing = properties['onClosing'] as Map<String, dynamic>?;
@@ -72,7 +72,9 @@ class BottomSheetWidgetFactory extends WidgetFactory {
               height: dragHandleSize?.height ?? 4,
               margin: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
-                color: dragHandleColor ?? Colors.grey[300],
+                color: dragHandleColor ??
+                    context.themeManager.getColorValue('outlineVariant') ??
+                    Colors.grey[300],
                 borderRadius: BorderRadius.circular(2),
               ),
             ),

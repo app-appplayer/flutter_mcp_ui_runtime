@@ -130,7 +130,7 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'Test Button',
-            'click': {
+            'onTap': {
               'type': 'tool',
               'tool': 'test_tool',
               'params': {'param': 'value'},
@@ -148,7 +148,7 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'Test Button',
-            'click': {
+            'onTap': {
               'type': 'tool',
               'name': 'test_tool',  // Legacy: should be 'tool'
               'params': {'param': 'value'},  // Legacy: should be 'params'
@@ -169,7 +169,7 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'Test Button',
-            'click': {
+            'onTap': {
               'type': 'tool',
               // Missing required 'tool' field
               'params': {},
@@ -188,7 +188,7 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'Increment',
-            'click': {
+            'onTap': {
               'type': 'state',
               'action': 'increment',
               'path': 'counter',
@@ -207,7 +207,7 @@ void main() {
           'content': {
             'type': 'button',
             'label': 'Navigate',
-            'click': {
+            'onTap': {
               'type': 'navigation',
               'action': 'push',
               'target': '/next-page',
@@ -282,14 +282,16 @@ void main() {
           },
         ];
 
-        // System should handle missing properties gracefully
+        // Negative test: intentionally invalid DSL. Opt out of schema
+        // validation so the runtime's missing-property defaults are
+        // exercised (validation would — correctly — reject these upstream).
         for (final widgetDef in invalidWidgets) {
           final definition = {
             'type': 'page',
             'content': widgetDef,
           };
 
-          await runtime.initialize(definition);
+          await runtime.initialize(definition, validateSchema: false);
           expect(runtime.isInitialized, isTrue);
           
           // Widget should render with defaults or empty values
@@ -457,8 +459,9 @@ void main() {
           },
         };
 
-        // System should handle invalid widget types without crashing
-        await runtime.initialize(invalidDefinition);
+        // Negative test: deliberately invalid DSL. Opt out of schema
+        // validation so the runtime's fallback error container is exercised.
+        await runtime.initialize(invalidDefinition, validateSchema: false);
         expect(runtime.isInitialized, isTrue);
         
         // Widget should render as a fallback (e.g., Container or error widget)

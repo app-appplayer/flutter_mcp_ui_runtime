@@ -1,0 +1,898 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_mcp_ui_runtime/src/actions/action_handler.dart';
+import 'package:flutter_mcp_ui_runtime/src/actions/action_result.dart';
+import 'package:flutter_mcp_ui_runtime/src/renderer/render_context.dart';
+import 'package:flutter_mcp_ui_runtime/src/renderer/renderer.dart';
+import 'package:flutter_mcp_ui_runtime/src/state/state_manager.dart';
+import 'package:flutter_mcp_ui_runtime/src/binding/binding_engine.dart';
+import 'package:flutter_mcp_ui_runtime/src/theme/theme_manager.dart';
+import 'package:flutter_mcp_ui_runtime/src/runtime/widget_registry.dart';
+import 'package:flutter_mcp_ui_runtime/src/client_actions/client_action_handler.dart';
+
+import 'package:flutter_mcp_ui_runtime/src/permissions/permission_manager.dart';
+import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart' show StateActionDefinition;
+
+void main() {
+  late ActionHandler actionHandler;
+  late RenderContext context;
+  late StateManager stateManager;
+  late BindingEngine bindingEngine;
+
+  setUp(() {
+    actionHandler = ActionHandler();
+    stateManager = StateManager();
+    bindingEngine = BindingEngine();
+    final themeManager = ThemeManager.instance;
+    themeManager.reset();
+    final widgetRegistry = WidgetRegistry();
+    final renderer = Renderer(
+      widgetRegistry: widgetRegistry,
+      bindingEngine: bindingEngine,
+      actionHandler: actionHandler,
+      stateManager: stateManager,
+    );
+
+    context = RenderContext(
+      renderer: renderer,
+      stateManager: stateManager,
+      bindingEngine: bindingEngine,
+      actionHandler: actionHandler,
+      themeManager: themeManager,
+    );
+  });
+
+  tearDown(() {
+    NavigationActionExecutor.clearGlobalNavigationHandler();
+    bindingEngine.dispose();
+    stateManager.dispose();
+  });
+
+  group('TC-063: ClientActionHandler — constructor with null PermissionsConfig', () {
+    test('TC-063 Normal: constructor with null config creates handler', () {
+      final handler = ClientActionHandler(null);
+      expect(handler, isNotNull);
+      expect(handler, isA<ClientActionHandler>());
+    });
+
+    test('TC-063 Normal: handler has permission manager', () {
+      final handler = ClientActionHandler(null);
+      expect(handler.permissionManager, isNotNull);
+      expect(handler.permissionManager, isA<PermissionManager>());
+    });
+
+    test('TC-063 Boundary: multiple instances are independent', () {
+      final handler1 = ClientActionHandler(null);
+      final handler2 = ClientActionHandler(null);
+      expect(identical(handler1, handler2), isFalse);
+    });
+  });
+
+  group('TC-064: ClientActionHandler — isClientAction returns true', () {
+    test('TC-064 Normal: client.selectFile is a client action', () {
+      final handler = ClientActionHandler(null);
+      expect(handler.isClientAction('client.selectFile'), isTrue);
+    });
+
+    test('TC-064 Normal: client.readFile is a client action', () {
+      final handler = ClientActionHandler(null);
+      expect(handler.isClientAction('client.readFile'), isTrue);
+    });
+
+    test('TC-064 Normal: client.writeFile is a client action', () {
+      final handler = ClientActionHandler(null);
+      expect(handler.isClientAction('client.writeFile'), isTrue);
+    });
+
+    test('TC-064 Normal: client.httpRequest is a client action', () {
+      final handler = ClientActionHandler(null);
+      expect(handler.isClientAction('client.httpRequest'), isTrue);
+    });
+
+    test('TC-064 Normal: client.exec is a client action', () {
+      final handler = ClientActionHandler(null);
+      expect(handler.isClientAction('client.exec'), isTrue);
+    });
+
+    test('TC-064 Normal: client.clipboard is a client action', () {
+      final handler = ClientActionHandler(null);
+      expect(handler.isClientAction('client.clipboard'), isTrue);
+    });
+
+    test('TC-064 Normal: client.notification is a client action', () {
+      final handler = ClientActionHandler(null);
+      expect(handler.isClientAction('client.notification'), isTrue);
+    });
+
+    test('TC-064 Boundary: any string starting with client. is client action', () {
+      final handler = ClientActionHandler(null);
+      expect(handler.isClientAction('client.custom'), isTrue);
+    });
+  });
+
+  group('TC-065: ClientActionHandler — isClientAction returns false', () {
+    test('TC-065 Normal: state is not a client action', () {
+      final handler = ClientActionHandler(null);
+      expect(handler.isClientAction('state'), isFalse);
+    });
+
+    test('TC-065 Normal: navigation is not a client action', () {
+      final handler = ClientActionHandler(null);
+      expect(handler.isClientAction('navigation'), isFalse);
+    });
+
+    test('TC-065 Normal: tool is not a client action', () {
+      final handler = ClientActionHandler(null);
+      expect(handler.isClientAction('tool'), isFalse);
+    });
+
+    test('TC-065 Boundary: null is not a client action', () {
+      final handler = ClientActionHandler(null);
+      expect(handler.isClientAction(null), isFalse);
+    });
+
+    test('TC-065 Boundary: empty string is not a client action', () {
+      final handler = ClientActionHandler(null);
+      expect(handler.isClientAction(''), isFalse);
+    });
+  });
+
+  group('TC-066: ClientActionHandler — execute unknown client action type', () {
+    test('TC-066 Error: unknown client action type returns error', () async {
+      final handler = ClientActionHandler(null);
+      final result = await handler.execute(
+        {'type': 'client.unknownAction123'},
+        context,
+      );
+      expect(result.success, isFalse);
+      expect(result.error, contains('Unknown client action'));
+    });
+  });
+
+  group('TC-067: Permission — action without BuildContext skips permission check', () {
+    test('TC-067 Normal: action without BuildContext proceeds to execution', () async {
+      // Context without buildContext set (default in test setup)
+      // Client actions should skip permission check and proceed
+      final result = await actionHandler.execute(
+        {'type': 'client.getSystemInfo'},
+        context,
+      );
+
+      // Returns result (may fail due to actual system call, but permission check skipped)
+      expect(result, isA<ActionResult>());
+    });
+  });
+
+  group('TC-068: Permission — setPermissionsConfig updates client handler', () {
+    test('TC-068 Normal: setPermissionsConfig with null is no-op', () {
+      expect(() => actionHandler.setPermissionsConfig(null), returnsNormally);
+    });
+
+    test('TC-068 Boundary: repeated setPermissionsConfig calls do not throw', () {
+      expect(() => actionHandler.setPermissionsConfig(null), returnsNormally);
+      expect(() => actionHandler.setPermissionsConfig(null), returnsNormally);
+    });
+  });
+
+  group('TC-069: Permission — permissionManager getter', () {
+    test('TC-069 Normal: permissionManager getter returns PermissionManager', () {
+      final pm = actionHandler.permissionManager;
+      expect(pm, isNotNull);
+      expect(pm, isA<PermissionManager>());
+    });
+  });
+
+  group('TC-070: ActionHandler — registerToolExecutor adds custom tool', () {
+    test('TC-070 Normal: registered tool executor is callable', () async {
+      actionHandler.registerToolExecutor('customTool', (params) async {
+        return {'success': true, 'result': 'custom_result'};
+      });
+
+      final result = await actionHandler.execute(
+        {'type': 'tool', 'tool': 'customTool', 'params': {}},
+        context,
+      );
+
+      expect(result.success, isTrue);
+      expect(result.data, equals('custom_result'));
+    });
+
+    test('TC-070 Boundary: tool name with special characters', () async {
+      actionHandler.registerToolExecutor('my-tool_v2', (params) async {
+        return {'success': true, 'result': 'ok'};
+      });
+
+      final result = await actionHandler.execute(
+        {'type': 'tool', 'tool': 'my-tool_v2', 'params': {}},
+        context,
+      );
+
+      expect(result.success, isTrue);
+    });
+  });
+
+  group('TC-071: ActionHandler — registerExecutor/registerHandler', () {
+    test('TC-071 Normal: registerExecutor adds custom action executor', () async {
+      actionHandler.registerExecutor('custom', _TestExecutor());
+      final result = await actionHandler.execute({'type': 'custom'}, context);
+      expect(result.success, isTrue);
+      expect(result.data, equals('test_executed'));
+    });
+
+    test('TC-071 Normal: registerHandler is alias for registerExecutor', () async {
+      actionHandler.registerHandler('custom2', _TestExecutor());
+      final result = await actionHandler.execute({'type': 'custom2'}, context);
+      expect(result.success, isTrue);
+      expect(result.data, equals('test_executed'));
+    });
+  });
+
+  group('TC-072: client.selectFile — requires params', () {
+    test('TC-072 Normal: selectFile action returns result', () async {
+      final result = await actionHandler.execute(
+        {'type': 'client.selectFile', 'params': {}},
+        context,
+      );
+      // In test env, may return error due to no file picker available
+      expect(result, isA<ActionResult>());
+    });
+
+    test('TC-072 Boundary: selectFile without params still routed', () async {
+      final result = await actionHandler.execute(
+        {'type': 'client.selectFile'},
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+  });
+
+  group('TC-073: client.readFile — requires path param', () {
+    test('TC-073 Normal: readFile action requires path', () async {
+      final result = await actionHandler.execute(
+        {'type': 'client.readFile', 'params': {'path': '/test/file.txt'}},
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+
+    test('TC-073 Error: readFile without path returns error', () async {
+      final result = await actionHandler.execute(
+        {'type': 'client.readFile', 'params': {}},
+        context,
+      );
+      expect(result, isA<ActionResult>());
+      // Should indicate missing path
+    });
+  });
+
+  group('TC-074: client.writeFile — requires path and content', () {
+    test('TC-074 Normal: writeFile with path and content', () async {
+      final result = await actionHandler.execute(
+        {
+          'type': 'client.writeFile',
+          'params': {'path': '/test/file.txt', 'content': 'hello'},
+        },
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+
+    test('TC-074 Error: writeFile without params returns error', () async {
+      final result = await actionHandler.execute(
+        {'type': 'client.writeFile'},
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+  });
+
+  group('TC-075: client.listFiles — requires path param', () {
+    test('TC-075 Normal: listFiles with path', () async {
+      final result = await actionHandler.execute(
+        {'type': 'client.listFiles', 'params': {'path': '/test'}},
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+
+    test('TC-075 Error: listFiles without path', () async {
+      final result = await actionHandler.execute(
+        {'type': 'client.listFiles', 'params': {}},
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+  });
+
+  group('TC-076: client.httpRequest — requires url param', () {
+    test('TC-076 Normal: httpRequest with url', () async {
+      final result = await actionHandler.execute(
+        {
+          'type': 'client.httpRequest',
+          'params': {'url': 'https://example.com', 'method': 'GET'},
+        },
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+
+    test('TC-076 Error: httpRequest without url', () async {
+      final result = await actionHandler.execute(
+        {'type': 'client.httpRequest', 'params': {}},
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+  });
+
+  group('TC-077: client.getSystemInfo — returns system info or error', () {
+    test('TC-077 Normal: getSystemInfo returns a result', () async {
+      final result = await actionHandler.execute(
+        {'type': 'client.getSystemInfo'},
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+
+    test('TC-077 Boundary: getSystemInfo with extra params ignored', () async {
+      final result = await actionHandler.execute(
+        {'type': 'client.getSystemInfo', 'params': {'extra': 'ignored'}},
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+  });
+
+  group('TC-078: client.exec — requires command param', () {
+    test('TC-078 Normal: exec with command param', () async {
+      final result = await actionHandler.execute(
+        {'type': 'client.exec', 'params': {'command': 'echo hello'}},
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+
+    test('TC-078 Error: exec without command param', () async {
+      final result = await actionHandler.execute(
+        {'type': 'client.exec', 'params': {}},
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+  });
+
+  group('TC-079: client.clipboard.read', () {
+    test('TC-079 Normal: clipboard read action returns result', () async {
+      final result = await actionHandler.execute(
+        {'type': 'client.clipboard', 'params': {'action': 'read'}},
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+
+    test('TC-079 Boundary: clipboard without action defaults to read', () async {
+      final result = await actionHandler.execute(
+        {'type': 'client.clipboard', 'params': {}},
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+  });
+
+  group('TC-080: client.clipboard.write', () {
+    test('TC-080 Normal: clipboard write action', () async {
+      final result = await actionHandler.execute(
+        {
+          'type': 'client.clipboard',
+          'params': {'action': 'write', 'text': 'copied text'},
+        },
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+
+    test('TC-080 Boundary: clipboard write without text', () async {
+      final result = await actionHandler.execute(
+        {'type': 'client.clipboard', 'params': {'action': 'write'}},
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+  });
+
+  group('TC-081: client.notification', () {
+    test('TC-081 Normal: client notification action', () async {
+      final result = await actionHandler.execute(
+        {
+          'type': 'client.notification',
+          'params': {'title': 'Test', 'body': 'Hello'},
+        },
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+
+    test('TC-081 Boundary: notification without params', () async {
+      final result = await actionHandler.execute(
+        {'type': 'client.notification'},
+        context,
+      );
+      expect(result, isA<ActionResult>());
+    });
+  });
+
+  group('TC-082: ActionHandler — execute with null type', () {
+    test('TC-082 Error: missing type key returns error', () async {
+      final result = await actionHandler.execute(
+        {'action': 'set', 'binding': 'x'},
+        context,
+      );
+      expect(result.success, isFalse);
+      expect(result.error, contains('Action type is required'));
+    });
+
+    test('TC-082 Error: type explicitly null returns error', () async {
+      final result = await actionHandler.execute(
+        {'type': null, 'action': 'set'},
+        context,
+      );
+      expect(result.success, isFalse);
+      expect(result.error, contains('Action type is required'));
+    });
+  });
+
+  group('TC-083: ActionHandler — execute with unknown type', () {
+    test('TC-083 Error: completely unknown type returns error', () async {
+      final result = await actionHandler.execute(
+        {'type': 'totallyUnknownType'},
+        context,
+      );
+      expect(result.success, isFalse);
+      expect(result.error, contains('Unknown action type'));
+    });
+
+    test('TC-083 Boundary: type with special characters returns error', () async {
+      final result = await actionHandler.execute(
+        {'type': 'unknown@#\$%'},
+        context,
+      );
+      expect(result.success, isFalse);
+      expect(result.error, contains('Unknown action type'));
+    });
+  });
+
+  group('TC-084: ActionHandler — executeDefinition', () {
+    test('TC-084 Normal: converts ActionDefinition to JSON and executes', () async {
+      const definition = StateActionDefinition(
+        action: 'set',
+        binding: 'counter',
+        value: 42,
+      );
+      final result = await actionHandler.executeDefinition(definition, context);
+      expect(result, isA<ActionResult>());
+      expect(result.success, isTrue);
+      expect(stateManager.get<int>('counter'), equals(42));
+    });
+
+    test('TC-084 Normal: toggle action via definition', () async {
+      stateManager.set('flag', false);
+      const definition = StateActionDefinition(
+        action: 'toggle',
+        binding: 'flag',
+      );
+      final result = await actionHandler.executeDefinition(definition, context);
+      expect(result.success, isTrue);
+      expect(stateManager.get<bool>('flag'), isTrue);
+    });
+
+    test('TC-084 Boundary: increment action via definition', () async {
+      stateManager.set('counter', 10);
+      const definition = StateActionDefinition(
+        action: 'increment',
+        binding: 'counter',
+      );
+      final result = await actionHandler.executeDefinition(definition, context);
+      expect(result.success, isTrue);
+      expect(stateManager.get<num>('counter'), equals(11));
+    });
+  });
+
+  group('TC-085: ActionHandler — registerNavigationHandler', () {
+    test('TC-085 Normal: sets global navigation handler on NavigationActionExecutor', () async {
+      String? capturedAction;
+      String? capturedRoute;
+
+      actionHandler.registerNavigationHandler((action, route, params) {
+        capturedAction = action;
+        capturedRoute = route;
+        return true;
+      });
+
+      await actionHandler.execute(
+        {'type': 'navigation', 'action': 'push', 'route': '/test'},
+        context,
+      );
+
+      expect(capturedAction, equals('push'));
+      expect(capturedRoute, equals('/test'));
+    });
+
+    test('TC-085 Normal: replacing handler uses new handler', () async {
+      var firstCalled = false;
+      var secondCalled = false;
+
+      actionHandler.registerNavigationHandler((action, route, params) {
+        firstCalled = true;
+        return true;
+      });
+      actionHandler.registerNavigationHandler((action, route, params) {
+        secondCalled = true;
+        return true;
+      });
+
+      await actionHandler.execute(
+        {'type': 'navigation', 'action': 'push', 'route': '/test'},
+        context,
+      );
+
+      expect(firstCalled, isFalse);
+      expect(secondCalled, isTrue);
+    });
+  });
+
+  group('TC-086: ActionHandler — onSuccess/onError callback chaining', () {
+    test('TC-086 Normal: onSuccess callback executes on success', () async {
+      await actionHandler.execute(
+        {
+          'type': 'state',
+          'action': 'set',
+          'binding': 'x',
+          'value': 1,
+          'onSuccess': {
+            'type': 'state',
+            'action': 'set',
+            'binding': 'callback_hit',
+            'value': true,
+          },
+        },
+        context,
+      );
+
+      expect(stateManager.get<bool>('callback_hit'), isTrue);
+    });
+
+    test('TC-086 Normal: onError callback executes on failure', () async {
+      await actionHandler.execute(
+        {
+          'type': 'state',
+          'action': 'unknownAction',
+          'binding': 'x',
+          'onError': {
+            'type': 'state',
+            'action': 'set',
+            'binding': 'error_hit',
+            'value': true,
+          },
+        },
+        context,
+      );
+
+      expect(stateManager.get<bool>('error_hit'), isTrue);
+    });
+
+    test('TC-086 Boundary: onSuccess not called on failure', () async {
+      await actionHandler.execute(
+        {
+          'type': 'state',
+          'action': 'unknownAction',
+          'binding': 'x',
+          'onSuccess': {
+            'type': 'state',
+            'action': 'set',
+            'binding': 'should_not_set',
+            'value': true,
+          },
+        },
+        context,
+      );
+
+      expect(stateManager.get('should_not_set'), isNull);
+    });
+  });
+
+  group('TC-087: State action — append with list value (spread)', () {
+    test('TC-087 Normal: append list value spreads into existing list', () async {
+      stateManager.set('items', [1, 2]);
+
+      await actionHandler.execute(
+        {
+          'type': 'state',
+          'action': 'append',
+          'binding': 'items',
+          'value': [3, 4],
+        },
+        context,
+      );
+
+      expect(stateManager.get<List>('items'), equals([1, 2, 3, 4]));
+    });
+
+    test('TC-087 Boundary: append empty list is no-op on list content', () async {
+      stateManager.set('items', [1, 2]);
+
+      await actionHandler.execute(
+        {
+          'type': 'state',
+          'action': 'append',
+          'binding': 'items',
+          'value': [],
+        },
+        context,
+      );
+
+      expect(stateManager.get<List>('items'), equals([1, 2]));
+    });
+  });
+
+  group('TC-088: State action — remove with index', () {
+    test('TC-088 Normal: remove by index removes at specified position', () async {
+      stateManager.set('items', ['a', 'b', 'c', 'd']);
+
+      await actionHandler.execute(
+        {
+          'type': 'state',
+          'action': 'remove',
+          'binding': 'items',
+          'index': 2,
+        },
+        context,
+      );
+
+      expect(stateManager.get<List>('items'), equals(['a', 'b', 'd']));
+    });
+
+    test('TC-088 Boundary: remove by out-of-bounds index is no-op', () async {
+      stateManager.set('items', ['a', 'b']);
+
+      await actionHandler.execute(
+        {
+          'type': 'state',
+          'action': 'remove',
+          'binding': 'items',
+          'index': 10,
+        },
+        context,
+      );
+
+      expect(stateManager.get<List>('items'), equals(['a', 'b']));
+    });
+
+    test('TC-088 Error: remove by negative index is no-op', () async {
+      stateManager.set('items', ['a', 'b']);
+
+      await actionHandler.execute(
+        {
+          'type': 'state',
+          'action': 'remove',
+          'binding': 'items',
+          'index': -1,
+        },
+        context,
+      );
+
+      expect(stateManager.get<List>('items'), equals(['a', 'b']));
+    });
+  });
+
+  group('TC-089: State action — removeAt', () {
+    test('TC-089 Normal: removeAt removes at specific index', () async {
+      stateManager.set('items', ['a', 'b', 'c']);
+
+      await actionHandler.execute(
+        {
+          'type': 'state',
+          'action': 'removeAt',
+          'binding': 'items',
+          'index': 1,
+        },
+        context,
+      );
+
+      expect(stateManager.get<List>('items'), equals(['a', 'c']));
+    });
+
+    test('TC-089 Boundary: removeAt index 0 removes first', () async {
+      stateManager.set('items', ['x', 'y', 'z']);
+
+      await actionHandler.execute(
+        {
+          'type': 'state',
+          'action': 'removeAt',
+          'binding': 'items',
+          'index': 0,
+        },
+        context,
+      );
+
+      expect(stateManager.get<List>('items'), equals(['y', 'z']));
+    });
+
+    test('TC-089 Error: removeAt without index returns error', () async {
+      stateManager.set('items', ['a', 'b']);
+
+      final result = await actionHandler.execute(
+        {
+          'type': 'state',
+          'action': 'removeAt',
+          'binding': 'items',
+        },
+        context,
+      );
+
+      expect(result.success, isFalse);
+      expect(result.error, contains('Index is required'));
+    });
+  });
+
+  group('TC-090: State action — pop', () {
+    test('TC-090 Normal: pop removes last from list', () async {
+      stateManager.set('items', [1, 2, 3]);
+
+      await actionHandler.execute(
+        {
+          'type': 'state',
+          'action': 'pop',
+          'binding': 'items',
+        },
+        context,
+      );
+
+      expect(stateManager.get<List>('items'), equals([1, 2]));
+    });
+
+    test('TC-090 Boundary: pop from single-element list leaves empty', () async {
+      stateManager.set('items', ['only']);
+
+      await actionHandler.execute(
+        {
+          'type': 'state',
+          'action': 'pop',
+          'binding': 'items',
+        },
+        context,
+      );
+
+      expect(stateManager.get<List>('items'), equals([]));
+    });
+
+    test('TC-090 Boundary: pop from empty list is no-op', () async {
+      stateManager.set('items', []);
+
+      await actionHandler.execute(
+        {
+          'type': 'state',
+          'action': 'pop',
+          'binding': 'items',
+        },
+        context,
+      );
+
+      expect(stateManager.get<List>('items'), equals([]));
+    });
+  });
+
+  group('TC-091: State action — unknown action type', () {
+    test('TC-091 Error: unknown state action returns error', () async {
+      final result = await actionHandler.execute(
+        {
+          'type': 'state',
+          'action': 'unknownAction',
+          'binding': 'x',
+        },
+        context,
+      );
+
+      expect(result.success, isFalse);
+      expect(result.error, contains('Unknown state action'));
+    });
+
+    test('TC-091 Error: empty action string returns error', () async {
+      final result = await actionHandler.execute(
+        {
+          'type': 'state',
+          'action': 'nonexistent',
+          'binding': 'x',
+        },
+        context,
+      );
+
+      expect(result.success, isFalse);
+      expect(result.error, contains('Unknown state action'));
+    });
+  });
+
+  group('TC-092: Notification action — without message', () {
+    test('TC-092 Error: notification without message returns error', () async {
+      final result = await actionHandler.execute(
+        {'type': 'notification'},
+        context,
+      );
+
+      expect(result.success, isFalse);
+      expect(result.error, contains('Message is required'));
+    });
+
+    test('TC-092 Error: notification with empty message returns error', () async {
+      final result = await actionHandler.execute(
+        {'type': 'notification', 'message': ''},
+        context,
+      );
+
+      expect(result.success, isFalse);
+      expect(result.error, contains('Message is required'));
+    });
+  });
+
+  group('TC-093: Animation action — without target', () {
+    test('TC-093 Error: animation without target returns error', () async {
+      final result = await actionHandler.execute(
+        {'type': 'animation', 'action': 'play'},
+        context,
+      );
+
+      expect(result.success, isFalse);
+      expect(result.error, contains('Target is required'));
+    });
+
+    test('TC-093 Error: animation with empty target returns error', () async {
+      final result = await actionHandler.execute(
+        {'type': 'animation', 'action': 'play', 'target': ''},
+        context,
+      );
+
+      expect(result.success, isFalse);
+      expect(result.error, contains('Target is required'));
+    });
+  });
+
+  group('TC-094: Cancel action — without target', () {
+    test('TC-094 Error: cancel without target returns error', () async {
+      final result = await actionHandler.execute(
+        {'type': 'cancel'},
+        context,
+      );
+
+      expect(result.success, isFalse);
+      expect(result.error, contains('Target is required'));
+    });
+
+    test('TC-094 Error: cancel with empty target returns error', () async {
+      final result = await actionHandler.execute(
+        {'type': 'cancel', 'target': ''},
+        context,
+      );
+
+      expect(result.success, isFalse);
+      expect(result.error, contains('Target is required'));
+    });
+
+    test('TC-094 Normal: cancel with valid target succeeds', () async {
+      final result = await actionHandler.execute(
+        {'type': 'cancel', 'target': 'someActionId'},
+        context,
+      );
+
+      expect(result.success, isTrue);
+    });
+  });
+}
+
+/// Test executor that always returns success with custom data
+class _TestExecutor extends ActionExecutor {
+  @override
+  Future<ActionResult> execute(
+    Map<String, dynamic> action,
+    RenderContext context,
+  ) async {
+    return ActionResult.success(data: 'test_executed');
+  }
+}

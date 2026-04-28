@@ -10,14 +10,14 @@ class InkWellWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     // Extract properties
-    final splashColor = parseColor(context.resolve(properties['splashColor']));
+    final splashColor = parseColor(context.resolve(properties['splashColor']), context);
     final highlightColor =
-        parseColor(context.resolve(properties['highlightColor']));
-    final hoverColor = parseColor(context.resolve(properties['hoverColor']));
-    final focusColor = parseColor(context.resolve(properties['focusColor']));
+        parseColor(context.resolve(properties['highlightColor']), context);
+    final hoverColor = parseColor(context.resolve(properties['hoverColor']), context);
+    final focusColor = parseColor(context.resolve(properties['focusColor']), context);
     final overlayColor = properties['overlayColor'] != null
         ? WidgetStateProperty.all(
-            parseColor(context.resolve(properties['overlayColor'])))
+            parseColor(context.resolve(properties['overlayColor']), context))
         : null;
     // splashRadius is not available in current Flutter stable version
     // final splashRadius = context.resolve<num?>(properties['splashRadius'])?.toDouble();
@@ -29,24 +29,28 @@ class InkWellWidgetFactory extends WidgetFactory {
     final canRequestFocus = properties['canRequestFocus'] as bool? ?? true;
     final autofocus = properties['autofocus'] as bool? ?? false;
 
-    // Extract child widget
+    // Extract child widget (support both 'child' and 'children' per MCP UI DSL spec)
+    final childDef = (properties['child'] ?? definition['child'])
+        as Map<String, dynamic>?;
     final childrenDef = properties['children'] as List<dynamic>? ??
         definition['children'] as List<dynamic>?;
     Widget? child;
-    if (childrenDef != null && childrenDef.isNotEmpty) {
+    if (childDef != null) {
+      child = context.buildWidget(childDef);
+    } else if (childrenDef != null && childrenDef.isNotEmpty) {
       child = context.buildWidget(childrenDef.first as Map<String, dynamic>);
     }
 
     // Extract action handlers
-    final onTap = properties['onTap'] as Map<String, dynamic>?;
-    final onDoubleTap = properties['onDoubleTap'] as Map<String, dynamic>?;
-    final onLongPress = properties['onLongPress'] as Map<String, dynamic>?;
+    final onTap = (properties['onTap'] ?? properties['click'] ?? properties['onTap']) as Map<String, dynamic>?;
+    final onDoubleTap = (properties['onDoubleTap'] ?? properties['double-click'] ?? properties['onDoubleTap']) as Map<String, dynamic>?;
+    final onLongPress = (properties['onLongPress'] ?? properties['long-press'] ?? properties['longPress']) as Map<String, dynamic>?;
     final onTapDown = properties['onTapDown'] as Map<String, dynamic>?;
     final onTapUp = properties['onTapUp'] as Map<String, dynamic>?;
     final onTapCancel = properties['onTapCancel'] as Map<String, dynamic>?;
     final onHighlightChanged =
         properties['onHighlightChanged'] as Map<String, dynamic>?;
-    final onHover = properties['onHover'] as Map<String, dynamic>?;
+    final onHover = (properties['onHover'] ?? properties['hover']) as Map<String, dynamic>?;
 
     Widget inkWell = InkWell(
       onTap: onTap != null

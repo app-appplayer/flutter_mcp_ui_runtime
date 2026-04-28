@@ -1,0 +1,354 @@
+{
+  "type": "page",
+  "metadata": {
+    "title": "Advanced",
+    "description": "Advanced widget showcase"
+  },
+  "state": {
+    "initial": {
+      "expanded": false,
+      "progress": 0.65
+    }
+  },
+  "content": {
+    "type": "singleChildScrollView",
+    "padding": {
+      "all": 16
+    },
+    "child": {
+      "type": "linear",
+      "direction": "vertical",
+      "spacing": 16,
+      "children": [
+        {
+          "type": "text",
+          "content": "canvas (v1.3)",
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#2196F3"
+          }
+        },
+        {
+          "type": "canvas",
+          "width": 280,
+          "height": 150,
+          "backgroundColor": "#F5F5F5",
+          "commands": [
+            {
+              "op": "rect",
+              "x": 10,
+              "y": 10,
+              "width": 80,
+              "height": 60,
+              "fill": "#2196F3",
+              "cornerRadius": 8
+            },
+            {
+              "op": "circle",
+              "cx": 160,
+              "cy": 40,
+              "radius": 30,
+              "fill": "#FF4081"
+            },
+            {
+              "op": "line",
+              "x1": 10,
+              "y1": 90,
+              "x2": 270,
+              "y2": 90,
+              "stroke": "#E0E0E0",
+              "strokeWidth": 2
+            },
+            {
+              "op": "text",
+              "content": "Canvas drawing",
+              "x": 10,
+              "y": 120,
+              "fontSize": 14,
+              "color": "#333333"
+            },
+            {
+              "op": "arc",
+              "cx": 240,
+              "cy": 40,
+              "radius": 25,
+              "startAngle": 0,
+              "endAngle": 4.2,
+              "stroke": "#4CAF50",
+              "strokeWidth": 4,
+              "strokeCap": "round"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "content": "animatedContainer",
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#2196F3"
+          }
+        },
+        {
+          "type": "animatedContainer",
+          "duration": 300,
+          "curve": "easeInOut",
+          "width": "{{expanded ? 280 : 140}}",
+          "height": "{{expanded ? 100 : 50}}",
+          "decoration": {
+            "color": "{{expanded ? \"#FF4081\" : \"#2196F3\"}}",
+            "borderRadius": 8
+          },
+          "child": {
+            "type": "center",
+            "child": {
+              "type": "text",
+              "content": "{{expanded ? \"Expanded!\" : \"Tap to expand\"}}",
+              "style": {
+                "color": "#FFFFFF",
+                "fontWeight": "bold"
+              }
+            }
+          }
+        },
+        {
+          "type": "button",
+          "label": "Toggle size",
+          "variant": "outlined",
+          "onTap": {
+            "type": "state",
+            "action": "toggle",
+            "binding": "expanded"
+          }
+        },
+        {
+          "type": "text",
+          "content": "opacity (v1.3)",
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#2196F3"
+          }
+        },
+        {
+          "type": "linear",
+          "direction": "horizontal",
+          "spacing": 16,
+          "children": [
+            {
+              "type": "opacity",
+              "opacity": 1.0,
+              "child": {
+                "type": "box",
+                "width": 60,
+                "height": 60,
+                "decoration": {
+                  "color": "#2196F3",
+                  "borderRadius": 8
+                },
+                "child": {
+                  "type": "center",
+                  "child": {
+                    "type": "text",
+                    "content": "100%",
+                    "style": {
+                      "color": "#FFFFFF",
+                      "fontSize": 12,
+                      "fontWeight": "bold"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "opacity",
+              "opacity": 0.6,
+              "child": {
+                "type": "box",
+                "width": 60,
+                "height": 60,
+                "decoration": {
+                  "color": "#2196F3",
+                  "borderRadius": 8
+                },
+                "child": {
+                  "type": "center",
+                  "child": {
+                    "type": "text",
+                    "content": "60%",
+                    "style": {
+                      "color": "#FFFFFF",
+                      "fontSize": 12,
+                      "fontWeight": "bold"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "opacity",
+              "opacity": 0.3,
+              "child": {
+                "type": "box",
+                "width": 60,
+                "height": 60,
+                "decoration": {
+                  "color": "#2196F3",
+                  "borderRadius": 8
+                },
+                "child": {
+                  "type": "center",
+                  "child": {
+                    "type": "text",
+                    "content": "30%",
+                    "style": {
+                      "color": "#FFFFFF",
+                      "fontSize": 12,
+                      "fontWeight": "bold"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "content": "transform (v1.3)",
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#2196F3"
+          }
+        },
+        {
+          "type": "linear",
+          "direction": "horizontal",
+          "spacing": 24,
+          "children": [
+            {
+              "type": "transform",
+              "rotate": 0.3,
+              "child": {
+                "type": "box",
+                "width": 60,
+                "height": 60,
+                "decoration": {
+                  "color": "#FF4081",
+                  "borderRadius": 8
+                },
+                "child": {
+                  "type": "center",
+                  "child": {
+                    "type": "text",
+                    "content": "Rot",
+                    "style": {
+                      "color": "#FFFFFF",
+                      "fontSize": 12,
+                      "fontWeight": "bold"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "transform",
+              "scale": 1.2,
+              "child": {
+                "type": "box",
+                "width": 60,
+                "height": 60,
+                "decoration": {
+                  "color": "#4CAF50",
+                  "borderRadius": 8
+                },
+                "child": {
+                  "type": "center",
+                  "child": {
+                    "type": "text",
+                    "content": "Scale",
+                    "style": {
+                      "color": "#FFFFFF",
+                      "fontSize": 12,
+                      "fontWeight": "bold"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "content": "markdown",
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#2196F3"
+          }
+        },
+        {
+          "type": "card",
+          "child": {
+            "type": "box",
+            "padding": {
+              "all": 12
+            },
+            "child": {
+              "type": "markdown",
+              "content": "# Heading\n\n**Bold** and *italic* text.\n\n- Item 1\n- Item 2\n\n`inline code`"
+            }
+          }
+        },
+        {
+          "type": "text",
+          "content": "table",
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#2196F3"
+          }
+        },
+        {
+          "type": "table",
+          "columns": [
+            {
+              "key": "name",
+              "label": "Name"
+            },
+            {
+              "key": "type",
+              "label": "Type"
+            },
+            {
+              "key": "version",
+              "label": "Version"
+            }
+          ],
+          "rows": [
+            {
+              "name": "Flutter",
+              "type": "Framework",
+              "version": "3.10"
+            },
+            {
+              "name": "Dart",
+              "type": "Language",
+              "version": "3.0"
+            },
+            {
+              "name": "MCP UI DSL",
+              "type": "Spec",
+              "version": "1.3"
+            }
+          ]
+        },
+        {
+          "type": "sizedBox",
+          "height": 24
+        }
+      ]
+    }
+  }
+}

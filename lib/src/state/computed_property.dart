@@ -3,7 +3,22 @@ import '../utils/json_path.dart';
 import '../utils/mcp_logger.dart';
 
 /// Represents a computed property that derives its value from other state
-/// according to MCP UI DSL v1.0 specification
+/// according to MCP UI DSL v1.0 specification.
+///
+/// Once [ManagedComputedProperty] from `computed_manager.dart` (which delegates
+/// expression evaluation to [BindingEngine]) supports all the features below,
+/// this class should be replaced. Until then it remains the active implementation
+/// used by [StateManager].
+///
+/// Features not yet available in [ManagedComputedProperty]:
+/// - Ternary operator evaluation (`condition ? trueValue : falseValue`)
+/// - Logical operator evaluation (`&&`, `||`)
+/// - Comparison operators (`>`, `<`, `>=`, `<=`, `==`, `!=`)
+/// - Arithmetic operators (`+`, `-`, `*`, `/`, `%`)
+/// - Pipe/transform operations (`| uppercase`, `| round`, etc.)
+/// - Function calls (`length()`, `sum()`)
+/// - Array access with index expressions
+/// - Circular dependency detection
 class ComputedProperty {
   ComputedProperty({
     required this.name,
@@ -32,6 +47,9 @@ class ComputedProperty {
   /// Logger instance
   final MCPLogger _logger;
 
+  /// Static logger for static methods
+  static final _staticLogger = MCPLogger('ComputedProperty');
+
   dynamic _cachedValue;
   bool _isInitialized = false;
   bool _isComputing = false;
@@ -45,9 +63,9 @@ class ComputedProperty {
   /// Computes and caches the property value
   dynamic computeAndCache(Map<String, dynamic> state) {
     if (_isComputing) {
-      _logger.error('Circular dependency detected in computed property: $name');
-      throw StateError(
-          'Circular dependency detected in computed property: $name');
+      // Circular dependency detected: return null and log warning instead of throwing
+      _logger.warning('Circular dependency detected in computed property: $name, returning null');
+      return null;
     }
 
     try {
@@ -161,8 +179,8 @@ class ComputedProperty {
 
       return result;
     } catch (error) {
-      debugPrint(
-          'ComputedProperty: Error evaluating expression "$expression": $error');
+      _staticLogger.error(
+          'Error evaluating expression "$expression": $error');
       return null;
     }
   }

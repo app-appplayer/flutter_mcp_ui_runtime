@@ -26,11 +26,15 @@ class AnimatedContainerWidgetFactory extends WidgetFactory {
     final transformAlignment = parseAlignment(properties['transformAlignment']);
     final clipBehavior = _parseClip(properties['clipBehavior']) ?? Clip.none;
 
-    // Extract child widget
+    // Extract child widget (support both 'child' and 'children' per MCP UI DSL spec)
+    final childDef = (properties['child'] ?? definition['child'])
+        as Map<String, dynamic>?;
     final childrenDef = properties['children'] as List<dynamic>? ??
         definition['children'] as List<dynamic>?;
     Widget? child;
-    if (childrenDef != null && childrenDef.isNotEmpty) {
+    if (childDef != null) {
+      child = context.buildWidget(childDef);
+    } else if (childrenDef != null && childrenDef.isNotEmpty) {
       child = context.buildWidget(childrenDef.first as Map<String, dynamic>);
     }
 
@@ -94,7 +98,7 @@ class AnimatedContainerWidgetFactory extends WidgetFactory {
 
     if (decoration is Map<String, dynamic>) {
       return BoxDecoration(
-        color: parseColor(context.resolve(decoration['color'])),
+        color: parseColor(context.resolve(decoration['color']), context),
         borderRadius: _parseBorderRadius(decoration['borderRadius']),
         border: _parseBorder(decoration['border'], context),
       );
@@ -118,7 +122,7 @@ class AnimatedContainerWidgetFactory extends WidgetFactory {
 
     if (border is Map<String, dynamic>) {
       final color =
-          parseColor(context.resolve(border['color'])) ?? Colors.black;
+          parseColor(context.resolve(border['color']), context) ?? Colors.black;
       final width = border['width']?.toDouble() ?? 1.0;
 
       return Border.all(color: color, width: width);

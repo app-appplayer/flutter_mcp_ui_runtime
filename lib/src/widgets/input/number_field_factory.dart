@@ -19,6 +19,12 @@ class NumberFieldFactory extends WidgetFactory {
     final max = properties['max'] as num?;
     final step = properties['step'] as num? ?? 1;
     final decimals = properties['decimals'] as int? ?? 0;
+    // Support 'decimalPlaces' as alias for 'decimals'
+    final decimalPlaces = properties['decimalPlaces'] as int?;
+    final effectiveDecimals = decimalPlaces ?? decimals;
+    final format = properties['format'] as String?;
+    final thousandSeparator =
+        properties['thousandSeparator'] as String? ?? '';
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
     
     // Handle error property
@@ -32,19 +38,46 @@ class NumberFieldFactory extends WidgetFactory {
       errorText = null;
     }
 
-    // Get current value by resolving the value property
-    final currentValue = context.resolve(properties['value']);
+    // Spec §2.6.0: binding shorthand — read from state path if set.
+    final binding = properties['binding'] as String?;
+    final currentValue = binding != null
+        ? context.getState(binding)
+        : context.resolve(properties['value']);
+
+    // Format the display value
+    String displayValue = '';
+    if (currentValue != null) {
+      if (effectiveDecimals > 0) {
+        final numVal = currentValue is num
+            ? currentValue
+            : num.tryParse(currentValue.toString());
+        displayValue = numVal != null
+            ? numVal.toStringAsFixed(effectiveDecimals)
+            : currentValue.toString();
+      } else {
+        displayValue = currentValue.toString();
+      }
+      // Apply thousand separator
+      if (thousandSeparator.isNotEmpty && displayValue.isNotEmpty) {
+        displayValue = _applyThousandSeparator(
+            displayValue, thousandSeparator);
+      }
+      // Apply format pattern if provided
+      if (format != null) {
+        displayValue = format.replaceAll('{value}', displayValue);
+      }
+    }
 
     // Create text controller with current value
     final controller = TextEditingController(
-      text: currentValue?.toString() ?? '',
+      text: displayValue,
     );
 
     // Build input formatters
     final inputFormatters = <TextInputFormatter>[];
 
     // Add numeric formatter
-    if (decimals > 0) {
+    if (effectiveDecimals > 0) {
       inputFormatters.add(
         FilteringTextInputFormatter.allow(RegExp(r'^\-?\d*\.?\d*$')),
       );
@@ -57,7 +90,7 @@ class NumberFieldFactory extends WidgetFactory {
     Widget textField = TextField(
       controller: controller,
       keyboardType: TextInputType.numberWithOptions(
-        decimal: decimals > 0,
+        decimal: effectiveDecimals > 0,
         signed: min == null || min < 0,
       ),
       inputFormatters: inputFormatters,
@@ -75,16 +108,25 @@ class NumberFieldFactory extends WidgetFactory {
       onChanged: (value) {
         // Parse the number value
         num? numValue;
-        if (value.isNotEmpty) {
-          if (decimals > 0) {
-            numValue = double.tryParse(value);
+        // Strip thousand separators before parsing
+        final cleanValue = thousandSeparator.isNotEmpty
+            ? value.replaceAll(thousandSeparator, '')
+            : value;
+        if (cleanValue.isNotEmpty) {
+          if (effectiveDecimals > 0) {
+            numValue = double.tryParse(cleanValue);
           } else {
-            numValue = int.tryParse(value);
+            numValue = int.tryParse(cleanValue);
           }
         }
-        
+
+        // Spec §2.6.0: write back to binding path.
+        if (binding != null) {
+          context.setValue(binding, numValue);
+        }
+
         // Execute change action if defined
-        final changeAction = properties['change'];
+        final changeAction = properties['onChange'] ?? properties['change'];
         if (changeAction != null) {
           // Create modified action with event value
           final eventData = Map<String, dynamic>.from(changeAction);
@@ -118,15 +160,19 @@ class NumberFieldFactory extends WidgetFactory {
 
                     // Check bounds
                     if (min == null || newValue >= min) {
-                      controller.text = decimals > 0
-                          ? newValue.toStringAsFixed(decimals)
+                      controller.text = effectiveDecimals > 0
+                          ? newValue.toStringAsFixed(effectiveDecimals)
                           : newValue.toStringAsFixed(0);
-                      
+
+                      if (binding != null) {
+                        context.setValue(binding, newValue);
+                      }
+
                       // Execute change action if defined
-                      final changeAction = properties['change'];
+                      final changeAction = properties['onChange'] ?? properties['change'];
                       if (changeAction != null) {
                         final eventData = Map<String, dynamic>.from(changeAction);
-                        
+
                         // Replace {{event.value}} placeholder in params
                         if (eventData['params'] != null && eventData['params'] is Map<String, dynamic>) {
                           final params = Map<String, dynamic>.from(eventData['params']);
@@ -137,7 +183,7 @@ class NumberFieldFactory extends WidgetFactory {
                           });
                           eventData['params'] = params;
                         }
-                        
+
                         context.actionHandler.execute(eventData, context);
                       }
                     }
@@ -154,12 +200,16 @@ class NumberFieldFactory extends WidgetFactory {
 
                     // Check bounds
                     if (max == null || newValue <= max) {
-                      controller.text = decimals > 0
-                          ? newValue.toStringAsFixed(decimals)
+                      controller.text = effectiveDecimals > 0
+                          ? newValue.toStringAsFixed(effectiveDecimals)
                           : newValue.toStringAsFixed(0);
-                      
+
+                      if (binding != null) {
+                        context.setValue(binding, newValue);
+                      }
+
                       // Execute change action if defined
-                      final changeAction = properties['change'];
+                      final changeAction = properties['onChange'] ?? properties['change'];
                       if (changeAction != null) {
                         final eventData = Map<String, dynamic>.from(changeAction);
                         
@@ -185,5 +235,28 @@ class NumberFieldFactory extends WidgetFactory {
     }
 
     return applyCommonWrappers(textField, properties, context);
+  }
+
+  /// Apply thousand separator to a numeric string
+  String _applyThousandSeparator(String value, String separator) {
+    // Split into integer and decimal parts
+    final parts = value.split('.');
+    final integerPart = parts[0];
+    final decimalPart = parts.length > 1 ? '.${parts[1]}' : '';
+
+    // Determine if negative
+    final isNegative = integerPart.startsWith('-');
+    final digits = isNegative ? integerPart.substring(1) : integerPart;
+
+    // Apply thousand separator from right to left
+    final buffer = StringBuffer();
+    for (int i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) {
+        buffer.write(separator);
+      }
+      buffer.write(digits[i]);
+    }
+
+    return '${isNegative ? '-' : ''}$buffer$decimalPart';
   }
 }

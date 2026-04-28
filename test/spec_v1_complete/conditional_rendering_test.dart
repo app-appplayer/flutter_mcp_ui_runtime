@@ -178,7 +178,7 @@ void main() {
                     {
                       'type': 'button',
                       'label': 'Logout',
-                      'click': {
+                      'onTap': {
                         'type': 'state',
                         'action': 'set',
                         'path': 'isLoggedIn',
@@ -198,7 +198,7 @@ void main() {
                     {
                       'type': 'button',
                       'label': 'Login',
-                      'click': {
+                      'onTap': {
                         'type': 'state',
                         'action': 'set',
                         'path': 'isLoggedIn',
@@ -435,7 +435,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Increment',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'increment',
                   'path': 'count',
@@ -568,7 +568,7 @@ void main() {
                   {'value': 'personal', 'label': 'Personal'},
                   {'value': 'business', 'label': 'Business'},
                 ],
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'accountType',
@@ -579,7 +579,7 @@ void main() {
                 'type': 'textInput',
                 'label': 'Full Name',
                 'value': '{{form.name}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'form.name',
@@ -598,7 +598,7 @@ void main() {
                       'type': 'textInput',
                       'label': 'Company Name',
                       'value': '{{form.companyName}}',
-                      'change': {
+                      'onChange': {
                         'type': 'state',
                         'action': 'set',
                         'path': 'form.companyName',
@@ -609,7 +609,7 @@ void main() {
                       'type': 'textInput',
                       'label': 'Tax ID',
                       'value': '{{form.taxId}}',
-                      'change': {
+                      'onChange': {
                         'type': 'state',
                         'action': 'set',
                         'path': 'form.taxId',
@@ -638,10 +638,11 @@ void main() {
         expect(find.text('Company Name'), findsNothing);
         expect(find.text('Tax ID'), findsNothing);
         
-        // Change to business account
-        await tester.tap(find.byType(DropdownButton<dynamic>));
+        // Change to business account — runtime renders a
+        // PopupMenuButton-backed compact selector for `select`/`dropdown`.
+        await tester.tap(find.byType(PopupMenuButton<int>));
         await tester.pumpAndSettle();
-        
+
         await tester.tap(find.text('Business').last);
         await tester.pumpAndSettle();
         
@@ -685,7 +686,7 @@ void main() {
                   {
                     'type': 'button',
                     'label': 'Success',
-                    'click': {
+                    'onTap': {
                       'type': 'state',
                       'action': 'set',
                       'path': 'status',
@@ -695,7 +696,7 @@ void main() {
                   {
                     'type': 'button',
                     'label': 'Error',
-                    'click': {
+                    'onTap': {
                       'type': 'state',
                       'action': 'set',
                       'path': 'status',
@@ -705,7 +706,7 @@ void main() {
                   {
                     'type': 'button',
                     'label': 'Pending',
-                    'click': {
+                    'onTap': {
                       'type': 'state',
                       'action': 'set',
                       'path': 'status',
@@ -778,7 +779,7 @@ void main() {
                 'type': 'checkbox',
                 'label': 'Show completed',
                 'value': '{{showCompleted}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'showCompleted',

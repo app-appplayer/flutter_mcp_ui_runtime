@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import '../runtime/service_registry.dart';
 import '../actions/action_handler.dart';
+import '../utils/mcp_logger.dart';
 
 /// Service for managing dialogs, bottom sheets, and overlays
 class DialogService extends RuntimeService {
   DialogService({super.enableDebugMode});
+
+  static final _logger = MCPLogger('DialogService');
 
   final List<OverlayEntry> _overlays = [];
   bool _isShowingDialog = false;
@@ -23,7 +26,7 @@ class DialogService extends RuntimeService {
   }) async {
     if (_isShowingDialog) {
       if (enableDebugMode) {
-        debugPrint('DialogService: Dialog already showing');
+        _logger.debug('Dialog already showing');
       }
       return null;
     }
@@ -50,12 +53,31 @@ class DialogService extends RuntimeService {
         case DialogType.normal:
           if (title != null || actions != null) {
             dialogContent = _buildStandardDialog(content, title, actions);
+          } else {
+            // Without title/actions the raw content would fill the entire
+            // overlay (no bounding surface). Wrap in a standard Dialog so
+            // it respects Material sizing + barrier-tap dismissal.
+            dialogContent = Dialog(
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 40,
+                vertical: 24,
+              ),
+              child: Material(
+                type: MaterialType.transparency,
+                child: content,
+              ),
+            );
           }
           break;
       }
 
+      // Pin the dialog to the runtime's local Navigator (the one owning the
+      // pages), not the outermost root Navigator. This keeps dialog lifecycle
+      // scoped to the MCP UI surface so popping via
+      // `DialogService.navigatorKey` finds the correct route.
       final result = await showDialog<T>(
         context: context,
+        useRootNavigator: false,
         barrierDismissible: barrierDismissible,
         builder: (context) => dialogContent,
       );
@@ -165,6 +187,7 @@ class DialogService extends RuntimeService {
 
     return await showModalBottomSheet<T>(
       context: context,
+      useRootNavigator: false,
       isDismissible: isDismissible,
       enableDrag: enableDrag,
       backgroundColor: backgroundColor,
@@ -271,7 +294,7 @@ class DialogService extends RuntimeService {
     overlay.insert(entry);
 
     if (enableDebugMode) {
-      debugPrint('DialogService: Showed overlay');
+      _logger.debug('Showed overlay');
     }
   }
 
@@ -282,7 +305,7 @@ class DialogService extends RuntimeService {
       entry.remove();
 
       if (enableDebugMode) {
-        debugPrint('DialogService: Removed overlay');
+        _logger.debug('Removed overlay');
       }
     }
   }
@@ -295,14 +318,14 @@ class DialogService extends RuntimeService {
     _overlays.clear();
 
     if (enableDebugMode) {
-      debugPrint('DialogService: Removed all overlays');
+      _logger.debug('Removed all overlays');
     }
   }
 
   @override
   Future<void> onInitialize(Map<String, dynamic> config) async {
     if (enableDebugMode) {
-      debugPrint('DialogService: Initialized');
+      _logger.debug('Initialized');
     }
   }
 

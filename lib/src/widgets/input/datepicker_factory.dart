@@ -10,8 +10,9 @@ class DatePickerWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     // Extract properties
-    final label = context.resolve<String>(properties['label']) as String? ??
-        'Select Date';
+    final label = properties['label'] != null
+        ? context.resolve<String>(properties['label'])
+        : 'Select Date';
     final initialDate = properties['initialDate'] != null
         ? DateTime.parse(properties['initialDate'])
         : DateTime.now();
@@ -25,15 +26,18 @@ class DatePickerWidgetFactory extends WidgetFactory {
     final variant = properties['variant'] as String? ?? 'elevated';
     final icon = properties['icon'] as String? ?? 'calendar_today';
 
-    // Get current value from state if bound
-    final bindTo = properties['bindTo'] as String?;
+    // Spec §2.6.0: canonical `binding`; accept legacy `bindTo` alias.
+    final binding = (properties['binding'] as String?) ??
+        (properties['bindTo'] as String?);
     String? currentValue;
-    if (bindTo != null) {
-      currentValue = context.getValue(bindTo) as String?;
+    if (binding != null) {
+      currentValue = context.getValue(binding) as String?;
+    } else if (properties['value'] != null) {
+      currentValue = context.resolve<String?>(properties['value']);
     }
 
     // Extract action handler
-    final onChange = properties['onChange'] as Map<String, dynamic>?;
+    final onChange = (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
 
     Widget datePicker = StatefulBuilder(
       builder: (buildContext, setState) {
@@ -63,9 +67,8 @@ class DatePickerWidgetFactory extends WidgetFactory {
             if (picked != null) {
               final formattedDate = _formatDate(picked, dateFormat);
 
-              // Update state if bindTo is specified
-              if (bindTo != null) {
-                context.setValue(bindTo, formattedDate);
+              if (binding != null) {
+                context.setValue(binding, formattedDate);
               }
 
               // Execute onChange action

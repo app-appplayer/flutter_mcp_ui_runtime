@@ -392,7 +392,7 @@ class MCPUIServer {
                   'type': 'button',
                   'label': '-',
                   'variant': 'elevated',
-                  'click': {
+                  'onTap': {
                     'type': 'tool',
                     'tool': 'decrement',
                     'params': {},
@@ -402,7 +402,7 @@ class MCPUIServer {
                   'type': 'button',
                   'label': '+',
                   'variant': 'elevated',
-                  'click': {
+                  'onTap': {
                     'type': 'tool',
                     'tool': 'increment',
                     'params': {},
@@ -412,7 +412,7 @@ class MCPUIServer {
                   'type': 'button',
                   'label': 'Reset',
                   'variant': 'outlined',
-                  'click': {
+                  'onTap': {
                     'type': 'tool',
                     'tool': 'reset',
                     'params': {},
@@ -579,7 +579,7 @@ class MCPUIServer {
                   'type': 'button',
                   'label': 'Subscribe',
                   'variant': 'elevated',
-                  'click': {
+                  'onTap': {
                     'type': 'resource',
                     'action': 'subscribe',
                     'uri': 'data://temperature-standard',
@@ -594,7 +594,7 @@ class MCPUIServer {
                   'type': 'button',
                   'label': 'Unsubscribe',
                   'variant': 'outlined',
-                  'click': {
+                  'onTap': {
                     'type': 'resource',
                     'action': 'unsubscribe',
                     'uri': 'data://temperature-standard',
@@ -710,7 +710,7 @@ class MCPUIServer {
                   'type': 'button',
                   'label': 'Subscribe',
                   'variant': 'elevated',
-                  'click': {
+                  'onTap': {
                     'type': 'resource',
                     'action': 'subscribe',
                     'uri': 'data://temperature',
@@ -725,7 +725,7 @@ class MCPUIServer {
                   'type': 'button',
                   'label': 'Unsubscribe',
                   'variant': 'outlined',
-                  'click': {
+                  'onTap': {
                     'type': 'resource',
                     'action': 'unsubscribe',
                     'uri': 'data://temperature',

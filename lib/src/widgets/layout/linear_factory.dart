@@ -9,9 +9,13 @@ class LinearLayoutFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Get direction (default to vertical)
-    final direction =
-        context.resolve<String>(properties['direction'] ?? 'vertical');
+    // Get direction. Canonical `direction`; spec §17.3.2 legacy aliases:
+    // `orientation` (static-layout authors) and `scrollDirection` (authors
+    // coming from Flutter's Row/Column wrapped in scroll views).
+    final direction = context.resolve<String>(properties['direction'] ??
+            properties['orientation'] ??
+            properties['scrollDirection'] ??
+            'vertical');
     final isVertical = direction == 'vertical';
 
     // Get distribution (spec v1.0 replacement for mainAxisAlignment)
@@ -19,13 +23,17 @@ class LinearLayoutFactory extends WidgetFactory {
         context.resolve<String?>(properties['mainAxisAlignment']) ??
         'start';
 
-    // Get alignment (spec v1.0 for crossAxisAlignment)
+    // Get alignment (spec v1.0 for crossAxisAlignment, default 'start' per spec)
     final alignment = context.resolve<String?>(properties['alignment']) ??
         context.resolve<String?>(properties['crossAxisAlignment']) ??
-        'center';
+        'start';
 
-    // Get gap (spec v1.0 for spacing between items)
-    final gapValue = context.resolve(properties['gap']) ?? 0.0;
+    // Get spacing. Canonical `spacing`; legacy aliases `gap` and
+    // `itemSpacing` per §17.3.2.
+    final gapValue = context.resolve(properties['spacing'] ??
+            properties['gap'] ??
+            properties['itemSpacing']) ??
+        0.0;
     final gap =
         gapValue is int ? gapValue.toDouble() : (gapValue as double? ?? 0.0);
 
@@ -42,7 +50,12 @@ class LinearLayoutFactory extends WidgetFactory {
 
         // Check if child has flex property
         final flex = childDef['flex'];
-        if (flex != null && flex is int && !wrap) {
+        final childType = childDef['type'] as String?;
+        // Skip Flexible wrapping for types that are already ParentDataWidgets
+        final isFlexWidget = childType == 'expanded' ||
+            childType == 'flexible' ||
+            childType == 'spacer';
+        if (flex != null && flex is int && !wrap && !isFlexWidget) {
           // Wrap in Flexible if flex is specified and not in wrap mode
           children.add(Flexible(
             flex: flex,
@@ -81,18 +94,39 @@ class LinearLayoutFactory extends WidgetFactory {
       );
     }
 
+    // Main-axis sizing — spec: default is `max` when any child is
+    // `expanded` / `flexible` / `spacer` (so they can distribute the
+    // remaining space), `min` otherwise (safe inside unbounded parents like
+    // SingleChildScrollView). Authors can override with the explicit
+    // `mainAxisSize` property.
+    final hasFlexChild = childrenDefs.any((c) {
+      if (c is! Map<String, dynamic>) return false;
+      final t = c['type'];
+      return t == 'expanded' ||
+          t == 'flexible' ||
+          t == 'spacer' ||
+          c['flex'] != null;
+    });
+    final explicitMainAxisSize =
+        context.resolve<String?>(properties['mainAxisSize']);
+    final mainAxisSize = switch (explicitMainAxisSize) {
+      'max' => MainAxisSize.max,
+      'min' => MainAxisSize.min,
+      _ => hasFlexChild ? MainAxisSize.max : MainAxisSize.min,
+    };
+
     // Otherwise use Column or Row
     Widget widget = isVertical
         ? Column(
             mainAxisAlignment: _parseMainAxisAlignment(distribution),
             crossAxisAlignment: _parseCrossAxisAlignment(alignment),
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: mainAxisSize,
             children: spacedChildren,
           )
         : Row(
             mainAxisAlignment: _parseMainAxisAlignment(distribution),
             crossAxisAlignment: _parseCrossAxisAlignment(alignment),
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: mainAxisSize,
             children: spacedChildren,
           );
 
@@ -143,7 +177,7 @@ class LinearLayoutFactory extends WidgetFactory {
       case 'baseline':
         return CrossAxisAlignment.baseline;
       default:
-        return CrossAxisAlignment.center;
+        return CrossAxisAlignment.start;
     }
   }
 
@@ -178,7 +212,7 @@ class LinearLayoutFactory extends WidgetFactory {
       case 'center':
         return WrapCrossAlignment.center;
       default:
-        return WrapCrossAlignment.center;
+        return WrapCrossAlignment.start;
     }
   }
 }

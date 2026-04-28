@@ -46,7 +46,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Increment',
-              'click': {
+              'onTap': {
                 'type': 'tool',
                 'tool': 'increment',
                 'params': {},
@@ -55,7 +55,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Decrement',
-              'click': {
+              'onTap': {
                 'type': 'tool',
                 'tool': 'decrement',
                 'params': {},
@@ -130,7 +130,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Runtime Tool',
-              'click': {
+              'onTap': {
                 'type': 'tool',
                 'tool': 'test_runtime_tool',
                 'params': {'test': 'data'},
@@ -139,7 +139,7 @@ void main() {
             {
               'type': 'button',
               'label': 'Callback Tool',
-              'click': {
+              'onTap': {
                 'type': 'tool',
                 'tool': 'test_callback_tool',
                 'params': {'test': 'callback'},
@@ -203,7 +203,7 @@ void main() {
         'content': {
           'type': 'button',
           'label': 'Test Button',
-          'click': {
+          'onTap': {
             'type': 'tool',
             'tool': 'button_test',
             'params': {'button': 'test'},

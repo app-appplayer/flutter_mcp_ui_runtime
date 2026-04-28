@@ -275,6 +275,100 @@ void main() {
         expect(errorResult, isA<ActionResult>());
       });
     });
+
+    group('TC-010: ActionResult.success / ActionResult.error factories', () {
+      test('Normal: success factory creates result with success=true', () {
+        final result = ActionResult.success(data: {'id': 1});
+        expect(result.success, isTrue);
+        expect(result.data, equals({'id': 1}));
+        expect(result.error, isNull);
+        expect(result.errorCode, isNull);
+        expect(result.errorDetails, isNull);
+      });
+
+      test('Normal: error factory creates result with success=false', () {
+        final result = ActionResult.error(
+          'Validation failed',
+          errorCode: 'VALIDATION_ERROR',
+          errorDetails: {'field': 'email'},
+        );
+        expect(result.success, isFalse);
+        expect(result.error, equals('Validation failed'));
+        expect(result.errorCode, equals('VALIDATION_ERROR'));
+        expect(result.errorDetails, equals({'field': 'email'}));
+        expect(result.data, isNull);
+      });
+    });
+
+    group('TC-011: ActionResult properties', () {
+      test('Normal: timestamp is auto-generated', () {
+        final before = DateTime.now();
+        final result = ActionResult.success();
+        final after = DateTime.now();
+
+        expect(result.timestamp, isNotNull);
+        expect(
+          result.timestamp.millisecondsSinceEpoch,
+          greaterThanOrEqualTo(before.millisecondsSinceEpoch),
+        );
+        expect(
+          result.timestamp.millisecondsSinceEpoch,
+          lessThanOrEqualTo(after.millisecondsSinceEpoch),
+        );
+      });
+
+      test('Normal: toEnvelope for success result', () {
+        final result = ActionResult.success(data: 'hello');
+        final envelope = result.toEnvelope();
+        expect(envelope['success'], isTrue);
+        expect(envelope['data'], equals('hello'));
+        expect(envelope['timestamp'], isA<String>());
+      });
+
+      test('Normal: toEnvelope for error result', () {
+        final result = ActionResult.error(
+          'fail',
+          errorCode: 'ERR_001',
+          errorDetails: {'line': 42},
+        );
+        final envelope = result.toEnvelope();
+        expect(envelope['success'], isFalse);
+        expect(envelope['error']['message'], equals('fail'));
+        expect(envelope['error']['code'], equals('ERR_001'));
+        expect(envelope['error']['details'], equals({'line': 42}));
+        expect(envelope['timestamp'], isA<String>());
+      });
+
+      test('Boundary: toEnvelope for error without errorCode/details', () {
+        final result = ActionResult.error('simple error');
+        final envelope = result.toEnvelope();
+        expect(envelope['error']['message'], equals('simple error'));
+        expect(envelope['error'].containsKey('code'), isFalse);
+        expect(envelope['error'].containsKey('details'), isFalse);
+      });
+    });
+
+    group('TC-012: ActionResult chaining', () {
+      test('Normal: success result can be checked and data extracted', () {
+        final result = ActionResult.success(data: {'count': 5});
+        if (result.success) {
+          final count = (result.data as Map<String, dynamic>)['count'] as int;
+          expect(count, equals(5));
+        } else {
+          fail('Expected success');
+        }
+      });
+
+      test('Normal: error result can be checked and error extracted', () {
+        final result = ActionResult.error('Not found', errorCode: 'NOT_FOUND');
+        if (!result.success) {
+          expect(result.error, equals('Not found'));
+          expect(result.errorCode, equals('NOT_FOUND'));
+        } else {
+          fail('Expected error');
+        }
+      });
+    });
   });
 }
 

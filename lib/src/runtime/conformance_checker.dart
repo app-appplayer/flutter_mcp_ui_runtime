@@ -1,3 +1,6 @@
+import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart'
+    show ConformanceLevels;
+
 import '../runtime/widget_registry.dart';
 
 /// Conformance level definitions for MCP UI DSL v1.0
@@ -12,72 +15,23 @@ enum ConformanceLevel {
   advanced,
 }
 
-/// Checker for determining conformance level support
+/// Checker for determining conformance level support.
+///
+/// Uses the canonical widget lists from [ConformanceLevels] in the core
+/// package as the single source of truth for conformance requirements.
 class ConformanceChecker {
   final WidgetRegistry widgetRegistry;
 
   ConformanceChecker(this.widgetRegistry);
 
-  /// Core widgets required for Core conformance
-  static const List<String> coreWidgets = [
-    // Layout
-    'linear',
-    'box',
+  /// Core widgets required for Core conformance (from core package)
+  static List<String> get coreWidgets => ConformanceLevels.coreWidgets;
 
-    // Display
-    'text',
-    'image',
-    'icon',
+  /// All widgets required for Standard conformance (core + standard additions)
+  static List<String> get standardWidgets => ConformanceLevels.standardWidgets;
 
-    // Input
-    'button',
-    'text-input',
-    'toggle',
-    'select',
-
-    // Lists
-    'list',
-    'list-item',
-  ];
-
-  /// Additional widgets required for Standard conformance
-  static const List<String> standardWidgets = [
-    // Navigation
-    'header-bar',
-    'bottom-navigation',
-    'tabs',
-    'drawer',
-
-    // Forms
-    'form',
-    'radio',
-    'checkbox',
-    'slider',
-
-    // Feedback
-    'dialog',
-    'snackbar',
-    'progress',
-
-    // Layout
-    'grid',
-    'card',
-  ];
-
-  /// Additional widgets required for Advanced conformance
-  static const List<String> advancedWidgets = [
-    // Data visualization
-    'chart',
-    'map',
-
-    // Media
-    'media-player',
-
-    // Advanced UI
-    'calendar',
-    'table',
-    'tree',
-  ];
+  /// All widgets required for Advanced conformance (standard + advanced additions)
+  static List<String> get advancedWidgets => ConformanceLevels.advancedWidgets;
 
   /// Check if the runtime supports a specific conformance level
   bool supportsLevel(ConformanceLevel level) {
@@ -85,11 +39,9 @@ class ConformanceChecker {
       case ConformanceLevel.core:
         return _hasAllWidgets(coreWidgets);
       case ConformanceLevel.standard:
-        return _hasAllWidgets(coreWidgets) && _hasAllWidgets(standardWidgets);
+        return _hasAllWidgets(standardWidgets);
       case ConformanceLevel.advanced:
-        return _hasAllWidgets(coreWidgets) &&
-            _hasAllWidgets(standardWidgets) &&
-            _hasAllWidgets(advancedWidgets);
+        return _hasAllWidgets(advancedWidgets);
     }
   }
 
@@ -108,42 +60,39 @@ class ConformanceChecker {
 
   /// Get missing widgets for a specific conformance level
   List<String> getMissingWidgets(ConformanceLevel level) {
-    final missing = <String>[];
+    final List<String> widgetsToCheck;
 
-    // Check core widgets
-    for (final widget in coreWidgets) {
+    switch (level) {
+      case ConformanceLevel.core:
+        widgetsToCheck = coreWidgets;
+      case ConformanceLevel.standard:
+        widgetsToCheck = standardWidgets;
+      case ConformanceLevel.advanced:
+        widgetsToCheck = advancedWidgets;
+    }
+
+    final missing = <String>[];
+    for (final widget in widgetsToCheck) {
       if (!widgetRegistry.has(widget)) {
         missing.add(widget);
       }
     }
-
-    // Check standard widgets if needed
-    if (level == ConformanceLevel.standard ||
-        level == ConformanceLevel.advanced) {
-      for (final widget in standardWidgets) {
-        if (!widgetRegistry.has(widget)) {
-          missing.add(widget);
-        }
-      }
-    }
-
-    // Check advanced widgets if needed
-    if (level == ConformanceLevel.advanced) {
-      for (final widget in advancedWidgets) {
-        if (!widgetRegistry.has(widget)) {
-          missing.add(widget);
-        }
-      }
-    }
-
     return missing;
   }
 
   /// Get a report of conformance support
   Map<String, dynamic> getConformanceReport() {
     final coreSupport = _getWidgetSupport(coreWidgets);
-    final standardSupport = _getWidgetSupport(standardWidgets);
-    final advancedSupport = _getWidgetSupport(advancedWidgets);
+    // Standard-only additions (exclude core widgets already counted)
+    final standardOnlyWidgets = standardWidgets
+        .where((w) => !coreWidgets.contains(w))
+        .toList();
+    final standardSupport = _getWidgetSupport(standardOnlyWidgets);
+    // Advanced-only additions (exclude standard widgets already counted)
+    final advancedOnlyWidgets = advancedWidgets
+        .where((w) => !standardWidgets.contains(w))
+        .toList();
+    final advancedSupport = _getWidgetSupport(advancedOnlyWidgets);
 
     return {
       'conformanceLevel': getConformanceLevel().toString().split('.').last,

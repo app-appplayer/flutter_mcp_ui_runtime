@@ -88,8 +88,8 @@ class RichTextWidgetFactory extends WidgetFactory {
 
     if (style is Map<String, dynamic>) {
       return TextStyle(
-        color: parseColor(context.resolve(style['color'])),
-        backgroundColor: parseColor(context.resolve(style['backgroundColor'])),
+        color: parseColor(context.resolve(style['color']), context),
+        backgroundColor: parseColor(context.resolve(style['backgroundColor']), context),
         fontSize: style['fontSize']?.toDouble(),
         fontWeight: _parseFontWeight(style['fontWeight']),
         fontStyle: style['italic'] == true ? FontStyle.italic : null,
@@ -97,7 +97,7 @@ class RichTextWidgetFactory extends WidgetFactory {
         wordSpacing: style['wordSpacing']?.toDouble(),
         height: style['height']?.toDouble(),
         decoration: _parseTextDecoration(style['decoration']),
-        decorationColor: parseColor(context.resolve(style['decorationColor'])),
+        decorationColor: parseColor(context.resolve(style['decorationColor']), context),
         decorationStyle: _parseTextDecorationStyle(style['decorationStyle']),
       );
     }

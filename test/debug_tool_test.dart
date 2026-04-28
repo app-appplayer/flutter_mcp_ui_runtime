@@ -13,7 +13,7 @@ void main() {
       'content': {
         'type': 'button',
         'label': 'Call Tool',
-        'click': {
+        'onTap': {
           'type': 'tool',
           'tool': 'uiTool',
           'params': {'action': 'click'},

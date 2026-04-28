@@ -9,19 +9,23 @@ class RangeSliderWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Extract properties
-    final values = _parseRangeValues(context.resolve(properties['values'])) ??
-        const RangeValues(0.2, 0.8);
+    // Spec §2.6.0: binding shorthand — read from state path if set.
+    final binding = (properties['binding'] as String?) ??
+        (properties['bindTo'] as String?);
+    final dynamic rawValue = binding != null
+        ? context.getState(binding)
+        : context.resolve(properties['value'] ?? properties['values']);
+    final values = _parseRangeValues(rawValue) ?? const RangeValues(0.2, 0.8);
     final min = properties['min']?.toDouble() ?? 0.0;
     final max = properties['max']?.toDouble() ?? 1.0;
     final divisions = properties['divisions'] as int?;
     final labels = _parseRangeLabels(properties['labels'], context);
-    final activeColor = parseColor(context.resolve(properties['activeColor']));
+    final activeColor = parseColor(context.resolve(properties['activeColor']), context);
     final inactiveColor =
-        parseColor(context.resolve(properties['inactiveColor']));
+        parseColor(context.resolve(properties['inactiveColor']), context);
 
     // Extract action handlers
-    final onChange = properties['onChange'] as Map<String, dynamic>?;
+    final onChange = (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
     final onChangeStart = properties['onChangeStart'] as Map<String, dynamic>?;
     final onChangeEnd = properties['onChangeEnd'] as Map<String, dynamic>?;
 
@@ -36,25 +40,29 @@ class RangeSliderWidgetFactory extends WidgetFactory {
       labels: labels,
       activeColor: activeColor,
       inactiveColor: inactiveColor,
-      onChanged: onChange != null
+      // Spec §2.6.0: when `binding` is set, the runtime performs two-way
+      // binding (read + write) automatically. `onChange` is optional; the
+      // handler must be wired when either `binding` or an explicit
+      // `onChange` action is present so the RangeSlider is interactive.
+      onChanged: (binding != null || onChange != null)
           ? (newValues) {
-              // Update state if bindTo is specified
-              final path = properties['bindTo'] as String?;
+              final payload = {
+                'start': newValues.start,
+                'end': newValues.end,
+              };
+              // Persist to state when `binding` (canonical) or legacy
+              // `bindTo` is provided.
+              final path = binding ?? (properties['bindTo'] as String?);
               if (path != null) {
-                context.setValue(path, {
-                  'start': newValues.start,
-                  'end': newValues.end,
-                });
+                context.setValue(path, payload);
               }
-              // Execute action with event value
-              final eventData = Map<String, dynamic>.from(onChange);
-              if (eventData['value'] == '{{event.value}}') {
-                eventData['value'] = {
-                  'start': newValues.start,
-                  'end': newValues.end,
-                };
+              if (onChange != null) {
+                final eventData = Map<String, dynamic>.from(onChange);
+                if (eventData['value'] == '{{event.value}}') {
+                  eventData['value'] = payload;
+                }
+                context.actionHandler.execute(eventData, context);
               }
-              context.actionHandler.execute(eventData, context);
             }
           : null,
       onChangeStart: onChangeStart != null

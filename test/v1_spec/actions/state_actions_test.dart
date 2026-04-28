@@ -42,7 +42,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Update Message',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'message', // v1.0 spec: uses 'path' not 'key'
@@ -92,7 +92,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Update Name',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'user.profile.name',
@@ -102,7 +102,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Update Age',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'user.profile.age',
@@ -149,7 +149,7 @@ void main() {
                 'type': 'textInput',
                 'label': 'Enter text',
                 'value': '{{inputValue}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'inputValue',
@@ -198,7 +198,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Increment',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'increment',
                   'path': 'counter',
@@ -242,7 +242,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Add 25 Points',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'increment',
                   'path': 'score',
@@ -289,7 +289,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Lose Life',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'decrement',
                   'path': 'lives',
@@ -333,7 +333,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Take 15 Damage',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'decrement',
                   'path': 'health',
@@ -380,7 +380,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Toggle Dark Mode',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'toggle',
                   'path': 'isDarkMode',
@@ -438,7 +438,7 @@ void main() {
                 'type': 'textInput',
                 'label': 'New Item',
                 'value': '{{newItem}}',
-                'change': {
+                'onChange': {
                   'type': 'state',
                   'action': 'set',
                   'path': 'newItem',
@@ -448,7 +448,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Add Item',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'append',
                   'path': 'items',
@@ -505,7 +505,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Add Todo',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'append',
                   'path': 'todos',
@@ -539,53 +539,56 @@ void main() {
             'services': {
               'state': {
                 'initialState': {
-                  'colors': ['Red', 'Green', 'Blue'],
+                  'tags': ['javascript', 'python', 'rust'],
                 },
               },
             },
           },
           'content': {
-            'type': 'list',
+            'type': 'linear',
+            'direction': 'vertical',
+            'children': [
+              {
+                'type': 'list',
                 'shrinkWrap': true,
-            'items': '{{colors}}',
-            'itemTemplate': {
-              'type': 'linear',
-              'direction': 'horizontal',
-              'distribution': 'space-between',
-              'children': [
-                {
-                  'type': 'text',
-                  'content': '{{item}}',
+                'items': '{{tags}}',
+                'itemTemplate': {
+                  'type': 'chip',
+                  'label': '{{item}}',
                 },
-                {
-                  'type': 'button',
-                  'label': 'Remove',
-                  'click': {
-                    'type': 'state',
-                    'action': 'remove',
-                    'path': 'colors',
-                    'index': '{{index}}',
-                  },
+              },
+              {
+                'type': 'button',
+                'label': 'Remove Python',
+                'onTap': {
+                  'type': 'state',
+                  'action': 'remove',
+                  'path': 'tags',
+                  'index': 1,
                 },
-              ],
-            },
+              },
+            ],
           },
         });
-        
+
         await tester.pumpWidget(MaterialApp(home: Scaffold(body: runtime.buildUI())));
         await tester.pumpAndSettle();
-        
-        expect(find.text('Red'), findsOneWidget);
-        expect(find.text('Green'), findsOneWidget);
-        expect(find.text('Blue'), findsOneWidget);
-        
-        // Remove middle item (Green)
-        await tester.tap(find.text('Remove').at(1));
+
+        expect(find.text('javascript'), findsOneWidget);
+        expect(find.text('python'), findsOneWidget);
+        expect(find.text('rust'), findsOneWidget);
+
+        // Remove middle item (python) by index
+        await tester.tap(find.text('Remove Python'));
         await tester.pumpAndSettle();
-        
-        expect(find.text('Red'), findsOneWidget);
-        expect(find.text('Green'), findsNothing);
-        expect(find.text('Blue'), findsOneWidget);
+
+        // Verify python was removed
+        final tags = runtime.stateManager.get<List>('tags');
+        expect(tags, isNotNull);
+        expect(tags!.length, equals(2));
+        expect(tags, contains('javascript'));
+        expect(tags, isNot(contains('python')));
+        expect(tags, contains('rust'));
       });
       
       testWidgets('should remove from array by value', (WidgetTester tester) async {
@@ -616,7 +619,7 @@ void main() {
               {
                 'type': 'button',
                 'label': 'Remove Python',
-                'click': {
+                'onTap': {
                   'type': 'state',
                   'action': 'remove',
                   'path': 'tags',

@@ -63,7 +63,7 @@ void main() {
               'type': 'textInput',
               'label': 'Name',
               'value': '{{form.name}}',
-              'change': {
+              'onChange': {
                 'type': 'state',
                 'action': 'set',
                 'path': 'form.name',
@@ -74,7 +74,7 @@ void main() {
               'type': 'textInput',
               'label': 'Email',
               'value': '{{form.email}}',
-              'change': {
+              'onChange': {
                 'type': 'state',
                 'action': 'set',
                 'path': 'form.email',
@@ -85,7 +85,7 @@ void main() {
               'type': 'textInput',
               'label': 'Age',
               'value': '{{form.age}}',
-              'change': {
+              'onChange': {
                 'type': 'state',
                 'action': 'set',
                 'path': 'form.age',

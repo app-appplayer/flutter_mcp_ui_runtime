@@ -6,6 +6,7 @@ import '../binding/binding_engine.dart';
 import '../renderer/render_context.dart';
 import '../utils/debounce.dart';
 import '../utils/mcp_logger.dart';
+import 'validation_engine.dart' show ValidationResult;
 
 /// Base validator class
 abstract class Validator {
@@ -14,47 +15,6 @@ abstract class Validator {
 
   /// Convert to JSON
   Map<String, dynamic> toJson();
-}
-
-/// Enhanced validation result with pending state
-class ValidationResult {
-  final bool isValid;
-  final String? error;
-  final bool isPending;
-  final Map<String, dynamic>? metadata;
-
-  const ValidationResult({
-    required this.isValid,
-    this.error,
-    this.isPending = false,
-    this.metadata,
-  });
-
-  factory ValidationResult.valid([Map<String, dynamic>? metadata]) {
-    return ValidationResult(
-      isValid: true,
-      metadata: metadata,
-    );
-  }
-
-  factory ValidationResult.invalid(String error,
-      [Map<String, dynamic>? metadata]) {
-    return ValidationResult(
-      isValid: false,
-      error: error,
-      metadata: metadata,
-    );
-  }
-
-  factory ValidationResult.pending(
-      [String? message, Map<String, dynamic>? metadata]) {
-    return ValidationResult(
-      isValid: false,
-      error: message,
-      isPending: true,
-      metadata: metadata,
-    );
-  }
 }
 
 /// Custom validator that uses expressions for validation
@@ -88,7 +48,7 @@ class CustomValidator extends Validator {
       final result = bindingEngine.resolve(expression, validationContext);
 
       if (result == true) {
-        return ValidationResult.valid();
+        return ValidationResult.valid;
       }
 
       // If result is a string, use it as error message
@@ -218,18 +178,17 @@ class RemoteValidator extends AsyncValidator {
                 responseData['error'] ?? responseData['message'];
 
             if (isValid == true) {
-              return ValidationResult.valid(
-                  responseData['metadata'] as Map<String, dynamic>?);
+              return const ValidationResult(isValid: true);
             } else {
               return ValidationResult.invalid(
                 errorMessage?.toString() ?? message ?? 'Validation failed',
-                responseData['metadata'] as Map<String, dynamic>?,
+                details: responseData['metadata'] as Map<String, dynamic>?,
               );
             }
           }
 
           // Fallback: treat any 200 response as valid
-          return ValidationResult.valid();
+          return ValidationResult.valid;
         } catch (e) {
           // JSON parsing error
           _logger.error('Failed to parse validation response', e);
@@ -304,7 +263,7 @@ class CompositeAsyncValidator extends AsyncValidator {
       final result = await validator.validateAsync(value, context);
 
       if (!result.isValid) {
-        errors.add(result.error ?? 'Validation failed');
+        errors.add(result.message ?? 'Validation failed');
 
         if (stopOnFirstError) {
           return ValidationResult.invalid(errors.first);
@@ -313,7 +272,7 @@ class CompositeAsyncValidator extends AsyncValidator {
     }
 
     if (errors.isEmpty) {
-      return ValidationResult.valid();
+      return ValidationResult.valid;
     }
 
     return ValidationResult.invalid(errors.join(', '));
@@ -351,7 +310,7 @@ class ValidationState extends ChangeNotifier {
       _results[fieldName]?.isPending ?? false;
 
   /// Get error for field
-  String? getFieldError(String fieldName) => _results[fieldName]?.error;
+  String? getFieldError(String fieldName) => _results[fieldName]?.message;
 
   /// Validate a field
   void validateField(

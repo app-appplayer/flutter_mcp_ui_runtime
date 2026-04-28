@@ -15,7 +15,8 @@ class TabBarWidgetFactory extends WidgetFactory {
     final tabs = tabsData.map<Tab>((tab) {
       if (tab is Map<String, dynamic>) {
         return Tab(
-          text: (tab['text'] ?? tab['label']) as String?,
+          // §17.3.2: canonical 'label', legacy alias 'text'.
+          text: (tab['label'] ?? tab['text']) as String?,
           icon: tab['icon'] != null ? Icon(_parseIconData(tab['icon'])) : null,
           iconMargin: parseEdgeInsets(tab['iconMargin']) ??
               const EdgeInsets.only(bottom: 10),
@@ -29,35 +30,43 @@ class TabBarWidgetFactory extends WidgetFactory {
     final isScrollable = properties['isScrollable'] as bool? ?? false;
     final padding = parseEdgeInsets(properties['padding']);
     final indicatorColor =
-        parseColor(context.resolve(properties['indicatorColor']));
+        parseColor(context.resolve(properties['indicatorColor']), context);
     final indicatorWeight = parseDimension(properties['indicatorWeight']) ?? 2.0;
     final indicatorPadding =
         parseEdgeInsets(properties['indicatorPadding']) ?? EdgeInsets.zero;
     final indicator = _parseDecoration(properties['indicator'], context);
     final indicatorSize =
         _parseTabBarIndicatorSize(properties['indicatorSize']);
-    final labelColor = parseColor(context.resolve(properties['labelColor']));
+    final labelColor = parseColor(context.resolve(properties['labelColor']), context);
     final labelStyle = _parseTextStyle(properties['labelStyle'], context);
     final labelPadding = parseEdgeInsets(properties['labelPadding']);
     final unselectedLabelColor =
-        parseColor(context.resolve(properties['unselectedLabelColor']));
+        parseColor(context.resolve(properties['unselectedLabelColor']), context);
     final unselectedLabelStyle =
         _parseTextStyle(properties['unselectedLabelStyle'], context);
     const dragStartBehavior = DragStartBehavior.start;
     final overlayColor = properties['overlayColor'] != null
         ? WidgetStateProperty.all(
-            parseColor(context.resolve(properties['overlayColor'])))
+            parseColor(context.resolve(properties['overlayColor']), context))
         : null;
     final mouseCursor = _parseMouseCursor(properties['mouseCursor']);
     final enableFeedback = properties['enableFeedback'] as bool?;
     final physics = _parseScrollPhysics(properties['physics']);
 
-    // Extract action handler
-    final onTap = properties['onTap'] as Map<String, dynamic>?;
+    // Spec §2.8.3: canonical `selectedIndex` + `onChange`. Accept legacy
+    // Flutter-style `onTap` / `click` as aliases.
+    final selectedIndex = (properties['selectedIndex'] is int)
+        ? properties['selectedIndex'] as int
+        : context.resolve<int>(properties['selectedIndex'] ?? 0);
+    final onChange = (properties['onChange'] ??
+            properties['onTap'] ??
+            properties['click'] ??
+            properties['change']) as Map<String, dynamic>?;
 
     // Wrap TabBar with DefaultTabController to provide required TabController
     Widget tabBar = DefaultTabController(
       length: tabs.length,
+      initialIndex: selectedIndex.clamp(0, tabs.isEmpty ? 0 : tabs.length - 1),
       child: TabBar(
         tabs: tabs,
         isScrollable: isScrollable,
@@ -76,14 +85,14 @@ class TabBarWidgetFactory extends WidgetFactory {
         overlayColor: overlayColor,
         mouseCursor: mouseCursor,
         enableFeedback: enableFeedback,
-        onTap: onTap != null
+        onTap: onChange != null
             ? (index) {
-                // Execute action with index
-                final eventData = Map<String, dynamic>.from(onTap);
-                if (eventData['value'] == '{{event.index}}') {
-                  eventData['value'] = index;
-                }
-                context.actionHandler.execute(eventData, context);
+                final eventContext = context.createChildContext(
+                  variables: {
+                    'event': {'index': index, 'type': 'change'},
+                  },
+                );
+                context.actionHandler.execute(onChange, eventContext);
               }
             : null,
         physics: physics,
@@ -115,7 +124,9 @@ class TabBarWidgetFactory extends WidgetFactory {
           borderSide: BorderSide(
             width: decoration['width']?.toDouble() ?? 2.0,
             color:
-                parseColor(context.resolve(decoration['color'])) ?? Colors.blue,
+                parseColor(context.resolve(decoration['color']), context) ??
+                    context.themeManager.getColorValue('primary') ??
+                    Colors.blue,
           ),
           insets: parseEdgeInsets(decoration['insets']) ?? EdgeInsets.zero,
         );
@@ -129,7 +140,7 @@ class TabBarWidgetFactory extends WidgetFactory {
     if (style == null) return null;
 
     return TextStyle(
-      color: parseColor(context.resolve(style['color'])),
+      color: parseColor(context.resolve(style['color']), context),
       fontSize: style['fontSize']?.toDouble(),
       fontWeight: _parseFontWeight(style['fontWeight']),
     );

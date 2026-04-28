@@ -120,13 +120,13 @@ class NotificationManager {
       _notifyListeners(NotificationEvent.scheduled, scheduledNotification);
 
       if (enableDebugMode) {
-        debugPrint(
-            'NotificationManager: Scheduled notification "${notification.id}" for $scheduledTime');
+        _logger.debug(
+            'Scheduled notification "${notification.id}" for $scheduledTime');
       }
     } catch (error) {
       if (enableDebugMode) {
-        debugPrint(
-            'NotificationManager: Error scheduling notification "${notification.id}": $error');
+        _logger.error(
+            'Error scheduling notification "${notification.id}": $error');
       }
       rethrow;
     }
@@ -143,13 +143,13 @@ class NotificationManager {
         _notifyListeners(NotificationEvent.dismissed, notification);
 
         if (enableDebugMode) {
-          debugPrint(
-              'NotificationManager: Dismissed notification "$notificationId"');
+          _logger.debug(
+              'Dismissed notification "$notificationId"');
         }
       } catch (error) {
         if (enableDebugMode) {
-          debugPrint(
-              'NotificationManager: Error dismissing notification "$notificationId": $error');
+          _logger.error(
+              'Error dismissing notification "$notificationId": $error');
         }
       }
     }
@@ -164,7 +164,7 @@ class NotificationManager {
     }
 
     if (enableDebugMode) {
-      debugPrint('NotificationManager: Dismissed all notifications');
+      _logger.debug('Dismissed all notifications');
     }
   }
 
@@ -173,7 +173,7 @@ class NotificationManager {
     _channels.add(channel);
 
     if (enableDebugMode) {
-      debugPrint('NotificationManager: Added channel "${channel.id}"');
+      _logger.debug('Added channel "${channel.id}"');
     }
   }
 
@@ -213,8 +213,8 @@ class NotificationManager {
       _notifyListeners(NotificationEvent.actionTapped, notification, actionId);
 
       if (enableDebugMode) {
-        debugPrint(
-            'NotificationManager: Handled action "$actionId" for notification "$notificationId"');
+        _logger.debug(
+            'Handled action "$actionId" for notification "$notificationId"');
       }
     }
   }
@@ -227,8 +227,8 @@ class NotificationManager {
       _notifyListeners(NotificationEvent.tapped, notification);
 
       if (enableDebugMode) {
-        debugPrint(
-            'NotificationManager: Handled tap for notification "$notificationId"');
+        _logger.debug(
+            'Handled tap for notification "$notificationId"');
       }
     }
   }
@@ -263,12 +263,12 @@ class NotificationManager {
       // This would integrate with actual permission APIs
       // For now, return true as a placeholder
       if (enableDebugMode) {
-        debugPrint('NotificationManager: Requested notification permissions');
+        _logger.debug('Requested notification permissions');
       }
       return true;
     } catch (error) {
       if (enableDebugMode) {
-        debugPrint('NotificationManager: Error requesting permissions: $error');
+        _logger.error('Error requesting permissions: $error');
       }
       return false;
     }
@@ -278,8 +278,8 @@ class NotificationManager {
   Future<void> _showLocalNotification(MCPNotification notification) async {
     // Implementation would integrate with local notification plugin
     if (enableDebugMode) {
-      debugPrint(
-          'NotificationManager: Showing local notification: ${notification.title}');
+      _logger.debug(
+          'Showing local notification: ${notification.title}');
     }
   }
 
@@ -287,8 +287,8 @@ class NotificationManager {
   Future<void> _showSystemNotification(MCPNotification notification) async {
     // Implementation would integrate with system notification APIs
     if (enableDebugMode) {
-      debugPrint(
-          'NotificationManager: Showing system notification: ${notification.title}');
+      _logger.debug(
+          'Showing system notification: ${notification.title}');
     }
   }
 
@@ -296,8 +296,8 @@ class NotificationManager {
   Future<void> _showInAppNotification(MCPNotification notification) async {
     // Implementation would integrate with in-app notification UI
     if (enableDebugMode) {
-      debugPrint(
-          'NotificationManager: Showing in-app notification: ${notification.title}');
+      _logger.debug(
+          'Showing in-app notification: ${notification.title}');
     }
   }
 
@@ -305,8 +305,8 @@ class NotificationManager {
   Future<void> _scheduleSystemNotification(MCPNotification notification) async {
     // Implementation would integrate with system scheduling APIs
     if (enableDebugMode) {
-      debugPrint(
-          'NotificationManager: Scheduled system notification: ${notification.title}');
+      _logger.debug(
+          'Scheduled system notification: ${notification.title}');
     }
   }
 
@@ -328,8 +328,8 @@ class NotificationManager {
   Future<void> _dismissSystemNotification(String notificationId) async {
     // Implementation would integrate with system notification APIs
     if (enableDebugMode) {
-      debugPrint(
-          'NotificationManager: Dismissed system notification: $notificationId');
+      _logger.debug(
+          'Dismissed system notification: $notificationId');
     }
   }
 
@@ -344,7 +344,7 @@ class NotificationManager {
         listener(event, notification, actionId);
       } catch (error) {
         if (enableDebugMode) {
-          debugPrint('NotificationManager: Error in listener: $error');
+          _logger.error('Error in listener: $error');
         }
       }
     }
@@ -358,7 +358,7 @@ class NotificationManager {
     _isInitialized = false;
 
     if (enableDebugMode) {
-      debugPrint('NotificationManager: Disposed');
+      _logger.debug('Disposed');
     }
   }
 }

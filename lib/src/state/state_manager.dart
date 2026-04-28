@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../plugins/plugin_hooks.dart';
 import '../utils/json_path.dart';
 import '../utils/mcp_logger.dart';
 import 'computed_property.dart';
@@ -13,10 +14,15 @@ class StateChangeEvent {
   final dynamic newValue;
   final DateTime timestamp;
 
+  /// Optional source identifier tracking where the state change originated
+  /// (e.g., 'user', 'action', 'binding', 'computed', 'system')
+  final String? source;
+
   StateChangeEvent({
     required this.path,
     this.oldValue,
     this.newValue,
+    this.source,
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
 }
@@ -27,6 +33,7 @@ class StateManager extends ChangeNotifier {
   final Map<String, dynamic> _state = {};
   final Map<String, StreamController> _streamControllers = {};
   final Map<String, ComputedProperty> _computedProperties = {};
+  final Map<String, List<VoidCallback>> _keyListeners = {};
   final MCPLogger _logger = MCPLogger('StateManager');
 
   // Stream controller for state changes
@@ -70,7 +77,7 @@ class StateManager extends ChangeNotifier {
   }
 
   /// Set a value in state using a path
-  void set(String path, dynamic value) {
+  void set(String path, dynamic value, {String? source}) {
     final oldValue = JsonPath.get(_state, path);
     JsonPath.set(_state, path, value);
     _logger.debug('set path: $path, value: $value, new state: $_state');
@@ -80,6 +87,7 @@ class StateManager extends ChangeNotifier {
       path: path,
       oldValue: oldValue,
       newValue: value,
+      source: source,
     ));
 
     // Invalidate affected computed properties
@@ -94,12 +102,38 @@ class StateManager extends ChangeNotifier {
     // Notify general listeners
     _logger.debug('calling notifyListeners() for path: $path');
     notifyListeners();
+
+    // Notify key-specific listeners
+    _keyListeners[path]?.forEach((listener) => listener());
+
+    // Fire plugin onStateChange hook
+    PluginHookManager.instance.fireHookSync(
+      PluginHookType.onStateChange,
+      data: {'path': path, 'oldValue': oldValue, 'newValue': value},
+    );
+  }
+
+  /// Update a specific state path with a transform function.
+  /// The updater receives the current value and returns the new value.
+  void update(String path, dynamic Function(dynamic current) updater) {
+    final current = get(path);
+    final updated = updater(current);
+    set(path, updated);
   }
 
   /// Update multiple values at once
   void updateAll(Map<String, dynamic> updates) {
     updates.forEach((path, value) {
+      final oldValue = JsonPath.get(_state, path);
       JsonPath.set(_state, path, value);
+
+      // Emit state change event
+      _stateChangeController.add(StateChangeEvent(
+        path: path,
+        oldValue: oldValue,
+        newValue: value,
+        source: 'updateAll',
+      ));
 
       // Notify stream listeners
       final controller = _streamControllers[path];
@@ -107,6 +141,11 @@ class StateManager extends ChangeNotifier {
         controller.add(value);
       }
     });
+
+    // Invalidate affected computed properties
+    _invalidateComputedProperties(
+      updates.map((k, v) => MapEntry(k, v.toString())),
+    );
 
     notifyListeners();
   }
@@ -146,6 +185,21 @@ class StateManager extends ChangeNotifier {
   void toggle(String path) {
     final current = get<bool>(path) ?? false;
     set(path, !current);
+  }
+
+  /// Push an item to the end of a list (alias for append)
+  void push(String path, dynamic item) {
+    append(path, item);
+  }
+
+  /// Pop and return the last item from a list
+  dynamic pop(String path) {
+    final current = get<List>(path) ?? [];
+    if (current.isEmpty) return null;
+    final lastItem = current.last;
+    final newList = List.from(current)..removeLast();
+    set(path, newList);
+    return lastItem;
   }
 
   /// Append to a list
@@ -243,6 +297,65 @@ class StateManager extends ChangeNotifier {
 
   /// Get all computed property names
   List<String> get computedPropertyNames => _computedProperties.keys.toList();
+
+  /// Merge state from a map (e.g., tool response auto-merge)
+  void mergeState(Map<String, dynamic> data) {
+    for (final entry in data.entries) {
+      set(entry.key, entry.value);
+    }
+  }
+
+  /// Set application-level state (global, shared across pages)
+  void setAppState(String key, dynamic value) {
+    set('app.$key', value);
+  }
+
+  /// Get application-level state
+  T? getAppState<T>(String key) {
+    return get<T>('app.$key');
+  }
+
+  /// Set page-level state (isolated per page)
+  void setPageState(String key, dynamic value) {
+    set('page.$key', value);
+  }
+
+  /// Get page-level state
+  T? getPageState<T>(String key) {
+    return get<T>('page.$key');
+  }
+
+  /// Set route parameters
+  void setRouteParams(Map<String, String> params) {
+    set('route.params', params);
+  }
+
+  /// Get a route parameter
+  String? getRouteParam(String key) {
+    final params = get<Map<String, dynamic>>('route.params');
+    return params?[key] as String?;
+  }
+
+  /// Get all active resource subscriptions
+  Map<String, String> get activeSubscriptions {
+    return Map<String, String>.from(
+      get<Map<String, dynamic>>('_subscriptions') ?? {},
+    );
+  }
+
+  /// Add a listener for a specific state key
+  void addKeyListener(String key, VoidCallback listener) {
+    _keyListeners[key] ??= <VoidCallback>[];
+    _keyListeners[key]!.add(listener);
+  }
+
+  /// Remove a listener for a specific state key
+  void removeKeyListener(String key, VoidCallback listener) {
+    _keyListeners[key]?.remove(listener);
+    if (_keyListeners[key]?.isEmpty ?? false) {
+      _keyListeners.remove(key);
+    }
+  }
 
   @override
   void dispose() {

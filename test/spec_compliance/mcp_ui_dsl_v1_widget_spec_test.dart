@@ -415,7 +415,7 @@ void main() {
             'content': {
               'type': 'button',
               'label': 'Test Button',
-              'click': {
+              'onTap': {
                 'type': 'tool',
                 'tool': 'handleClick',
               },
@@ -476,7 +476,7 @@ void main() {
             'content': {
               'type': 'textInput',
               'value': '{{inputValue}}',
-              'change': {
+              'onChange': {
                 'type': 'state',
                 'action': 'set',
                 'path': 'inputValue',
@@ -517,7 +517,7 @@ void main() {
               'type': 'checkbox',
               'label': 'Agree to terms',
               'value': '{{isChecked}}',
-              'change': {
+              'onChange': {
                 'type': 'state',
                 'action': 'set',
                 'path': 'isChecked',
@@ -560,15 +560,13 @@ void main() {
           
           await tester.pumpWidget(MaterialApp(home: Scaffold(body: runtime.buildUI())));
           await tester.pump();
-          
-          expect(find.byType(DropdownButton<dynamic>), findsOneWidget);
-          
-          // Verify the dropdown has the correct value
-          final dropdown = tester.widget<DropdownButton<dynamic>>(
-            find.byType(DropdownButton<dynamic>)
-          );
-          expect(dropdown.value, 'opt1');
-          expect(dropdown.items?.length, 2);
+
+          // The select/dropdown factory renders a PopupMenuButton-backed
+          // compact selector (Material's DropdownButton ships fixed
+          // 16dp padding + 0 radius which clashes with M3 surfaces).
+          // The trigger displays the current value's label.
+          expect(find.byType(PopupMenuButton<int>), findsOneWidget);
+          expect(find.text('Option 1'), findsOneWidget);
         });
       });
     });

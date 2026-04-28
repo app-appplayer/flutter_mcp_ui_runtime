@@ -4,6 +4,7 @@ import '../../renderer/render_context.dart';
 import '../widget_factory.dart';
 import '../../validation/validation_engine.dart';
 import '../../utils/debounce.dart';
+import '../../utils/icon_resolver.dart';
 
 /// Factory for TextField widgets
 class TextFieldWidgetFactory extends WidgetFactory {
@@ -40,12 +41,15 @@ class TextFieldWidgetFactory extends WidgetFactory {
     final label = properties['label'] as String?;
     final helperText = properties['helperText'] as String?;
     final prefixIcon = properties['prefixIcon'] as String?;
+    final suffixIcon = properties['suffixIcon'] as String?;
     final obscureText = properties['obscureText'] as bool? ?? false;
     final enabled = properties['enabled'] as bool? ?? true;
     final readOnly = properties['readOnly'] as bool? ?? false;
     final maxLines = properties['maxLines'] as int? ?? 1;
     final maxLength = properties['maxLength'] as int?;
-    final keyboardType = _parseKeyboardType(properties['keyboardType']);
+    // spec v1.0: 'inputType', legacy: 'keyboardType'
+    final keyboardType = _parseKeyboardType(
+        properties['inputType'] ?? properties['keyboardType']);
     final textInputAction =
         _parseTextInputAction(properties['textInputAction']);
 
@@ -67,9 +71,10 @@ class TextFieldWidgetFactory extends WidgetFactory {
     }
 
     // Get event handlers - MCP UI DSL v1.0 spec
-    final changeAction = properties['change'] as Map<String, dynamic>?;
-    final submitAction = properties['submit'] as Map<String, dynamic>?;
-    final blurAction = properties['blur'] as Map<String, dynamic>?;
+    final changeAction = (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
+    final submitAction = (properties['onSubmit'] ?? properties['submit']) as Map<String, dynamic>?;
+    final blurAction = (properties['onBlur'] ?? properties['blur']) as Map<String, dynamic>?;
+    final focusAction = (properties['onFocus'] ?? properties['focus']) as Map<String, dynamic>?;
 
     // Get initial value from binding or value property
     final bindingPath = properties['binding'] as String?;
@@ -91,7 +96,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
         fontSize: context.resolve<num?>(styleDef['fontSize'])?.toDouble(),
         fontWeight: _parseFontWeight(styleDef['fontWeight']),
         fontStyle: styleDef['fontStyle'] == 'italic' ? FontStyle.italic : null,
-        color: parseColor(context.resolve(styleDef['color'])),
+        color: parseColor(context.resolve(styleDef['color']), context),
         letterSpacing:
             context.resolve<num?>(styleDef['letterSpacing'])?.toDouble(),
         wordSpacing: context.resolve<num?>(styleDef['wordSpacing'])?.toDouble(),
@@ -108,6 +113,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
         labelText: label,
         helperText: helperText,
         prefixIcon: prefixIcon != null ? Icon(_parseIcon(prefixIcon)) : null,
+        suffixIcon: suffixIcon != null ? Icon(_parseIcon(suffixIcon)) : null,
         border: const OutlineInputBorder(),
         counterText: maxLength != null ? null : '',
         errorText: errorText,
@@ -169,21 +175,21 @@ class TextFieldWidgetFactory extends WidgetFactory {
       },
     );
 
-    // Wrap in Focus widget if blur action is needed
-    if (blurAction != null) {
+    // Wrap in Focus widget if blur or focus action is needed.
+    if (blurAction != null || focusAction != null) {
       textField = Focus(
         onFocusChange: (hasFocus) {
-          if (!hasFocus) {
-            // Field lost focus (blur event)
-            // Create a child context with event data
-            final eventContext = context.createChildContext(
-              variables: {
-                'event': {
-                  'value': controller.text,
-                  'type': 'blur',
-                },
+          final eventContext = context.createChildContext(
+            variables: {
+              'event': {
+                'value': controller.text,
+                'type': hasFocus ? 'focus' : 'blur',
               },
-            );
+            },
+          );
+          if (hasFocus && focusAction != null) {
+            eventContext.handleAction(focusAction);
+          } else if (!hasFocus && blurAction != null) {
             eventContext.handleAction(blurAction);
           }
         },
@@ -209,12 +215,15 @@ class TextFieldWidgetFactory extends WidgetFactory {
     final label = properties['label'] as String?;
     final helperText = properties['helperText'] as String?;
     final prefixIcon = properties['prefixIcon'] as String?;
+    final suffixIcon = properties['suffixIcon'] as String?;
     final obscureText = properties['obscureText'] as bool? ?? false;
     final enabled = properties['enabled'] as bool? ?? true;
     final readOnly = properties['readOnly'] as bool? ?? false;
     final maxLines = properties['maxLines'] as int? ?? 1;
     final maxLength = properties['maxLength'] as int?;
-    final keyboardType = _parseKeyboardType(properties['keyboardType']);
+    // spec v1.0: 'inputType', legacy: 'keyboardType'
+    final keyboardType = _parseKeyboardType(
+        properties['inputType'] ?? properties['keyboardType']);
     final textInputAction =
         _parseTextInputAction(properties['textInputAction']);
 
@@ -235,9 +244,11 @@ class TextFieldWidgetFactory extends WidgetFactory {
     }
 
     // Get event handlers
-    final changeAction = properties['change'] as Map<String, dynamic>?;
-    final submitAction = properties['submit'] as Map<String, dynamic>?;
-    final blurAction = properties['blur'] as Map<String, dynamic>?;
+    final changeAction = (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
+    final submitAction = (properties['onSubmit'] ?? properties['submit']) as Map<String, dynamic>?;
+    final blurAction = (properties['onBlur'] ?? properties['blur']) as Map<String, dynamic>?;
+    // ignore: unused_local_variable
+    final focusAction = (properties['onFocus'] ?? properties['focus']) as Map<String, dynamic>?;
 
     // Parse style
     TextStyle? style;
@@ -247,7 +258,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
         fontSize: context.resolve<num?>(styleDef['fontSize'])?.toDouble(),
         fontWeight: _parseFontWeight(styleDef['fontWeight']),
         fontStyle: styleDef['fontStyle'] == 'italic' ? FontStyle.italic : null,
-        color: parseColor(context.resolve(styleDef['color'])),
+        color: parseColor(context.resolve(styleDef['color']), context),
         letterSpacing:
             context.resolve<num?>(styleDef['letterSpacing'])?.toDouble(),
         wordSpacing: context.resolve<num?>(styleDef['wordSpacing'])?.toDouble(),
@@ -264,6 +275,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
         labelText: label,
         helperText: helperText,
         prefixIcon: prefixIcon != null ? Icon(_parseIcon(prefixIcon)) : null,
+        suffixIcon: suffixIcon != null ? Icon(_parseIcon(suffixIcon)) : null,
         border: const OutlineInputBorder(),
         counterText: maxLength != null ? null : '',
         errorText: errorText,
@@ -387,27 +399,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
     }
   }
 
-  IconData _parseIcon(String iconName) {
-    // This is a simplified icon mapping
-    switch (iconName) {
-      case 'person':
-        return Icons.person;
-      case 'email':
-        return Icons.email;
-      case 'lock':
-        return Icons.lock;
-      case 'search':
-        return Icons.search;
-      case 'phone':
-        return Icons.phone;
-      case 'visibility':
-        return Icons.visibility;
-      case 'visibility_off':
-        return Icons.visibility_off;
-      default:
-        return Icons.circle;
-    }
-  }
+  IconData _parseIcon(String iconName) => resolveIconData(iconName);
 
   FontWeight? _parseFontWeight(String? weight) {
     switch (weight) {
@@ -514,7 +506,7 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
       }
 
       // Execute action if change is specified
-      final changeAction = properties['change'] as Map<String, dynamic>?;
+      final changeAction = (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
       if (changeAction != null) {
         final eventContext = widget.context.createChildContext(
           variables: {

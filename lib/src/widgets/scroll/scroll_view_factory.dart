@@ -8,8 +8,9 @@ class ScrollViewFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Get scroll direction
-    final scrollDirectionStr = properties['scrollDirection'] as String?;
+    // Get scroll direction (spec v1.0: 'direction', legacy: 'scrollDirection')
+    final scrollDirectionStr =
+        (properties['direction'] ?? properties['scrollDirection']) as String?;
     final scrollDirection =
         scrollDirectionStr == 'horizontal' ? Axis.horizontal : Axis.vertical;
 

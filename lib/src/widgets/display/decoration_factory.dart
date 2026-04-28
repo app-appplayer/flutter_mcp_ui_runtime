@@ -7,13 +7,17 @@ class DecorationWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
+    final childDef = (properties['child'] ?? definition['child'])
+        as Map<String, dynamic>?;
     final children = definition['children'] as List<dynamic>? ?? [];
 
-    final decoration = _resolveBoxDecoration(properties);
+    final decoration = _resolveBoxDecoration(properties, context);
 
-    Widget child = children.isNotEmpty
-        ? context.buildWidget(children.first as Map<String, dynamic>)
-        : Container();
+    Widget child = childDef != null
+        ? context.buildWidget(childDef)
+        : (children.isNotEmpty
+            ? context.buildWidget(children.first as Map<String, dynamic>)
+            : Container());
 
     return DecoratedBox(
       decoration: decoration,
@@ -22,14 +26,15 @@ class DecorationWidgetFactory extends WidgetFactory {
     );
   }
 
-  BoxDecoration _resolveBoxDecoration(Map<String, dynamic> properties) {
+  BoxDecoration _resolveBoxDecoration(
+      Map<String, dynamic> properties, RenderContext context) {
     return BoxDecoration(
-      color: resolveColor(properties['color']),
+      color: resolveColor(properties['color'], context),
       image: _resolveDecorationImage(properties['image']),
-      border: _resolveBorder(properties['border']),
+      border: _resolveBorder(properties['border'], context),
       borderRadius: _resolveBorderRadius(properties['borderRadius']),
-      boxShadow: _resolveBoxShadow(properties['boxShadow']),
-      gradient: _resolveGradient(properties['gradient']),
+      boxShadow: _resolveBoxShadow(properties['boxShadow'], context),
+      gradient: _resolveGradient(properties['gradient'], context),
       backgroundBlendMode: _resolveBlendMode(properties['backgroundBlendMode']),
       shape: _resolveBoxShape(properties['shape']),
     );
@@ -95,35 +100,35 @@ class DecorationWidgetFactory extends WidgetFactory {
     }
   }
 
-  Border? _resolveBorder(dynamic border) {
+  Border? _resolveBorder(dynamic border, RenderContext context) {
     if (border is Map<String, dynamic>) {
       if (border.containsKey('all')) {
         final all = border['all'] as Map<String, dynamic>;
         return Border.all(
-          color: resolveColor(all['color']) ?? Colors.grey,
+          color: resolveColor(all['color'], context) ?? context.themeManager.getColorValue('outlineVariant') ?? Colors.grey,
           width: all['width']?.toDouble() ?? 1.0,
         );
       }
 
       // Support individual borders (top, right, bottom, left)
       return Border(
-        top: _resolveBorderSide(border['top']),
-        right: _resolveBorderSide(border['right']),
-        bottom: _resolveBorderSide(border['bottom']),
-        left: _resolveBorderSide(border['left']),
+        top: _resolveBorderSide(border['top'], context),
+        right: _resolveBorderSide(border['right'], context),
+        bottom: _resolveBorderSide(border['bottom'], context),
+        left: _resolveBorderSide(border['left'], context),
       );
     }
     return null;
   }
 
-  BorderSide _resolveBorderSide(dynamic side) {
+  BorderSide _resolveBorderSide(dynamic side, RenderContext context) {
     if (side == null) {
       return BorderSide.none;
     }
 
     if (side is Map<String, dynamic>) {
       return BorderSide(
-        color: resolveColor(side['color']) ?? Colors.grey,
+        color: resolveColor(side['color'], context) ?? context.themeManager.getColorValue('outlineVariant') ?? Colors.grey,
         width: side['width']?.toDouble() ?? 1.0,
         style: side['style'] == 'none' ? BorderStyle.none : BorderStyle.solid,
       );
@@ -152,12 +157,12 @@ class DecorationWidgetFactory extends WidgetFactory {
     return null;
   }
 
-  List<BoxShadow>? _resolveBoxShadow(dynamic shadow) {
+  List<BoxShadow>? _resolveBoxShadow(dynamic shadow, RenderContext context) {
     if (shadow is List) {
       return shadow.map((s) {
         if (s is Map<String, dynamic>) {
           return BoxShadow(
-            color: resolveColor(s['color']) ?? Colors.black26,
+            color: resolveColor(s['color'], context) ?? Colors.black26,
             offset: Offset(
               s['offsetX']?.toDouble() ?? 0.0,
               s['offsetY']?.toDouble() ?? 0.0,
@@ -172,11 +177,11 @@ class DecorationWidgetFactory extends WidgetFactory {
     return null;
   }
 
-  Gradient? _resolveGradient(dynamic gradient) {
+  Gradient? _resolveGradient(dynamic gradient, RenderContext context) {
     if (gradient is Map<String, dynamic>) {
       final type = gradient['type'] as String?;
       final colors = (gradient['colors'] as List?)
-          ?.map((c) => resolveColor(c) ?? Colors.transparent)
+          ?.map((c) => resolveColor(c, context) ?? Colors.transparent)
           .toList();
 
       if (colors == null || colors.isEmpty) return null;

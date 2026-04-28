@@ -10,8 +10,11 @@ class SingleChildScrollViewWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     // Extract properties
+    // Spec §2.9.2 canonical `direction`; `scrollDirection` kept as legacy
+    // Flutter-style alias.
     final scrollDirection =
-        _parseAxis(properties['scrollDirection']) ?? Axis.vertical;
+        _parseAxis(properties['direction'] ?? properties['scrollDirection']) ??
+            Axis.vertical;
     final reverse = properties['reverse'] as bool? ?? false;
     final padding = parseEdgeInsets(properties['padding']);
     final primary = properties['primary'] as bool?;
