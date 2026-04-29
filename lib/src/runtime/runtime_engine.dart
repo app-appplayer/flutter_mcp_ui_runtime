@@ -37,12 +37,15 @@ import '../permissions/permission_manager.dart';
 class RuntimeEngine with ChangeNotifier {
   RuntimeEngine({
     this.enableDebugMode = kDebugMode,
-  }) : _logger = MCPLogger('RuntimeEngine', enableLogging: enableDebugMode) {
+    RenderInspector? widgetWrapper,
+  })  : _widgetWrapper = widgetWrapper,
+        _logger = MCPLogger('RuntimeEngine', enableLogging: enableDebugMode) {
     // Initialize core components in constructor so they're available immediately
     _initializeCoreComponents();
   }
 
   final bool enableDebugMode;
+  final RenderInspector? _widgetWrapper;
   final MCPLogger _logger;
 
   // Core components
@@ -328,6 +331,7 @@ class RuntimeEngine with ChangeNotifier {
       actionHandler: _actionHandler,
       stateManager: _stateManager,
       engine: this,
+      widgetWrapper: _widgetWrapper,
     );
 
     // Register core services

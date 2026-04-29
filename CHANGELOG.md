@@ -1,4 +1,8 @@
 
+## [0.4.0] - 2026-04-29 - Render inspector hook
+
+- New `MCPUIRuntime.withInspector(...)` for editor tooling — pairs each rendered widget with its source JSON node. Standard constructor unchanged; no overhead when no inspector is supplied.
+
 ## [0.3.0] - 2026-04-28 - MCP UI DSL 1.3 (Material 3 + Responsive)
 
 ### Changed (breaking)

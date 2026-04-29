@@ -12,6 +12,16 @@ import '../plugins/plugin_hooks.dart';
 import '../utils/mcp_logger.dart';
 import 'render_context.dart';
 
+/// Wrap callback supplied by host tooling (e.g. the AppPlayer Builder /
+/// vibe editor) so each rendered widget can be paired with its source
+/// JSON node for hit-testing. The runtime invokes the wrapper exactly
+/// once per `renderWidget` call. When no wrapper is supplied the runtime
+/// follows the fast path with zero per-node overhead.
+typedef RenderInspector = Widget Function(
+  Widget child,
+  Map<String, dynamic> node,
+);
+
 /// Core rendering engine for MCP UI DSL
 class Renderer {
   final WidgetRegistry widgetRegistry;
@@ -27,13 +37,17 @@ class Renderer {
           String resource, String method, String target, dynamic data)?
       resourceHandler;
 
+  /// Optional inspector wrapper. `null` on the production fast path.
+  final RenderInspector? _widgetWrapper;
+
   Renderer({
     required this.widgetRegistry,
     required this.bindingEngine,
     required this.actionHandler,
     required this.stateManager,
     this.engine,
-  });
+    RenderInspector? widgetWrapper,
+  }) : _widgetWrapper = widgetWrapper;
 
   /// Render a page definition
   Widget renderPage(Map<String, dynamic> pageDefinition) {
@@ -153,8 +167,20 @@ class Renderer {
     );
   }
 
-  /// Render a widget definition
+  /// Render a widget definition.
+  ///
+  /// When a [WidgetInspector] was supplied at construction, the built widget
+  /// is paired with the source [definition] via the inspector before being
+  /// returned. The null-check is the only added cost on the production path
+  /// and folds into a single predicted branch.
   Widget renderWidget(Map<String, dynamic> definition, RenderContext context) {
+    final built = _renderWidgetCore(definition, context);
+    final wrap = _widgetWrapper;
+    return wrap == null ? built : wrap(built, definition);
+  }
+
+  Widget _renderWidgetCore(
+      Map<String, dynamic> definition, RenderContext context) {
     final type = definition['type'] as String?;
     if (kDebugMode) {
       _logger.debug('renderWidget called with type: $type');

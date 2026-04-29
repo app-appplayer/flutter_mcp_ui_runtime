@@ -41,6 +41,7 @@ import 'widgets/widget_factory.dart';
 import 'actions/action_handler.dart';
 import 'state/state_manager.dart';
 import 'renderer/render_context.dart';
+import 'renderer/renderer.dart' show RenderInspector;
 import 'routing/page_state_scope.dart';
 import 'theme/theme_manager.dart';
 import 'utils/mcp_logger.dart';
@@ -62,8 +63,22 @@ import 'permissions/trust_level.dart';
 class MCPUIRuntime {
   MCPUIRuntime({
     this.enableDebugMode = kDebugMode,
-  }) : _logger = MCPLogger('MCPUIRuntime', enableLogging: enableDebugMode),
-       _engine = RuntimeEngine(enableDebugMode: enableDebugMode);
+  })  : _logger = MCPLogger('MCPUIRuntime', enableLogging: enableDebugMode),
+        _engine = RuntimeEngine(enableDebugMode: enableDebugMode);
+
+  /// Inspector entry point for editor tooling. Each rendered widget is
+  /// paired with its source JSON node via [widgetWrapper] so the host can
+  /// hit-test back from the rendered tree to the canonical document. The
+  /// production `MCPUIRuntime()` constructor never sees this hook — the
+  /// renderer's fast path is unchanged when no wrapper is supplied.
+  MCPUIRuntime.withInspector({
+    required RenderInspector widgetWrapper,
+    this.enableDebugMode = kDebugMode,
+  })  : _logger = MCPLogger('MCPUIRuntime', enableLogging: enableDebugMode),
+        _engine = RuntimeEngine(
+          enableDebugMode: enableDebugMode,
+          widgetWrapper: widgetWrapper,
+        );
 
   final bool enableDebugMode;
   final MCPLogger _logger;

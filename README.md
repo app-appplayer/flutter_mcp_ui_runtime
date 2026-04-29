@@ -14,6 +14,7 @@ Comprehensive runtime for building dynamic, reactive Flutter UIs from JSON speci
 - **Action system** — state, tool, batch, conditional actions.
 - **State management** — page-level + application-level with persistence via `SharedPreferences`.
 - **MCP integration** — multiple-server orchestration, tool executor wiring, resource subscription with proper cleanup.
+- **Editor inspection hook** — `MCPUIRuntime.withInspector(widgetWrapper:)` pairs each rendered widget with its source JSON node so visual editors can hit-test from the rendered tree back to the canonical document. The standard constructor is unaffected — no per-node overhead.
 
 ## Quick Start
 
