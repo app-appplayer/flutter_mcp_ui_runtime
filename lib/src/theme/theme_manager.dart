@@ -38,6 +38,14 @@ class ThemeManager with ChangeNotifier {
   /// Host-injected brightness override used to resolve `mode: 'system'`.
   Brightness? _hostBrightnessOverride;
 
+  /// `true` once a bundle has supplied a theme via [setTheme] or
+  /// [setThemeDefinition]. Distinguishes "bundle declared common-level
+  /// colors but no mode-specific variant" (use `_definition` for the
+  /// missing mode) from "bundle declared no theme at all" (use the M3
+  /// default for that mode so the system toggle still produces a
+  /// proper dark scheme).
+  bool _isCustomized = false;
+
   /// Currently active strongly-typed theme.
   ThemeDefinition get definition => _definition;
 
@@ -55,15 +63,28 @@ class ThemeManager with ChangeNotifier {
 
   /// Flutter [ThemeMode] equivalent for routing into `MaterialApp`.
   /// Honours a `theme.mode` state override (spec §5.2).
+  ///
+  /// `mode: 'system'` resolves against the embedder's brightness override
+  /// (`setHostBrightness`) when present — AppPlayer-class hosts are
+  /// themselves "the system" for embedded bundles, so launcher light/dark
+  /// toggles propagate. Without an override, falls back to OS platform
+  /// brightness via [ThemeMode.system].
   ThemeMode get flutterThemeMode {
     final resolved = (getThemeValue('mode') as String?) ?? _themeMode;
     switch (resolved) {
       case 'dark':
         return ThemeMode.dark;
+      case 'light':
+        return ThemeMode.light;
       case 'system':
+        if (_hostBrightnessOverride != null) {
+          return _hostBrightnessOverride == Brightness.dark
+              ? ThemeMode.dark
+              : ThemeMode.light;
+        }
         return ThemeMode.system;
       default:
-        return ThemeMode.light;
+        return ThemeMode.system;
     }
   }
 
@@ -87,6 +108,7 @@ class ThemeManager with ChangeNotifier {
     if (definition.mode != _themeMode) {
       _themeMode = _validateMode(definition.mode);
     }
+    _isCustomized = true;
     notifyListeners();
   }
 
@@ -126,6 +148,7 @@ class ThemeManager with ChangeNotifier {
     _definition = ThemeDefinition.defaultLight();
     _themeData = _definition.toJson();
     _themeMode = 'system';
+    _isCustomized = false;
     notifyListeners();
   }
 
@@ -136,6 +159,7 @@ class ThemeManager with ChangeNotifier {
     _themeMode = 'system';
     _hostBrightnessOverride = null;
     _stateManager = null;
+    _isCustomized = false;
   }
 
   /// Apply a page-level override (spec §5.7 — deep merge) and return a
@@ -250,7 +274,19 @@ class ThemeManager with ChangeNotifier {
 
   ThemeData toFlutterTheme({bool? isDark}) {
     final dark = isDark ?? (_resolveEffectiveMode() == 'dark');
-    final modeDef = _modeSpecific(dark) ?? _definition;
+    // Resolution order:
+    //   1. mode-specific variant (`_definition.dark` / `_definition.light`)
+    //   2. customised common definition (bundle declared common-level
+    //      colors but no variant) — preserve the bundle's intent
+    //   3. M3 default for that mode (bundle declared no theme at all) so
+    //      `darkTheme` is a proper dark scheme rather than the light
+    //      definition re-tagged.
+    final modeDef = _modeSpecific(dark) ??
+        (_isCustomized
+            ? _definition
+            : (dark
+                ? ThemeDefinition.defaultDark()
+                : ThemeDefinition.defaultLight()));
     return McpUiThemeBuilder.build(modeDef, isDark: dark);
   }
 

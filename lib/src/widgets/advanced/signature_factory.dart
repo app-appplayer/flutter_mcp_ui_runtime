@@ -233,6 +233,21 @@ class _SignaturePadState extends State<_SignaturePad> {
 
   @override
   Widget build(BuildContext context) {
+    // Resolve theme-aware colors for built-in chrome (clear button +
+    // guide + placeholder). Falls back to Flutter's ColorScheme when the
+    // mcp_ui ThemeManager doesn't expose the slot, so the widget keeps
+    // working under bare-MaterialApp hosts.
+    final tm = widget.context.themeManager;
+    final scheme = Theme.of(context).colorScheme;
+    final clearBg =
+        tm.getColorValue('secondaryContainer') ?? scheme.secondaryContainer;
+    final clearFg = tm.getColorValue('onSecondaryContainer') ??
+        scheme.onSecondaryContainer;
+    final guideColor =
+        tm.getColorValue('outlineVariant') ?? scheme.outlineVariant;
+    final placeholderColor =
+        tm.getColorValue('onSurfaceVariant') ?? scheme.onSurfaceVariant;
+
     return Container(
       decoration: BoxDecoration(
         color: widget.backgroundColor,
@@ -252,7 +267,7 @@ class _SignaturePadState extends State<_SignaturePad> {
               bottom: 40,
               child: Container(
                 height: 1,
-                color: Colors.grey.shade300,
+                color: guideColor,
               ),
             ),
 
@@ -287,17 +302,17 @@ class _SignaturePadState extends State<_SignaturePad> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
+                      color: clearBg,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.clear, size: 14),
-                        SizedBox(width: 4),
+                        Icon(Icons.clear, size: 14, color: clearFg),
+                        const SizedBox(width: 4),
                         Text(
                           'Clear',
-                          style: TextStyle(fontSize: 12),
+                          style: TextStyle(fontSize: 12, color: clearFg),
                         ),
                       ],
                     ),
@@ -312,7 +327,7 @@ class _SignaturePadState extends State<_SignaturePad> {
               child: Text(
                 'Sign here',
                 style: TextStyle(
-                  color: Colors.grey.shade400,
+                  color: placeholderColor,
                   fontSize: 16,
                 ),
               ),

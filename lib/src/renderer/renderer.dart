@@ -1070,6 +1070,11 @@ class Renderer {
       'dateField', 'DateField',
       'timeField', 'TimeField',
       'colorPicker', 'ColorPicker',
+      // Template invocation: each `use` site is an INSTANCE — its expansion
+      // must not share a cached widget across calls or sessions, since the
+      // expanded subtree's event closures capture the live RenderContext
+      // (state manager, action handler) of the active engine.
+      'use',
     };
 
     if (nonCacheableTypes.contains(type)) {
@@ -1079,7 +1084,12 @@ class Renderer {
     return true;
   }
 
-  /// Check if properties contain event handlers
+  /// Check if properties contain event handlers — recurses through `child`
+  /// and `children` so that ancestor containers holding event-bound
+  /// descendants (e.g., a Row whose children include onTap buttons) are
+  /// also flagged non-cacheable. Without recursion, the row would be
+  /// cached as a Widget instance whose button children retain stale
+  /// onTap closures across runtime sessions.
   bool _hasEventHandlers(Map<String, dynamic> properties) {
     const eventHandlers = {
       // Canonical v1.0 names (on + PascalCase)
@@ -1107,7 +1117,25 @@ class Renderer {
       'blur',
     };
 
-    return properties.keys.any((key) => eventHandlers.contains(key));
+    if (properties.keys.any((key) => eventHandlers.contains(key))) {
+      return true;
+    }
+
+    final child = properties['child'];
+    if (child is Map<String, dynamic> && _hasEventHandlers(child)) {
+      return true;
+    }
+
+    final children = properties['children'];
+    if (children is List) {
+      for (final c in children) {
+        if (c is Map<String, dynamic> && _hasEventHandlers(c)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   /// Get widget cache statistics

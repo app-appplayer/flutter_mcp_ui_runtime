@@ -945,5 +945,86 @@ void main() {
 
       await engine.destroy();
     });
+
+    test('Normal: application-root templates auto-register on initialize',
+        () async {
+      final engine = RuntimeEngine(enableDebugMode: false);
+      final definition = {
+        'type': 'application',
+        'title': 'Test App',
+        'version': '1.0.0',
+        'routes': {'/': 'main'},
+        'templates': {
+          'badge': {
+            'content': {'type': 'text', 'content': 'Badge'},
+          },
+          'card': {
+            'content': {'type': 'box', 'color': 'blue'},
+          },
+        },
+      };
+
+      await engine.initialize(
+        definition: definition,
+        pageLoader: (_) async => {
+          'type': 'page',
+          'content': {'type': 'text', 'content': 'home'},
+        },
+      );
+
+      expect(engine.templateRegistry.getTemplate('badge'), isNotNull);
+      expect(engine.templateRegistry.getTemplate('card'), isNotNull);
+
+      await engine.destroy();
+    });
+
+    test('Normal: page-root templates auto-register at screen scope',
+        () async {
+      final engine = RuntimeEngine(enableDebugMode: false);
+      final definition = {
+        'type': 'page',
+        'templates': {
+          'pageBadge': {
+            'content': {'type': 'text', 'content': 'PageBadge'},
+          },
+        },
+        'content': {'type': 'text', 'content': 'home'},
+      };
+
+      await engine.initialize(definition: definition);
+
+      expect(engine.templateRegistry.getTemplate('pageBadge'), isNotNull);
+
+      await engine.destroy();
+    });
+
+    test('Boundary: template entry without `content` is skipped',
+        () async {
+      // Spec requires the canonical `content` key for the widget tree.
+      // Entries that omit it (or use a non-canonical key) are silently
+      // dropped — no alias accretion.
+      final engine = RuntimeEngine(enableDebugMode: false);
+      final definition = {
+        'type': 'page',
+        'templates': {
+          'broken': {
+            'name': 'broken',
+            // No `content:` — must be skipped without crashing.
+          },
+          'legacyKey': {
+            // Legacy `template:` wrapper is NOT supported; spec is `content:`.
+            'template': {'type': 'text', 'content': 'legacy'},
+          },
+        },
+        'content': {'type': 'text', 'content': 'home'},
+      };
+
+      await engine.initialize(definition: definition);
+
+      expect(engine.templateRegistry.getTemplate('broken'), isNull);
+      expect(engine.templateRegistry.getTemplate('legacyKey'), isNull);
+
+      await engine.destroy();
+    });
   });
 }

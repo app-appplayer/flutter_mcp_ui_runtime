@@ -23,7 +23,7 @@ void main() {
     test('Normal: content tree with two slot references, both provided → both replaced', () {
       registry.register(TemplateDefinition.fromJson({
         'name': 'layout',
-        'body': {
+        'content': {
           'type': 'column',
           'children': [
             {'type': 'slot', 'name': 'header'},
@@ -53,7 +53,7 @@ void main() {
     test('Normal: content tree with no slot references → returned unchanged', () {
       registry.register(TemplateDefinition.fromJson({
         'name': 'simple',
-        'body': {
+        'content': {
           'type': 'text',
           'content': 'No slots here',
         },
@@ -72,7 +72,7 @@ void main() {
     test('Boundary: nested slot reference inside children array → resolved at correct depth', () {
       registry.register(TemplateDefinition.fromJson({
         'name': 'nested',
-        'body': {
+        'content': {
           'type': 'column',
           'children': [
             {
@@ -106,7 +106,7 @@ void main() {
     test('Normal: caller content provided → caller content returned', () {
       registry.register(TemplateDefinition.fromJson({
         'name': 'card',
-        'body': {
+        'content': {
           'type': 'box',
           'children': [
             {
@@ -134,7 +134,7 @@ void main() {
     test('Normal: no caller content, default defined → default returned', () {
       registry.register(TemplateDefinition.fromJson({
         'name': 'card',
-        'body': {
+        'content': {
           'type': 'box',
           'children': [
             {
@@ -160,7 +160,7 @@ void main() {
     test('Normal: no caller content, no default, not required → slot node returned as-is', () {
       registry.register(TemplateDefinition.fromJson({
         'name': 'card',
-        'body': {
+        'content': {
           'type': 'box',
           'children': [
             {'type': 'slot', 'name': 'optional'},

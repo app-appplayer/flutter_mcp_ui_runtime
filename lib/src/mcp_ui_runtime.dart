@@ -35,6 +35,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'optimization/widget_cache.dart';
 import 'runtime/runtime_engine.dart';
 import 'utils/icon_resolver.dart';
 import 'widgets/widget_factory.dart';
@@ -493,6 +494,12 @@ class MCPUIRuntime {
 
     // Clear BindingEngine static caches
     BindingEngine.clearStaticCaches();
+
+    // Clear singleton WidgetCache so cached widget instances from this
+    // session do not leak their event-handler closures (which still
+    // capture the destroyed engine's RenderContext / StateManager) into
+    // the next session.
+    WidgetCache.instance.clear();
 
     _logger.info('Destroyed');
   }

@@ -32,7 +32,7 @@ void main() {
     test('Normal: resolve template name → returns template definition map', () {
       registry.registerScoped(
         'greeting',
-        {'body': {'type': 'text', 'content': 'Hello World'}},
+        {'content': {'type': 'text', 'content': 'Hello World'}},
       );
 
       final result = engine.resolveByName('greeting');
@@ -44,7 +44,7 @@ void main() {
       registry.registerScoped(
         'card',
         {
-          'body': {
+          'content': {
             'type': 'box',
             'padding': 16,
             'color': 'blue',
@@ -78,7 +78,7 @@ void main() {
     test('Normal: expandAll recursively expands template references', () {
       registry.register(TemplateDefinition.fromJson({
         'name': 'innerCard',
-        'body': {'type': 'box', 'children': [
+        'content': {'type': 'box', 'children': [
           {'type': 'text', 'content': 'Inside card'},
         ]},
       }));

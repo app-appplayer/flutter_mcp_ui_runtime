@@ -20,7 +20,7 @@ void main() {
     test('Normal: resolves use definition by extracting template name and delegating', () {
       registry.registerScoped(
         'card',
-        {'body': {'type': 'box', 'padding': 8}},
+        {'content': {'type': 'box', 'padding': 8}},
       );
 
       final result = engine.resolveUseDefinition({
@@ -57,7 +57,7 @@ void main() {
     test('Normal: resolves template by name, merging overrides', () {
       registry.registerScoped(
         'btn',
-        {'body': {'type': 'button', 'label': 'Click', 'size': 'md'}},
+        {'content': {'type': 'button', 'label': 'Click', 'size': 'md'}},
       );
 
       final result = engine.resolveByName('btn', overrides: {'size': 'lg'});
@@ -69,7 +69,7 @@ void main() {
     test('Boundary: no overrides → template defaults used as-is', () {
       registry.registerScoped(
         'btn',
-        {'body': {'type': 'button', 'label': 'Default'}},
+        {'content': {'type': 'button', 'label': 'Default'}},
       );
 
       final result = engine.resolveByName('btn');
@@ -87,7 +87,7 @@ void main() {
     test('Normal: recursively expands all use references', () {
       registry.register(TemplateDefinition.fromJson({
         'name': 'badge',
-        'body': {'type': 'chip', 'label': 'Badge'},
+        'content': {'type': 'chip', 'label': 'Badge'},
       }));
 
       final definition = {
@@ -108,11 +108,11 @@ void main() {
     test('Normal: nested templates expanded correctly', () {
       registry.register(TemplateDefinition.fromJson({
         'name': 'leaf',
-        'body': {'type': 'text', 'content': 'Leaf'},
+        'content': {'type': 'text', 'content': 'Leaf'},
       }));
       registry.register(TemplateDefinition.fromJson({
         'name': 'branch',
-        'body': {
+        'content': {
           'type': 'box',
           'children': [
             {'type': 'use', 'template': 'leaf'},
@@ -136,7 +136,7 @@ void main() {
 
       registry.register(TemplateDefinition.fromJson({
         'name': 'a',
-        'body': {
+        'content': {
           'type': 'box',
           'children': [
             {'type': 'use', 'template': 'b'},
@@ -145,7 +145,7 @@ void main() {
       }));
       registry.register(TemplateDefinition.fromJson({
         'name': 'b',
-        'body': {
+        'content': {
           'type': 'box',
           'children': [
             {'type': 'use', 'template': 'c'},
@@ -154,7 +154,7 @@ void main() {
       }));
       registry.register(TemplateDefinition.fromJson({
         'name': 'c',
-        'body': {'type': 'text', 'content': 'deep'},
+        'content': {'type': 'text', 'content': 'deep'},
       }));
 
       expect(
@@ -166,7 +166,7 @@ void main() {
     test('Error: circular template reference → throws StateError', () {
       registry.register(TemplateDefinition.fromJson({
         'name': 'x',
-        'body': {
+        'content': {
           'type': 'box',
           'children': [
             {'type': 'use', 'template': 'y'},
@@ -175,7 +175,7 @@ void main() {
       }));
       registry.register(TemplateDefinition.fromJson({
         'name': 'y',
-        'body': {
+        'content': {
           'type': 'box',
           'children': [
             {'type': 'use', 'template': 'x'},
@@ -198,12 +198,17 @@ void main() {
       );
     });
 
-    test('Normal: node with type template → true', () {
-      expect(
-        engine.isTemplateReference({'type': 'template', 'template': 'card'}),
-        isTrue,
-      );
-    });
+    test(
+      'Boundary: legacy `type: template` alias → false (canonical `use` only)',
+      () {
+        // 1.3 spec §9.6: `use` is the only invocation widget type;
+        // legacy aliases (`template`, `useTemplate`) are removed.
+        expect(
+          engine.isTemplateReference({'type': 'template', 'template': 'card'}),
+          isFalse,
+        );
+      },
+    );
 
     test('Boundary: node with other type → false', () {
       expect(

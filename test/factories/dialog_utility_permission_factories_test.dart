@@ -359,20 +359,22 @@ void main() {
   // TC-273: UseTemplateFactory - template, overrides (v1.1)
   // ---------------------------------------------------------------------------
   group('TC-273: UseTemplateFactory', () {
-    testWidgets('TC-273a: useTemplate renders without crash', (tester) async {
+    testWidgets('TC-273a: use widget renders without crash', (tester) async {
+      // Canonical 1.3 §9.6: `type: "use"` + `params:`. Legacy `useTemplate`
+      // / `overrides` aliases were removed in spec cleanup.
       await pumpPage(tester, content: {
-        'type': 'useTemplate',
+        'type': 'use',
         'template': 'default-card',
-        'overrides': {
+        'params': {
           'title': 'Overridden Title',
         },
       });
       expect(find.byType(MaterialApp), findsOneWidget);
     });
 
-    testWidgets('TC-273b: useTemplate with no overrides', (tester) async {
+    testWidgets('TC-273b: use widget with no params', (tester) async {
       await pumpPage(tester, content: {
-        'type': 'useTemplate',
+        'type': 'use',
         'template': 'base-layout',
       });
       expect(find.byType(MaterialApp), findsOneWidget);

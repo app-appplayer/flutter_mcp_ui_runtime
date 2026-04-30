@@ -26,7 +26,7 @@ void main() {
           'subtitle': {'type': 'string', 'required': false},
         },
         'defaults': {'subtitle': 'Default subtitle'},
-        'body': {
+        'content': {
           'type': 'column',
           'children': [
             {'type': 'text', 'content': '{{title}}'},
@@ -73,7 +73,7 @@ void main() {
         'params': {
           'label': {'type': 'string', 'required': true},
         },
-        'body': {'type': 'chip', 'text': '{{label}}'},
+        'content': {'type': 'chip', 'text': '{{label}}'},
       }));
 
       registry.register(TemplateDefinition.fromJson({
@@ -81,7 +81,7 @@ void main() {
         'params': {
           'title': {'type': 'string', 'required': true},
         },
-        'body': {
+        'content': {
           'type': 'column',
           'children': [
             {'type': 'text', 'content': '{{title}}'},
@@ -120,7 +120,7 @@ void main() {
           'showFooter': {'type': 'boolean', 'required': false},
         },
         'defaults': {'showFooter': true},
-        'body': {
+        'content': {
           'type': 'column',
           'children': [
             {'type': 'text', 'content': 'Body'},
@@ -152,7 +152,7 @@ void main() {
           'showFooter': {'type': 'boolean', 'required': false},
         },
         'defaults': {'showFooter': false},
-        'body': {
+        'content': {
           'type': 'column',
           'children': [
             {'type': 'text', 'content': 'Body'},
@@ -188,7 +188,7 @@ void main() {
           'color': {'type': 'string', 'required': false},
         },
         'defaults': {'color': 'blue'},
-        'body': {
+        'content': {
           'type': 'box',
           'color': '{{color}}',
           'children': [
@@ -232,7 +232,7 @@ void main() {
       // Register with scoped styles via extended definition
       registry.registerExtended(ExtendedTemplateDefinition.fromJson({
         'name': 'styledCard',
-        'body': {
+        'content': {
           'type': 'box',
           'style': {'padding': 8},
           'children': [

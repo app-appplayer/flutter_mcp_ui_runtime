@@ -88,6 +88,63 @@ void main() {
     test('invalid mode throws', () {
       expect(() => tm.setThemeMode('invalid'), throwsArgumentError);
     });
+
+    test('flutterThemeMode honours host brightness in system mode', () {
+      // Default: no theme set → _themeMode = 'system', no host override.
+      expect(tm.flutterThemeMode, ThemeMode.system);
+
+      // Host injects dark → flutterThemeMode resolves to ThemeMode.dark
+      // (so the nested MaterialApp picks darkTheme regardless of OS).
+      tm.setHostBrightness(Brightness.dark);
+      expect(tm.flutterThemeMode, ThemeMode.dark);
+
+      // Host injects light → flutterThemeMode resolves to ThemeMode.light.
+      tm.setHostBrightness(Brightness.light);
+      expect(tm.flutterThemeMode, ThemeMode.light);
+
+      // Clearing the override falls back to ThemeMode.system (OS).
+      tm.setHostBrightness(null);
+      expect(tm.flutterThemeMode, ThemeMode.system);
+    });
+
+    test(
+      'flutterThemeMode ignores host brightness when bundle declares an '
+      'explicit non-system mode',
+      () {
+        tm.setTheme({'mode': 'dark', 'color': {'primary': '#222222'}});
+        tm.setHostBrightness(Brightness.light);
+        // Bundle wins — 'dark' stays dark even with a light host override.
+        expect(tm.flutterThemeMode, ThemeMode.dark);
+
+        tm.setTheme({'mode': 'light', 'color': {'primary': '#AAAAAA'}});
+        tm.setHostBrightness(Brightness.dark);
+        expect(tm.flutterThemeMode, ThemeMode.light);
+      },
+    );
+
+    test(
+      'toFlutterTheme(isDark:true) falls back to defaultDark when no dark '
+      'variant declared',
+      () {
+        // No theme set → only the M3 default light is active. The dark
+        // build must not regress to the light color set; it should use
+        // M3 default dark instead.
+        final dark = tm.toFlutterTheme(isDark: true);
+        expect(dark.brightness, Brightness.dark);
+
+        final light = tm.toFlutterTheme(isDark: false);
+        expect(light.brightness, Brightness.light);
+
+        // The two ThemeData instances must yield distinct surface colors —
+        // proving the dark fallback isn't just the light scheme re-tagged.
+        expect(
+          dark.colorScheme.surface == light.colorScheme.surface,
+          isFalse,
+          reason: 'darkTheme fell back to the light surface — '
+              'defaultDark fallback not applied',
+        );
+      },
+    );
   });
 
   group('TC-TH-04: state overrides', () {

@@ -204,10 +204,10 @@ class ExtendedTemplateDefinition {
   /// Template name
   final String name;
 
-  /// Template body (widget tree definition)
-  final Map<String, dynamic> body;
+  /// Template content (widget tree definition; DSL key: `content`)
+  final Map<String, dynamic> content;
 
-  /// Typed parameter definitions with validation
+  /// Typed parameter definitions with validation (DSL key: `params`)
   final Map<String, TemplateParamDefinition> paramDefinitions;
 
   /// Content slot definitions
@@ -221,7 +221,7 @@ class ExtendedTemplateDefinition {
 
   const ExtendedTemplateDefinition({
     required this.name,
-    required this.body,
+    required this.content,
     this.paramDefinitions = const {},
     this.slotDefinitions = const {},
     this.scopedStyles = false,
@@ -271,7 +271,7 @@ class ExtendedTemplateDefinition {
 
     return ExtendedTemplateDefinition(
       name: json['name'] as String,
-      body: json['body'] as Map<String, dynamic>? ?? {},
+      content: json['content'] as Map<String, dynamic>? ?? {},
       paramDefinitions: paramDefs,
       slotDefinitions: slotDefs,
       scopedStyles: json['scopedStyles'] as bool? ?? false,
@@ -314,7 +314,7 @@ class ExtendedTemplateDefinition {
   /// Convert to JSON
   Map<String, dynamic> toJson() => {
         'name': name,
-        'body': body,
+        'content': content,
         if (paramDefinitions.isNotEmpty)
           'params': paramDefinitions
               .map((key, value) => MapEntry(key, value.toJson())),
@@ -449,7 +449,7 @@ class TemplateRegistry {
     ]) {
       final template = _scopedTemplates[scope]![name];
       if (template != null) {
-        return template.body;
+        return template.content;
       }
     }
     return null;
@@ -484,7 +484,7 @@ class TemplateRegistry {
     // Also register in the standard registry for backward compatibility
     final templateDef = TemplateDefinition.fromJson({
       'name': extTemplate.name,
-      'body': extTemplate.body,
+      'content': extTemplate.content,
       if (extTemplate.defaults.isNotEmpty) 'defaults': extTemplate.defaults,
     });
     _templates[extTemplate.name] = templateDef;
@@ -563,7 +563,7 @@ class TemplateRegistry {
 
     // Deep-clone and substitute the template body
     final expanded = _substituteParams(
-      _deepClone(extTemplate.body),
+      _deepClone(extTemplate.content),
       params,
       _resolveSlotFallbacks(slots, extTemplate.slotDefinitions),
     );
@@ -656,7 +656,7 @@ class TemplateRegistry {
 
     // Deep-clone and substitute the template body
     final expanded = _substituteParams(
-      _deepClone(template.body),
+      _deepClone(template.content),
       params,
       slots,
     );
@@ -802,12 +802,10 @@ class TemplateEngine {
     return result;
   }
 
-  /// Check whether a value is a template reference
-  /// (has type == 'use' or type == 'template') per 10-templates.md §6.
+  /// Check whether a value is a template reference (canonical `type: "use"`
+  /// per spec §9.6).
   bool isTemplateReference(Map<String, dynamic> definition) {
-    final type = definition['type'];
-    return (type == 'use' || type == 'template') &&
-        definition['template'] != null;
+    return definition['type'] == 'use' && definition['template'] != null;
   }
 
   /// Expand all template references in a definition tree (recursive)

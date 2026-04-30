@@ -169,14 +169,14 @@ void main() {
       // Register at application scope (global)
       registry.registerScoped(
         'card',
-        {'body': {'type': 'box', 'color': 'blue', 'padding': 16}},
+        {'content': {'type': 'box', 'color': 'blue', 'padding': 16}},
         scope: TemplateScope.application,
       );
 
       // Register at screen scope (page-level)
       registry.registerScoped(
         'card',
-        {'body': {'type': 'box', 'color': 'red', 'padding': 8}},
+        {'content': {'type': 'box', 'color': 'red', 'padding': 8}},
         scope: TemplateScope.screen,
       );
 
@@ -189,12 +189,12 @@ void main() {
     test('Normal: clearing screen scope falls back to application scope', () {
       registry.registerScoped(
         'header',
-        {'body': {'type': 'text', 'content': 'App Header'}},
+        {'content': {'type': 'text', 'content': 'App Header'}},
         scope: TemplateScope.application,
       );
       registry.registerScoped(
         'header',
-        {'body': {'type': 'text', 'content': 'Page Header'}},
+        {'content': {'type': 'text', 'content': 'Page Header'}},
         scope: TemplateScope.screen,
       );
 
@@ -211,7 +211,7 @@ void main() {
     test('Normal: expandAll resolves nested template references', () {
       registry.register(TemplateDefinition.fromJson(const {
         'name': 'badge',
-        'body': {'type': 'text', 'content': 'Badge'},
+        'content': {'type': 'text', 'content': 'Badge'},
       }));
 
       final definition = {

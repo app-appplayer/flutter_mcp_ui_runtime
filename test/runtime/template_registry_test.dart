@@ -38,7 +38,7 @@ void main() {
     test('Normal: register template at application scope → retrievable', () {
       final template = TemplateDefinition.fromJson({
         'name': 'myCard',
-        'body': {'type': 'box', 'children': []},
+        'content': {'type': 'box', 'children': []},
       });
 
       registry.register(template);
@@ -50,12 +50,12 @@ void main() {
     test('Normal: register at screen scope → higher priority than application', () {
       registry.registerScoped(
         'shared',
-        {'body': {'type': 'text', 'content': 'App level'}},
+        {'content': {'type': 'text', 'content': 'App level'}},
         scope: TemplateScope.application,
       );
       registry.registerScoped(
         'shared',
-        {'body': {'type': 'text', 'content': 'Screen level'}},
+        {'content': {'type': 'text', 'content': 'Screen level'}},
         scope: TemplateScope.screen,
       );
 
@@ -67,7 +67,7 @@ void main() {
     test('Normal: register at built-in scope → lowest priority', () {
       registry.registerScoped(
         'base',
-        {'body': {'type': 'text', 'content': 'Built-in'}},
+        {'content': {'type': 'text', 'content': 'Built-in'}},
         scope: TemplateScope.builtIn,
       );
 
@@ -78,7 +78,7 @@ void main() {
     test('Boundary: hasTemplate returns true for registered names', () {
       registry.registerScoped(
         'test',
-        {'body': {'type': 'text', 'content': 'hi'}},
+        {'content': {'type': 'text', 'content': 'hi'}},
       );
 
       expect(registry.hasTemplate('test'), isTrue);
@@ -105,12 +105,12 @@ void main() {
     test('Normal: screen scope overrides application scope', () {
       registry.registerScoped(
         'card',
-        {'body': {'type': 'box', 'color': 'blue'}},
+        {'content': {'type': 'box', 'color': 'blue'}},
         scope: TemplateScope.application,
       );
       registry.registerScoped(
         'card',
-        {'body': {'type': 'box', 'color': 'red'}},
+        {'content': {'type': 'box', 'color': 'red'}},
         scope: TemplateScope.screen,
       );
 
@@ -121,12 +121,12 @@ void main() {
     test('Normal: application scope overrides built-in scope', () {
       registry.registerScoped(
         'btn',
-        {'body': {'type': 'button', 'variant': 'default'}},
+        {'content': {'type': 'button', 'variant': 'default'}},
         scope: TemplateScope.builtIn,
       );
       registry.registerScoped(
         'btn',
-        {'body': {'type': 'button', 'variant': 'custom'}},
+        {'content': {'type': 'button', 'variant': 'custom'}},
         scope: TemplateScope.application,
       );
 
@@ -137,7 +137,7 @@ void main() {
     test('Boundary: template only in built-in scope → returned', () {
       registry.registerScoped(
         'base',
-        {'body': {'type': 'text', 'content': 'built-in'}},
+        {'content': {'type': 'text', 'content': 'built-in'}},
         scope: TemplateScope.builtIn,
       );
 
@@ -159,12 +159,12 @@ void main() {
     test('Normal: clearScope(screen) → screen templates cleared', () {
       registry.registerScoped(
         'screenTpl',
-        {'body': {'type': 'text', 'content': 'screen'}},
+        {'content': {'type': 'text', 'content': 'screen'}},
         scope: TemplateScope.screen,
       );
       registry.registerScoped(
         'appTpl',
-        {'body': {'type': 'text', 'content': 'app'}},
+        {'content': {'type': 'text', 'content': 'app'}},
         scope: TemplateScope.application,
       );
 
@@ -192,7 +192,7 @@ void main() {
 
       registry.registerScoped(
         'test',
-        {'body': {'type': 'text', 'content': 'hi'}},
+        {'content': {'type': 'text', 'content': 'hi'}},
       );
 
       registry.dispose();

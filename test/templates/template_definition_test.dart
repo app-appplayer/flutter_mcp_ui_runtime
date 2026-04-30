@@ -6,7 +6,7 @@ void main() {
     test('Normal: fromJson parses params, slots, defaults', () {
       final ext = ExtendedTemplateDefinition.fromJson({
         'name': 'card',
-        'body': {'type': 'box'},
+        'content': {'type': 'box'},
         'params': {
           'title': {'type': 'string', 'required': true},
           'variant': {'type': 'string', 'default': 'outlined'},
@@ -28,7 +28,7 @@ void main() {
     test('Normal: validateParams with valid params → empty errors', () {
       final ext = ExtendedTemplateDefinition.fromJson({
         'name': 'card',
-        'body': {'type': 'box'},
+        'content': {'type': 'box'},
         'params': {
           'title': {'type': 'string', 'required': true},
         },
@@ -41,7 +41,7 @@ void main() {
     test('Error: validateParams with missing required → error list', () {
       final ext = ExtendedTemplateDefinition.fromJson({
         'name': 'card',
-        'body': {'type': 'box'},
+        'content': {'type': 'box'},
         'params': {
           'title': {'type': 'string', 'required': true},
         },
@@ -55,7 +55,7 @@ void main() {
     test('Normal: validateSlots with required slot provided → empty', () {
       final ext = ExtendedTemplateDefinition.fromJson({
         'name': 'card',
-        'body': {'type': 'box'},
+        'content': {'type': 'box'},
         'slots': [
           {'name': 'content', 'required': true},
         ],
@@ -70,7 +70,7 @@ void main() {
     test('Error: validateSlots with required slot missing → error', () {
       final ext = ExtendedTemplateDefinition.fromJson({
         'name': 'card',
-        'body': {'type': 'box'},
+        'content': {'type': 'box'},
         'slots': [
           {'name': 'content', 'required': true},
         ],
@@ -86,7 +86,7 @@ void main() {
     test('Error: required slot with no default and no caller content → error', () {
       final ext = ExtendedTemplateDefinition.fromJson({
         'name': 'card',
-        'body': {'type': 'box'},
+        'content': {'type': 'box'},
         'slots': [
           {'name': 'main', 'required': true},
         ],
@@ -99,7 +99,7 @@ void main() {
     test('Normal: required slot with fallback and no caller content → no error', () {
       final ext = ExtendedTemplateDefinition.fromJson({
         'name': 'card',
-        'body': {'type': 'box'},
+        'content': {'type': 'box'},
         'slots': [
           {
             'name': 'main',

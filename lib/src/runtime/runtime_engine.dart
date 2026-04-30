@@ -324,6 +324,29 @@ class RuntimeEngine with ChangeNotifier {
     // Register all default widgets
     DefaultWidgets.registerAll(_widgetRegistry);
 
+    // Register DSL-supplied templates so the `use` widget can resolve
+    // `{ "type": "use", "template": "<name>" }` references at render
+    // time. Application-root definitions land in TemplateScope.application
+    // (visible to every page), standalone page definitions land in
+    // TemplateScope.screen (cleared on page switch).
+    //
+    // Per the DSL spec a template entry MUST carry a `content` widget tree;
+    // entries without it are malformed and skipped (no legacy aliases).
+    final templatesBlock = definition['templates'];
+    if (templatesBlock is Map) {
+      final scope = _parsedUIDefinition!.type == UIDefinitionType.page
+          ? TemplateScope.screen
+          : TemplateScope.application;
+      templatesBlock.forEach((name, entry) {
+        if (name is! String ||
+            entry is! Map<String, dynamic> ||
+            entry['content'] is! Map<String, dynamic>) {
+          return;
+        }
+        _templateRegistry.registerScoped(name, entry, scope: scope);
+      });
+    }
+
     // Create modern renderer
     _renderer = Renderer(
       widgetRegistry: _widgetRegistry,

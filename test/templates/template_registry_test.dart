@@ -14,10 +14,10 @@ void main() {
     registry.dispose();
   });
 
-  TemplateDefinition _makeDef(String name, {Map<String, dynamic>? body}) {
+  TemplateDefinition _makeDef(String name, {Map<String, dynamic>? content}) {
     return TemplateDefinition.fromJson({
       'name': name,
-      'body': body ?? {'type': 'text', 'content': name},
+      'content': content ?? {'type': 'text', 'content': name},
     });
   }
 
@@ -40,8 +40,8 @@ void main() {
     });
 
     test('Boundary: register same name twice → overwrites previous', () {
-      registry.register(_makeDef('card', body: {'type': 'text', 'content': 'v1'}));
-      registry.register(_makeDef('card', body: {'type': 'text', 'content': 'v2'}));
+      registry.register(_makeDef('card', content: {'type': 'text', 'content': 'v1'}));
+      registry.register(_makeDef('card', content: {'type': 'text', 'content': 'v2'}));
 
       expect(registry.hasTemplate('card'), isTrue);
       final resolved = registry.getTemplate('card');
@@ -102,7 +102,7 @@ void main() {
         'params': {
           'name': {'type': 'string', 'required': true},
         },
-        'body': {'type': 'text', 'content': 'Hello {{name}}'},
+        'content': {'type': 'text', 'content': 'Hello {{name}}'},
       });
       registry.register(template);
 
@@ -122,7 +122,7 @@ void main() {
           'title': {'type': 'string', 'required': false},
         },
         'defaults': {'title': 'Default Title'},
-        'body': {'type': 'text', 'content': '{{title}}'},
+        'content': {'type': 'text', 'content': '{{title}}'},
       });
       registry.register(template);
 
@@ -142,7 +142,7 @@ void main() {
         'params': {
           'name': {'type': 'string', 'required': true},
         },
-        'body': {'type': 'text', 'content': 'Hello {{name}}'},
+        'content': {'type': 'text', 'content': 'Hello {{name}}'},
       });
       registry.register(template);
 
@@ -162,7 +162,7 @@ void main() {
         'params': {
           'name': {'type': 'string', 'required': true},
         },
-        'body': {'type': 'text', 'content': 'Hello {{name}}'},
+        'content': {'type': 'text', 'content': 'Hello {{name}}'},
       });
       registry.register(template);
 
@@ -179,7 +179,7 @@ void main() {
     test('Normal: caller provides slot content → slot filled', () {
       final template = TemplateDefinition.fromJson({
         'name': 'card',
-        'body': {
+        'content': {
           'type': 'box',
           'children': [
             {'type': 'slot', 'name': 'header'},
@@ -206,7 +206,7 @@ void main() {
     test('Normal: slot with fallback, no caller content → fallback used', () {
       final template = TemplateDefinition.fromJson({
         'name': 'card',
-        'body': {
+        'content': {
           'type': 'box',
           'children': [
             {
@@ -235,11 +235,11 @@ void main() {
     test('Normal: template content with use reference → resolved by engine', () {
       registry.register(TemplateDefinition.fromJson({
         'name': 'inner',
-        'body': {'type': 'text', 'content': 'inner content'},
+        'content': {'type': 'text', 'content': 'inner content'},
       }));
       registry.register(TemplateDefinition.fromJson({
         'name': 'outer',
-        'body': {
+        'content': {
           'type': 'box',
           'children': [
             {'type': 'use', 'template': 'inner'},
@@ -265,7 +265,7 @@ void main() {
       // A references B, B references A
       registry.register(TemplateDefinition.fromJson({
         'name': 'a',
-        'body': {
+        'content': {
           'type': 'box',
           'children': [
             {'type': 'use', 'template': 'b'},
@@ -274,7 +274,7 @@ void main() {
       }));
       registry.register(TemplateDefinition.fromJson({
         'name': 'b',
-        'body': {
+        'content': {
           'type': 'box',
           'children': [
             {'type': 'use', 'template': 'a'},
@@ -296,7 +296,7 @@ void main() {
       for (var i = 1; i <= 3; i++) {
         registry.register(TemplateDefinition.fromJson({
           'name': 't$i',
-          'body': {
+          'content': {
             'type': 'box',
             'children': [
               {'type': 'use', 'template': 't${i + 1}'},
@@ -306,7 +306,7 @@ void main() {
       }
       registry.register(TemplateDefinition.fromJson({
         'name': 't4',
-        'body': {'type': 'text', 'content': 'leaf'},
+        'content': {'type': 'text', 'content': 'leaf'},
       }));
 
       expect(
@@ -321,11 +321,11 @@ void main() {
       registry.registerFromJson([
         {
           'name': 'card',
-          'body': {'type': 'box', 'children': []},
+          'content': {'type': 'box', 'children': []},
         },
         {
           'name': 'button',
-          'body': {'type': 'button', 'label': 'Click'},
+          'content': {'type': 'button', 'label': 'Click'},
         },
       ]);
       expect(registry.hasTemplate('card'), isTrue);
@@ -354,7 +354,7 @@ void main() {
         'params': {
           'name': {'type': 'string', 'required': true},
         },
-        'body': {'type': 'text', 'content': 'Hello {{name}}'},
+        'content': {'type': 'text', 'content': 'Hello {{name}}'},
       });
       registry.register(template);
 
@@ -387,7 +387,7 @@ void main() {
     test('Error: value not in enum list → resolveExtended returns null', () {
       registry.registerExtended(ExtendedTemplateDefinition.fromJson({
         'name': 'card',
-        'body': {'type': 'box', 'variant': '{{variant}}'},
+        'content': {'type': 'box', 'variant': '{{variant}}'},
         'params': {
           'variant': {
             'type': 'string',
@@ -408,7 +408,7 @@ void main() {
     test('Normal: value in enum list → resolveExtended succeeds', () {
       registry.registerExtended(ExtendedTemplateDefinition.fromJson({
         'name': 'card',
-        'body': {'type': 'box', 'variant': '{{variant}}'},
+        'content': {'type': 'box', 'variant': '{{variant}}'},
         'params': {
           'variant': {
             'type': 'string',
@@ -432,7 +432,7 @@ void main() {
     test('Normal: resolveExtended with scopedStyles → adds scope markers', () {
       registry.registerExtended(ExtendedTemplateDefinition.fromJson({
         'name': 'styledCard',
-        'body': {'type': 'box', 'style': {'padding': 8}},
+        'content': {'type': 'box', 'style': {'padding': 8}},
         'scopedStyles': true,
       }));
 
@@ -456,7 +456,7 @@ void main() {
     test('Normal: non-scoped template → no scope markers', () {
       registry.registerExtended(ExtendedTemplateDefinition.fromJson({
         'name': 'plain',
-        'body': {'type': 'box'},
+        'content': {'type': 'box'},
         'scopedStyles': false,
       }));
 
@@ -473,7 +473,7 @@ void main() {
     test('Normal: same template resolved twice → definition parsed once', () {
       final template = TemplateDefinition.fromJson({
         'name': 'cached',
-        'body': {'type': 'text', 'content': 'cached content'},
+        'content': {'type': 'text', 'content': 'cached content'},
       });
       registry.register(template);
 
@@ -497,7 +497,7 @@ void main() {
     test('Normal: unregister → cache entry removed', () {
       final template = TemplateDefinition.fromJson({
         'name': 'removable',
-        'body': {'type': 'text', 'content': 'temp'},
+        'content': {'type': 'text', 'content': 'temp'},
       });
       registry.register(template);
 
@@ -529,7 +529,7 @@ void main() {
         'params': {
           'name': {'type': 'string', 'required': true},
         },
-        'body': {'type': 'text', 'content': 'Hello {{name}}'},
+        'content': {'type': 'text', 'content': 'Hello {{name}}'},
       });
       registry.register(template);
 
@@ -555,7 +555,7 @@ void main() {
         'params': {
           'name': {'type': 'string', 'required': true},
         },
-        'body': {'type': 'text', 'content': 'Hello {{name}}'},
+        'content': {'type': 'text', 'content': 'Hello {{name}}'},
       });
       registry.register(template);
 
@@ -579,7 +579,7 @@ void main() {
     test('Boundary: slots excluded from cache key — different slots with same params → cache hit', () {
       final template = TemplateDefinition.fromJson({
         'name': 'card',
-        'body': {
+        'content': {
           'type': 'box',
           'children': [
             {'type': 'slot', 'name': 'header'},
