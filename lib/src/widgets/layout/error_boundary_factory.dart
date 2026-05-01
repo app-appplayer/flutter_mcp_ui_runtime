@@ -44,21 +44,14 @@ class _ErrorBoundaryWidget extends StatefulWidget {
 }
 
 class _ErrorBoundaryWidgetState extends State<_ErrorBoundaryWidget> {
-  Object? _error;
   bool _hasError = false;
 
   @override
   Widget build(BuildContext context) {
     if (_hasError) {
-      // Execute onError action if defined
-      if (widget.onError != null && _error != null) {
-        final errorContext = widget.context.createChildContext(
-          variables: {'error': _error.toString()},
-        );
-        widget.context.actionHandler.execute(widget.onError!, errorContext);
-      }
-
-      // Render fallback widget if provided
+      // Render fallback widget if provided. The onError action was already
+      // dispatched once in the post-frame callback that flipped _hasError
+      // (spec §2.13.11), so it must not fire again on every rebuild.
       if (widget.fallback != null) {
         try {
           return widget.context.renderer
@@ -102,14 +95,25 @@ class _ErrorBoundaryWidgetState extends State<_ErrorBoundaryWidget> {
     // Wrap child rendering in error catching
     try {
       return widget.context.renderer.renderWidget(widget.child, widget.context);
-    } catch (e) {
-      // Schedule state update on next frame to avoid build-during-build
+    } catch (e, st) {
+      // Schedule state update on next frame to avoid build-during-build,
+      // and dispatch onError once with the spec §2.13.11 canonical
+      // `event` variable (`event.error` / `event.stack`).
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            _error = e;
-            _hasError = true;
-          });
+        if (!mounted) return;
+        setState(() {
+          _hasError = true;
+        });
+        if (widget.onError != null) {
+          final eventContext = widget.context.createChildContext(
+            variables: {
+              'event': {
+                'error': e.toString(),
+                'stack': st.toString(),
+              },
+            },
+          );
+          widget.context.actionHandler.execute(widget.onError!, eventContext);
         }
       });
       return const SizedBox.shrink();
@@ -118,7 +122,6 @@ class _ErrorBoundaryWidgetState extends State<_ErrorBoundaryWidget> {
 
   void _retry() {
     setState(() {
-      _error = null;
       _hasError = false;
     });
   }

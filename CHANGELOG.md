@@ -1,8 +1,18 @@
-## [0.4.2] - 2026-05-01 - Tool response spec alignment (§3.10 + §4.4.2)
+## [0.4.3] - 2026-05-01 - errorBoundary / errorRecovery onError spec violation fix
 
-- **§3.10 auto-merge implemented** — tool response Map's top-level keys now auto-merge into page state via `stateManager.mergeState` when `bindResult` is not specified. Hosts no longer need to fold responses themselves.
-- **§4.4.2 onSuccess/onError variable** — child context now exposes the spec canonical `event` variable. Inside `onSuccess`, `{{event.<key>}}` resolves to top-level fields of the response body. Inside `onError`, `event` is `{code, message, details}` per spec.
-- Breaking: DSL using the previous `{{response.<key>}}` / `{{error.message}}` patterns must migrate to `{{event.<key>}}`.
+### Fixed
+- `errorBoundary` (spec §2.13.11) — onError child context was registering `error` (string) instead of the canonical `event` variable. Now registers `event: {error, stack}` so `{{event.error}}` and `{{event.stack}}` resolve as the spec specifies.
+- `errorRecovery` (spec §2.13.12) — same variable-name violation; now registers `event: {error, stack}`. Stack trace is captured (was previously lost).
+- `errorBoundary` was re-firing `onError` on every rebuild while the boundary remained in the error state. The action now dispatches exactly once per captured exception (in the post-frame callback that flips `_hasError`).
+
+## [0.4.2] - 2026-05-01 - Tool response spec violation fix (§3.10 + §4.4.2)
+
+### Fixed
+- `§3.10` auto-merge — `ToolActionExecutor` now calls `stateManager.mergeState(response)` when the tool response is a Map and `bindResult` is not specified, instead of leaving fold to host code. Top-level keys of the response land directly on page state.
+- `§4.4.2` onSuccess/onError variable — child context now exposes the canonical `event` variable. `{{event.<key>}}` resolves to the response body inside `onSuccess`; inside `onError`, `event` is `{code, message, details}` per spec. Previously the runtime registered `response` / `error` (string), so the spec patterns silently failed.
+
+### Migration
+- DSL written against the previous (non-spec) `{{response.<key>}}` / `{{error.message}}` shapes must move to `{{event.<key>}}` to keep working.
 
 ## [0.4.1] - 2026-04-30 - Template auto-registration + theme system fixes + spec alignment
 

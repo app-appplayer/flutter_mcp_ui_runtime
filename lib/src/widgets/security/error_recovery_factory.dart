@@ -56,8 +56,11 @@ class _ErrorRecoveryWidget extends StatefulWidget {
 }
 
 class _ErrorRecoveryWidgetState extends State<_ErrorRecoveryWidget> {
+  // `_errorType` retained for `handlers` map routing (Dart runtime type
+  // string — orthogonal to the `event` payload below).
   String? _errorType;
   String? _errorMessage;
+  String? _errorStack;
   bool _hasError = false;
 
   @override
@@ -73,18 +76,20 @@ class _ErrorRecoveryWidgetState extends State<_ErrorRecoveryWidget> {
             .renderWidget(widget.childDefinition!, widget.context);
         return widget.factory
             .applyCommonWrappers(child, widget.properties, widget.context);
-      } catch (e) {
+      } catch (e, st) {
         _errorType = e.runtimeType.toString();
         _errorMessage = e.toString();
+        _errorStack = st.toString();
         _hasError = true;
 
-        // Execute onError action
+        // Execute onError action with spec §2.13.12 canonical `event`
+        // variable (`event.error` / `event.stack`).
         if (widget.onError != null) {
           final eventContext = widget.context.createChildContext(
             variables: {
-              'error': {
-                'type': _errorType,
-                'message': _errorMessage,
+              'event': {
+                'error': _errorMessage,
+                'stack': _errorStack,
               },
             },
           );
@@ -155,6 +160,7 @@ class _ErrorRecoveryWidgetState extends State<_ErrorRecoveryWidget> {
                   _hasError = false;
                   _errorType = null;
                   _errorMessage = null;
+                  _errorStack = null;
                 });
               },
               child: const Text('Retry'),
