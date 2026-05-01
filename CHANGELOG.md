@@ -1,3 +1,9 @@
+## [0.4.2] - 2026-05-01 - Tool response spec alignment (§3.10 + §4.4.2)
+
+- **§3.10 auto-merge implemented** — tool response Map's top-level keys now auto-merge into page state via `stateManager.mergeState` when `bindResult` is not specified. Hosts no longer need to fold responses themselves.
+- **§4.4.2 onSuccess/onError variable** — child context now exposes the spec canonical `event` variable. Inside `onSuccess`, `{{event.<key>}}` resolves to top-level fields of the response body. Inside `onError`, `event` is `{code, message, details}` per spec.
+- Breaking: DSL using the previous `{{response.<key>}}` / `{{error.message}}` patterns must migrate to `{{event.<key>}}`.
+
 ## [0.4.1] - 2026-04-30 - Template auto-registration + theme system fixes + spec alignment
 
 ### Fixed

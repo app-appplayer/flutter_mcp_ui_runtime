@@ -208,14 +208,16 @@ class ActionHandler {
       _logger.debug(
           'Executor returned result: ${result.success} - ${result.data}');
 
-      // Handle success/error callbacks
+      // Handle success/error callbacks per spec §4.4.2: child context exposes
+      // the response (or structured error) under the canonical `event` key,
+      // making `{{event.<field>}}` resolvable via binding_engine's event.*
+      // prefix path.
       if (result.success) {
         final onSuccess = action['onSuccess'] as Map<String, dynamic>?;
         if (onSuccess != null) {
-          // Create a child context with the response data
           final successContext = context.createChildContext(
             variables: {
-              'response': result.data,
+              'event': result.data,
             },
           );
           await execute(onSuccess, successContext);
@@ -223,10 +225,13 @@ class ActionHandler {
       } else {
         final onError = action['onError'] as Map<String, dynamic>?;
         if (onError != null) {
-          // Create a child context with the error message from result.error
           final errorContext = context.createChildContext(
             variables: {
-              'error': result.error ?? 'Unknown error',
+              'event': {
+                'code': result.errorCode,
+                'message': result.error ?? 'Unknown error',
+                'details': result.errorDetails,
+              },
             },
           );
           await execute(onError, errorContext);
@@ -475,13 +480,29 @@ class ToolActionExecutor extends ActionExecutor {
 
       _logger.debug('Tool executor returned: $result');
 
-      // Handle MCP-style response format
+      // Spec §4.4 / §3.10: tool response handling.
+      //
+      // The runtime accepts two response shapes:
+      //   1. Plain Map (canonical, spec §3.10) — top-level keys auto-merge
+      //      into page state via stateManager.mergeState.
+      //   2. MCP-style envelope `{success, result, message}` — LEGACY,
+      //      not in spec. Retained for backward compatibility with hosts /
+      //      tool implementations that wrap responses; the inner `result`
+      //      is treated as the response body for auto-merge purposes.
+      //      Slated for removal in a future major; tool authors should
+      //      return the response body directly and signal success/failure
+      //      via MCP `CallToolResult.isError`.
+      //
+      // The `tools.<toolName>.result` namespaced mirror written below is
+      // also a LEGACY convenience binding outside the spec; authors should
+      // use explicit `bindResult` or rely on auto-merged top-level keys.
+      // It is retained alongside the spec auto-merge for backward compat.
       if (result is Map<String, dynamic> && result.containsKey('success')) {
         final isSuccess = result['success'] as bool? ?? false;
         final resultData = result['result'];
         final message = result['message'] as String?;
 
-        // Auto-merge: store tool result in state at tools.{toolName}.result
+        // LEGACY: namespaced mirror at `tools.<tool>.result`. See note above.
         if (isSuccess) {
           context.setValue('tools.$tool.result', resultData);
         }
@@ -490,6 +511,11 @@ class ToolActionExecutor extends ActionExecutor {
         final bindResult = action['bindResult'] as String?;
         if (bindResult != null) {
           context.setValue(bindResult, resultData);
+        } else if (isSuccess && resultData is Map<String, dynamic>) {
+          // Spec §3.10: top-level keys of the response auto-merge into
+          // page state. For envelope responses the response body is the
+          // envelope's inner `result` field.
+          context.stateManager.mergeState(resultData);
         }
 
         if (loadingBinding != null) {
@@ -510,15 +536,18 @@ class ToolActionExecutor extends ActionExecutor {
           return ActionResult.error(error);
         }
       } else {
-        // Legacy format - treat any non-null result as success
+        // Plain (non-envelope) response — spec §3.10 canonical path.
 
-        // Auto-merge: store tool result in state at tools.{toolName}.result
+        // LEGACY: namespaced mirror at `tools.<tool>.result`. See note above.
         context.setValue('tools.$tool.result', result);
 
         // Explicit bindResult overrides auto-merge path
         final bindResult = action['bindResult'] as String?;
         if (bindResult != null) {
           context.setValue(bindResult, result);
+        } else if (result is Map<String, dynamic>) {
+          // Spec §3.10: top-level keys auto-merge into page state.
+          context.stateManager.mergeState(result);
         }
 
         if (loadingBinding != null) {

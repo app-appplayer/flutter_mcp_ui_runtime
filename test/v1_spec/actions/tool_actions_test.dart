@@ -133,7 +133,7 @@ void main() {
                             'type': 'state',
                             'action': 'set',
                             'path': 'data',
-                            'value': '{{response.data}}',
+                            'value': '{{event.data}}',
                           },
                           {
                             'type': 'state',
