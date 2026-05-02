@@ -38,10 +38,23 @@ class TextWidgetFactory extends WidgetFactory {
       }
     }
 
+    // Resolve `variant` first (M3 typography role) so it can act as the
+    // base TextStyle. Inline `style` then layers on top via `merge`.
+    final variantValue =
+        context.resolve(properties['variant']) as String?;
+    final variantStyle = _resolveVariantStyle(variantValue, context);
+    final inlineStyle = _parseTextStyle(
+        properties[core.PropertyKeys.style], context);
+    final TextStyle? mergedStyle = variantStyle == null
+        ? inlineStyle
+        : (inlineStyle == null
+            ? variantStyle
+            : variantStyle.merge(inlineStyle));
+
     // Build text widget
     Widget text = Text(
       value,
-      style: _parseTextStyle(properties[core.PropertyKeys.style], context),
+      style: mergedStyle,
       textAlign: _parseTextAlign(
           context.resolve(properties[core.PropertyKeys.textAlign])),
       textDirection:
@@ -61,8 +74,31 @@ class TextWidgetFactory extends WidgetFactory {
     return applyCommonWrappers(text, properties, context);
   }
 
+  /// Resolve an M3 typography role name to its theme-scoped [TextStyle].
+  ///
+  /// Accepts the canonical M3 names (`displayLarge` … `labelSmall`) and
+  /// returns `null` for unknown values so the caller can fall back to
+  /// the inline `style` block. Spec §5.4 + 1.3 widget table § 5.1.
+  TextStyle? _resolveVariantStyle(String? variant, RenderContext context) {
+    if (variant == null || variant.isEmpty) return null;
+    return context.themeManager.getTextStyleValue(variant);
+  }
+
   TextStyle? _parseTextStyle(dynamic style, RenderContext context) {
     if (style == null) return null;
+
+    // String form — `style: "{{theme.typography.displayLarge}}"` is a
+    // binding expression that resolves to the role's TextStyle map.
+    // Run through the binding resolver first; if the result is a map,
+    // re-enter the Map branch below.
+    if (style is String) {
+      final resolved = context.resolve<dynamic>(style);
+      if (resolved is Map) {
+        style = Map<String, dynamic>.from(resolved);
+      } else {
+        return null;
+      }
+    }
 
     if (style is Map<String, dynamic>) {
       final colorValue = style[core.PropertyKeys.color];

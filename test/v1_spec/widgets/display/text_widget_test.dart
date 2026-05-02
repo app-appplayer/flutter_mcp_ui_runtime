@@ -477,5 +477,152 @@ void main() {
         expect(find.text('Status: Initial'), findsNothing);
       });
     });
+
+    group('M3 typography role via `variant` (Spec 5.1)', () {
+      testWidgets(
+          'variant resolves against M3 default theme even without explicit theme block',
+          (tester) async {
+        // Reproduces the calc_app scenario — the bundle declares no
+        // `runtime.theme.typography`, so resolution falls back to
+        // `ThemeDefinition.defaultLight()` which seeds all 15 M3
+        // typography roles. The displayLarge default is fontSize 57.
+        await runtime.initialize({
+          'type': 'page',
+          'content': {
+            'type': 'text',
+            'text': 'Default',
+            'variant': 'displayLarge',
+          },
+        });
+
+        await tester.pumpWidget(
+            MaterialApp(home: Scaffold(body: runtime.buildUI())));
+        await tester.pump();
+
+        final text = tester.widget<Text>(find.text('Default'));
+        expect(text.style?.fontSize, 57);
+      });
+
+      testWidgets('variant resolves to theme typography role', (tester) async {
+        await runtime.initialize({
+          'type': 'page',
+          'runtime': {
+            'theme': {
+              'typography': {
+                'displayLarge': {
+                  'fontSize': 57,
+                  'fontWeight': 'regular',
+                  'lineHeight': 64,
+                },
+              },
+            },
+          },
+          'content': {
+            'type': 'text',
+            'text': 'Display',
+            'variant': 'displayLarge',
+          },
+        });
+
+        await tester.pumpWidget(
+            MaterialApp(home: Scaffold(body: runtime.buildUI())));
+        await tester.pump();
+
+        final text = tester.widget<Text>(find.text('Display'));
+        expect(text.style?.fontSize, 57);
+      });
+
+      testWidgets('inline style overrides individual variant fields',
+          (tester) async {
+        await runtime.initialize({
+          'type': 'page',
+          'runtime': {
+            'theme': {
+              'typography': {
+                'bodyLarge': {
+                  'fontSize': 16,
+                  'fontWeight': 'regular',
+                },
+              },
+            },
+          },
+          'content': {
+            'type': 'text',
+            'text': 'Override',
+            'variant': 'bodyLarge',
+            'style': {'fontSize': 24},
+          },
+        });
+
+        await tester.pumpWidget(
+            MaterialApp(home: Scaffold(body: runtime.buildUI())));
+        await tester.pump();
+
+        final text = tester.widget<Text>(find.text('Override'));
+        expect(text.style?.fontSize, 24);
+      });
+
+      testWidgets(
+          'style: "{{theme.typography.X}}" string binding resolves to TextStyle',
+          (tester) async {
+        // Spec §5.3.6 documents this as a valid form alongside the
+        // `variant` shorthand — the runtime must accept either.
+        await runtime.initialize({
+          'type': 'page',
+          'runtime': {
+            'theme': {
+              'typography': {
+                'titleLarge': {
+                  'fontSize': 22,
+                  'fontWeight': 'medium',
+                },
+              },
+            },
+          },
+          'content': {
+            'type': 'text',
+            'text': 'StringBinding',
+            'style': '{{theme.typography.titleLarge}}',
+          },
+        });
+
+        await tester.pumpWidget(
+            MaterialApp(home: Scaffold(body: runtime.buildUI())));
+        await tester.pump();
+
+        final text = tester.widget<Text>(find.text('StringBinding'));
+        expect(text.style?.fontSize, 22);
+      });
+
+      testWidgets('variant not present in theme falls back to inline style',
+          (tester) async {
+        // `displaySmall` is a valid M3 role (passes enum validation) but
+        // is intentionally absent from this page's theme — the runtime
+        // should leave the variant unresolved and use the inline style.
+        await runtime.initialize({
+          'type': 'page',
+          'runtime': {
+            'theme': {
+              'typography': {
+                'bodyLarge': {'fontSize': 16},
+              },
+            },
+          },
+          'content': {
+            'type': 'text',
+            'text': 'Fallback',
+            'variant': 'displaySmall',
+            'style': {'fontSize': 18},
+          },
+        });
+
+        await tester.pumpWidget(
+            MaterialApp(home: Scaffold(body: runtime.buildUI())));
+        await tester.pump();
+
+        final text = tester.widget<Text>(find.text('Fallback'));
+        expect(text.style?.fontSize, 18);
+      });
+    });
   });
 }

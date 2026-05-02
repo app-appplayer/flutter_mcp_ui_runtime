@@ -528,7 +528,7 @@ void main() {
         final layoutWidgets = [
           'container', 'column', 'row', 'stack', 'center', 'expanded', 
           'flexible', 'padding', 'margin', 'align', 'positioned', 
-          'aspectRatio', 'constrainedBox', 'fittedBox', 'limitedBox',
+          'aspectRatio', 'fittedBox', 'limitedBox',
           'sizedBox', 'spacer', 'wrap', 'table', 'flow', 'intrinsicHeight',
           'intrinsicWidth', 'baseline', 'visibility'
         ];
@@ -536,7 +536,7 @@ void main() {
         final displayWidgets = [
           'text', 'image', 'icon', 'divider', 'card', 'avatar',
           'badge', 'banner', 'chip', 'tooltip', 'progress',
-          'placeholder', 'richText', 'decoratedBox', 'clipRRect',
+          'placeholder', 'richText', 'clipRRect',
           'clipOval', 'loadingIndicator',
           'verticalDivider', 'decoration'
         ];

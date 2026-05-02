@@ -763,52 +763,9 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // TC-201: DecoratedBoxWidgetFactory
-  // ---------------------------------------------------------------------------
-  group('TC-201: DecoratedBoxWidgetFactory', () {
-    testWidgets('Normal - renders DecoratedBox with box decoration',
-        (WidgetTester tester) async {
-      await runtime.initialize({
-        'type': 'page',
-        'content': {
-          'type': 'decoratedBox',
-          'decoration': {
-            'color': '#FFF3E0',
-            'borderRadius': 12,
-          },
-          'children': [
-            {'type': 'text', 'content': 'Decorated Box'},
-          ],
-        },
-      });
-
-      await tester.pumpWidget(MaterialApp(home: Scaffold(body: runtime.buildUI())));
-      await tester.pump();
-
-      expect(find.byType(DecoratedBox), findsOneWidget);
-      expect(find.text('Decorated Box'), findsOneWidget);
-    });
-
-    testWidgets('Boundary - renders DecoratedBox with no decoration',
-        (WidgetTester tester) async {
-      await runtime.initialize({
-        'type': 'page',
-        'content': {
-          'type': 'decoratedBox',
-          'children': [
-            {'type': 'text', 'content': 'No Decoration'},
-          ],
-        },
-      });
-
-      await tester.pumpWidget(MaterialApp(home: Scaffold(body: runtime.buildUI())));
-      await tester.pump();
-
-      // Should use default BoxDecoration when none provided
-      expect(find.byType(DecoratedBox), findsOneWidget);
-    });
-  });
+  // TC-201 (DecoratedBoxWidgetFactory) removed — `decoratedBox` is no
+  // longer a separate widget. Equivalent behavior is `box` with
+  // `decoration` (covered by TC-101 box tests).
 
   // ---------------------------------------------------------------------------
   // TC-202: VisibilityWidgetFactory

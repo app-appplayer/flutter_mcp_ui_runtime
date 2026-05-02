@@ -18,7 +18,6 @@ import '../widgets/layout/intrinsicwidth_factory.dart';
 import '../widgets/layout/visibility_factory.dart';
 import '../widgets/layout/aspectratio_factory.dart';
 import '../widgets/layout/baseline_factory.dart';
-import '../widgets/layout/constrainedbox_factory.dart';
 import '../widgets/layout/fittedbox_factory.dart';
 import '../widgets/layout/limitedbox_factory.dart';
 import '../widgets/layout/conditional_factory.dart';
@@ -41,7 +40,6 @@ import '../widgets/display/placeholder_factory.dart';
 import '../widgets/display/banner_factory.dart';
 import '../widgets/display/clipoval_factory.dart';
 import '../widgets/display/cliprrect_factory.dart';
-import '../widgets/display/decoratedbox_factory.dart';
 import '../widgets/display/progress_factory.dart';
 import '../widgets/display/verticaldivider_factory.dart';
 import '../widgets/display/decoration_factory.dart';
@@ -183,10 +181,13 @@ class DefaultWidgets {
     registry.register('visibility', VisibilityWidgetFactory());
     registry.register('aspectRatio', AspectRatioWidgetFactory()); // CamelCase
     registry.register('baseline', BaselineWidgetFactory());
-    registry.register(
-        'constrainedBox', ConstrainedBoxWidgetFactory()); // CamelCase
-    registry.register(
-        'constrained', ConstrainedBoxWidgetFactory()); // Spec alias
+    // `constrainedBox` / `constrained` are runtime-only legacy aliases
+    // of `box`. Spec § 2.4.1 declares `box` as the canonical surface and
+    // every constraint they expressed (min/max width/height) is now a
+    // property of `box`; new bundles SHOULD emit `box`. We keep the
+    // registration so already-distributed bundles continue rendering.
+    registry.register('constrainedBox', ContainerWidgetFactory());
+    registry.register('constrained', ContainerWidgetFactory());
     registry.register('fittedBox', FittedBoxWidgetFactory()); // CamelCase
     registry.register('limitedBox', LimitedBoxWidgetFactory()); // CamelCase
     registry.register('conditional', ConditionalFactory()); // MCP UI DSL v1.0
@@ -208,7 +209,10 @@ class DefaultWidgets {
     registry.register('banner', BannerWidgetFactory());
     registry.register('clipOval', ClipOvalWidgetFactory()); // CamelCase
     registry.register('clipRRect', ClipRRectWidgetFactory()); // CamelCase
-    registry.register('decoratedBox', DecoratedBoxWidgetFactory()); // CamelCase
+    // `decoratedBox` is a runtime-only legacy alias of `box`. Canonical
+    // form is `{type: box, decoration: ..., child: ...}`; the alias
+    // remains so already-distributed bundles continue rendering.
+    registry.register('decoratedBox', ContainerWidgetFactory());
 
     // Progress indicators - MCP UI DSL v1.0 uses CamelCase.
     // Canonical: `progressBar` per §17.3.1. Aliases registered explicitly

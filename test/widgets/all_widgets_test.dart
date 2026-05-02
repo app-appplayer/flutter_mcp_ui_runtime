@@ -52,7 +52,7 @@ void main() {
         {'type': 'visibility', 'visible': true, 'children': []},
         {'type': 'aspectRatio', 'aspectRatio': 1.0, 'children': []},
         {'type': 'baseline', 'baseline': 50.0, 'children': []},
-        {'type': 'constrainedBox', 'children': []},
+        {'type': 'box', 'children': []},
         {'type': 'fittedBox', 'children': []},
         {'type': 'limitedBox', 'children': []},
       ];
@@ -115,7 +115,7 @@ void main() {
         {'type': 'placeholder'},
         {'type': 'clipOval', 'children': []},
         {'type': 'clipRRect', 'children': []},
-        {'type': 'decoratedBox', 'children': []},
+        {'type': 'box', 'children': []},
         {'type': 'verticalDivider'},
         {'type': 'avatar', 'children': [{'type': 'text', 'content': 'A'}]},
       ];

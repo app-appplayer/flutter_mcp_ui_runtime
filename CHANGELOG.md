@@ -1,3 +1,27 @@
+## [0.4.4] - 2026-05-02 - M3 + Responsive consumption layer (bug fix)
+
+0.3.0 announced "Material 3 + Responsive" but the runtime side was
+never actually wired up. 0.4.4 delivers the consumption surface so
+the previously advertised features finally work.
+
+### Fixed
+- M3 token shorthand on `text.variant`, `box.padding`, `card.shape`,
+  `card.elevation`, `button.elevation`, `icon.size` / `sizeToken` —
+  resolves through the corresponding `theme.<domain>.<token>`.
+- `FormFactorScope` auto-wrap on the runtime root, so
+  `AppSpacing.of(context)` / `AppTypography.of` / `AppIconSizes.of` /
+  `AppDensity.of` actually track the form factor.
+- Per-form-factor property override map (`{compact, medium, expanded,
+  large, extraLarge, embedded, default}`) resolves on every property,
+  per spec § 14.2.
+- Linux: `event_listen_cb` / `event_cancel_cb` return type aligned
+  with `FlMethodErrorResponse*` so the plugin compiles against the
+  current `flutter_linux.h`.
+
+### Notes
+- Bumps `flutter_mcp_ui_core` to `^0.3.2` for the matching schema
+  additions.
+
 ## [0.4.3] - 2026-05-01 - errorBoundary / errorRecovery onError spec violation fix
 
 ### Fixed

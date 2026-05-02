@@ -310,8 +310,12 @@ class BindingEngine {
         return _resolveMixedContent<T>(value, context);
       }
     }
+
+    // Responsive resolution is opt-in (call [RenderContext.pickResponsive]
+    // explicitly) — see render_context.dart for the rationale.
     return _convertToType<T>(value);
   }
+
 
   /// Convert a value to the requested type
   T _convertToType<T>(dynamic value) {

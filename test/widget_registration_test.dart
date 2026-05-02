@@ -30,7 +30,6 @@ void main() {
       expect(registry.has('visibility'), isTrue);
       expect(registry.has('aspectRatio'), isTrue);
       expect(registry.has('baseline'), isTrue);
-      expect(registry.has('constrainedBox'), isTrue);
       expect(registry.has('fittedBox'), isTrue);
       expect(registry.has('limitedBox'), isTrue);
       expect(registry.has('table'), isTrue);
@@ -52,7 +51,6 @@ void main() {
       expect(registry.has('banner'), isTrue);
       expect(registry.has('clipOval'), isTrue);
       expect(registry.has('clipRRect'), isTrue);
-      expect(registry.has('decoratedBox'), isTrue);
       expect(registry.has('loadingIndicator'), isTrue);
       expect(registry.has('verticalDivider'), isTrue);
       expect(registry.has('decoration'), isTrue);

@@ -90,6 +90,13 @@ class RenderContext {
   T resolve<T>(dynamic value) {
     if (value == null) return null as T;
 
+    // Responsive override resolution is opt-in via [pickResponsive] —
+    // factories that accept a per-form-factor override map call it
+    // explicitly. Auto-detection here is unsafe because configuration
+    // maps that happen to be keyed by FormFactor labels (notably
+    // `theme.breakpoints: {compact: 0, medium: 600, …}` per § 14.1.2)
+    // would otherwise be hijacked and collapsed to a single value.
+
     // Handle different value types
     if (value is Map<String, dynamic>) {
       // Check if it's an action definition (has 'type' property)
@@ -452,5 +459,68 @@ class RenderContext {
     }
 
     return value.toString();
+  }
+
+  /// Pick the form-factor-specific entry from a responsive map, or
+  /// return null when [value] is not a responsive map. A map qualifies
+  /// when **every** key is one of the canonical FormFactor labels
+  /// (`compact` / `medium` / `expanded` / `large` / `extraLarge` /
+  /// `embedded`) plus the optional `default`. Falls back to a smaller
+  /// class when the active one is missing (extraLarge → large → expanded
+  /// → medium → compact → default).
+  ///
+  /// **Opt-in**: factories that accept per-form-factor overrides should
+  /// call this BEFORE other parsing. [resolve] does not auto-call it —
+  /// theme tables (notably `theme.breakpoints`) share the same key
+  /// shape and must not be collapsed.
+  dynamic pickResponsive(Map value) => _pickResponsive(value);
+
+  dynamic _pickResponsive(Map value) {
+    const ffKeys = {
+      'compact',
+      'medium',
+      'expanded',
+      'large',
+      'extraLarge',
+      'embedded',
+    };
+    // Strict detection: only treat as a responsive override map when
+    // EVERY key is a FormFactor label (plus the optional `default`).
+    // A map that mixes FF-shaped keys with arbitrary other fields (e.g.
+    // a widget definition that happens to use `medium` as a value
+    // somewhere) must not be auto-picked — that broke rendering before.
+    final allowedKeys = {...ffKeys, 'default'};
+    if (value.isEmpty) return null;
+    final hasFf = value.keys.any((k) => ffKeys.contains(k));
+    if (!hasFf) return null;
+    final allKeysAllowed =
+        value.keys.every((k) => allowedKeys.contains(k));
+    if (!allKeysAllowed) return null;
+    final ctx = buildContext;
+    final activeKey = ctx == null ? 'compact' : _formFactorKey(ctx);
+    if (activeKey == 'embedded') {
+      if (value.containsKey('embedded')) return value['embedded'];
+      if (value.containsKey('compact')) return value['compact'];
+      if (value.containsKey('default')) return value['default'];
+      return null;
+    }
+    const order = ['extraLarge', 'large', 'expanded', 'medium', 'compact'];
+    final start = order.indexOf(activeKey);
+    if (start < 0) return value['default'];
+    for (var i = start; i < order.length; i++) {
+      final k = order[i];
+      if (value.containsKey(k)) return value[k];
+    }
+    if (value.containsKey('default')) return value['default'];
+    return null;
+  }
+
+  String _formFactorKey(BuildContext context) {
+    final width = MediaQuery.maybeSizeOf(context)?.width ?? 0;
+    if (width < 600) return 'compact';
+    if (width < 840) return 'medium';
+    if (width < 1200) return 'expanded';
+    if (width < 1600) return 'large';
+    return 'extraLarge';
   }
 }

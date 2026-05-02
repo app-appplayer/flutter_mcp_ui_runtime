@@ -103,18 +103,27 @@ class Renderer {
     Map<String, dynamic> properties,
     Map<String, dynamic>? content,
   ) {
-    final context = createRootContext(null);
-
-    return Scaffold(
-      appBar: _buildAppBar(properties['appBar'], context),
-      body: content != null ? renderWidget(content, context) : Container(),
-      floatingActionButton: _buildFloatingActionButton(
-        properties['floatingAction'],
-        context,
-      ),
-      bottomNavigationBar: _buildBottomBar(properties['bottomBar'], context),
-      backgroundColor: _resolveColor(properties['backgroundColor']),
-    );
+    // Wrap in a [Builder] so the [RenderContext] carries a live
+    // [BuildContext] — this is what lets `theme.x.y` bindings, the
+    // responsive-value resolver, and any `AppSpacing.of(context)`-style
+    // helpers see the active form factor. Without it the context falls
+    // back to compact regardless of window width.
+    return Builder(builder: (ctx) {
+      final renderCtx = createRootContext(ctx);
+      return Scaffold(
+        appBar: _buildAppBar(properties['appBar'], renderCtx),
+        body: content != null
+            ? renderWidget(content, renderCtx)
+            : Container(),
+        floatingActionButton: _buildFloatingActionButton(
+          properties['floatingAction'],
+          renderCtx,
+        ),
+        bottomNavigationBar:
+            _buildBottomBar(properties['bottomBar'], renderCtx),
+        backgroundColor: _resolveColor(properties['backgroundColor']),
+      );
+    });
   }
 
   Widget _renderTabsPage(
@@ -176,7 +185,38 @@ class Renderer {
   Widget renderWidget(Map<String, dynamic> definition, RenderContext context) {
     final built = _renderWidgetCore(definition, context);
     final wrap = _widgetWrapper;
-    return wrap == null ? built : wrap(built, definition);
+    if (wrap == null) return built;
+    // ParentDataWidgets (Expanded / Flexible / Positioned) must remain a
+    // direct child of their parent (Row, Column, Stack) so the parent's
+    // RenderObject can read their ParentData. Wrapping the
+    // ParentDataWidget itself with anything (e.g. a host-supplied
+    // MetaData) would hide it from the parent and collapse the layout.
+    // Push the wrap *inside* the ParentDataWidget instead.
+    if (built is Expanded) {
+      return Expanded(
+        flex: built.flex,
+        child: wrap(built.child, definition),
+      );
+    }
+    if (built is Flexible) {
+      return Flexible(
+        flex: built.flex,
+        fit: built.fit,
+        child: wrap(built.child, definition),
+      );
+    }
+    if (built is Positioned) {
+      return Positioned(
+        left: built.left,
+        top: built.top,
+        right: built.right,
+        bottom: built.bottom,
+        width: built.width,
+        height: built.height,
+        child: wrap(built.child, definition),
+      );
+    }
+    return wrap(built, definition);
   }
 
   Widget _renderWidgetCore(

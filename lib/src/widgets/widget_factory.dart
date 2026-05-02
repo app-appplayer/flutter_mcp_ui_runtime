@@ -399,4 +399,87 @@ abstract class WidgetFactory {
 
     return null;
   }
+
+  // ===== M3 token shorthand resolvers =====================================
+  //
+  // These helpers translate the spec's token shorthand strings into concrete
+  // Flutter values by reading the active theme. They accept the raw DSL
+  // value (already past binding resolution) so factories can simply call
+  // `parseSpacingToken('md', context)` from a property they expose.
+  //
+  // Spec § 5.4 (typography), § 5.5 (spacing), § 5.6 (shape), § 5.7
+  // (elevation). Returning `null` on unknown tokens lets callers fall back
+  // to numeric / object forms without throwing on bad bundle input.
+
+  /// Resolve an M3 spacing token (`xxs` / `xs` / `sm` / `md` / `lg` / `xl` /
+  /// `2xl` / `3xl` / `4xl`, or any custom slot defined in
+  /// `theme.spacing`) to its numeric dp value.
+  double? parseSpacingToken(String? token, RenderContext context) {
+    if (token == null || token.isEmpty) return null;
+    final raw = context.themeManager.getThemeValue('spacing.$token');
+    if (raw is num) return raw.toDouble();
+    return null;
+  }
+
+  /// Resolve an M3 shape family (`none` / `extraSmall` / `small` / `medium`
+  /// / `large` / `extraLarge` / `full`) to a [ShapeBorder]. The corner is
+  /// applied uniformly via [BorderRadius.circular]; per-corner shapes
+  /// remain object-form.
+  ShapeBorder? parseShapeToken(String? token, RenderContext context) {
+    if (token == null || token.isEmpty) return null;
+    final entry = context.themeManager.getThemeValue('shape.$token');
+    if (entry is num) {
+      return RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(entry.toDouble()),
+      );
+    }
+    if (entry is Map) {
+      return parseThemeShapeMap(Map<String, dynamic>.from(entry));
+    }
+    return null;
+  }
+
+  /// Build a [ShapeBorder] from the theme's stored shape map form —
+  /// either `{uniform: N}` for uniform corner radius or per-corner
+  /// (`topStart/topEnd/bottomStart/bottomEnd`, RTL-aware aliases). Used
+  /// both for `theme.shape.<token>` lookups and when the DSL author
+  /// supplies a shape Map directly via a binding expression.
+  ShapeBorder? parseThemeShapeMap(Map<String, dynamic>? shape) {
+    if (shape == null) return null;
+    final uniform = shape['uniform'];
+    if (uniform is num) {
+      return RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(uniform.toDouble()),
+      );
+    }
+    final tl = (shape['topStart'] ?? shape['topLeft']) as num?;
+    final tr = (shape['topEnd'] ?? shape['topRight']) as num?;
+    final bl = (shape['bottomStart'] ?? shape['bottomLeft']) as num?;
+    final br = (shape['bottomEnd'] ?? shape['bottomRight']) as num?;
+    if (tl != null || tr != null || bl != null || br != null) {
+      return RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(tl?.toDouble() ?? 0),
+          topRight: Radius.circular(tr?.toDouble() ?? 0),
+          bottomLeft: Radius.circular(bl?.toDouble() ?? 0),
+          bottomRight: Radius.circular(br?.toDouble() ?? 0),
+        ),
+      );
+    }
+    return null;
+  }
+
+  /// Resolve an M3 elevation level token (`level0` … `level5`) to its
+  /// shadow dp value. Returns `null` for unknown tokens so callers can
+  /// fall back to numeric form.
+  double? parseElevationToken(String? token, RenderContext context) {
+    if (token == null || token.isEmpty) return null;
+    final entry = context.themeManager.getThemeValue('elevation.$token');
+    if (entry is num) return entry.toDouble();
+    if (entry is Map) {
+      final shadow = entry['shadow'];
+      if (shadow is num) return shadow.toDouble();
+    }
+    return null;
+  }
 }

@@ -809,54 +809,9 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // TC-175: ConstrainedBoxWidgetFactory - constraints
-  // ---------------------------------------------------------------------------
-  group('TC-175: ConstrainedBoxWidgetFactory', () {
-    testWidgets('Normal: renders constrained box with min/max constraints',
-        (WidgetTester tester) async {
-      await runtime.initialize({
-        'type': 'page',
-        'content': {
-          'type': 'constrainedBox',
-          'constraints': {
-            'minWidth': 100,
-            'maxWidth': 300,
-            'minHeight': 50,
-            'maxHeight': 200,
-          },
-          'children': [
-            {'type': 'text', 'content': 'Constrained'},
-          ],
-        },
-      });
-
-      await tester.pumpWidget(MaterialApp(home: Scaffold(body: runtime.buildUI())));
-      await tester.pump();
-
-      expect(find.text('Constrained'), findsOneWidget);
-      // Scaffold internally uses ConstrainedBox, so use findsWidgets
-      expect(find.byType(ConstrainedBox), findsWidgets);
-    });
-
-    testWidgets('Boundary: constrained box with no constraints specified',
-        (WidgetTester tester) async {
-      await runtime.initialize({
-        'type': 'page',
-        'content': {
-          'type': 'constrainedBox',
-          'children': [
-            {'type': 'text', 'content': 'Unconstrained'},
-          ],
-        },
-      });
-
-      await tester.pumpWidget(MaterialApp(home: Scaffold(body: runtime.buildUI())));
-      await tester.pump();
-
-      expect(find.text('Unconstrained'), findsOneWidget);
-    });
-  });
+  // TC-175 (ConstrainedBoxWidgetFactory) removed — `constrainedBox` /
+  // `constrained` are no longer separate widgets. Min/max constraints
+  // are properties of `box` (covered by box constraint tests).
 
   // ---------------------------------------------------------------------------
   // TC-176: FittedBoxWidgetFactory - fit mode

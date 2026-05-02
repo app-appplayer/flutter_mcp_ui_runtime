@@ -43,10 +43,15 @@ class ButtonWidgetFactory extends WidgetFactory {
       disabled = false;
     }
 
-    // Extract style properties from the properties directly
+    // Extract style properties from the properties directly. `elevation`
+    // accepts an M3 token shorthand — `elevation: "level1"` resolves via
+    // `theme.elevation.level1.shadow`. Numeric form is preserved.
     final backgroundColor = properties['backgroundColor'];
     final foregroundColor = properties['foregroundColor'];
-    final elevation = properties['elevation'];
+    final rawElevation = context.resolve(properties['elevation']);
+    final num? elevation = rawElevation is String
+        ? parseElevationToken(rawElevation, context)
+        : rawElevation as num?;
     final borderColor = properties['borderColor'];
     final borderWidth = properties['borderWidth'];
 

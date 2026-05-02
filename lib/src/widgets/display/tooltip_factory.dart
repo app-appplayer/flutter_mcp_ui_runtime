@@ -139,6 +139,16 @@ class TooltipWidgetFactory extends WidgetFactory {
   Decoration? _parseDecoration(dynamic decoration, RenderContext context) {
     if (decoration == null) return null;
 
+    // String binding form — resolves to a Map.
+    if (decoration is String) {
+      final resolved = context.resolve<dynamic>(decoration);
+      if (resolved is Map) {
+        decoration = Map<String, dynamic>.from(resolved);
+      } else {
+        return null;
+      }
+    }
+
     if (decoration is Map<String, dynamic>) {
       return BoxDecoration(
         color: parseColor(context.resolve(decoration['color']), context),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../form_factor/app_tokens.dart';
 import '../../renderer/render_context.dart';
 import '../../utils/icon_resolver.dart';
 import '../widget_factory.dart';
@@ -23,11 +24,58 @@ class IconWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     final iconValue = context.resolve(properties['icon']);
-    final size = parseDimension(context.resolve(properties['size'])) ?? 24.0;
+    // `size` accepts a numeric / dimension form (legacy) AND a responsive
+    // token shorthand string — `size: "md"` or new `sizeToken: "md"` —
+    // which resolves through [AppIconSizes.of] so icons scale with the
+    // active form factor.
+    final rawSize = context.resolve(properties['size']);
+    final rawSizeToken = context.resolve(properties['sizeToken']);
+    final tokenName = rawSizeToken is String
+        ? rawSizeToken
+        : (rawSize is String ? rawSize : null);
+    final double size = _resolveIconSize(tokenName, context) ??
+        parseDimension(rawSize) ??
+        24.0;
     final color = parseColor(context.resolve(properties['color']), context);
 
     final widget = _buildIconWidget(iconValue, size, color);
     return applyCommonWrappers(widget, properties, context);
+  }
+
+  /// Resolve an [AppIconSizes] token (`sm` / `md` / `lg` / `xl`) to its
+  /// FormFactor-scaled dp value. Returns `null` for unknown tokens or
+  /// when the input is a numeric dimension string.
+  double? _resolveIconSize(String? token, RenderContext context) {
+    if (token == null || token.isEmpty) return null;
+    if (double.tryParse(token) != null) return null; // numeric, not a token
+    final ctx = context.buildContext;
+    if (ctx != null) {
+      final scale = AppIconSizes.of(ctx);
+      switch (token) {
+        case 'sm':
+          return scale.sm;
+        case 'md':
+          return scale.md;
+        case 'lg':
+          return scale.lg;
+        case 'xl':
+          return scale.xl;
+      }
+      return null;
+    }
+    // No build context — fall back to the compact / mobile baseline
+    // declared on [AppIconSizes].
+    switch (token) {
+      case 'sm':
+        return AppIconSizes.sm;
+      case 'md':
+        return AppIconSizes.md;
+      case 'lg':
+        return AppIconSizes.lg;
+      case 'xl':
+        return AppIconSizes.xl;
+    }
+    return null;
   }
 
   Widget _buildIconWidget(dynamic value, double size, Color? color) {

@@ -54,13 +54,41 @@ class ContainerWidgetFactory extends WidgetFactory {
       );
     }
 
+    // Constraints — accept either the nested object form
+    // (`constraints: {minWidth, maxWidth, minHeight, maxHeight}`) OR
+    // top-level shorthand fields (`minWidth: ..., maxWidth: ..., ...`)
+    // per spec § 2.4.1. The flat form lets `box` fully absorb what the
+    // legacy `constrained` widget expressed.
+    BoxConstraints? boxConstraints =
+        parseConstraints(properties['constraints']);
+    final flatMinW =
+        parseDimension(context.resolve(properties['minWidth']));
+    final flatMaxW =
+        parseDimension(context.resolve(properties['maxWidth']));
+    final flatMinH =
+        parseDimension(context.resolve(properties['minHeight']));
+    final flatMaxH =
+        parseDimension(context.resolve(properties['maxHeight']));
+    if (flatMinW != null ||
+        flatMaxW != null ||
+        flatMinH != null ||
+        flatMaxH != null) {
+      final base = boxConstraints ?? const BoxConstraints();
+      boxConstraints = base.copyWith(
+        minWidth: flatMinW,
+        maxWidth: flatMaxW,
+        minHeight: flatMinH,
+        maxHeight: flatMaxH,
+      );
+    }
+
     // Build container
     Widget container = Container(
       padding: padding,
       margin: margin,
       width: width,
       height: height,
-      constraints: parseConstraints(properties['constraints']),
+      constraints: boxConstraints,
       decoration: decoration,
       alignment: parseAlignment(properties[core.PropertyKeys.alignment]),
       child: child,
@@ -71,6 +99,18 @@ class ContainerWidgetFactory extends WidgetFactory {
 
   BoxDecoration? _parseDecoration(dynamic decoration, RenderContext context) {
     if (decoration == null) return null;
+
+    // String form — `decoration: "{{theme.something}}"` resolves to a
+    // map. Run through binding/responsive first; if the result is a
+    // map, re-enter the Map branch.
+    if (decoration is String) {
+      final resolved = context.resolve<dynamic>(decoration);
+      if (resolved is Map) {
+        decoration = Map<String, dynamic>.from(resolved);
+      } else {
+        return null;
+      }
+    }
 
     if (decoration is Map<String, dynamic>) {
       // BoxDecoration treats `color` and `gradient` as mutually exclusive
@@ -268,17 +308,44 @@ class ContainerWidgetFactory extends WidgetFactory {
   EdgeInsets? _resolveEdgeInsets(dynamic value, RenderContext context) {
     if (value == null) return null;
 
+    // Top-level responsive override (e.g. `padding: {compact: 8,
+    // expanded: 24}`) — opt in to the per-form-factor picker before we
+    // inspect the value as a structural EdgeInsets shape. The picker
+    // returns null for non-responsive Maps so the existing path runs.
+    if (value is Map) {
+      final picked = context.pickResponsive(value);
+      if (picked != null) {
+        value = picked;
+      }
+    }
+    if (value == null) return null;
+
     if (value is Map<String, dynamic>) {
-      // Resolve all values in the map
+      // Resolve all values in the map; also expand `{token: 'md'}` form.
       final resolved = <String, dynamic>{};
       value.forEach((key, val) {
         resolved[key] = context.resolve(val);
       });
+      if (resolved['token'] is String) {
+        final tokenValue =
+            parseSpacingToken(resolved['token'] as String, context);
+        if (tokenValue != null) {
+          return EdgeInsets.all(tokenValue);
+        }
+      }
       return parseEdgeInsets(resolved);
     }
 
-    // For simple values, resolve and parse
+    // For simple values, resolve and parse.
     final resolved = context.resolve(value);
+    // String M3 spacing token shorthand: `padding: "md"` → resolves
+    // through `theme.spacing.md` to a uniform inset.
+    if (resolved is String) {
+      final tokenValue = parseSpacingToken(resolved, context);
+      if (tokenValue != null) {
+        return EdgeInsets.all(tokenValue);
+      }
+    }
     return parseEdgeInsets(resolved);
   }
 }

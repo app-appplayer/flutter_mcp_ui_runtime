@@ -59,6 +59,19 @@ import 'binding/binding_engine.dart';
 import 'channels/channel_manager.dart';
 import 'permissions/permission_manager.dart';
 import 'permissions/trust_level.dart';
+import 'form_factor/form_factor.dart';
+
+/// Wraps [child] with a [FormFactorScope] derived from the current window
+/// width via [MediaQuery]. The scope makes [FormFactor.of] (and the
+/// `AppSpacing` / `AppTypography` / `AppIconSizes` / `AppDensity` token
+/// accessors that depend on it) resolve correctly throughout the tree —
+/// without it the responsive token sets fall back to compact-mobile
+/// values regardless of actual window size.
+Widget _withFormFactor(BuildContext context, Widget child) {
+  final width = MediaQuery.of(context).size.width;
+  final ff = FormFactor.fromWidth(width);
+  return FormFactorScope(formFactor: ff, child: child);
+}
 
 /// Main MCP UI Runtime class that provides the entry point for using the runtime
 class MCPUIRuntime {
@@ -682,6 +695,8 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
                     widget.engine.themeManager.toFlutterTheme(isDark: true),
                 themeMode: widget.engine.themeManager.flutterThemeMode,
                 debugShowCheckedModeBanner: false,
+                builder: (ctx, child) =>
+                    _withFormFactor(ctx, child ?? const SizedBox.shrink()),
                 home: _ApplicationShell(
                   engine: widget.engine,
                   appDefinition: appDefinition,
@@ -705,6 +720,8 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
                     widget.engine.themeManager.toFlutterTheme(isDark: true),
                 themeMode: widget.engine.themeManager.flutterThemeMode,
                 debugShowCheckedModeBanner: false,
+                builder: (ctx, child) =>
+                    _withFormFactor(ctx, child ?? const SizedBox.shrink()),
                 initialRoute: widget.engine.routeManager!.initialRoute,
                 routes: widget.engine.routeManager!.generateRoutes(context),
               );
@@ -1093,7 +1110,11 @@ class _ApplicationShellState extends State<_ApplicationShell> {
         );
 
       default:
-        // Drawer navigation
+        // Drawer navigation — render exactly what the bundle declares.
+        // Adaptive form-factor switching (rail / permanent drawer) is
+        // intentionally NOT performed here: per spec § 1.2 the author's
+        // declared `navigation.type` is authoritative, and per-form-factor
+        // variants are author-driven via ResponsiveValue (spec § 14.2).
         return Scaffold(
           appBar: AppBar(
             title: Text(widget.appDefinition.title),

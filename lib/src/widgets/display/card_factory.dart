@@ -9,13 +9,31 @@ class CardWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Extract properties
-    final elevation = properties['elevation']?.toDouble() ?? 1.0;
+    // Extract properties. `elevation` and `shape` accept either:
+    //   * a numeric / object form (legacy, still supported), or
+    //   * an M3 token shorthand string — `elevation: "level1"` (resolves
+    //     through `theme.elevation.level1.shadow`) and `shape: "medium"`
+    //     (resolves through `theme.shape.medium`).
+    final rawElevation = context.resolve(properties['elevation']);
+    final double elevation = (rawElevation is String
+            ? parseElevationToken(rawElevation, context)
+            : (rawElevation as num?)?.toDouble()) ??
+        1.0;
     final shadowColor = parseColor(context.resolve(properties['shadowColor']), context);
     final surfaceTintColor =
         parseColor(context.resolve(properties['surfaceTintColor']), context);
     final color = parseColor(context.resolve(properties['color']), context);
-    final shape = _parseShape(properties['shape']);
+    final rawShape = context.resolve(properties['shape']);
+    ShapeBorder? shape;
+    if (rawShape is String) {
+      // Token shorthand — resolves through theme.shape.<token>.
+      shape = parseShapeToken(rawShape, context);
+    } else if (rawShape is Map<String, dynamic>) {
+      // Either the legacy `{type: "rounded", radius: N}` literal or a
+      // theme.shape.* map (`{uniform: N}` / per-corner) supplied via a
+      // binding expression like `shape: "{{theme.shape.medium}}"`.
+      shape = _parseShape(rawShape) ?? parseThemeShapeMap(rawShape);
+    }
     final clipBehavior = _parseClipBehavior(properties['clipBehavior']);
     final semanticContainer = properties['semanticContainer'] as bool? ?? true;
 
