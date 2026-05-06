@@ -18,7 +18,10 @@ class ScrollViewFactory extends WidgetFactory {
     final reverse = properties['reverse'] as bool? ?? false;
     final padding = parseEdgeInsets(properties['padding']);
     final primary = properties['primary'] as bool?;
-    final physics = _parseScrollPhysics(properties['physics']);
+    // Spec § scrollView v1.3 — `scrollPhysics` (canonical) replaces
+    // the legacy `physics` key. Both accepted for backward compat.
+    final physics = _parseScrollPhysics(
+        properties['scrollPhysics'] ?? properties['physics']);
 
     // Get child
     Widget? child;

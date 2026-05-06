@@ -69,7 +69,12 @@ class _LazyWidgetState extends State<_LazyWidget> {
         if (mounted) _loadContent();
       });
     }
-    // 'visible' trigger is handled by VisibilityDetector in build
+    // 'visible' trigger is handled by VisibilityDetector in build.
+    // 'manual' trigger waits for an external `load()` signal — the
+    // child is held in the placeholder state until something explicitly
+    // calls into the widget's load action. Implementation of the signal
+    // dispatch surface is on a separate track; the case is recognised
+    // here so unknown-trigger fall-through does not re-route to default.
   }
 
   void _loadContent() {

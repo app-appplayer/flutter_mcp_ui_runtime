@@ -370,8 +370,23 @@ class _ChartPainter extends CustomPainter {
       case 'pie':
         _paintPieChart(canvas, size);
         break;
+      case 'donut':
+        // Donut = pie with a central hole. Render the pie body, then
+        // mask out the inner radius so the donut ring remains.
+        _paintPieChart(canvas, size);
+        _paintDonutHole(canvas, size);
+        break;
+      case 'polar':
+        // Polar area — each category occupies an equal sweep but the
+        // radius is proportional to the value. Reuses the pie palette.
+        _paintPolarChart(canvas, size);
+        break;
       case 'scatter':
         _paintScatterChart(canvas, size);
+        break;
+      case 'bubble':
+        // Bubble = scatter with point radius proportional to value.
+        _paintBubbleChart(canvas, size);
         break;
       case 'area':
         _paintAreaChart(canvas, size);
@@ -1091,6 +1106,85 @@ class _ChartPainter extends CustomPainter {
         final x = padding + (graphWidth * i / 5) - textPainter.width / 2;
         textPainter.paint(canvas, Offset(x, padding + graphHeight + 5));
       }
+    }
+  }
+
+  /// Donut chart — paints over the rendered pie with a hole in the
+  /// centre. Hole radius is 50 % of the pie radius.
+  void _paintDonutHole(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final outer = math.min(size.width, size.height) / 2 - (showLabels ? 40 : 20);
+    if (outer <= 0) return;
+    final paint = Paint()
+      ..color = backgroundColor
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, outer * 0.5, paint);
+  }
+
+  /// Polar area — equal angular sweeps; per-slice radius scales with
+  /// the data value.
+  void _paintPolarChart(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final outer = math.min(size.width, size.height) / 2 - (showLabels ? 40 : 20);
+    if (outer <= 0 || data.isEmpty) return;
+    final maxV = data.map((p) => p.value.abs()).fold<double>(0, math.max);
+    if (maxV == 0) return;
+    final sweep = (2 * math.pi) / data.length;
+    var start = -math.pi / 2;
+    for (var i = 0; i < data.length; i++) {
+      final r = outer * (data[i].value.abs() / maxV);
+      final color = colors[i % colors.length];
+      final paint = Paint()
+        ..color = color.withValues(alpha: 0.8)
+        ..style = PaintingStyle.fill;
+      canvas.drawArc(
+          Rect.fromCircle(center: center, radius: r), start, sweep, true, paint);
+      final border = Paint()
+        ..color = backgroundColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      canvas.drawArc(
+          Rect.fromCircle(center: center, radius: r), start, sweep, true, border);
+      start += sweep;
+    }
+  }
+
+  /// Bubble — scatter where each marker's radius is proportional to
+  /// the data value (relative to the maximum value in the dataset).
+  void _paintBubbleChart(Canvas canvas, Size size) {
+    final padding = showLabels ? 40.0 : 20.0;
+    final w = size.width - padding * 2;
+    final h = size.height - padding * 2;
+    if (w <= 0 || h <= 0 || data.isEmpty) return;
+    final xs = data.map((p) => p.x ?? data.indexOf(p).toDouble()).toList();
+    final ys = data.map((p) => p.y ?? p.value).toList();
+    final values = data.map((p) => p.value.abs()).toList();
+    final minX = xs.reduce(math.min);
+    final maxX = xs.reduce(math.max);
+    final minY = ys.reduce(math.min);
+    final maxY = ys.reduce(math.max);
+    final maxV = values.fold<double>(0, math.max);
+    final xR = maxX - minX > 0 ? maxX - minX : 1.0;
+    final yR = maxY - minY > 0 ? maxY - minY : 1.0;
+    if (showGrid) _drawGrid(canvas, size, padding, w, h);
+    final maxRadius = math.min(w, h) / 12;
+    for (var i = 0; i < data.length; i++) {
+      final xV = xs[i];
+      final yV = ys[i];
+      final r = maxV > 0
+          ? math.max(4.0, maxRadius * (values[i] / maxV))
+          : 6.0;
+      final cx = padding + ((xV - minX) / xR) * w;
+      final cy = padding + h - ((yV - minY) / yR) * h;
+      final fill = Paint()
+        ..color = colors[i % colors.length].withValues(alpha: 0.6)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(Offset(cx, cy), r, fill);
+      final stroke = Paint()
+        ..color = colors[i % colors.length]
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+      canvas.drawCircle(Offset(cx, cy), r, stroke);
     }
   }
 

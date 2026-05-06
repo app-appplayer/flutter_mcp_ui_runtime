@@ -736,10 +736,10 @@ void main() {
         'content': {
           'type': 'clipRRect',
           'borderRadius': {
-            'topLeft': 8,
-            'topRight': 16,
-            'bottomLeft': 0,
-            'bottomRight': 4,
+            'topStart': 8,
+            'topEnd': 16,
+            'bottomStart': 0,
+            'bottomEnd': 4,
           },
           'children': [
             {'type': 'text', 'content': 'Clipped'},

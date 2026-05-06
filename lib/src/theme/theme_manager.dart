@@ -46,6 +46,17 @@ class ThemeManager with ChangeNotifier {
   /// proper dark scheme).
   bool _isCustomized = false;
 
+  /// Cached derived [ColorScheme] for each brightness, populated lazily
+  /// in [_ensureColorScheme]. Used by [getColorValue] to fall back to a
+  /// fromSeed-derived M3 28-role palette when a slot is absent from the
+  /// bundle's raw `theme.color` map (spec §5.3 — bundles may declare
+  /// only `seed` and a few overrides; the missing roles must derive).
+  /// Invalidated on every [setThemeDefinition] / [resetTheme] / [reset]
+  /// / [applyOverride] restore so the cache never out-runs the active
+  /// definition.
+  ColorScheme? _lightSchemeCache;
+  ColorScheme? _darkSchemeCache;
+
   /// Currently active strongly-typed theme.
   ThemeDefinition get definition => _definition;
 
@@ -109,6 +120,7 @@ class ThemeManager with ChangeNotifier {
       _themeMode = _validateMode(definition.mode);
     }
     _isCustomized = true;
+    _invalidateSchemeCache();
     notifyListeners();
   }
 
@@ -149,6 +161,7 @@ class ThemeManager with ChangeNotifier {
     _themeData = _definition.toJson();
     _themeMode = 'system';
     _isCustomized = false;
+    _invalidateSchemeCache();
     notifyListeners();
   }
 
@@ -160,6 +173,7 @@ class ThemeManager with ChangeNotifier {
     _hostBrightnessOverride = null;
     _stateManager = null;
     _isCustomized = false;
+    _invalidateSchemeCache();
   }
 
   /// Apply a page-level override (spec §5.7 — deep merge) and return a
@@ -177,6 +191,7 @@ class ThemeManager with ChangeNotifier {
       _definition = previousDef;
       _themeData = previousData;
       _themeMode = previousMode;
+      _invalidateSchemeCache();
       notifyListeners();
     };
   }
@@ -232,7 +247,25 @@ class ThemeManager with ChangeNotifier {
   String? getColor(String slot) => getThemeValue('color.$slot') as String?;
 
   /// Resolved [Color] for a color slot.
-  Color? getColorValue(String slot) => _parseColor(getColor(slot));
+  ///
+  /// Resolution order (spec §5.3):
+  ///   1. Bundle-declared raw value at `theme.color.<slot>` (mode override
+  ///      first, then base) — preserves explicit author intent.
+  ///   2. fromSeed-derived M3 28-role palette for the active brightness —
+  ///      fills the roles a bundle did not enumerate. M3 lets a bundle
+  ///      declare only `seed` and a handful of overrides; the missing
+  ///      roles must derive, not return null.
+  ///
+  /// Semantic slots (`success` / `warning` / `info` and their `on*`
+  /// counterparts) are not part of Flutter's [ColorScheme], so the
+  /// fallback path returns null for those — callers must declare them
+  /// in the bundle if needed.
+  Color? getColorValue(String slot) {
+    final raw = _parseColor(getColor(slot));
+    if (raw != null) return raw;
+    final scheme = _ensureColorScheme(_resolveEffectiveMode() == 'dark');
+    return _colorFromScheme(scheme, slot);
+  }
 
   /// Raw text-style map for an M3 typography role
   /// (e.g. `bodyLarge` / `titleMedium`).
@@ -307,6 +340,109 @@ class ThemeManager with ChangeNotifier {
     return _definition.light != null
         ? _definition.merge(_definition.light!)
         : null;
+  }
+
+  /// Lazily build (and cache) the derived M3 [ColorScheme] for the
+  /// requested brightness. Cache invalidation is the responsibility of
+  /// any mutator that changes `_definition` / `_themeData`.
+  ColorScheme _ensureColorScheme(bool dark) {
+    final cached = dark ? _darkSchemeCache : _lightSchemeCache;
+    if (cached != null) return cached;
+    final modeDef = _modeSpecific(dark) ??
+        (_isCustomized
+            ? _definition
+            : (dark
+                ? ThemeDefinition.defaultDark()
+                : ThemeDefinition.defaultLight()));
+    final scheme = McpUiThemeBuilder.build(modeDef, isDark: dark).colorScheme;
+    if (dark) {
+      _darkSchemeCache = scheme;
+    } else {
+      _lightSchemeCache = scheme;
+    }
+    return scheme;
+  }
+
+  void _invalidateSchemeCache() {
+    _lightSchemeCache = null;
+    _darkSchemeCache = null;
+  }
+
+  /// Map an M3 28-role slot name to the corresponding [ColorScheme]
+  /// field. Returns null for slots Flutter does not represent
+  /// (`success` / `warning` / `info` and their `on*` variants).
+  static Color? _colorFromScheme(ColorScheme s, String slot) {
+    switch (slot) {
+      case 'primary':
+        return s.primary;
+      case 'onPrimary':
+        return s.onPrimary;
+      case 'primaryContainer':
+        return s.primaryContainer;
+      case 'onPrimaryContainer':
+        return s.onPrimaryContainer;
+      case 'secondary':
+        return s.secondary;
+      case 'onSecondary':
+        return s.onSecondary;
+      case 'secondaryContainer':
+        return s.secondaryContainer;
+      case 'onSecondaryContainer':
+        return s.onSecondaryContainer;
+      case 'tertiary':
+        return s.tertiary;
+      case 'onTertiary':
+        return s.onTertiary;
+      case 'tertiaryContainer':
+        return s.tertiaryContainer;
+      case 'onTertiaryContainer':
+        return s.onTertiaryContainer;
+      case 'error':
+        return s.error;
+      case 'onError':
+        return s.onError;
+      case 'errorContainer':
+        return s.errorContainer;
+      case 'onErrorContainer':
+        return s.onErrorContainer;
+      case 'surface':
+        return s.surface;
+      case 'onSurface':
+        return s.onSurface;
+      case 'onSurfaceVariant':
+        return s.onSurfaceVariant;
+      case 'surfaceTint':
+        return s.surfaceTint;
+      case 'surfaceBright':
+        return s.surfaceBright;
+      case 'surfaceDim':
+        return s.surfaceDim;
+      case 'surfaceContainerLowest':
+        return s.surfaceContainerLowest;
+      case 'surfaceContainerLow':
+        return s.surfaceContainerLow;
+      case 'surfaceContainer':
+        return s.surfaceContainer;
+      case 'surfaceContainerHigh':
+        return s.surfaceContainerHigh;
+      case 'surfaceContainerHighest':
+        return s.surfaceContainerHighest;
+      case 'outline':
+        return s.outline;
+      case 'outlineVariant':
+        return s.outlineVariant;
+      case 'inverseSurface':
+        return s.inverseSurface;
+      case 'onInverseSurface':
+        return s.onInverseSurface;
+      case 'inversePrimary':
+        return s.inversePrimary;
+      case 'scrim':
+        return s.scrim;
+      case 'shadow':
+        return s.shadow;
+    }
+    return null;
   }
 
   String _resolveEffectiveMode() {

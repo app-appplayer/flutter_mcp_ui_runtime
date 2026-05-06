@@ -216,6 +216,12 @@ class ExtendedTemplateDefinition {
   /// Whether styles in this template are scoped (CSS-modules style isolation)
   final bool scopedStyles;
 
+  /// Named style bundles per spec § 9.5. Keys are bundle names; values
+  /// are style maps consumed by template-internal references such as
+  /// `{{styles.<name>}}`. When [scopedStyles] is true the bundle map
+  /// is isolated to this template's expansion frame.
+  final Map<String, dynamic> styles;
+
   /// Default parameter values
   final Map<String, dynamic> defaults;
 
@@ -225,6 +231,7 @@ class ExtendedTemplateDefinition {
     this.paramDefinitions = const {},
     this.slotDefinitions = const {},
     this.scopedStyles = false,
+    this.styles = const {},
     this.defaults = const {},
   });
 
@@ -275,6 +282,7 @@ class ExtendedTemplateDefinition {
       paramDefinitions: paramDefs,
       slotDefinitions: slotDefs,
       scopedStyles: json['scopedStyles'] as bool? ?? false,
+      styles: (json['styles'] as Map<String, dynamic>?) ?? const {},
       defaults: defaults,
     );
   }
@@ -322,6 +330,7 @@ class ExtendedTemplateDefinition {
           'slots':
               slotDefinitions.values.map((slot) => slot.toJson()).toList(),
         if (scopedStyles) 'scopedStyles': scopedStyles,
+        if (styles.isNotEmpty) 'styles': styles,
         if (defaults.isNotEmpty) 'defaults': defaults,
       };
 }

@@ -96,6 +96,8 @@ import '../widgets/scroll/pageview_factory.dart';
 // Animation widgets
 import '../widgets/animation/animatedcontainer_factory.dart';
 import '../widgets/animation/opacity_factory.dart';
+import '../widgets/animation/animated_simple_factories.dart';
+import '../widgets/phase_2_4_factories.dart';
 import '../widgets/animation/transform_factory.dart';
 
 // v1.3 Display widgets
@@ -297,6 +299,22 @@ class DefaultWidgets {
         'animatedContainer', AnimatedContainerWidgetFactory()); // CamelCase
     registry.register('opacity', OpacityWidgetFactory()); // v1.3
     registry.register('transform', TransformWidgetFactory()); // v1.3
+    // v1.3 Phase 3 motion — implicit-anim wrappers + hero
+    registry.register('animatedOpacity', AnimatedOpacityWidgetFactory());
+    registry.register('animatedAlign', AnimatedAlignWidgetFactory());
+    registry.register('animatedPositioned', AnimatedPositionedWidgetFactory());
+    registry.register(
+        'animatedDefaultTextStyle', AnimatedDefaultTextStyleWidgetFactory());
+    registry.register('hero', HeroWidgetFactory());
+    registry.register('scrollAnimated', ScrollAnimatedWidgetFactory());
+    registry.register('rive', RiveWidgetFactory());
+    // v1.3 Phase 2 gallery layouts
+    registry.register('staggeredGrid', StaggeredGridWidgetFactory());
+    registry.register('carousel', CarouselWidgetFactory());
+    // v1.3 Phase 4 media accents
+    registry.register('lightbox', LightboxWidgetFactory());
+    registry.register('kenBurnsImage', KenBurnsImageWidgetFactory());
+    registry.register('imageFilter', ImageFilterWidgetFactory());
 
     // v1.3 Display widgets
     registry.register('canvas', CanvasWidgetFactory()); // v1.3

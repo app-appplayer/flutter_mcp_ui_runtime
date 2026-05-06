@@ -646,10 +646,10 @@ void main() {
               'style': 'solid',
             },
             'borderRadius': {
-              'topLeft': 10,
-              'topRight': 20,
-              'bottomLeft': 30,
-              'bottomRight': 40,
+              'topStart': 10,
+              'topEnd': 20,
+              'bottomStart': 30,
+              'bottomEnd': 40,
             },
             'shadow': {
               'color': '#000000',

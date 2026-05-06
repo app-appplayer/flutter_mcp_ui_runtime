@@ -9,7 +9,13 @@ import 'package:flutter/material.dart';
 /// fall back to `Icons.help_outline` so authors get an obvious "missing
 /// icon" cue rather than a generic black dot.
 IconData resolveIconData(String name) {
-  final data = _map[name] ?? _map[name.toLowerCase()];
+  // Tolerate the `material:` informational prefix that authoring tools
+  // (vibe asset picker, LLM patches) sometimes emit. Spec form is the
+  // bare name; this keeps round-tripped values rendering correctly.
+  final raw = name.startsWith('material:')
+      ? name.substring('material:'.length)
+      : name;
+  final data = _map[raw] ?? _map[raw.toLowerCase()];
   if (data != null) return data;
   return Icons.help_outline;
 }

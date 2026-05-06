@@ -1061,6 +1061,72 @@ class _ApplicationShellState extends State<_ApplicationShell> {
           ),
         );
 
+      case 'rail':
+        // Spec § 1.2.1 NavigationConfig.type: rail — vertical rail
+        // beside the body. Author's declared type, not adaptive.
+        //
+        // Hit-area parity: Material's NavigationRail wraps each
+        // destination in an indicator-pill InkResponse that swallows
+        // hits over the entire tile but only fires when the tap
+        // lands on the icon column — taps on the label region read
+        // as no-op. Drawer (ListTile), bottomBar
+        // (BottomNavigationBarItem), and tabs (Tab) accept taps on
+        // icon AND label, so rail must too. We render a custom
+        // Column of InkWell tiles instead of `NavigationRail` so
+        // each tile's full bounds (icon + label + padding) is one
+        // single tap target.
+        final railSelected = _currentIndex
+            .clamp(0, navigation.items.length - 1)
+            .toInt();
+        void selectRail(int index) {
+          setState(() => _currentIndex = index);
+          _updateNavigationState(index);
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(widget.appDefinition.title),
+            actions: _shellAppBarActions(),
+          ),
+          body: Row(
+            children: [
+              _CustomRail(
+                selectedIndex: railSelected,
+                onSelect: selectRail,
+                items: navigation.items
+                    .map((item) => _CustomRailItem(
+                          icon: _getIconData(item.icon ?? 'home'),
+                          label: item.title,
+                        ))
+                    .toList(),
+              ),
+              const VerticalDivider(thickness: 1, width: 1),
+              Expanded(
+                child: FutureBuilder<PageDefinition>(
+                  key: ValueKey(currentRoute),
+                  future: _loadPageDefinition(currentRoute),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      return AnimatedBuilder(
+                        animation: widget.engine.stateManager,
+                        builder: (context, child) => MCPPageWidget(
+                          pageDefinition: snapshot.data!,
+                          runtimeEngine: widget.engine,
+                        ),
+                      );
+                    } else if (snapshot.hasError) {
+                      return _buildErrorPage(snapshot.error);
+                    }
+                    return _buildLoadingPage();
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'bottomBar':
+      // Legacy aliases — canonical per spec § 1.2.1 is `bottomBar`.
       case 'bottomNavigation':
       case 'bottom':
         return Scaffold(
@@ -1405,6 +1471,81 @@ class _DashboardHostState extends State<_DashboardHost>
           child: tree,
         );
       },
+    );
+  }
+}
+
+/// Single rail item — icon + label paired into one tap surface.
+class _CustomRailItem {
+  const _CustomRailItem({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+}
+
+/// Custom vertical rail navigation. Each item is one tappable tile
+/// covering icon + label + padding, so taps anywhere on the tile
+/// trigger selection (parity with drawer / tabs / bottomBar).
+class _CustomRail extends StatelessWidget {
+  const _CustomRail({
+    required this.selectedIndex,
+    required this.onSelect,
+    required this.items,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+  final List<_CustomRailItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.surface,
+      child: SizedBox(
+        width: 80,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: items.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final item = entry.value;
+            final isSelected = idx == selectedIndex;
+            return InkWell(
+              onTap: () => onSelect(idx),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                color: isSelected
+                    ? cs.secondaryContainer.withValues(alpha: 0.6)
+                    : null,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      item.icon,
+                      color: isSelected
+                          ? cs.onSecondaryContainer
+                          : cs.onSurfaceVariant,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isSelected
+                            ? cs.onSecondaryContainer
+                            : cs.onSurfaceVariant,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 }

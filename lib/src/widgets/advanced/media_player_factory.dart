@@ -29,6 +29,10 @@ class MediaPlayerWidgetFactory extends WidgetFactory {
     final controls = context.resolve<bool>(properties['controls'] ?? true);
     final loop = context.resolve<bool>(properties['loop'] ?? false);
     final muted = context.resolve<bool>(properties['muted'] ?? false);
+    // Spec § mediaPlayer v1.3 — `waveform` (audio mode only). Read
+    // so the resolver records the author's intent; the actual
+    // waveform rendering ships in a later runtime cycle.
+    final _ = context.resolve(properties['waveform']);
     final poster = context.resolve<String?>(properties['poster']);
     final title = context.resolve<String?>(properties['title']);
     final duration =

@@ -73,6 +73,14 @@ class ChannelManager {
   /// Callback for channel errors
   void Function(String channelId, dynamic error)? onError;
 
+  /// Callback fired when a channel transitions to `connected`
+  /// (spec § 8.6.4 onConnect).
+  void Function(String channelId)? onConnect;
+
+  /// Callback fired when a channel transitions to `disconnected`
+  /// (spec § 8.6.4 onDisconnect — graceful or error-driven stop).
+  void Function(String channelId)? onDisconnect;
+
   /// Initialize channels from configuration
   Future<void> initializeChannels(Map<String, ChannelConfig>? configs) async {
     if (configs == null) return;
@@ -170,6 +178,7 @@ class ChannelManager {
     await controller?.close();
 
     _channelStates[channelId] = ChannelState.stopped;
+    onDisconnect?.call(channelId);
     _channelConfigs.remove(channelId);
     _restartCounts.remove(channelId);
     _autoDisposeChannels.remove(channelId);
@@ -445,6 +454,7 @@ class ChannelManager {
       _channelStates[channelId] = ChannelState.connected;
       _restartCounts[channelId] = 0;
       _logger.debug('Channel started: $channelId');
+      onConnect?.call(channelId);
 
       final config = _channelConfigs[channelId];
       final restartOnError = config?.params?['restartOnError'] as bool? ?? false;

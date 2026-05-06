@@ -8,6 +8,68 @@ import 'package:flutter/material.dart';
 import '../../renderer/render_context.dart';
 import '../widget_factory.dart';
 
+/// Editor palette — `(background, text, lineNumber)` triple resolved
+/// from the `theme` property. Each entry is the canonical fixed color
+/// set for that named editor theme.
+class _EditorPalette {
+  const _EditorPalette(this.background, this.text, this.lineNumber);
+  final Color background;
+  final Color text;
+  final Color lineNumber;
+}
+
+/// Languages the spec § 10.14 enum advertises. The runtime currently
+/// renders all of them as plain monospace text — actual syntax
+/// highlighting is on a separate implementation track. Listing the
+/// canonical names here keeps the runtime in lockstep with the spec
+/// (no silent fall-through when authors emit a documented value) and
+/// gives the future highlighter a single source of truth.
+const Set<String> _editorSupportedLanguages = {
+  'plaintext',
+  'javascript',
+  'typescript',
+  'python',
+  'java',
+  'kotlin',
+  'swift',
+  'rust',
+  'c',
+  'cpp',
+  'csharp',
+  'ruby',
+  'php',
+  'sql',
+};
+
+_EditorPalette _resolveEditorPalette(String name) {
+  switch (name) {
+    case 'vsLight':
+    case 'light':
+      return const _EditorPalette(
+          Color(0xFFFFFFFF), Color(0xFF1F2328), Color(0xFF6E7681));
+    case 'monokai':
+      return const _EditorPalette(
+          Color(0xFF272822), Color(0xFFF8F8F2), Color(0xFF75715E));
+    case 'solarizedLight':
+      return const _EditorPalette(
+          Color(0xFFFDF6E3), Color(0xFF586E75), Color(0xFF93A1A1));
+    case 'solarizedDark':
+      return const _EditorPalette(
+          Color(0xFF002B36), Color(0xFF93A1A1), Color(0xFF586E75));
+    case 'github':
+      return const _EditorPalette(
+          Color(0xFFFFFFFF), Color(0xFF24292F), Color(0xFF6E7781));
+    case 'dracula':
+      return const _EditorPalette(
+          Color(0xFF282A36), Color(0xFFF8F8F2), Color(0xFF6272A4));
+    case 'vsDark':
+    case 'dark':
+    default:
+      return const _EditorPalette(
+          Color(0xFF1E1E1E), Color(0xFFD4D4D4), Color(0xFF858585));
+  }
+}
+
 /// Factory for Code Editor widgets
 class CodeEditorWidgetFactory extends WidgetFactory {
   @override
@@ -21,7 +83,15 @@ class CodeEditorWidgetFactory extends WidgetFactory {
         ? context.resolve(properties['code'])
         : (binding != null ? context.getState(binding) : '');
     final code = rawCode?.toString() ?? '';
-    final language = properties['language'] as String? ?? 'plain';
+    final rawLang = properties['language'] as String? ?? 'plaintext';
+    // Canonicalise legacy `plain` to `plaintext`; keep declared spec
+    // languages as-is so callers can later add highlighting per name.
+    final language = rawLang == 'plain' ? 'plaintext' : rawLang;
+    // Recognise the spec-declared set so a future highlighter can read
+    // off the same vocabulary; unknown values fall back to plaintext.
+    final declaredLanguage = _editorSupportedLanguages.contains(language)
+        ? language
+        : 'plaintext';
     final readOnly = properties['readOnly'] as bool? ?? false;
     final showLineNumbers = properties['showLineNumbers'] as bool? ?? true;
     final fontSize = (properties['fontSize'] as num?)?.toDouble() ?? 14.0;
@@ -36,17 +106,14 @@ class CodeEditorWidgetFactory extends WidgetFactory {
     final height = (properties['height'] as num?)?.toDouble() ?? 300.0;
 
     // Theme palette — author-supplied properties win, then the
-    // `theme` prop chooses between dark/light defaults. Both palettes
-    // remain self-contained (canonical VS Code-style fixed colors)
-    // because code surfaces are typically rendered with their own
-    // editor theme regardless of the host app's brightness.
-    final isLightEditor = theme == 'light';
-    final defaultBg =
-        isLightEditor ? const Color(0xFFFFFFFF) : const Color(0xFF1E1E1E);
-    final defaultText =
-        isLightEditor ? const Color(0xFF1F2328) : const Color(0xFFD4D4D4);
-    final defaultLineNum =
-        isLightEditor ? const Color(0xFF6E7681) : const Color(0xFF858585);
+    // `theme` prop selects a named palette (spec § 10.14:
+    // `vsLight` / `vsDark` / `monokai` / `solarizedLight` /
+    // `solarizedDark` / `github` / `dracula`). Legacy `light` / `dark`
+    // strings are accepted as aliases of `vsLight` / `vsDark`.
+    final palette = _resolveEditorPalette(theme);
+    final defaultBg = palette.background;
+    final defaultText = palette.text;
+    final defaultLineNum = palette.lineNumber;
     final backgroundColor =
         parseColor(properties['backgroundColor'], context) ?? defaultBg;
     final textColor =
@@ -59,7 +126,7 @@ class CodeEditorWidgetFactory extends WidgetFactory {
 
     Widget editor = _CodeEditor(
       code: code,
-      language: language,
+      language: declaredLanguage,
       readOnly: readOnly,
       showLineNumbers: showLineNumbers,
       fontSize: fontSize,

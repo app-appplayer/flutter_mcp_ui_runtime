@@ -130,10 +130,13 @@ void main() {
       expect(find.byType(MaterialApp), findsOneWidget);
     });
 
-    testWidgets('TC-250c: mediaPlayer with empty src', (tester) async {
+    testWidgets('TC-250c: mediaPlayer with placeholder src', (tester) async {
+      // Spec § AssetRef rejects empty strings — must carry one of the
+      // five accepted scheme prefixes. Use a `data:` placeholder to
+      // exercise the "no actual media" rendering path.
       await pumpPage(tester, content: {
         'type': 'mediaPlayer',
-        'src': '',
+        'src': 'data:video/mp4,placeholder',
         'mediaType': 'video',
       });
       expect(find.byType(MaterialApp), findsOneWidget);

@@ -366,7 +366,7 @@ void main() {
         'type': 'page',
         'content': {
           'type': 'align',
-          'alignment': 'topLeft',
+          'alignment': 'topStart',
           'child': {'type': 'text', 'content': 'TopLeft'},
         },
       });

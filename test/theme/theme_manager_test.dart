@@ -239,4 +239,95 @@ void main() {
       expect(data.colorScheme.surfaceContainer, isA<Color>());
     });
   });
+
+  group('TC-TH-08: getColorValue M3 fromSeed fallback', () {
+    test('raw-declared slot still wins over derived fallback', () {
+      tm.setTheme({
+        'mode': 'light',
+        'color': {'seed': '#2196F3'},
+        'light': {
+          'mode': 'light',
+          'color': {'primary': '#FF0000'},
+        },
+      });
+      expect(tm.getColorValue('primary'), const Color(0xFFFF0000));
+    });
+
+    test('slot absent from bundle derives from seed', () {
+      tm.setTheme({
+        'mode': 'light',
+        'color': {'seed': '#2196F3'},
+        'light': {
+          'mode': 'light',
+          'color': {
+            'primary': '#2196F3',
+            'onPrimary': '#FFFFFF',
+            'surface': '#F5F5F5',
+            'onSurface': '#212121',
+            'outlineVariant': '#E0E0E0',
+          },
+        },
+      });
+      // None of these are declared in the bundle's `light.color` map but
+      // are part of the M3 28-role palette — must derive (non-null).
+      expect(tm.getColorValue('surfaceContainerHigh'), isA<Color>());
+      expect(tm.getColorValue('tertiary'), isA<Color>());
+      expect(tm.getColorValue('outline'), isA<Color>());
+      expect(tm.getColorValue('inverseSurface'), isA<Color>());
+    });
+
+    test('dark mode picks dark-derived fallback', () {
+      tm.setTheme({
+        'mode': 'dark',
+        'color': {'seed': '#2196F3'},
+      });
+      final lightFallback = ThemeManager.instance.toFlutterTheme(isDark: false)
+          .colorScheme
+          .surfaceContainerHigh;
+      final darkResolved = tm.getColorValue('surfaceContainerHigh');
+      expect(darkResolved, isA<Color>());
+      expect(darkResolved, isNot(equals(lightFallback)));
+    });
+
+    test('semantic slot (success) without bundle declaration returns null', () {
+      tm.setTheme({
+        'mode': 'light',
+        'color': {'seed': '#2196F3'},
+      });
+      // success / warning / info are not on Flutter's ColorScheme, so the
+      // derive path can't fill them. Falls through to null per contract.
+      expect(tm.getColorValue('success'), isNull);
+    });
+
+    test('cache invalidates on setTheme — new seed derives new color', () {
+      tm.setTheme({
+        'mode': 'light',
+        'color': {'seed': '#FF0000'},
+      });
+      final first = tm.getColorValue('surfaceContainerHigh');
+      tm.setTheme({
+        'mode': 'light',
+        'color': {'seed': '#00FF00'},
+      });
+      final second = tm.getColorValue('surfaceContainerHigh');
+      expect(first, isA<Color>());
+      expect(second, isA<Color>());
+      expect(first, isNot(equals(second)));
+    });
+
+    test('applyOverride.restore re-derives from the prior definition', () {
+      tm.setTheme({
+        'mode': 'light',
+        'color': {'seed': '#2196F3'},
+      });
+      final before = tm.getColorValue('surfaceContainerHigh');
+      final restore = tm.applyOverride({
+        'color': {'seed': '#FF00FF'},
+      });
+      final overridden = tm.getColorValue('surfaceContainerHigh');
+      expect(overridden, isNot(equals(before)));
+      restore();
+      expect(tm.getColorValue('surfaceContainerHigh'), equals(before));
+    });
+  });
 }

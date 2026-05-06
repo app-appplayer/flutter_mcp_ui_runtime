@@ -269,14 +269,14 @@ void main() {
         version: '1.0',
         routes: {'/': 'main'},
         defaultLocale: 'ko',
-        supportedLocales: ['en', 'ko'],
+        locales: ['en', 'ko'],
         fallbackLocale: 'en',
       );
 
       final json = def.toJson();
       expect(json['i18n'], isNotNull);
       expect(json['i18n']['defaultLocale'], equals('ko'));
-      expect(json['i18n']['supportedLocales'], equals(['en', 'ko']));
+      expect(json['i18n']['locales'], equals(['en', 'ko']));
       expect(json['i18n']['fallbackLocale'], equals('en'));
     });
 

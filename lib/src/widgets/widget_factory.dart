@@ -329,30 +329,36 @@ abstract class WidgetFactory {
 
     if (value is String) {
       switch (value) {
-        // v1.0 names (deprecated aliases)
+        // Spec § Alignment primitive — directional canonical
+        // (topStart / topEnd / bottomStart / bottomEnd, RTL-aware
+        // per Material 3). Visual aliases (topLeft / topRight /
+        // bottomLeft / bottomRight) are accepted at runtime for
+        // backward compat with bundles authored against pre-1.3
+        // spec drafts; the schema only validates the directional
+        // form.
+        case 'topStart':
         case 'topLeft':
-        case 'topStart': // v1.1 name
           return Alignment.topLeft;
         case 'topCenter':
           return Alignment.topCenter;
+        case 'topEnd':
         case 'topRight':
-        case 'topEnd': // v1.1 name
           return Alignment.topRight;
+        case 'centerStart':
         case 'centerLeft':
-        case 'centerStart': // v1.1 name
           return Alignment.centerLeft;
         case 'center':
           return Alignment.center;
+        case 'centerEnd':
         case 'centerRight':
-        case 'centerEnd': // v1.1 name
           return Alignment.centerRight;
+        case 'bottomStart':
         case 'bottomLeft':
-        case 'bottomStart': // v1.1 name
           return Alignment.bottomLeft;
         case 'bottomCenter':
           return Alignment.bottomCenter;
+        case 'bottomEnd':
         case 'bottomRight':
-        case 'bottomEnd': // v1.1 name
           return Alignment.bottomRight;
         default:
           return null;

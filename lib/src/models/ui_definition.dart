@@ -547,17 +547,25 @@ class BackgroundServiceDefinition {
 
   factory BackgroundServiceDefinition.fromJson(
       String id, Map<String, dynamic> json) {
-    final typeStr = json['type'] as String;
+    // Spec § 1.2.1 ServiceDefinition uses `kind` with values
+    // `polling` / `subscription`. The runtime keeps its richer
+    // `type` enum (`periodic` / `scheduled` / `continuous` /
+    // `event` / `oneoff`) and accepts either field — kind takes
+    // priority because it is the spec-canonical name.
+    final kindStr = json['kind'] as String?;
+    final typeStr = (kindStr ?? json['type']) as String;
     BackgroundServiceType type;
 
     switch (typeStr) {
       case 'periodic':
+      case 'polling':
         type = BackgroundServiceType.periodic;
         break;
       case 'scheduled':
         type = BackgroundServiceType.scheduled;
         break;
       case 'continuous':
+      case 'subscription':
         type = BackgroundServiceType.continuous;
         break;
       case 'event':
@@ -567,7 +575,7 @@ class BackgroundServiceDefinition {
         type = BackgroundServiceType.oneoff;
         break;
       default:
-        throw ArgumentError('Unknown background service type: $typeStr');
+        throw ArgumentError('Unknown background service kind/type: $typeStr');
     }
 
     return BackgroundServiceDefinition(
@@ -830,11 +838,24 @@ class ChannelConfig {
   /// Channel-specific parameters
   final Map<String, dynamic>? params;
 
-  /// Action to execute when channel receives data
-  final Map<String, dynamic>? onData;
+  /// Action to execute when the channel emits a payload
+  /// (spec § 8.6.4 canonical name; legacy bundles emitted `onData`).
+  final Map<String, dynamic>? onMessage;
 
   /// Action to execute on error
   final Map<String, dynamic>? onError;
+
+  /// Action to execute when the channel transitions to `connected`
+  /// (spec § 8.6.4).
+  final Map<String, dynamic>? onConnect;
+
+  /// Action to execute when the channel transitions to `disconnected`
+  /// (spec § 8.6.4 — graceful or error-driven).
+  final Map<String, dynamic>? onDisconnect;
+
+  /// Legacy alias of [onMessage]. Older bundles emitted `onData`; new
+  /// code reads [onMessage].
+  Map<String, dynamic>? get onData => onMessage;
 
   /// State path to store channel data
   final String? statePath;
@@ -855,8 +876,10 @@ class ChannelConfig {
   ChannelConfig({
     required this.type,
     this.params,
-    this.onData,
+    this.onMessage,
     this.onError,
+    this.onConnect,
+    this.onDisconnect,
     this.statePath,
     this.autoStart = false,
     this.autoDispose = false,
@@ -881,8 +904,11 @@ class ChannelConfig {
     return ChannelConfig(
       type: json['type'] as String,
       params: params,
-      onData: json['onData'] as Map<String, dynamic>?,
+      // Spec § 8.6.4 canonical is `onMessage`. Older bundles use `onData`.
+      onMessage: (json['onMessage'] ?? json['onData']) as Map<String, dynamic>?,
       onError: json['onError'] as Map<String, dynamic>?,
+      onConnect: json['onConnect'] as Map<String, dynamic>?,
+      onDisconnect: json['onDisconnect'] as Map<String, dynamic>?,
       statePath: json['statePath'] as String?,
       autoStart: autoStart,
       autoDispose: autoDispose,
@@ -895,8 +921,10 @@ class ChannelConfig {
     return {
       'type': type,
       if (params != null) 'params': params,
-      if (onData != null) 'onData': onData,
+      if (onMessage != null) 'onMessage': onMessage,
       if (onError != null) 'onError': onError,
+      if (onConnect != null) 'onConnect': onConnect,
+      if (onDisconnect != null) 'onDisconnect': onDisconnect,
       if (statePath != null) 'statePath': statePath,
       'autoStart': autoStart,
       'autoDispose': autoDispose,

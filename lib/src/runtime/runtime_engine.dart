@@ -416,6 +416,29 @@ class RuntimeEngine with ChangeNotifier {
       }
     };
 
+    // Spec § 8.6.4 onConnect / onDisconnect — fired when the channel
+    // transitions to `connected` / `disconnected`. ChannelManager owns
+    // the state machine; the engine routes through to the per-channel
+    // callbacks declared on ChannelDefinition.
+    _channelManager.onConnect = (channelId) {
+      final channelConfig = _channelManager.getConfig(channelId);
+      if (channelConfig?.onConnect != null) {
+        final rootContext = _renderer
+            .createRootContext(null)
+            .createChildContext(variables: {'channelId': channelId});
+        _actionHandler.execute(channelConfig!.onConnect!, rootContext);
+      }
+    };
+    _channelManager.onDisconnect = (channelId) {
+      final channelConfig = _channelManager.getConfig(channelId);
+      if (channelConfig?.onDisconnect != null) {
+        final rootContext = _renderer
+            .createRootContext(null)
+            .createChildContext(variables: {'channelId': channelId});
+        _actionHandler.execute(channelConfig!.onDisconnect!, rootContext);
+      }
+    };
+
     if (_parsedUIDefinition!.channels != null) {
       await _channelManager.initializeChannels(_parsedUIDefinition!.channels);
     }

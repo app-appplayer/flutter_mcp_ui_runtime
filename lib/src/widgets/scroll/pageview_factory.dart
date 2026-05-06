@@ -21,6 +21,13 @@ class PageViewWidgetFactory extends WidgetFactory {
     final clipBehavior =
         _parseClip(properties['clipBehavior']) ?? Clip.hardEdge;
 
+    // Spec § pageView v1.3 — `initialPage`, `loop`, `scrollPhysics`.
+    final initialPage =
+        (context.resolve(properties['initialPage']) as num?)?.toInt() ?? 0;
+    final loop = context.resolve(properties['loop']) as bool? ?? false;
+    final physics =
+        _parsePhysics(context.resolve(properties['scrollPhysics']));
+
     final childrenDef = properties['children'] as List<dynamic>? ??
         definition['children'] as List<dynamic>?;
     final children = childrenDef
@@ -33,27 +40,57 @@ class PageViewWidgetFactory extends WidgetFactory {
         (properties['onPageChanged'] ?? properties['onChange'])
             as Map<String, dynamic>?;
 
-    Widget pageView = PageView(
-      scrollDirection: scrollDirection,
-      reverse: reverse,
-      pageSnapping: pageSnapping,
-      allowImplicitScrolling: allowImplicitScrolling,
-      padEnds: padEnds,
-      clipBehavior: clipBehavior,
-      onPageChanged: onPageChanged != null
-          ? (index) {
-              final eventContext = context.createChildContext(
-                variables: {
-                  'event': {'page': index, 'index': index, 'type': 'pageChanged'},
-                },
-              );
-              context.actionHandler.execute(onPageChanged, eventContext);
-            }
-          : null,
-      children: children,
-    );
+    final controller = PageController(initialPage: initialPage);
+    final onPageHandler = onPageChanged != null
+        ? (int index) {
+            final eventContext = context.createChildContext(
+              variables: {
+                'event': {'page': index, 'index': index, 'type': 'pageChanged'},
+              },
+            );
+            context.actionHandler.execute(onPageChanged, eventContext);
+          }
+        : null;
+
+    final Widget pageView = loop && children.isNotEmpty
+        ? PageView.builder(
+            controller: controller,
+            scrollDirection: scrollDirection,
+            reverse: reverse,
+            pageSnapping: pageSnapping,
+            allowImplicitScrolling: allowImplicitScrolling,
+            padEnds: padEnds,
+            clipBehavior: clipBehavior,
+            physics: physics,
+            onPageChanged: onPageHandler,
+            itemBuilder: (ctx, i) => children[i % children.length],
+          )
+        : PageView(
+            controller: controller,
+            scrollDirection: scrollDirection,
+            reverse: reverse,
+            pageSnapping: pageSnapping,
+            allowImplicitScrolling: allowImplicitScrolling,
+            padEnds: padEnds,
+            clipBehavior: clipBehavior,
+            physics: physics,
+            onPageChanged: onPageHandler,
+            children: children,
+          );
 
     return applyCommonWrappers(pageView, properties, context);
+  }
+
+  ScrollPhysics? _parsePhysics(dynamic value) {
+    switch (value) {
+      case 'bouncing':
+        return const BouncingScrollPhysics();
+      case 'clamping':
+        return const ClampingScrollPhysics();
+      case 'neverScrollable':
+        return const NeverScrollableScrollPhysics();
+    }
+    return null;
   }
 
   Axis? _parseAxis(String? value) {

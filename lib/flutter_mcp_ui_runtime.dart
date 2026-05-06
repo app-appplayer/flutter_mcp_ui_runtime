@@ -14,9 +14,6 @@ export 'src/models/app_metadata.dart';
 export 'src/routing/route_manager.dart';
 export 'src/routing/page_state_scope.dart';
 
-// Navigation exports
-export 'src/navigation/navigation_builder.dart';
-
 // Runtime exports
 export 'src/runtime/runtime_engine.dart';
 export 'src/runtime/lifecycle_manager.dart';

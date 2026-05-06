@@ -1,3 +1,16 @@
+## [0.5.0] - 2026-05-03 - Spec ↔ implementation alignment (1.3.3)
+
+- Channel callbacks: `onMessage` (canonical, `onData` retained as getter alias) + new `onConnect` / `onDisconnect` dispatch.
+- `chart` adds donut / polar / bubble; `codeEditor` accepts 7 themes (vsLight/vsDark/monokai/solarizedLight/solarizedDark/github/dracula) + 14 languages.
+- `lazy.trigger: visible` (spec rename from `viewport`); `manual` case recognised.
+- `services.kind: polling` / `subscription` accepted (mapped to existing `periodic` / `continuous`).
+- `template.styles` map field; `bottomBar` / `rail` navigation canonical (legacy `bottomNavigation` / `bottom` aliases retained).
+- Bumps `flutter_mcp_ui_core` to `^0.4.0`.
+
+### Fixed
+- `ThemeManager.getColorValue(slot)` — falls back to the fromSeed-derived M3 28-role palette when the slot is absent from the bundle's raw `theme.color` map (spec §5.3 expects bundles to declare only `seed` plus a handful of overrides; the missing roles must derive). Previously the lookup only consulted `_themeData = definition.toJson()` (raw, no derive), so DSL bindings like `theme.color.surfaceContainerHigh` resolved to `null` for any bundle that omitted the role — even though `toFlutterTheme().colorScheme.surfaceContainerHigh` was filled correctly. The two paths now match. Light / dark schemes are cached; cache is invalidated on every `setTheme` / `setThemeDefinition` / `resetTheme` / `reset` / `applyOverride` restore. Semantic roles (`success` / `warning` / `info` and their `on*` variants) are not on Flutter's `ColorScheme`, so the fallback returns `null` for those — bundles must declare them explicitly.
+- `box` (and the shared `BoxDecorationResolver`) — `decoration: {color: ...}` is no longer silently dropped when neither top-level `color` nor `backgroundColor` is supplied. The factory previously injected `color: null` into the flat property bag, and the resolver's flat-vs-nested override pass treated the `containsKey('color')` hit as an explicit erasure of the nested value. Now: (a) the factory only overlays `color` when the merged top-level value is non-null, and (b) the resolver ignores null entries during the override pass — they cannot shadow nested fields. Same null-tolerant treatment applies to `gradient` / `image` / `border` / `borderRadius` / `boxShadow` / `shape` / `backdropBlur`. Surface-toned boxes (e.g. `decoration: {color: "surfaceContainerHigh"}`) finally render against the M3 surface tonal scale rather than transparent.
+
 ## [0.4.4] - 2026-05-02 - M3 + Responsive consumption layer (bug fix)
 
 0.3.0 announced "Material 3 + Responsive" but the runtime side was

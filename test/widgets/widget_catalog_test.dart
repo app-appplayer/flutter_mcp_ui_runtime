@@ -268,7 +268,7 @@ void main() {
     testWidgets('TC-113: align positions child', (tester) async {
       await pumpPage(tester, {
         'type': 'align',
-        'alignment': 'topLeft',
+        'alignment': 'topStart',
         'child': {'type': 'text', 'content': 'Aligned text'},
       });
       expect(find.byType(Align), findsWidgets);
