@@ -118,19 +118,38 @@ class TemplateParamDefinition {
       return null; // Not required or has default
     }
 
+    // Skip declared-type checks for binding expressions — the literal
+    // String `"{{...}}"` is a placeholder for the runtime-resolved
+    // value, which is what the declared type describes. Same rationale
+    // as `TemplateDefinition.validate` in flutter_mcp_ui_core; spec
+    // §9.3.1 does not require strict type rejection, and expressions
+    // must be exempt regardless.
+    final isExpr = _isBindingExpression(value);
+
     // Check type
-    if (type != TemplateParamType.any && !_isValidType(value)) {
+    if (!isExpr && type != TemplateParamType.any && !_isValidType(value)) {
       return 'Parameter "$name" expected type ${type.name}, '
           'got ${value.runtimeType}';
     }
 
-    // Check enum values
-    if (enumValues != null && !enumValues!.contains(value)) {
+    // Check enum values — expressions resolve at runtime so cannot be
+    // compared against the enum list here.
+    if (!isExpr && enumValues != null && !enumValues!.contains(value)) {
       return 'Parameter "$name" must be one of: '
           '${enumValues!.join(", ")}';
     }
 
     return null;
+  }
+
+  /// `true` when [value] is a String shaped like a binding expression
+  /// (`"{{...}}"`). Placeholder values for runtime-resolved data are
+  /// exempted from type / enum checks here — see [validate].
+  static bool _isBindingExpression(dynamic value) {
+    if (value is! String) return false;
+    final open = value.indexOf('{{');
+    if (open < 0) return false;
+    return value.indexOf('}}', open + 2) > open;
   }
 
   /// Check if a value matches the expected type
@@ -699,6 +718,18 @@ class TemplateRegistry {
     Map<String, dynamic> slots,
   ) {
     if (value is String) {
+      // Whole-value placeholder (e.g. `"{{layers}}"`) — return the raw
+      // parameter value so List / Map / num / bool / null types survive
+      // template expansion. Stringifying via `.toString()` would emit
+      // `"[a, b]"` / `"{x: 1}"` and downstream factories receiving the
+      // result via params would no longer see the original collection
+      // shape. Partial placeholders (`"Hello {{name}}"`) still go through
+      // `_substituteString` since the result must be a String.
+      final whole = _kWholePlaceholder.firstMatch(value);
+      if (whole != null) {
+        final name = whole.group(1)!;
+        if (params.containsKey(name)) return params[name];
+      }
       return _substituteString(value, params);
     } else if (value is Map<String, dynamic>) {
       // Check if this is a slot reference
@@ -716,6 +747,12 @@ class TemplateRegistry {
     }
     return value;
   }
+
+  /// Matches a string that is exactly a single `{{identifier}}` placeholder
+  /// with no surrounding literal text. Used by [_substituteValue] to
+  /// decide whether to short-circuit into type-preserving substitution.
+  static final RegExp _kWholePlaceholder =
+      RegExp(r'^\{\{(\w+)\}\}$');
 
   /// Substitute parameter references in a string
   /// Supports `{{paramName}}` syntax

@@ -112,7 +112,12 @@ void main() {
       runtime.registerResourceSubscription(
           'resource://weather/temp', 'temperature');
 
-      // Handle a notification with extended mode (content included)
+      // Spec §4.5: store the resource payload as-is at the subscribed
+      // binding. The previous heuristic that unwrapped `content[binding]`
+      // when the field name happened to match the binding name was
+      // removed (it conflated payload shape with binding path semantics).
+      // The content here has no `text` wrapper, so the entire map is
+      // stored.
       await runtime.handleNotification({
         'method': 'notifications/resources/updated',
         'params': {
@@ -123,7 +128,8 @@ void main() {
         },
       });
 
-      expect(runtime.stateManager.get('temperature'), equals(25));
+      expect(runtime.stateManager.get('temperature'),
+          equals({'temperature': 25}));
     });
 
     test('TC-202: Notification ignored when not initialized', () async {

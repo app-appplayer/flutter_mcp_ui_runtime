@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mcp_bundle/mcp_bundle.dart';
-import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
+import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart' hide PageDefinition;
 
 /// In-memory storage for testing bundle:// URI resolution.
 class _TestStoragePort implements BundleStoragePort {
@@ -66,7 +66,7 @@ void main() {
   group('toDefinition()', () {
     // TC-V12-001: Full bundle to UI definition JSON via toDefinition()
     test('full bundle to UI definition JSON', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'My App',
@@ -75,8 +75,7 @@ void main() {
           category: AppCategory.productivity,
           publisher: PublisherInfo(name: 'Publisher'),
         ),
-        ui: UiSection(
-          pages: [
+        ui: UiSection.fromPagesList([
             ScreenDefinition(
               id: 'home',
               name: 'Home',
@@ -99,7 +98,7 @@ void main() {
 
     // TC-V12-002, TC-V12-003: Manifest field mapping — name, version, id, description
     test('manifest field mapping correctness', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'My App',
@@ -142,7 +141,7 @@ void main() {
 
     // TC-V12-012: Bundle with no UI section
     test('bundle with no UI section', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -158,7 +157,7 @@ void main() {
 
     // TC-V12-013: Bundle with no optional metadata fields
     test('bundle with no metadata fields', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.minimal',
           name: 'Minimal',
@@ -179,7 +178,7 @@ void main() {
 
     // TC-V12-014: Missing required manifest fields
     test('invalid manifest returns UiResult.fail', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: '',
           name: '',
@@ -200,7 +199,7 @@ void main() {
   group('toAppInfo()', () {
     // TC-V12-015: Full manifest to app info via toAppInfo()
     test('generates app info from full manifest', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.test',
           name: 'Test App',
@@ -222,7 +221,7 @@ void main() {
 
     // TC-V12-016: App info from minimal manifest
     test('generates app info from minimal manifest', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.minimal',
           name: 'Minimal',
@@ -245,7 +244,7 @@ void main() {
   group('UiResult pattern', () {
     // TC-V12-048: UiResult — success result
     test('success result', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -260,7 +259,7 @@ void main() {
 
     // TC-V12-049: UiResult — error result
     test('error result', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(id: '', name: '', version: ''),
       );
       final result = await adapter.toDefinition(bundle);
@@ -272,7 +271,7 @@ void main() {
 
     // TC-V12-050: UiResult — success with warnings
     test('success with warnings for unresolvable URI', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -295,14 +294,13 @@ void main() {
   group('UiSection mapping with widget definitions', () {
     // TC-V12-010: UiSection → routes/theme/state/navigation mapping
     test('nested widget definitions produce valid routes', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.nested',
           name: 'Nested App',
           version: '1.0.0',
         ),
-        ui: UiSection(
-          pages: [
+        ui: UiSection.fromPagesList([
             ScreenDefinition(
               id: 'home',
               name: 'Home',
@@ -335,14 +333,13 @@ void main() {
 
     // TC-V12-010 (continued): List widget with dynamic items in routes
     test('list widget with dynamic items', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.list',
           name: 'List App',
           version: '1.0.0',
         ),
-        ui: UiSection(
-          pages: [
+        ui: UiSection.fromPagesList([
             ScreenDefinition(
               id: 'items',
               name: 'Items',
@@ -372,14 +369,13 @@ void main() {
 
     // TC-V12-010 (continued): Conditional rendering in routes
     test('conditional rendering', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.conditional',
           name: 'Conditional App',
           version: '1.0.0',
         ),
-        ui: UiSection(
-          pages: [
+        ui: UiSection.fromPagesList([
             ScreenDefinition(
               id: 'dashboard',
               name: 'Dashboard',
@@ -416,14 +412,13 @@ void main() {
 
     // TC-V12-010 (continued): Binding expressions preserved in definition
     test('binding resolution in content', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.binding',
           name: 'Binding App',
           version: '1.0.0',
         ),
-        ui: UiSection(
-          pages: [
+        ui: UiSection.fromPagesList([
             ScreenDefinition(
               id: 'profile',
               name: 'Profile',
@@ -455,8 +450,7 @@ void main() {
           name: 'Themed App',
           version: '1.0.0',
         ),
-        ui: UiSection(
-          pages: [
+        ui: UiSection.fromPagesList([
             ScreenDefinition(
               id: 'main',
               name: 'Main',
@@ -506,7 +500,7 @@ void main() {
       final pngBytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]);
       storage.assets['bundle://assets/icon.png'] = pngBytes;
 
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -522,7 +516,7 @@ void main() {
 
     // TC-V12-004 (boundary): Icon is null — icon key absent from output
     test('null icon produces no icon key in output', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -537,7 +531,7 @@ void main() {
 
     // TC-V12-004 (error): Unresolvable icon URI — okWithWarnings, icon null
     test('unresolvable icon URI produces warning', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -562,7 +556,7 @@ void main() {
       final pngBytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]);
       storage.assets['bundle://assets/splash.png'] = pngBytes;
 
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -585,7 +579,7 @@ void main() {
 
     // TC-V12-005 (boundary): Splash is null — key absent from output
     test('null splash produces no splash key', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -610,7 +604,7 @@ void main() {
       storage.assets['bundle://assets/s1.png'] = png1;
       storage.assets['bundle://assets/s2.png'] = png2;
 
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -629,7 +623,7 @@ void main() {
 
     // TC-V12-E08: Screenshots — empty array vs null
     test('empty screenshots array is preserved as empty list', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -647,7 +641,7 @@ void main() {
 
     // TC-V12-E08 (continued): Null screenshots — key absent
     test('null screenshots produces no screenshots key', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -670,7 +664,7 @@ void main() {
       final pngBytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]);
       storage.assets['bundle://assets/icon.png'] = pngBytes;
 
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -687,7 +681,7 @@ void main() {
 
     // TC-V12-017 (boundary): Icon is null — icon absent from response
     test('null icon in toAppInfo produces no icon key', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -702,7 +696,7 @@ void main() {
 
     // TC-V12-017 (error): Icon URI unresolvable — icon null, warning in result
     test('unresolvable icon in toAppInfo produces warning', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -724,7 +718,7 @@ void main() {
   group('error cases', () {
     // TC-V12-E10: All optional metadata null — only required fields
     test('all optional metadata null produces valid result', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.minimal',
           name: 'Minimal',
@@ -792,7 +786,7 @@ void main() {
       // SplashConfig.fromJson casts duration as int?, so passing a non-int
       // value would cause a type error during fromJson. The adapter receives
       // a pre-constructed SplashConfig, so test with null duration.
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -826,7 +820,7 @@ void main() {
 
     // TC-V12-E06: Publisher name only (no logo, url, email)
     test('publisher with name only maps correctly', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -859,7 +853,7 @@ void main() {
       final pngBytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]);
       storage.assets['bundle://assets/icon.png'] = pngBytes;
 
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -887,7 +881,7 @@ void main() {
       final logoBytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]);
       storage.assets['bundle://assets/logo.png'] = logoBytes;
 
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -913,7 +907,7 @@ void main() {
 
     // TC-V12-007 (boundary): Publisher is null — key absent from output
     test('null publisher produces no publisher key', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -928,7 +922,7 @@ void main() {
 
     // TC-V12-007 (error): Unresolvable publisher logo URI — warning, logo null
     test('unresolvable publisher logo produces warning', () async {
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.app',
           name: 'App',
@@ -958,14 +952,13 @@ void main() {
     test('pages key accepted and mapped to output', () async {
       // UiSection uses 'pages' field which is the canonical field name.
       // The pages are converted to routes via BundlePageAdapter.toRoutes().
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.legacy',
           name: 'Legacy App',
           version: '1.0.0',
         ),
-        ui: UiSection(
-          pages: [
+        ui: UiSection.fromPagesList([
             ScreenDefinition(
               id: 'home',
               name: 'Home',
@@ -1006,7 +999,7 @@ void main() {
         ],
       });
       expect(section.pages.length, equals(1));
-      expect(section.pages.first.id, equals('home'));
+      expect(section.pages.values.first.id, equals('home'));
     });
   });
 
@@ -1018,15 +1011,14 @@ void main() {
     test('v1.0 bundle with no v1.2 fields works correctly', () async {
       // A v1.0 style bundle only has id, name, version, and basic UI section.
       // No v1.2 metadata fields (icon, splash, category, publisher, etc.).
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.v1app',
           name: 'V1 App',
           version: '1.0.0',
           description: 'A v1.0 application',
         ),
-        ui: UiSection(
-          pages: [
+        ui: UiSection.fromPagesList([
             ScreenDefinition(
               id: 'home',
               name: 'Home',
@@ -1071,7 +1063,7 @@ void main() {
     test('assembled bundle from definition reads back correctly', () async {
       // Step 1: Simulate write adapter output — build McpBundle from
       // an ApplicationDefinition JSON (title→name mapping, routes→pages)
-      const bundle = McpBundle(
+      final bundle = McpBundle(
         manifest: BundleManifest(
           id: 'com.example.roundtrip',
           name: 'Round Trip App',
@@ -1079,8 +1071,7 @@ void main() {
           description: 'Testing round-trip',
           category: AppCategory.productivity,
         ),
-        ui: UiSection(
-          pages: [
+        ui: UiSection.fromPagesList([
             ScreenDefinition(
               id: 'home',
               name: 'home',

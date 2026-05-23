@@ -272,13 +272,13 @@ class SimpleComputedContext implements RenderContext {
   T? getState<T>(String path) => getValue(path) as T?;
 
   @override
-  void setValue(String path, dynamic value) {
-    _stateManager.set(path, value);
+  void setValue(String path, dynamic value, {String? source}) {
+    _stateManager.set(path, value, source: source ?? 'computed');
   }
 
   @override
-  void setState(String path, dynamic value) {
-    setValue(path, value);
+  void setState(String path, dynamic value, {String? source}) {
+    setValue(path, value, source: source);
   }
 
   @override

@@ -172,21 +172,34 @@ class LifecycleManager {
         break;
       default:
         // Delegate unknown hook types to ActionHandler so any action type
-        // can be used as a lifecycle hook
-        if (_actionHandler != null && _renderContext != null) {
-          try {
-            await _actionHandler.execute(hookMap, _renderContext);
-          } catch (e) {
-            if (enableDebugMode) {
-              _logger.debug(' Error executing hook type $actionType: $e');
-            }
-          }
-        } else {
-          if (enableDebugMode) {
-            _logger.debug(' ActionHandler not available for hook type: $actionType');
-          }
-        }
+        // can be used as a lifecycle hook.
+        await _dispatchToActionHandler(hookMap, actionType);
         break;
+    }
+  }
+
+  /// Dispatch a lifecycle hook to the action handler, logging an explicit
+  /// error when the handler or render context is missing.
+  ///
+  /// A null `_renderContext` means [setActionHandler] was never invoked, or
+  /// was invoked after lifecycle hooks already started firing — typically
+  /// because `onInitialize` ran before `RuntimeEngine._initializeV1Format`
+  /// completed wiring. Silently swallowing that condition (the previous
+  /// behavior) made the failure invisible. Surfacing it via the logger gives
+  /// hosts a chance to spot the ordering bug.
+  Future<void> _dispatchToActionHandler(
+      Map<String, dynamic> hook, String label) async {
+    if (_actionHandler == null || _renderContext == null) {
+      _logger.error(
+          'Lifecycle hook "$label" dropped: ActionHandler / RenderContext '
+          'not yet wired. Hook ran before LifecycleManager.setActionHandler '
+          'was invoked — check initialization order.');
+      return;
+    }
+    try {
+      await _actionHandler.execute(hook, _renderContext);
+    } catch (e, stack) {
+      _logger.error('Error executing lifecycle hook "$label"', e, stack);
     }
   }
 
@@ -195,20 +208,7 @@ class LifecycleManager {
     if (enableDebugMode) {
       _logger.debug(' Executing resource hook: ${hook['resource']}');
     }
-
-    if (_actionHandler != null && _renderContext != null) {
-      try {
-        await _actionHandler.execute(hook, _renderContext);
-      } catch (e) {
-        if (enableDebugMode) {
-          _logger.debug(' Error executing resource hook: $e');
-        }
-      }
-    } else {
-      if (enableDebugMode) {
-        _logger.debug(' ActionHandler not available for resource execution');
-      }
-    }
+    await _dispatchToActionHandler(hook, 'resource');
   }
 
   /// Executes a state-related lifecycle hook via ActionHandler
@@ -216,20 +216,7 @@ class LifecycleManager {
     if (enableDebugMode) {
       _logger.debug(' Executing state hook: ${hook['action']}');
     }
-
-    if (_actionHandler != null && _renderContext != null) {
-      try {
-        await _actionHandler.execute(hook, _renderContext);
-      } catch (e) {
-        if (enableDebugMode) {
-          _logger.debug(' Error executing state hook: $e');
-        }
-      }
-    } else {
-      if (enableDebugMode) {
-        _logger.debug(' ActionHandler not available for state execution');
-      }
-    }
+    await _dispatchToActionHandler(hook, 'state');
   }
 
   /// Executes a tool-related lifecycle hook
@@ -237,21 +224,7 @@ class LifecycleManager {
     if (enableDebugMode) {
       _logger.debug(' Executing tool hook: ${hook['tool']}');
     }
-
-    // Execute the tool action using ActionHandler if available
-    if (_actionHandler != null && _renderContext != null) {
-      try {
-        await _actionHandler.execute(hook, _renderContext);
-      } catch (e) {
-        if (enableDebugMode) {
-          _logger.debug(' Error executing tool hook: $e');
-        }
-      }
-    } else {
-      if (enableDebugMode) {
-        _logger.debug(' ActionHandler not available for tool execution');
-      }
-    }
+    await _dispatchToActionHandler(hook, 'tool');
   }
 
   /// Executes a service-related lifecycle hook via ActionHandler
@@ -259,20 +232,7 @@ class LifecycleManager {
     if (enableDebugMode) {
       _logger.debug(' Executing service hook: ${hook['service']}');
     }
-
-    if (_actionHandler != null && _renderContext != null) {
-      try {
-        await _actionHandler.execute(hook, _renderContext);
-      } catch (e) {
-        if (enableDebugMode) {
-          _logger.debug(' Error executing service hook: $e');
-        }
-      }
-    } else {
-      if (enableDebugMode) {
-        _logger.debug(' ActionHandler not available for service execution');
-      }
-    }
+    await _dispatchToActionHandler(hook, 'service');
   }
 
   /// Executes a notification-related lifecycle hook via ActionHandler
@@ -280,20 +240,7 @@ class LifecycleManager {
     if (enableDebugMode) {
       _logger.debug(' Executing notification hook: ${hook['action']}');
     }
-
-    if (_actionHandler != null && _renderContext != null) {
-      try {
-        await _actionHandler.execute(hook, _renderContext);
-      } catch (e) {
-        if (enableDebugMode) {
-          _logger.debug(' Error executing notification hook: $e');
-        }
-      }
-    } else {
-      if (enableDebugMode) {
-        _logger.debug(' ActionHandler not available for notification execution');
-      }
-    }
+    await _dispatchToActionHandler(hook, 'notification');
   }
 
   /// Convenience method: execute onInitialize lifecycle hooks (app-level)

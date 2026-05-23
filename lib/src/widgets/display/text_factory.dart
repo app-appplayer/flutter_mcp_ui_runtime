@@ -48,11 +48,37 @@ class TextWidgetFactory extends WidgetFactory {
     final variantStyle = _resolveVariantStyle(variantValue, context);
     final inlineStyle = _parseTextStyle(
         properties[core.PropertyKeys.style], context);
-    final TextStyle? mergedStyle = variantStyle == null
+    TextStyle? mergedStyle = variantStyle == null
         ? inlineStyle
         : (inlineStyle == null
             ? variantStyle
             : variantStyle.merge(inlineStyle));
+
+    // Pin an explicit color when the author left it unspecified. Without
+    // this `mergedStyle.color == null` falls through to Flutter's
+    // ambient `DefaultTextStyle.of(context).color` — which inherits from
+    // an ancestor `Theme` whose brightness may briefly diverge from the
+    // ThemeManager's effective mode during host tab transitions (an
+    // AppRendererScreen remount sees a stale `MediaQuery` /
+    // `Theme(brightness:)` frame before the host wrap re-applies its
+    // override). Visible in dark mode only — both ambient branches yield
+    // near-black under light, so the divergence is invisible there; in
+    // dark the same race surfaces as a black-on-dark text frame after
+    // tab cycling. Resolving against `theme.color.onSurface` (the M3
+    // canonical text colour) breaks the ambient dependency: the colour
+    // now follows the ThemeManager's effective mode directly, which is
+    // host-override-pinned (see [_resolveEffectiveMode] / [flutterThemeMode]).
+    // Spec §5.4.2 deliberately omits a `color` field on typography
+    // roles (Material 3 typography / colour separation), so this is a
+    // resolved fallback applied at render time — author-supplied
+    // `style.color` still wins via `merge` above.
+    if (mergedStyle?.color == null) {
+      final resolved = context.themeManager.getColorValue('onSurface');
+      if (resolved != null) {
+        mergedStyle = (mergedStyle ?? const TextStyle())
+            .copyWith(color: resolved);
+      }
+    }
 
     // Resolve shader-fill: Phase 1.B `style.shader` (Gradient ref).
     // When set we wrap with `ShaderMask` so the gradient covers the

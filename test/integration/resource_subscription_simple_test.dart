@@ -93,19 +93,23 @@ void main() {
       // First register the subscription
       runtime.engine!.registerResourceSubscription('mcp://server/cpu', 'cpu');
 
-      // Send notification
+      // Send notification — spec §4.5: payload stored at binding as-is.
+      // The content has no `text` wrapper, so the entire map is stored at
+      // `cpu` (heuristic removed). The author would update the template
+      // to read the embedded field, or the host would send a scalar
+      // payload via `content.text`. This test re-shapes to send a scalar.
       runtime.handleNotification({
         'method': 'notifications/resources/updated',
         'params': {
           'uri': 'mcp://server/cpu',
           'content': {
-            'cpu': '75',
+            'text': '"75"',
           },
         },
       });
-      
+
       await tester.pump();
-      
+
       // Updated state
       expect(find.text('CPU: 75%'), findsOneWidget);
       

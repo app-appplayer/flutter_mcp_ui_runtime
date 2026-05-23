@@ -133,12 +133,16 @@ void main() {
       await runtime.initialize(definition);
       runtime.registerResourceSubscription('data://temperature', 'temperature');
 
+      // Spec §4.5: the parsed `text` payload is stored at the binding as-is.
+      // The heuristic that unwrapped `{key: <value>}` when `key == binding`
+      // was removed (it conflated authored payload shape with binding path).
+      // Hosts that want a scalar at the binding should encode a scalar.
       await runtime.handleNotification({
         'method': 'notifications/resources/updated',
         'params': {
           'uri': 'data://temperature',
           'content': {
-            'text': '{"temperature": 25.5}',
+            'text': '25.5',
           },
         },
       });
@@ -200,9 +204,11 @@ void main() {
             // No 'content' key — triggers standard mode
           },
         },
+        // Spec §4.5: store the parsed payload as-is at the binding.
+        // Scalar payloads encode as scalar JSON.
         resourceReader: (uri) async {
           readerCalled = true;
-          return '{"humidity": 65.0}';
+          return '65.0';
         },
       );
 
@@ -224,22 +230,22 @@ void main() {
       runtime.registerResourceSubscription('data://temp', 'temp');
       runtime.registerResourceSubscription('data://wind', 'wind');
 
-      // Extended mode notification
+      // Extended mode notification — spec §4.5 stores payload as-is.
       await runtime.handleNotification({
         'method': 'notifications/resources/updated',
         'params': {
           'uri': 'data://temp',
-          'content': {'text': '{"temp": 22.0}'},
+          'content': {'text': '22.0'},
         },
       });
 
-      // Standard mode notification
+      // Standard mode notification — spec §4.5 stores payload as-is.
       await runtime.handleNotification(
         {
           'method': 'notifications/resources/updated',
           'params': {'uri': 'data://wind'},
         },
-        resourceReader: (uri) async => '{"wind": 15.5}',
+        resourceReader: (uri) async => '15.5',
       );
 
       expect(runtime.engine!.stateManager.get('temp'), equals(22.0));

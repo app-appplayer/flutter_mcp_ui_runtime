@@ -229,31 +229,35 @@ class ListViewWidgetFactory extends WidgetFactory {
     }
 
     // Ensure ListView has proper constraints for stability
-    final wrappedListView = _ensureStableConstraints(listView, shrinkWrap);
+    final wrappedListView =
+        _ensureStableConstraints(listView, shrinkWrap, scrollDirection);
 
     return applyCommonWrappers(wrappedListView, properties, context);
   }
 
-  Widget _ensureStableConstraints(Widget listView, bool shrinkWrap) {
+  Widget _ensureStableConstraints(
+      Widget listView, bool shrinkWrap, Axis scrollDirection) {
     // If shrinkWrap is true, the ListView handles its own constraints
     if (shrinkWrap) {
       return listView;
     }
 
     // For non-shrinkWrap ListViews, ensure they have bounded constraints
+    // along the scroll axis. A horizontal ListView in a parent with
+    // unbounded width — the typical bug being a list nested in a Row
+    // with a Spacer / Expanded sibling — throws `Horizontal viewport
+    // given unbounded width` at layout time. Mirror the existing
+    // vertical fallback for horizontal so author mistakes degrade
+    // gracefully to a viewport-sized scroller instead of an assertion.
     return LayoutBuilder(
       builder: (context, constraints) {
-        // If constraints are already bounded, use them as-is
-        if (constraints.hasBoundedHeight) {
-          return listView;
+        final mq = MediaQuery.of(context).size;
+        if (scrollDirection == Axis.horizontal) {
+          if (constraints.hasBoundedWidth) return listView;
+          return SizedBox(width: mq.width, child: listView);
         }
-
-        // Provide a default height for unbounded contexts
-        // This prevents viewport assertion errors in tests
-        return SizedBox(
-          height: MediaQuery.of(context).size.height,
-          child: listView,
-        );
+        if (constraints.hasBoundedHeight) return listView;
+        return SizedBox(height: mq.height, child: listView);
       },
     );
   }

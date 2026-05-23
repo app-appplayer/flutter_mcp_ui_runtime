@@ -1,4 +1,4 @@
-import 'package:flutter_mcp_ui_runtime/src/animations/gesture_animation.dart';
+import 'gesture_animation.dart';
 
 /// Scroll-linked animation controller for MCP UI DSL v1.1.
 ///

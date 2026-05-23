@@ -108,16 +108,23 @@ void main() {
     });
 
     test(
-      'flutterThemeMode ignores host brightness when bundle declares an '
-      'explicit non-system mode',
+      'flutterThemeMode honours host brightness even when bundle declares '
+      'an explicit non-system mode (policy change 2026-05-21 — '
+      'AppPlayer-class hosts are the system for embedded bundles, so a '
+      'host chrome toggle MUST flip the bundle. Without this the colour-'
+      'token path and MaterialApp.themeMode path dissonate and produce '
+      'the tab-cycle text-colour drift visible in dark mode only.)',
       () {
         tm.setTheme({'mode': 'dark', 'color': {'primary': '#222222'}});
         tm.setHostBrightness(Brightness.light);
-        // Bundle wins — 'dark' stays dark even with a light host override.
-        expect(tm.flutterThemeMode, ThemeMode.dark);
+        expect(tm.flutterThemeMode, ThemeMode.light);
 
         tm.setTheme({'mode': 'light', 'color': {'primary': '#AAAAAA'}});
         tm.setHostBrightness(Brightness.dark);
+        expect(tm.flutterThemeMode, ThemeMode.dark);
+
+        // Clearing the override falls back to the bundle's declared mode.
+        tm.setHostBrightness(null);
         expect(tm.flutterThemeMode, ThemeMode.light);
       },
     );

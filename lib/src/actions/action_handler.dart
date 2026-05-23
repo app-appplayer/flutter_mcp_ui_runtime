@@ -1,4 +1,5 @@
 import 'dart:async' show Future, TimeoutException;
+import 'dart:convert' show jsonDecode;
 import 'dart:math' show pow;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -212,12 +213,21 @@ class ActionHandler {
       // the response (or structured error) under the canonical `event` key,
       // making `{{event.<field>}}` resolvable via binding_engine's event.*
       // prefix path.
+      //
+      // Spec §4.4.2 response shape table:
+      //   - Map response   → `event.<key>` per top-level key (event itself = full Map).
+      //   - Non-Map (list, scalar, null) → full response exposed as `event.value`;
+      //     other `event.*` keys resolve to null.
       if (result.success) {
         final onSuccess = action['onSuccess'] as Map<String, dynamic>?;
         if (onSuccess != null) {
+          // Wrap non-Map responses so `{{event.value}}` resolves per spec.
+          final eventData = result.data is Map<String, dynamic>
+              ? result.data as Map<String, dynamic>
+              : <String, dynamic>{'value': result.data};
           final successContext = context.createChildContext(
             variables: {
-              'event': result.data,
+              'event': eventData,
             },
           );
           await execute(onSuccess, successContext);
@@ -300,6 +310,58 @@ abstract class ActionExecutor {
 class ToolActionExecutor extends ActionExecutor {
   final MCPLogger _logger = MCPLogger('ToolActionExecutor');
   Map<String, Function>? _toolExecutors;
+
+  // Deprecation-notice gates: emit once per process per legacy path to
+  // alert tool authors / hosts without flooding logs.
+  static bool _warnedEnvelopeUnwrap = false;
+  static bool _warnedNamespacedMirror = false;
+
+  /// Test-only hook for resetting the deprecation latch so unit tests that
+  /// assert the warning fires repeatedly can isolate their state. Not part
+  /// of the public API surface.
+  @visibleForTesting
+  static void resetDeprecationWarningsForTesting() {
+    _warnedEnvelopeUnwrap = false;
+    _warnedNamespacedMirror = false;
+  }
+
+  /// Unwrap the MCP wire shape `{content: [{type: 'text', text: S}], isError}`
+  /// into its parsed inner payload. Returns the original [result] unchanged
+  /// when it does not match the wire shape.
+  ///
+  /// MCP servers return `CallToolResult.content` as a list of content items;
+  /// most servers emit a single `TextContent` whose `text` is a JSON-encoded
+  /// payload. Hosts (e.g. AppPlayer's `ToolDispatcher`) typically strip this
+  /// envelope before forwarding to the runtime, but when a host wires
+  /// `_onToolCall` to forward the raw `CallToolResult.toJson()` shape, the
+  /// runtime must perform the unwrap itself so the downstream §3.10
+  /// auto-merge logic sees the actual response body. The `isError` bit is
+  /// preserved by mapping a true value to an error ActionResult upstream of
+  /// auto-merge.
+  ///
+  /// Returns either:
+  ///   - the parsed inner JSON (typically a Map for spec-compliant tools),
+  ///   - the original text string when JSON parsing fails (caller logs warn),
+  ///   - the original [result] unchanged when the shape does not match.
+  dynamic _maybeUnwrapMcpWire(dynamic result, String toolName) {
+    if (result is! Map) return result;
+    if (!result.containsKey('content')) return result;
+    final content = result['content'];
+    if (content is! List || content.isEmpty) return result;
+    final first = content.first;
+    if (first is! Map) return result;
+    if (first['type'] != 'text') return result;
+    final text = first['text'];
+    if (text is! String) return result;
+
+    try {
+      return jsonDecode(text);
+    } catch (e) {
+      _logger.warning(
+          'Tool "$toolName" returned MCP wire shape with non-JSON text payload: $e');
+      return text;
+    }
+  }
 
   @override
   Future<ActionResult> execute(
@@ -480,30 +542,92 @@ class ToolActionExecutor extends ActionExecutor {
 
       _logger.debug('Tool executor returned: $result');
 
-      // Spec §4.4 / §3.10: tool response handling.
+      // Spec §3.10 / §4.4 — tool response handling.
       //
-      // The runtime accepts two response shapes:
-      //   1. Plain Map (canonical, spec §3.10) — top-level keys auto-merge
-      //      into page state via stateManager.mergeState.
-      //   2. MCP-style envelope `{success, result, message}` — LEGACY,
+      // The runtime accepts response shapes in this order of preference:
+      //
+      //   1. MCP wire shape `{content: [{type: 'text', text: <json>}],
+      //      isError: <bool>}` — the raw shape an MCP server returns when a
+      //      host forwards `CallToolResult.toJson()` verbatim. The runtime
+      //      parses the inner text as JSON, maps `isError: true` to an
+      //      ActionResult.error, and treats the parsed body as the response
+      //      for the remaining steps. Spec-compliant.
+      //
+      //   2. Plain Map (canonical, spec §3.10) — top-level keys auto-merge
+      //      into page state via `stateManager.mergeState`. Spec-compliant.
+      //
+      //   3. Envelope `{success: <bool>, result, message?, error?}` — LEGACY,
       //      not in spec. Retained for backward compatibility with hosts /
-      //      tool implementations that wrap responses; the inner `result`
-      //      is treated as the response body for auto-merge purposes.
-      //      Slated for removal in a future major; tool authors should
-      //      return the response body directly and signal success/failure
-      //      via MCP `CallToolResult.isError`.
+      //      tool implementations that wrap responses (older AppPlayer
+      //      ToolDispatcher fold, vibe self-host wrapping). The inner
+      //      `result` is treated as the response body for auto-merge.
+      //      DEPRECATED: slated for removal in 0.6.0. Tool authors should
+      //      return the response body directly and signal failure via the
+      //      MCP wire `isError` flag (CallToolResult.isError).
       //
       // The `tools.<toolName>.result` namespaced mirror written below is
-      // also a LEGACY convenience binding outside the spec; authors should
-      // use explicit `bindResult` or rely on auto-merged top-level keys.
-      // It is retained alongside the spec auto-merge for backward compat.
+      // also a LEGACY convenience binding outside the spec. DEPRECATED:
+      // slated for removal in 0.6.0. Authors should use explicit
+      // `bindResult` or rely on auto-merged top-level keys.
+
+      // Step 1: detect and unwrap the MCP wire shape, capturing isError.
+      bool? mcpWireIsError;
+      if (result is Map && result.containsKey('content')) {
+        final unwrapped = _maybeUnwrapMcpWire(result, tool);
+        // Only treat as wire shape when the unwrap actually changed something.
+        // ignore: identical(unwrapped, result) — intentional reference check
+        if (!identical(unwrapped, result)) {
+          mcpWireIsError = result['isError'] as bool? ?? false;
+          result = unwrapped;
+        }
+      }
+
+      // Step 2: if wire shape said isError, return error without auto-merge.
+      if (mcpWireIsError == true) {
+        if (loadingBinding != null) {
+          context.setValue(loadingBinding, false);
+          if (loadingText != null) {
+            context.setValue('$loadingBinding.text', null);
+          }
+          if (loadingIndicator != null) {
+            context.setValue('$loadingBinding.indicator', null);
+          }
+        }
+        // Error message extraction: if the body is a Map with a `message` or
+        // `error` field, surface it; otherwise stringify.
+        String errMsg;
+        if (result is Map) {
+          errMsg = (result['message'] ?? result['error'] ?? result).toString();
+        } else {
+          errMsg = result?.toString() ?? 'Tool execution failed';
+        }
+        return ActionResult.error(errMsg);
+      }
+
+      // Step 3: legacy envelope shape — backward-compatible unwrap.
       if (result is Map<String, dynamic> && result.containsKey('success')) {
+        if (!_warnedEnvelopeUnwrap) {
+          _warnedEnvelopeUnwrap = true;
+          _logger.warning(
+              'Tool "$tool" returned legacy envelope shape `{success, result, message}`. '
+              'This shape is DEPRECATED and slated for removal in 0.6.0. '
+              'Return the response body directly and signal failure via the MCP '
+              '`isError` flag (CallToolResult.isError).');
+        }
         final isSuccess = result['success'] as bool? ?? false;
         final resultData = result['result'];
         final message = result['message'] as String?;
 
-        // LEGACY: namespaced mirror at `tools.<tool>.result`. See note above.
+        // LEGACY mirror: namespaced `tools.<tool>.result`. See deprecation
+        // note above. Behavior preserved for one release.
         if (isSuccess) {
+          if (!_warnedNamespacedMirror) {
+            _warnedNamespacedMirror = true;
+            _logger.warning(
+                'Writing legacy namespaced mirror at `tools.$tool.result`. '
+                'This mirror is DEPRECATED and slated for removal in 0.6.0. '
+                'Use explicit `bindResult` or auto-merged top-level keys.');
+          }
           context.setValue('tools.$tool.result', resultData);
         }
 
@@ -535,33 +659,46 @@ class ToolActionExecutor extends ActionExecutor {
               result['error'] as String? ?? message ?? 'Tool execution failed';
           return ActionResult.error(error);
         }
-      } else {
-        // Plain (non-envelope) response — spec §3.10 canonical path.
-
-        // LEGACY: namespaced mirror at `tools.<tool>.result`. See note above.
-        context.setValue('tools.$tool.result', result);
-
-        // Explicit bindResult overrides auto-merge path
-        final bindResult = action['bindResult'] as String?;
-        if (bindResult != null) {
-          context.setValue(bindResult, result);
-        } else if (result is Map<String, dynamic>) {
-          // Spec §3.10: top-level keys auto-merge into page state.
-          context.stateManager.mergeState(result);
-        }
-
-        if (loadingBinding != null) {
-          context.setValue(loadingBinding, false);
-          if (loadingText != null) {
-            context.setValue('$loadingBinding.text', null);
-          }
-          if (loadingIndicator != null) {
-            context.setValue('$loadingBinding.indicator', null);
-          }
-        }
-
-        return ActionResult.success(data: result);
       }
+
+      // Step 4: plain canonical response (spec §3.10).
+      //
+      // LEGACY mirror: namespaced `tools.<tool>.result`. See deprecation
+      // note above. Behavior preserved for one release.
+      if (!_warnedNamespacedMirror) {
+        _warnedNamespacedMirror = true;
+        _logger.warning(
+            'Writing legacy namespaced mirror at `tools.$tool.result`. '
+            'This mirror is DEPRECATED and slated for removal in 0.6.0. '
+            'Use explicit `bindResult` or auto-merged top-level keys.');
+      }
+      context.setValue('tools.$tool.result', result);
+
+      // Explicit bindResult overrides auto-merge path
+      final bindResult = action['bindResult'] as String?;
+      if (bindResult != null) {
+        context.setValue(bindResult, result);
+      } else if (result is Map<String, dynamic>) {
+        // Spec §3.10: top-level keys auto-merge into page state.
+        context.stateManager.mergeState(result);
+      } else if (result is Map) {
+        // Accept Map<dynamic, dynamic> from JSON decoders that produce a
+        // non-typed map (e.g. jsonDecode result). Normalize then merge.
+        context.stateManager
+            .mergeState(Map<String, dynamic>.from(result));
+      }
+
+      if (loadingBinding != null) {
+        context.setValue(loadingBinding, false);
+        if (loadingText != null) {
+          context.setValue('$loadingBinding.text', null);
+        }
+        if (loadingIndicator != null) {
+          context.setValue('$loadingBinding.indicator', null);
+        }
+      }
+
+      return ActionResult.success(data: result);
     } catch (e) {
       if (loadingBinding != null) {
         context.setValue(loadingBinding, false);
@@ -822,7 +959,15 @@ class NavigationActionExecutor extends ActionExecutor {
 }
 
 /// Executes state actions
+///
+/// All mutations tag the resulting [StateChangeEvent] with source = `'action'`
+/// per spec §3.11 ("User-triggered via a `state` action"). Hosts watching the
+/// state change stream can therefore distinguish author-driven mutations
+/// from tool-merge / subscription / system updates.
 class StateActionExecutor extends ActionExecutor {
+  // Spec §3.11 source classification for `state` actions.
+  static const String _source = 'action';
+
   @override
   Future<ActionResult> execute(
     Map<String, dynamic> action,
@@ -839,24 +984,24 @@ class StateActionExecutor extends ActionExecutor {
       switch (actionType) {
         case 'set':
           final value = context.resolve(action['value']);
-          context.setValue(binding, value);
+          context.setValue(binding, value, source: _source);
           break;
 
         case 'increment':
           final amount = action['amount'] as num? ?? action['value'] as num? ?? 1;
           final current = context.getValue(binding) as num? ?? 0;
-          context.setValue(binding, current + amount);
+          context.setValue(binding, current + amount, source: _source);
           break;
 
         case 'decrement':
           final amount = action['amount'] as num? ?? action['value'] as num? ?? 1;
           final current = context.getValue(binding) as num? ?? 0;
-          context.setValue(binding, current - amount);
+          context.setValue(binding, current - amount, source: _source);
           break;
 
         case 'toggle':
           final current = context.getValue(binding) as bool? ?? false;
-          context.setValue(binding, !current);
+          context.setValue(binding, !current, source: _source);
           break;
 
         case 'append':
@@ -864,9 +1009,9 @@ class StateActionExecutor extends ActionExecutor {
           final value = context.resolve(action['value']);
           final current = context.getValue(binding) as List? ?? [];
           if (value is List) {
-            context.setValue(binding, [...current, ...value]);
+            context.setValue(binding, [...current, ...value], source: _source);
           } else {
-            context.setValue(binding, [...current, value]);
+            context.setValue(binding, [...current, value], source: _source);
           }
           break;
 
@@ -874,7 +1019,7 @@ class StateActionExecutor extends ActionExecutor {
           final currentList = context.getValue(binding) as List?;
           if (currentList != null && currentList.isNotEmpty) {
             final newList = List.from(currentList)..removeLast();
-            context.setValue(binding, newList);
+            context.setValue(binding, newList, source: _source);
           }
           break;
 
@@ -890,7 +1035,7 @@ class StateActionExecutor extends ActionExecutor {
               if (indexNum >= 0 && indexNum < current.length) {
                 final newList = List.from(current);
                 newList.removeAt(indexNum);
-                context.setValue(binding, newList);
+                context.setValue(binding, newList, source: _source);
               }
             }
           } else {
@@ -902,7 +1047,7 @@ class StateActionExecutor extends ActionExecutor {
             if (removeIndex != -1) {
               newList.removeAt(removeIndex);
             }
-            context.setValue(binding, newList);
+            context.setValue(binding, newList, source: _source);
           }
           break;
 
@@ -916,7 +1061,7 @@ class StateActionExecutor extends ActionExecutor {
           if (index >= 0 && index < current.length) {
             final newList = List.from(current);
             newList.removeAt(index);
-            context.setValue(binding, newList);
+            context.setValue(binding, newList, source: _source);
           }
           break;
 
@@ -997,14 +1142,44 @@ class ResourceActionExecutor extends ActionExecutor {
             context.engine.registerResourceSubscription(uri, binding);
           }
 
-          // Call the resource subscribe handler
+          // Call the resource subscribe handler. If the host throws (e.g.
+          // connection refused, server returned an error), dispatch the
+          // author-provided `onSubscriptionError` action per spec §4.5 and
+          // bubble the failure up as an ActionResult.error.
           _logger.debug(
               'Checking onResourceSubscribe handler: ${context.onResourceSubscribe != null}');
           if (context.onResourceSubscribe != null) {
-            _logger.debug(
-                'Calling onResourceSubscribe handler for $uri -> $binding');
-            await context.onResourceSubscribe!(uri, binding);
-            _logger.debug('onResourceSubscribe handler completed');
+            try {
+              _logger.debug(
+                  'Calling onResourceSubscribe handler for $uri -> $binding');
+              await context.onResourceSubscribe!(uri, binding);
+              _logger.debug('onResourceSubscribe handler completed');
+            } catch (subscribeError, stack) {
+              _logger.error(
+                  'Resource subscribe failed for $uri', subscribeError, stack);
+              // Roll back the registration since the host did not actually
+              // start the subscription.
+              if (context.engine != null) {
+                context.engine.unregisterResourceSubscription(uri);
+              }
+              final onSubscriptionError =
+                  action['onSubscriptionError'] as Map<String, dynamic>?;
+              if (onSubscriptionError != null) {
+                final errorContext = context.createChildContext(
+                  variables: {
+                    'event': {
+                      'uri': uri,
+                      'binding': binding,
+                      'message': subscribeError.toString(),
+                    },
+                  },
+                );
+                await context.actionHandler
+                    .execute(onSubscriptionError, errorContext);
+              }
+              return ActionResult.error(
+                  'Resource subscription failed for $uri: $subscribeError');
+            }
           } else {
             _logger.warning('No resource subscribe handler configured');
           }
@@ -1030,34 +1205,47 @@ class ResourceActionExecutor extends ActionExecutor {
           }
           break;
 
-        case 'read': // Single resource read - returns a single item
+        case 'read': // Spec §4.5: one-shot fetch — store result at binding
           final binding = action['binding'] as String? ?? uri;
-          _logger.debug('Processing read (single) for URI: $uri -> binding: $binding');
-          if (context.onResourceSubscribe != null) {
+          _logger.debug(
+              'Processing read (one-shot) for URI: $uri -> binding: $binding');
+          // Prefer the dedicated host callback when registered. Falls back
+          // to `onResourceSubscribe` for backward compatibility with hosts
+          // that have not adopted the separate read callback.
+          if (context.onResourceRead != null) {
+            await context.onResourceRead!(uri, binding);
+          } else if (context.onResourceSubscribe != null) {
             await context.onResourceSubscribe!(uri, binding);
-            // Unwrap collection to single item if result is a list
+            // Legacy fallback behavior: when read borrows the subscribe
+            // callback (which may return a collection), surface the first
+            // item so the binding holds a single resource.
             final result = context.getValue(binding);
             if (result is List && result.isNotEmpty) {
               context.setValue(binding, result.first);
             }
           } else {
-            _logger.warning('No resource subscribe handler configured for read');
+            _logger.warning('No resource read handler configured');
           }
           break;
 
-        case 'list': // List resources - returns a collection
+        case 'list': // Spec §4.5: directory query — store list at binding
           final binding = action['binding'] as String? ?? uri;
-          _logger.debug('Processing list (collection) for URI: $uri -> binding: $binding');
-          if (context.onResourceSubscribe != null) {
+          _logger.debug(
+              'Processing list (collection) for URI: $uri -> binding: $binding');
+          // Prefer the dedicated host callback when registered. Falls back
+          // to `onResourceSubscribe` for backward compatibility.
+          if (context.onResourceList != null) {
+            await context.onResourceList!(uri, binding);
+          } else if (context.onResourceSubscribe != null) {
             await context.onResourceSubscribe!(uri, binding);
-            // Ensure result is wrapped as a list
+            // Legacy fallback behavior: ensure the binding holds a List
+            // even when the subscribe callback returned a scalar.
             final result = context.getValue(binding);
             if (result != null && result is! List) {
               context.setValue(binding, [result]);
             }
           } else {
-            _logger.warning(
-                'No resource subscribe handler configured for list');
+            _logger.warning('No resource list handler configured');
           }
           break;
 

@@ -6,6 +6,7 @@ import 'package:flutter_mcp_ui_runtime/src/renderer/renderer.dart';
 import 'package:flutter_mcp_ui_runtime/src/runtime/widget_registry.dart';
 import 'package:flutter_mcp_ui_runtime/src/binding/binding_engine.dart';
 import 'package:flutter_mcp_ui_runtime/src/actions/action_handler.dart';
+import 'package:flutter_mcp_ui_runtime/src/actions/action_result.dart';
 import 'package:flutter_mcp_ui_runtime/src/state/state_manager.dart';
 import 'package:flutter_mcp_ui_runtime/src/theme/theme_manager.dart';
 
@@ -16,6 +17,21 @@ class _TestWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
     final text = context.resolve<String>(properties['text'] ?? 'default');
     return Text(text);
+  }
+}
+
+/// Records every action dispatched through it. Used by the spec 1.3.4
+/// common `click` field regression cases.
+class _RecorderActionExecutor extends ActionExecutor {
+  final List<Map<String, dynamic>> calls = <Map<String, dynamic>>[];
+
+  @override
+  Future<ActionResult> execute(
+    Map<String, dynamic> action,
+    RenderContext context,
+  ) async {
+    calls.add(Map<String, dynamic>.from(action));
+    return ActionResult.success();
   }
 }
 
@@ -100,6 +116,122 @@ void main() {
       );
 
       expect(result, isA<Tooltip>());
+    });
+
+    // Spec 1.3.4 — common `click` field. Every widget admits a `click`
+    // Action; the runtime wraps it in a gesture surface and dispatches
+    // the action on tap. Regression cases below pin the wrap shape and
+    // the dispatch path. See spec/1.3/02_Widgets.md §2.2.
+
+    test('Normal: applyCommonWrappers wraps widget in GestureDetector when '
+        'click is supplied', () {
+      final factory = _TestWidgetFactory();
+      final widget = const Text('Click me');
+      final result = factory.applyCommonWrappers(
+        widget,
+        {
+          'click': {'type': 'noop'},
+        },
+        renderContext,
+      );
+
+      expect(result, isA<GestureDetector>());
+      expect((result as GestureDetector).child, isA<Text>());
+    });
+
+    testWidgets('Normal: click on a click-wrapped widget dispatches the '
+        'configured action through the action handler',
+        (WidgetTester tester) async {
+      final recorder = _RecorderActionExecutor();
+      actionHandler.registerExecutor('noop', recorder);
+
+      final factory = _TestWidgetFactory();
+      final wrapped = factory.applyCommonWrappers(
+        const Text('Tappable'),
+        {
+          'click': {'type': 'noop', 'payload': 'box-tap'},
+        },
+        renderContext,
+      );
+
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: wrapped)));
+      await tester.tap(find.text('Tappable'));
+      await tester.pump();
+
+      expect(recorder.calls, hasLength(1));
+      expect(recorder.calls.single['type'], equals('noop'));
+      expect(recorder.calls.single['payload'], equals('box-tap'));
+    });
+
+    testWidgets('Normal: tooltip + click + visibility coexist on the same '
+        'widget — gesture surface fires and tooltip wraps the gesture',
+        (WidgetTester tester) async {
+      final recorder = _RecorderActionExecutor();
+      actionHandler.registerExecutor('noop', recorder);
+
+      final factory = _TestWidgetFactory();
+      final wrapped = factory.applyCommonWrappers(
+        const Text('Combo'),
+        {
+          'visible': true,
+          'tooltip': 'Help',
+          'click': {'type': 'noop'},
+        },
+        renderContext,
+      );
+
+      // Outer wrap is the GestureDetector (click), inner subtree carries
+      // the Tooltip wrap created earlier in `applyCommonWrappers`.
+      expect(wrapped, isA<GestureDetector>());
+
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: wrapped)));
+      expect(find.byType(Tooltip), findsOneWidget);
+      await tester.tap(find.text('Combo'));
+      await tester.pump();
+      expect(recorder.calls, hasLength(1));
+    });
+
+    test('Backward compat: applyCommonWrappers leaves widget untouched when '
+        'click is absent', () {
+      final factory = _TestWidgetFactory();
+      const original = Text('Plain');
+      final result = factory.applyCommonWrappers(
+        original,
+        const <String, dynamic>{},
+        renderContext,
+      );
+
+      // No common wrap fields → the widget passes through identical.
+      expect(result, same(original));
+    });
+
+    test('Boundary: non-Map click value is ignored — no gesture wrap', () {
+      final factory = _TestWidgetFactory();
+      const original = Text('Bad click');
+      final result = factory.applyCommonWrappers(
+        original,
+        {'click': 'just-a-string'},
+        renderContext,
+      );
+
+      expect(result, same(original));
+    });
+
+    test('Boundary: enabled:false suppresses a click-wrapped gesture surface '
+        'via IgnorePointer', () {
+      final factory = _TestWidgetFactory();
+      final result = factory.applyCommonWrappers(
+        const Text('Disabled tap'),
+        {
+          'enabled': false,
+          'click': {'type': 'noop'},
+        },
+        renderContext,
+      );
+
+      // Outer wrap MUST be IgnorePointer so taps cannot reach the
+      // GestureDetector sitting inside the disabled subtree.
+      expect(result, isA<IgnorePointer>());
     });
 
     test('Normal: parseColor parses hex color strings', () {

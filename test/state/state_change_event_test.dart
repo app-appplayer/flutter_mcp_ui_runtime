@@ -109,7 +109,13 @@ void main() {
       expect(received!.source, equals('user'));
     });
 
-    test('TC-031 Normal: updateAll emits events with source updateAll', () async {
+    test(
+        'TC-031 Normal: updateAll emits events with canonical source per spec §3.11',
+        () async {
+      // Spec §3.11 enumerates `action / tool / subscription / system`.
+      // `updateAll` previously emitted the non-canonical literal `'updateAll'`
+      // which was outside the enum; the runtime now defaults to `'system'`
+      // and accepts an explicit override via the named [source] parameter.
       final events = <StateChangeEvent>[];
       stateManager.stream.listen(events.add);
 
@@ -117,8 +123,19 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 10));
 
       expect(events.length, equals(2));
-      expect(events[0].source, equals('updateAll'));
-      expect(events[1].source, equals('updateAll'));
+      expect(events[0].source, equals('system'));
+      expect(events[1].source, equals('system'));
+    });
+
+    test('TC-031 Normal: updateAll honors explicit source override', () async {
+      final events = <StateChangeEvent>[];
+      stateManager.stream.listen(events.add);
+
+      stateManager.updateAll({'a': 1}, source: 'action');
+      await Future.delayed(const Duration(milliseconds: 10));
+
+      expect(events.length, equals(1));
+      expect(events.single.source, equals('action'));
     });
 
     test('TC-031 Normal: Event contains correct oldValue', () async {

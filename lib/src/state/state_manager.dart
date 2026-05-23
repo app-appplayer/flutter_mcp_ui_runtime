@@ -8,14 +8,28 @@ import '../utils/mcp_logger.dart';
 import 'computed_property.dart';
 
 /// State change event
+///
+/// Emitted by [StateManager] on every mutation. The [source] field carries
+/// the canonical origin classification defined by spec §3.11:
+///
+/// | `source` | Meaning |
+/// |----------|---------|
+/// | `action` | User-triggered via a `state` action |
+/// | `tool` | Tool response auto-merge (§3.10) |
+/// | `subscription` | Resource notification (§4.5) |
+/// | `system` | Internal runtime update |
+///
+/// Other values are accepted for backward compatibility but downstream
+/// consumers should treat unknown values as `system`.
 class StateChangeEvent {
   final String path;
   final dynamic oldValue;
   final dynamic newValue;
   final DateTime timestamp;
 
-  /// Optional source identifier tracking where the state change originated
-  /// (e.g., 'user', 'action', 'binding', 'computed', 'system')
+  /// Canonical source identifier per spec §3.11.
+  /// One of `'action'`, `'tool'`, `'subscription'`, `'system'`. May be null
+  /// when the caller did not specify a source (treated as `system`).
   final String? source;
 
   StateChangeEvent({
@@ -122,7 +136,12 @@ class StateManager extends ChangeNotifier {
   }
 
   /// Update multiple values at once
-  void updateAll(Map<String, dynamic> updates) {
+  ///
+  /// [source] carries the canonical [StateChangeEvent] source per spec §3.11.
+  /// Defaults to `'system'` when the caller does not specify (was previously
+  /// the non-canonical `'updateAll'`, which is no longer emitted).
+  void updateAll(Map<String, dynamic> updates, {String? source}) {
+    final eventSource = source ?? 'system';
     updates.forEach((path, value) {
       final oldValue = JsonPath.get(_state, path);
       JsonPath.set(_state, path, value);
@@ -132,7 +151,7 @@ class StateManager extends ChangeNotifier {
         path: path,
         oldValue: oldValue,
         newValue: value,
-        source: 'updateAll',
+        source: eventSource,
       ));
 
       // Notify stream listeners
@@ -298,10 +317,16 @@ class StateManager extends ChangeNotifier {
   /// Get all computed property names
   List<String> get computedPropertyNames => _computedProperties.keys.toList();
 
-  /// Merge state from a map (e.g., tool response auto-merge)
-  void mergeState(Map<String, dynamic> data) {
+  /// Merge state from a map (e.g., tool response auto-merge per spec §3.10).
+  ///
+  /// Each top-level key of [data] is set as a state variable using
+  /// shallow overwrite semantics — nested objects replace existing values
+  /// without deep merging. The default [source] is `'tool'` per spec §3.11,
+  /// reflecting the primary call site (tool response auto-merge). Callers
+  /// using `mergeState` from other contexts should pass an explicit source.
+  void mergeState(Map<String, dynamic> data, {String source = 'tool'}) {
     for (final entry in data.entries) {
-      set(entry.key, entry.value);
+      set(entry.key, entry.value, source: source);
     }
   }
 

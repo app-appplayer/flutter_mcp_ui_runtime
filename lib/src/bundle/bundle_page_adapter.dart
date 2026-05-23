@@ -24,7 +24,7 @@ class BundlePageAdapter {
       return const {};
     }
     final routes = <String, String>{};
-    for (final page in uiSection.pages) {
+    for (final page in uiSection.pages.values) {
       final routePath = page.route ?? '/${page.id}';
       routes[routePath] = 'ui://pages/${page.id}';
     }
@@ -42,7 +42,7 @@ class BundlePageAdapter {
       return const {};
     }
     final content = <String, Map<String, dynamic>>{};
-    for (final page in uiSection.pages) {
+    for (final page in uiSection.pages.values) {
       content[page.id] = page.toJson();
     }
     return content;

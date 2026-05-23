@@ -128,19 +128,22 @@ void main() {
       runtime.engine!.registerResourceSubscription('mcp://server/sensors/temperature', 'temperature');
       runtime.engine!.registerResourceSubscription('mcp://server/sensors/humidity', 'humidity');
 
-      // Simulate temperature notification
+      // Simulate temperature notification — spec §4.5: payload as-is.
+      // Wrap scalars in `content.text` so the runtime parses and stores
+      // the scalar at the binding (heuristic that unwrapped
+      // `content[binding]` was removed).
       runtime.handleNotification({
         'method': 'notifications/resources/updated',
         'params': {
           'uri': 'mcp://server/sensors/temperature',
           'content': {
-            'temperature': '25°C',
+            'text': '"25°C"',
           },
         },
       });
-      
+
       await tester.pump();
-      
+
       // Verify temperature updated
       expect(find.text('25°C'), findsOneWidget);
       expect(find.text('45%'), findsOneWidget);
@@ -151,7 +154,7 @@ void main() {
         'params': {
           'uri': 'mcp://server/sensors/humidity',
           'content': {
-            'humidity': '60%',
+            'text': '"60%"',
           },
         },
       });
@@ -217,19 +220,19 @@ void main() {
       // Register subscription
       runtime.engine!.registerResourceSubscription('mcp://server/status', 'serverStatus');
       
-      // Simulate status update
+      // Simulate status update — spec §4.5: payload stored as-is.
       runtime.handleNotification({
         'method': 'notifications/resources/updated',
         'params': {
           'uri': 'mcp://server/status',
           'content': {
-            'serverStatus': 'Online',
+            'text': '"Online"',
           },
         },
       });
-      
+
       await tester.pump();
-      
+
       expect(find.text('Online'), findsOneWidget);
     });
 

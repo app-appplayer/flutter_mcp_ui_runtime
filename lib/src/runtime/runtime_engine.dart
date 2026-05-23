@@ -73,6 +73,13 @@ class RuntimeEngine with ChangeNotifier {
   late final StateManager _stateManager;
   late final Renderer _renderer;
   late final ThemeManager _themeManager;
+
+  /// Tear-off of [notifyListeners] registered on [_themeManager] in
+  /// `initialize()` so ThemeManager mutations forward to engine
+  /// listeners. Held here so `destroy()` can pass the exact same
+  /// reference to `removeListener` — avoids the singleton-listener
+  /// leak that would otherwise outlive a destroyed engine.
+  VoidCallback? _themeListener;
   late final ComputedManager _computedManager;
 
   // Public getters for page rendering
@@ -120,6 +127,12 @@ class RuntimeEngine with ChangeNotifier {
   Function(String, String)? _onResourceSubscribe;
   Function(String)? _onResourceUnsubscribe;
 
+  // Spec §4.5: separate one-shot `read` / `list` callbacks. Optional;
+  // when null, the runtime falls back to `_onResourceSubscribe` for
+  // backward compatibility with existing host implementations.
+  Function(String, String)? _onResourceRead;
+  Function(String, String)? _onResourceList;
+
   /// Permission handler for custom permission prompts
   Function? permissionHandler;
 
@@ -151,13 +164,25 @@ class RuntimeEngine with ChangeNotifier {
   Function(String, String)? get onResourceSubscribe => _onResourceSubscribe;
   Function(String)? get onResourceUnsubscribe => _onResourceUnsubscribe;
 
+  /// Optional one-shot `read` callback (spec §4.5). Null when the host did
+  /// not register one; callers fall back to `onResourceSubscribe`.
+  Function(String, String)? get onResourceRead => _onResourceRead;
+
+  /// Optional one-shot `list` callback (spec §4.5). Null when the host did
+  /// not register one; callers fall back to `onResourceSubscribe`.
+  Function(String, String)? get onResourceList => _onResourceList;
+
   // Set resource handlers
   void setResourceHandlers({
     Function(String, String)? onResourceSubscribe,
     Function(String)? onResourceUnsubscribe,
+    Function(String, String)? onResourceRead,
+    Function(String, String)? onResourceList,
   }) {
     _onResourceSubscribe = onResourceSubscribe;
     _onResourceUnsubscribe = onResourceUnsubscribe;
+    _onResourceRead = onResourceRead;
+    _onResourceList = onResourceList;
   }
 
   // Register a resource subscription
@@ -179,7 +204,14 @@ class RuntimeEngine with ChangeNotifier {
     return _resourceSubscriptions[uri];
   }
 
-  // Handle resource notification from MCP
+  // Handle resource notification from MCP (spec §4.5).
+  //
+  // The raw `content` payload is stored verbatim at the subscribed binding.
+  // The previous heuristic that unwrapped `content[binding]` when the
+  // content happened to contain a field matching the binding name was
+  // outside spec §4.5 — it conflated authored payload shape with binding
+  // path semantics. Hosts must shape the resource payload so the runtime
+  // can store it as-is at the declared binding path.
   void handleResourceNotification(String uri, Map<String, dynamic> data) {
     _logger.debug('=== RUNTIME NOTIFICATION ===');
     _logger.debug('URI: $uri');
@@ -190,19 +222,12 @@ class RuntimeEngine with ChangeNotifier {
     _logger.debug('Binding found: $binding');
 
     if (binding != null) {
-      // Extract the content data
+      // Spec §4.5: store the raw content at the subscribed binding.
       final content = data['content'];
 
       if (content != null) {
-        // If the content has a field with the same name as the binding, use that value
-        // Otherwise, use the entire content
-        final value =
-            (content is Map<String, dynamic> && content.containsKey(binding))
-                ? content[binding]
-                : content;
-
-        _logger.debug('Updating state: $binding = $value');
-        _stateManager.set(binding, value);
+        _logger.debug('Updating state: $binding = $content');
+        _stateManager.set(binding, content, source: 'subscription');
         _logger.debug('State updated via StateManager listener');
       } else {
         _logger.warning('No content in notification data');
@@ -320,6 +345,32 @@ class RuntimeEngine with ChangeNotifier {
       _logger.debug('StateManager change detected, forwarding to UI...');
       notifyListeners(); // Forward state changes to UI
     });
+
+    // Forward ThemeManager mutations to engine listeners so the
+    // outer `AnimatedBuilder(animation: engine)` in `MCPRuntimeWidget`
+    // rebuilds whenever `setTheme` / `setThemeDefinition` /
+    // `setThemeMode` / `setHostBrightness` / `applyOverride` fire.
+    // Spec `mcp_ui_dsl/spec/1.3/05_Theme.md` §L56 mandates re-render on
+    // theme change; this wire is the engine's contribution. Hosts that
+    // want to suppress / gate the propagation can do so on their own
+    // side (e.g. active-tab gate in the host shell) — the package
+    // ships the spec-conformant default and the host decides whether
+    // to consume it. The named tear-off (`_themeListener =
+    // notifyListeners`) is held on the engine so `destroy()` can
+    // `removeListener` cleanly; ThemeManager is process-singleton, so
+    // an unreleased listener would outlive a destroyed engine and
+    // fire `notifyListeners` on a disposed receiver. The cross-tab
+    // render thrash that motivated a brief disable
+    // (`cherry/inbox/navigation-service-singleton-multi-instance-2026-05-21.md`)
+    // is rooted in `NavigationService` singleton + multi-instance
+    // `MaterialApp(navigatorKey: …)` collision — a separate refactor
+    // track (`cherry/tracks/runtime-singleton-removal-plan-2026-05-20.md`
+    // Phase 1). Suppressing this forwarder is the wrong fix; doing so
+    // breaks `setHostBrightness` mode toggles (host bridge alone has
+    // no path to engine.notifyListeners), which is far more critical
+    // than a tab-swap thrash window.
+    _themeListener = notifyListeners;
+    _themeManager.addListener(_themeListener!);
 
     // Register all default widgets
     DefaultWidgets.registerAll(_widgetRegistry);
@@ -679,12 +730,12 @@ class RuntimeEngine with ChangeNotifier {
     // Forward to notification manager for additional processing
     // Notification manager is initialized during runtime setup
 
-    // Update state based on notification
+    // Update state based on notification (spec §3.11 source = 'subscription').
     final binding = data['binding'] as String?;
     if (binding != null) {
       final value = data['value'];
       _logger.debug('Updating binding $binding with value: $value');
-      _stateManager.set(binding, value);
+      _stateManager.set(binding, value, source: 'subscription');
     }
   }
 
@@ -722,6 +773,12 @@ class RuntimeEngine with ChangeNotifier {
 
     _logger.debug('Binding found: $binding');
 
+    // Spec §4.5: store the resource payload at the subscribed binding as-is.
+    // The previous heuristic that unwrapped `content[binding]` when the
+    // content happened to contain a field matching the binding name was
+    // outside spec §4.5. Hosts must shape the resource payload so the
+    // runtime can store it as-is at the declared binding path.
+
     // Check if content is included (extended mode)
     if (params.containsKey('content')) {
       // Extended mode: content included in notification
@@ -732,41 +789,31 @@ class RuntimeEngine with ChangeNotifier {
       _logger.debug('Content data: $contentData');
 
       if (contentData is Map<String, dynamic>) {
-        // Check if it's a ResourceContentInfo structure
+        // ResourceContentInfo wrapper: `{ text: <json>, ... }`. Parse the
+        // inner JSON and store the parsed value at the binding.
         if (contentData.containsKey('text')) {
-          // Parse the text content
           final text = contentData['text'] as String?;
           if (text != null) {
             try {
               final parsedData = jsonDecode(text);
               _logger.debug('Parsed text content: $parsedData');
-
-              // Extract value based on binding name
-              final value = (parsedData is Map<String, dynamic> &&
-                      parsedData.containsKey(binding))
-                  ? parsedData[binding]
-                  : parsedData;
-
-              _logger.debug('Updating state: $binding = $value');
-              _stateManager.set(binding, value);
+              _logger.debug('Updating state: $binding = $parsedData');
+              _stateManager.set(binding, parsedData, source: 'subscription');
             } catch (e) {
               _logger.error('Failed to parse text content: $e');
             }
           }
         } else {
-          // Direct content (might not have text wrapper)
-          final value = contentData.containsKey(binding)
-              ? contentData[binding]
-              : contentData;
-
-          _logger.debug('Updating state: $binding = $value');
-          _stateManager.set(binding, value);
+          // Direct content (no text wrapper) — store as-is.
+          _logger.debug('Updating state: $binding = $contentData');
+          _stateManager.set(binding, contentData, source: 'subscription');
         }
 
         // Update notification count if it exists in state
         final currentCount = _stateManager.get('notificationCount');
         if (currentCount != null && currentCount is int) {
-          _stateManager.set('notificationCount', currentCount + 1);
+          _stateManager.set('notificationCount', currentCount + 1,
+              source: 'subscription');
         }
 
         notifyListeners();
@@ -780,19 +827,14 @@ class RuntimeEngine with ChangeNotifier {
           final resourceContent = await resourceReader(uri);
           final data = jsonDecode(resourceContent);
 
-          // Extract value based on binding name
-          final value =
-              (data is Map<String, dynamic> && data.containsKey(binding))
-                  ? data[binding]
-                  : data;
-
-          _logger.debug('Updating state: $binding = $value');
-          _stateManager.set(binding, value);
+          _logger.debug('Updating state: $binding = $data');
+          _stateManager.set(binding, data, source: 'subscription');
 
           // Update notification count if it exists in state
           final currentCount = _stateManager.get('notificationCount');
           if (currentCount != null && currentCount is int) {
-            _stateManager.set('notificationCount', currentCount + 1);
+            _stateManager.set('notificationCount', currentCount + 1,
+                source: 'subscription');
           }
 
           notifyListeners();
@@ -978,6 +1020,15 @@ class RuntimeEngine with ChangeNotifier {
     _connectivityManager.dispose();
     _eventBus.dispose();
     _animationService.dispose();
+
+    // Detach the ThemeManager forward — process-singleton, so a
+    // leaked listener would fire `notifyListeners` on a disposed
+    // engine on the next theme mutation.
+    final tl = _themeListener;
+    if (tl != null) {
+      _themeManager.removeListener(tl);
+      _themeListener = null;
+    }
 
     _isInitialized = false;
     _isReady = false;

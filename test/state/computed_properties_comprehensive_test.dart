@@ -435,9 +435,11 @@ void main() {
       final paths = events.map((e) => e.path).toSet();
       expect(paths, containsAll(['counter', 'price']));
 
-      // Verify source is set to 'updateAll'
+      // Verify source matches spec §3.11 default. The non-canonical
+      // `'updateAll'` literal was removed; the runtime now defaults to
+      // `'system'` for [updateAll] when no source override is supplied.
       for (final event in events) {
-        expect(event.source, equals('updateAll'));
+        expect(event.source, equals('system'));
       }
 
       await subscription.cancel();

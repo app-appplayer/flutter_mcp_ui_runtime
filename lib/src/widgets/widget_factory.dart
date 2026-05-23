@@ -40,20 +40,47 @@ abstract class WidgetFactory {
       );
     }
 
+    // Handle click — spec 1.3.4 common property §2.2. Wraps any widget in a
+    // gesture surface and dispatches the bound action on tap. Widget-local
+    // activation slots (button.onTap, iconButton.onTap, richText.spans[].onTap,
+    // ...) remain canonical for those widgets; `click` is the universal
+    // fallback for pure layout / decoration widgets (box, card, linear, ...).
+    // Applied BEFORE the enabled wrap so `enabled: false` (IgnorePointer)
+    // suppresses the gesture surface alongside the underlying widget.
+    // The action payload is resolved through the binding engine so authors
+    // may inject `{{...}}`-bound action maps.
+    var clickWrapped = false;
+    final rawClick = properties['click'];
+    if (rawClick != null) {
+      final resolvedClick = context.resolve(rawClick);
+      if (resolvedClick is Map) {
+        final clickAction = Map<String, dynamic>.from(resolvedClick);
+        widget = GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => context.actionHandler.execute(clickAction, context),
+          child: widget,
+        );
+        clickWrapped = true;
+      }
+    }
+
     // Handle enabled state - skip for widgets that handle it internally
-    // Button widgets handle enabled state by setting onPressed to null
-    final isButtonWidget = widget is ElevatedButton ||
-        widget is TextButton ||
-        widget is OutlinedButton ||
-        widget is FilledButton ||
-        widget is IconButton ||
-        widget is GestureDetector ||
-        widget is SizedBox &&
-            (widget.child is ElevatedButton ||
-                widget.child is TextButton ||
-                widget.child is OutlinedButton ||
-                widget.child is FilledButton ||
-                widget.child is IconButton);
+    // Button widgets handle enabled state by setting onPressed to null.
+    // A GestureDetector produced by the `click` wrap above is NOT
+    // self-disabling, so the IgnorePointer must wrap it when `enabled: false`.
+    final isButtonWidget = !clickWrapped &&
+        (widget is ElevatedButton ||
+            widget is TextButton ||
+            widget is OutlinedButton ||
+            widget is FilledButton ||
+            widget is IconButton ||
+            widget is GestureDetector ||
+            widget is SizedBox &&
+                (widget.child is ElevatedButton ||
+                    widget.child is TextButton ||
+                    widget.child is OutlinedButton ||
+                    widget.child is FilledButton ||
+                    widget.child is IconButton));
 
     if (!isButtonWidget) {
       final enabled = context.resolve<bool>(properties['enabled'] ?? true);

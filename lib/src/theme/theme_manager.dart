@@ -81,6 +81,19 @@ class ThemeManager with ChangeNotifier {
   /// toggles propagate. Without an override, falls back to OS platform
   /// brightness via [ThemeMode.system].
   ThemeMode get flutterThemeMode {
+    // Host brightness override wins unconditionally — kept in lockstep
+    // with [_resolveEffectiveMode]. Without this the two paths
+    // dissonate: `getColorValue` / `fingerprint` would honour the host
+    // pin (e.g. light) while `MaterialApp.themeMode` would still pick
+    // the bundle's declared dark — so `theme.color.onSurface` resolved
+    // to one brightness but the ambient ColorScheme came from the other,
+    // producing the "ambient onSurface flips between frames" race
+    // visible to the user as tab-cycle text-colour drift in dark mode.
+    if (_hostBrightnessOverride != null) {
+      return _hostBrightnessOverride == Brightness.dark
+          ? ThemeMode.dark
+          : ThemeMode.light;
+    }
     final resolved = (getThemeValue('mode') as String?) ?? _themeMode;
     switch (resolved) {
       case 'dark':
@@ -88,11 +101,6 @@ class ThemeManager with ChangeNotifier {
       case 'light':
         return ThemeMode.light;
       case 'system':
-        if (_hostBrightnessOverride != null) {
-          return _hostBrightnessOverride == Brightness.dark
-              ? ThemeMode.dark
-              : ThemeMode.light;
-        }
         return ThemeMode.system;
       default:
         return ThemeMode.system;
@@ -101,6 +109,29 @@ class ThemeManager with ChangeNotifier {
 
   /// Convert active definition into Flutter [ThemeData] for the active mode.
   ThemeData get currentTheme => toFlutterTheme();
+
+  /// Short fingerprint of the active ThemeManager state. Includes the
+  /// identity of `_themeData` (changes when a mutator swaps the active
+  /// definition), the declared `_themeMode`, the host brightness
+  /// override, and the resolved effective mode at call time.
+  ///
+  /// Used by the Renderer's cache key (`_extractCacheableContext`) so a
+  /// cached `text` / `box` / etc. widget — built with a `Color` baked in
+  /// at first render — is invalidated when the active brightness or any
+  /// token (typography / shape / color slots) changes. Without this, a
+  /// widget cached in light mode survives a mode swap and renders the
+  /// old colour on re-mount.
+  ///
+  /// Cheap: identity hash + a few scalar fields concatenated, no JSON
+  /// encoding. Mutators that swap `_themeData` produce a fresh map ref,
+  /// so the identity hash changes automatically.
+  String get fingerprint {
+    final brightness = _resolveEffectiveMode();
+    return '${identityHashCode(_themeData)}'
+        '|$_themeMode'
+        '|${_hostBrightnessOverride?.index ?? -1}'
+        '|$brightness';
+  }
 
   // ---------------------------------------------------------------------------
   // Mutators
@@ -135,12 +166,16 @@ class ThemeManager with ChangeNotifier {
   /// Spec alias.
   void setMode(String mode) => setThemeMode(mode);
 
-  /// Inject host brightness override (for `mode: 'system'` resolution).
-  /// Pass `null` to clear and follow OS brightness.
+  /// Inject host brightness override. Wins unconditionally — see
+  /// [_resolveEffectiveMode]. Pass `null` to clear and fall back to
+  /// either the declared `_themeMode` or the platform brightness when
+  /// `_themeMode == 'system'`.
   void setHostBrightness(Brightness? brightness) {
     if (_hostBrightnessOverride == brightness) return;
     _hostBrightnessOverride = brightness;
-    if (_themeMode == 'system') notifyListeners();
+    // Always notify — the override now affects the resolved mode
+    // unconditionally (not just when `_themeMode == 'system'`).
+    notifyListeners();
   }
 
   /// Hook invoked when the OS platform brightness toggles. Only meaningful
@@ -446,10 +481,24 @@ class ThemeManager with ChangeNotifier {
   }
 
   String _resolveEffectiveMode() {
+    // Host brightness override wins unconditionally when set. AppPlayer-
+    // class hosts are themselves "the system" for embedded bundles —
+    // when the host chrome explicitly pins a brightness (settings
+    // toggle, preview pane mode pin) the bundle MUST follow even if it
+    // declared an explicit `theme.mode`. Earlier this gate only fired
+    // for `_themeMode == 'system'`, which meant a bundle that hard-set
+    // `mode: 'dark'` ignored the host's light/dark toggle entirely and
+    // — worse — the toggle's effect depended on race-timing between
+    // `setTheme(appDef.theme)` and `setHostBrightness` (intermittent
+    // mid-frame rebuild capturing whichever state landed first).
+    if (_hostBrightnessOverride != null) {
+      return _hostBrightnessOverride == Brightness.dark ? 'dark' : 'light';
+    }
     if (_themeMode == 'system') {
-      final brightness = _hostBrightnessOverride ??
-          WidgetsBinding.instance.platformDispatcher.platformBrightness;
-      return brightness == Brightness.dark ? 'dark' : 'light';
+      return WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+              Brightness.dark
+          ? 'dark'
+          : 'light';
     }
     return _themeMode;
   }

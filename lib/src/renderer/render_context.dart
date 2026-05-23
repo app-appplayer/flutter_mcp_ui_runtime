@@ -173,22 +173,27 @@ class RenderContext {
     }
   }
 
-  /// Set a value in state (handles local.* and app.* prefixes per v1.0 spec)
-  void setState(String path, dynamic value) {
+  /// Set a value in state (handles local.* and app.* prefixes per v1.0 spec).
+  ///
+  /// [source] tags the resulting [StateChangeEvent] per spec §3.11.
+  /// Callers that originate from a `state` action should pass `'action'`;
+  /// the default `null` causes the underlying [StateManager.set] to leave
+  /// the source unset (treated as `system` downstream).
+  void setState(String path, dynamic value, {String? source}) {
     // Handle v1.0 state prefixes
     if (path.startsWith('local.')) {
-      // Page-local state (stored in localVariables)
+      // Page-local state (stored in localVariables) — no change event.
       final localPath = path.substring(6);
       localVariables[localPath] = value;
       _logger.debug('setState local.$localPath: $value');
     } else if (path.startsWith('app.')) {
       // Global application state
       final globalPath = path.substring(4);
-      stateManager.set(globalPath, value);
+      stateManager.set(globalPath, value, source: source);
       _logger.debug('setState app.$globalPath: $value');
     } else {
       // No prefix - default to global state for backward compatibility
-      stateManager.set(path, value);
+      stateManager.set(path, value, source: source);
       _logger.debug('setState path: $path, value: $value');
     }
   }
@@ -262,9 +267,11 @@ class RenderContext {
     return getState<T>(path);
   }
 
-  /// Set a value in state (alias for setState)
-  void setValue(String path, dynamic value) {
-    setState(path, value);
+  /// Set a value in state (alias for setState).
+  ///
+  /// [source] forwards to [setState] for spec §3.11 source tagging.
+  void setValue(String path, dynamic value, {String? source}) {
+    setState(path, value, source: source);
   }
 
   /// Get a local variable
@@ -413,6 +420,22 @@ class RenderContext {
   /// Get resource unsubscribe handler
   Function(String)? get onResourceUnsubscribe =>
       engine?.onResourceUnsubscribe as Function(String)?;
+
+  /// Optional host-supplied callback for the spec §4.5 `read` sub-action.
+  /// Hosts that want `read` to behave as a true one-shot fetch — rather
+  /// than re-using `subscribe` semantics — register this callback. It
+  /// returns the resource payload directly; the runtime stores it at the
+  /// declared binding without subscribing.
+  Function(String uri, String binding)? get onResourceRead =>
+      engine?.onResourceRead as Function(String, String)?;
+
+  /// Optional host-supplied callback for the spec §4.5 `list` sub-action.
+  /// Hosts that want `list` to behave as a true directory query — rather
+  /// than re-using `subscribe` semantics — register this callback. It
+  /// returns a list of resource descriptors; the runtime stores the list
+  /// at the declared binding without subscribing.
+  Function(String uri, String binding)? get onResourceList =>
+      engine?.onResourceList as Function(String, String)?;
 
   /// Format a value using a formatter
   String format(dynamic value, String? formatter) {

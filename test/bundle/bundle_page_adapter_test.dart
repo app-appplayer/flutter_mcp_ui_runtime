@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mcp_bundle/mcp_bundle.dart';
-import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
+import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart' hide PageDefinition;
 
 void main() {
   // ==========================================================================
@@ -15,15 +15,14 @@ void main() {
 
     // TC-V12-021: toRoutes — empty UiSection (no pages)
     test('returns empty map for UiSection with no screens', () {
-      const uiSection = UiSection(pages: []);
+      const uiSection = UiSection(pages: <String, PageDefinition>{});
       final routes = BundlePageAdapter.toRoutes(uiSection);
       expect(routes, isEmpty);
     });
 
     // TC-V12-019: toRoutes — convert UiSection pages to route map
     test('uses screen.route when present', () {
-      const uiSection = UiSection(
-        pages: [
+      final uiSection = UiSection.fromPagesList([
           ScreenDefinition(
             id: 'home',
             name: 'Home',
@@ -40,8 +39,7 @@ void main() {
 
     // TC-V12-019 (boundary): Page without explicit route → uses /{id} fallback
     test('falls back to /{id} when route is null', () {
-      const uiSection = UiSection(
-        pages: [
+      final uiSection = UiSection.fromPagesList([
           ScreenDefinition(
             id: 'settings',
             name: 'Settings',
@@ -56,8 +54,7 @@ void main() {
 
     // TC-V12-019 (continued): Multiple screens mapped
     test('maps multiple screens', () {
-      const uiSection = UiSection(
-        pages: [
+      final uiSection = UiSection.fromPagesList([
           ScreenDefinition(
             id: 'home',
             name: 'Home',
@@ -92,15 +89,14 @@ void main() {
 
     // TC-V12-024: toPageContent — empty UiSection
     test('returns empty map for UiSection with no screens', () {
-      const uiSection = UiSection(pages: []);
+      const uiSection = UiSection(pages: <String, PageDefinition>{});
       final pages = BundlePageAdapter.toPageContent(uiSection);
       expect(pages, isEmpty);
     });
 
     // TC-V12-022: toPageContent — convert UiSection pages to content map
     test('maps screen id to serialized content', () {
-      const uiSection = UiSection(
-        pages: [
+      final uiSection = UiSection.fromPagesList([
           ScreenDefinition(
             id: 'home',
             name: 'Home',
@@ -122,8 +118,7 @@ void main() {
 
     // TC-V12-022 (continued): Multiple screens in page content
     test('maps multiple screens', () {
-      const uiSection = UiSection(
-        pages: [
+      final uiSection = UiSection.fromPagesList([
           ScreenDefinition(
             id: 'home',
             name: 'Home',
@@ -164,8 +159,7 @@ void main() {
       expect(pages, isEmpty);
 
       // With actual UiSection data
-      const uiSection = UiSection(
-        pages: [
+      final uiSection = UiSection.fromPagesList([
           ScreenDefinition(
             id: 'test',
             name: 'Test',

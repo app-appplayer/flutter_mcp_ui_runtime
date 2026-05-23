@@ -1058,10 +1058,20 @@ class Renderer {
 
     return {
       'stateData': context.stateManager.getState(),
+      // ThemeManager state full fingerprint — identity of the active
+      // `_themeData` map ref + declared mode + host brightness override
+      // + resolved effective mode. Captures every token (color slots /
+      // typography / shape / spacing / ...) so a cached widget whose
+      // baked Color or TextStyle came from a since-superseded theme
+      // misses the cache and rebuilds with the current state. Replaces
+      // the prior `{mode, primaryColor}` snapshot which only invalidated
+      // on two of the 14 token domains and let stale Colors survive a
+      // brightness swap (see `text_factory.dart` + theme_manager.dart
+      // `getColorValue` — Color is resolved at build time and baked into
+      // the Widget's immutable TextStyle, so cache hits return the old
+      // colour until invalidated).
       'themeData': {
-        'mode': context.themeManager.themeMode,
-        'primaryColor':
-            context.themeManager.getThemeValue('color.primary'),
+        'fingerprint': context.themeManager.fingerprint,
       },
       // Include only serializable context variables
       'variables': cleanVariables,
