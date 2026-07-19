@@ -1,3 +1,15 @@
+## [0.5.2] - 2026-07-19 — `client.mcpStream` channel type: MCP-server-pushed live streams (spec 1.3 §8.6.2)
+
+### Added
+- **`client.mcpStream` channel type** — the first channel that carries an MCP-server-**pushed** live stream. The prior five types cannot: `client.poll` re-invokes a tool on an interval (pull) and `client.websocket` is a raw socket outside MCP. `client.mcpStream` subscribes a host-registered stream source identified by its `uri` scheme and forwards each server push through the normal channel machinery (lifecycle, backpressure, `onMessage`/`onError`/`onConnect`/`onDisconnect`). `McpStreamChannel` (`src/channels/channel_types/mcp_stream_channel.dart`) implements it; `ChannelManager._createChannel` gains the case with a **late-bound** resolver (the channel is created at page init but the host registers its source after runtime init, so resolution is deferred to `start()`).
+- **`MCPUIRuntime.registerStreamSource(scheme, open)`** — the host seam. A host wires a real transport per uri scheme (e.g. `ble` → a BLE scan hub) while the runtime stays transport-agnostic; all schemes share one resolver on the channel manager. Mirrors `registerToolExecutor`.
+
+### Changed
+- `flutter_mcp_ui_core` floor raised `^0.4.1 → ^0.4.2` (the regenerated page schema listing `client.mcpStream`); `mcp_bundle` floor raised `^0.4.0 → ^0.4.8` (floors-at-latest on cut). Consumers should bump to `^0.5.2`.
+
+### Notes
+- Purely additive and version-neutral: a runtime predating the type hits `_createChannel`'s `default` branch and ignores the unknown type (graceful coexistence). The `major.minor` DSL-version gate (`MCPUIDSLVersion`) is unchanged — `since v1.3`.
+
 ## [0.5.1] - 2026-05-23 — spec compliance Round 2 + mcp_bundle 0.4.0 cascade
 
 ### Changed (cascade)
