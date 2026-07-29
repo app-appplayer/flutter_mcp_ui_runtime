@@ -13,6 +13,8 @@ import 'package:flutter_mcp_ui_runtime/src/permissions/permission_manager.dart';
 import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart' show StateActionDefinition;
 
 void main() {
+  clientActionBindResultTests();
+  embeddedPermissionCeilingTests();
   late ActionHandler actionHandler;
   late RenderContext context;
   late StateManager stateManager;
@@ -895,4 +897,160 @@ class _TestExecutor extends ActionExecutor {
   ) async {
     return ActionResult.success(data: 'test_executed');
   }
+}
+
+/// An embedded subtree cannot out-permission its embedder (spec §7.10.1).
+///
+/// The effective set of a `view` is the INTERSECTION with its embedder's,
+/// never the union. A device's own document is authored by whoever made the
+/// device, so a `view` able to prompt for — and receive — a permission the
+/// embedding app never held would let any embedded server escalate through the
+/// screen it was given.
+void embeddedPermissionCeilingTests() {
+  group('embedded permission ceiling (v1.4)', () {
+    RenderContext scoped(ClientActionHandler h, String? connection) {
+      final ctx = RenderContext(
+        renderer: Renderer(
+          widgetRegistry: WidgetRegistry(),
+          bindingEngine: BindingEngine(),
+          actionHandler: ActionHandler(),
+          stateManager: StateManager(),
+        ),
+        stateManager: StateManager(),
+        bindingEngine: BindingEngine(),
+        actionHandler: ActionHandler(),
+        themeManager: ThemeManager(),
+      );
+      if (connection != null) {
+        ctx.origin = <String, dynamic>{'connection': connection};
+      }
+      return ctx;
+    }
+
+    test('a scoped action is refused when the embedder lacks the permission',
+        () async {
+      final handler = ClientActionHandler(null);
+      final result = await handler.execute(
+        <String, dynamic>{
+          'type': 'client.httpRequest',
+          'params': <String, dynamic>{'url': 'https://example.com'},
+        },
+        scoped(handler, 'esp32.node'),
+      );
+
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
+      expect(result.error, contains('cannot request more than its embedder'));
+    });
+
+    test('the refusal comes before any prompt could be raised', () async {
+      // Asking and then denying is worse than never asking: the user has
+      // already been put in front of a request the app could not honour.
+      final handler = ClientActionHandler(null);
+      final result = await handler.execute(
+        <String, dynamic>{
+          'type': 'client.httpRequest',
+          'params': <String, dynamic>{'url': 'https://example.com'},
+        },
+        // No BuildContext at all, so a prompt is impossible — the refusal must
+        // still happen, which it only can if the ceiling is checked first.
+        scoped(handler, 'esp32.node'),
+      );
+      expect(result.errorCode, 'PERMISSION_DENIED');
+    });
+
+    test('an unscoped action keeps its normal path', () async {
+      // Every pre-composition document must behave exactly as before.
+      final handler = ClientActionHandler(null);
+      final result = await handler.execute(
+        <String, dynamic>{
+          'type': 'client.httpRequest',
+          'params': <String, dynamic>{'url': 'https://example.com'},
+        },
+        scoped(handler, null),
+      );
+      expect(result.error, isNot(contains('cannot request more')));
+    });
+
+    test('a permission the embedder holds is not blocked by the ceiling',
+        () async {
+      final handler = ClientActionHandler(null);
+      handler.permissionManager.grant('network');
+      final result = await handler.execute(
+        <String, dynamic>{
+          'type': 'client.httpRequest',
+          'params': <String, dynamic>{'url': 'https://example.com'},
+        },
+        scoped(handler, 'esp32.node'),
+      );
+      expect(result.error, isNot(contains('cannot request more')));
+    });
+  });
+}
+
+/// `bindResult` on a client action.
+///
+/// Every other action that returns something binds it, and this one did not —
+/// so a document could read a file, take a clipboard value or fetch a stored
+/// key and have no way to put the answer on screen. The gap read as a broken
+/// binding rather than a missing feature, which is why it survived.
+void clientActionBindResultTests() {
+  group('client action bindResult', () {
+    RenderContext ctx() => RenderContext(
+          renderer: Renderer(
+            widgetRegistry: WidgetRegistry(),
+            bindingEngine: BindingEngine(),
+            actionHandler: ActionHandler(),
+            stateManager: StateManager(),
+          ),
+          stateManager: StateManager(),
+          bindingEngine: BindingEngine(),
+          actionHandler: ActionHandler(),
+          themeManager: ThemeManager(),
+        );
+
+    test('a storage round trip lands where the document asked', () async {
+      final handler = ActionHandler();
+      final c = ctx();
+
+      await handler.execute(<String, dynamic>{
+        'type': 'client.storage.set',
+        'key': 'config',
+        'value': 'hello',
+      }, c);
+
+      await handler.execute(<String, dynamic>{
+        'type': 'client.storage.get',
+        'key': 'config',
+        'bindResult': 'stored',
+      }, c);
+
+      expect(c.getValue<Map<String, dynamic>>('stored')?['value'], 'hello');
+    });
+
+    test('a failed action does not erase what is on screen', () async {
+      final handler = ActionHandler();
+      final c = ctx()..setValue('stored', 'previous');
+
+      await handler.execute(<String, dynamic>{
+        'type': 'client.storage.get', // no key — fails
+        'bindResult': 'stored',
+      }, c);
+
+      expect(c.getValue<String>('stored'), 'previous',
+          reason: 'binding an error over a value would blank the view');
+    });
+
+    test('without bindResult nothing is written', () async {
+      final handler = ActionHandler();
+      final c = ctx();
+      await handler.execute(<String, dynamic>{
+        'type': 'client.storage.set',
+        'key': 'k',
+        'value': 1,
+      }, c);
+      expect(c.getValue<Object>('k'), isNull,
+          reason: 'a document opts in by naming a binding');
+    });
+  });
 }

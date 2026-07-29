@@ -1,3 +1,82 @@
+## [0.5.3] - 2026-07-28 — Composition Profile: rendering definitions from other origins (spec 1.4)
+
+Implements the consumer side of composition. Spec 1.3 §11.9 `dashboard` already said how an application presents itself *when embedded* — nothing said how an application *embeds*. This release adds that, so one bundle can compose several MCP servers into one product.
+
+### Fixed — lifecycle hooks (spec §1.5, §6.8, §9.9.1, §18)
+
+Auditing the seven hooks of §1.5.1 against this runtime found that no mount path implemented the full set, and that hooks were being dropped before execution ever came into it. A page written exactly the way §6.8.1 shows it — subscribe in `onReady`, release in `onDestroy` — parsed as a page with no hooks at all, so a device's live reading streamed when the page was embedded and sat blank when the same page was opened on its own, with every layer beneath reporting success.
+
+**Parsing.** `LifecycleDefinition.fromDefinition(definition)` replaces `fromJson(lifecycleObject)`:
+- Reads **both placements** §1.5.3 allows — top-level hook fields on the definition and a grouped `lifecycle` object — and merges them. Only the grouped form was read before.
+- Accepts **a single Action** as well as an array (§1.5.1). A bare Action returned null, which is a hook that never runs.
+- The canonical name is **`onInit`** (§1.5.1). `onInitialize` is accepted as a deprecated alias.
+- `onEnter` / `onLeave` are not spec hooks — §6.8.3 already routes a page through `onMount` / `onUnmount` — so they are folded onto those as deprecated aliases.
+- A hook named in both placements is an error per §1.5.3; until 0.6.0 it warns (`LifecycleDefinition.aliasWarnings`) and keeps one copy, so a document that used to load still loads. `fromJson` remains as a deprecated shim. Both removals land in 0.6.0 alongside the deprecations already announced for that release.
+
+**Execution.** New `LifecycleRunner` owns hook order for every mount site; a site now says only *when* it mounted:
+- **Routed pages** run `onInit` / `onReady` / `onDestroy`, which they never did — they ran only `onEnter` / `onMount` / `onLeave` / `onUnmount`, two of which are not spec hooks.
+- **Applications** run `onMount` / `onUnmount`, and take `onPause` / `onResume` from the parsed definition rather than only from a legacy runtime-config path that a document could not reach.
+- **Embedded `view`s** release on unmount. The embedded path started subscriptions and never ended them, so a tile that went away left the node streaming to a scope nobody read.
+- **Teardown has one owner** — the widget that mounted the definition. Navigation used to tear the outgoing page down as well; with `onLeave` folded onto `onUnmount` that overlap would have fired the same hook up to three times and `onDestroy` twice.
+
+**Placements that were never implemented at all:**
+- **Instance-level hooks on any widget** (§6.8.2) — a widget's own `lifecycle: {}` block was read nowhere, so it was silently dropped. New `LifecycleHost` wraps a widget only when it declares hooks.
+- **Template instances** (§9.9.1, and a MUST in §18) — a template's `onMount` / `onUnmount` fire once per instance. `UseTemplateFactory` ran neither.
+
+Covered by `test/runtime/lifecycle_matrix_test.dart`: the same document mounted as a routed page, as an embedded `view`, and as an instance-level block must run the same hooks in the same order. Each path passed its own tests in isolation before, which is why the divergence stayed invisible.
+
+### Added — entry & identity (spec 1.4 §8.9)
+
+A definition is often reached from outside the app — a scanned code, a tag, a link — and the viewer may or may not be signed in. This adds the consumer side of that: what a document may read about its arrival, and the one transition it may request.
+
+- **`entry.*` / `identity.*` bindings** — `entry.route`, `entry.params.*`, `entry.issuer.*`, `entry.grant.scope`, `entry.canSteward`, `entry.notice`, `identity.state`, `identity.subject.*`, `identity.canPromote`. Read-only, and `null` on a runtime whose host wired nothing (§8.9.6), so a document written against §8.9 degrades to its guest rendering instead of failing.
+- **`identity.promote` / `identity.release` actions** — carry no credential in either direction; the result reports only whether the transition occurred. Unsupported (not failed) when the host wired no handler.
+- The value types (`EntryContext` / `IdentityContext` and friends) live in `flutter_mcp_ui_core` alongside the other spec types; this package re-exports them and owns the behaviour. A type that only a Flutter runtime can name is a type an authoring tool or validator cannot check.
+- **`EntrySession`** on the runtime — the host adopts an entry, adopts or replaces the principal, and registers promotion handlers. Replacing the principal re-evaluates bound expressions **in place**: the document is not rebuilt and its state is not discarded (§8.9.4).
+- **Launch route** — `MCPUIRuntime.initialize(..., launchRoute:)` opens the definition at a requested page instead of its own `initialRoute`, and `entry:` implies one when the entry named a route. The two are kept apart deliberately: §8.9.1 reserves the `entry.*` tree for definitions reached from **outside**, so an in-app `navigation.openApp` sets only the route. Folding it into an entry would make every app-to-app open read as a scan to a document asking how it was reached. A route the document no longer declares is **not** honoured silently: the runtime falls back and reports `RouteManager.launchRouteMissing`, because a stale binding that renders the home page looks exactly like a working one.
+
+`entry.params` is a separate root from `route.params` by design — route parameters say where in the document the viewer is, entry parameters say what was scanned to get here, and only the latter survives internal navigation.
+
+**These bindings are not authority.** They decide what a screen offers; every privileged operation is still authorized at the serving origin (§8.9.5).
+
+Two guards found by mutating the harness rather than by review:
+- A `state` action targeting `entry.*` / `identity.*` is rejected (`READ_ONLY_BINDING`) instead of silently dropped.
+- Resolution has a **dedicated branch** ahead of the generic fallback. Without it the fallback searches page and app state first, so a document could set its own `page.entry` and forge both `canSteward` and a launch route. Pinned by `test/entry/entry_identity_test.dart` "document state cannot shadow entry.* or identity.*" — the first version of that suite passed with the branch removed, which is what surfaced the hole.
+
+### Added
+- **`view` widget** (`src/widgets/utility/view_factory.dart`, spec §2.13.1) — embeds a `DefinitionSource` anywhere in a tree. Accepts all four source forms (§1.9.1): an inline definition, a `ui://` uri on the current origin, a qualified `{ $ref, from }` reference to another origin, or a binding to a definition held in state. Supports `props` / `fallback` / `loading` / `onError` / `theme`.
+- **`MCPUIRuntime.registerDefinitionResolver(resolve)`** — the host seam, mirroring `registerStreamSource`. The runtime never learns how a connection is opened; establishing outbound connections is a host capability (§6.11.1). Held on `Renderer` (root contexts are created on demand) and carried down by `RenderContext.createChildContext`.
+- **`RenderContext.createEmbeddedScope({props, inheritTheme})`** — the isolated scope an embedded definition renders in (§6.11.3, §7.10.1). A fresh `StateManager` is what makes the isolation real; `props` is the only embedder→embedded channel, and `localVariables` are deliberately not inherited.
+- **`RouteValue` widened to any `DefinitionSource`** (`src/routing/route_value.dart`, spec §1.2.1) — a whole route may be another origin's page. Origin-carrying route values normalise to a page whose content is a single `view`, so the route surface and the widget surface cannot drift apart; both go through one implementation. Inline `PageDefinition` route values (a v1.0 spec form this runtime had never supported) now work too, as does the v1.3 `{page, transition}` wrapper.
+
+### Changed
+- `RouteInfo.pageUri` typed `String` → `dynamic`. A route value is no longer necessarily a uri. Source-compatible (Dart implicitly downcasts from `dynamic`), and a uri route still yields a `String`; only the new structural forms differ. No consumer outside this package's own tests reads it.
+- Page caching keys through `routeValueCacheKey()` in both consumers (`RouteManager`, `ApplicationShell`). Structural routes key by route path, not by uri — two routes reading the same uri from **different** origins must not share a cache entry, which would render one device's UI on the other's route. The same key is used by the lifecycle lookups so `onEnter` / `onLeave` / `pagePause` keep firing for composed routes.
+- `flutter_mcp_ui_core` floor raised `^0.4.2 → ^0.4.3` (the regenerated widgets schema carrying `view`). Consumers should bump to `^0.5.3`.
+
+### Security
+- Registering a resolver is how a host **claims** the Composition Profile. Without one, `view` fails closed and renders its `fallback` — it does **not** resolve a foreign `$ref` against the host's own origin, which would put one server's UI under another's identity (spec §7.10.1 rule 6, §18.7.3).
+- An embedded scope cannot read the embedder's state, and failure is contained per view: a dead origin renders that view's `fallback` while its siblings and the embedding page keep rendering.
+
+### Fixed — analyser cleanup shipped in the same cut (62 issues → 0)
+
+Not cosmetic-only; three of these change behaviour and are called out as such.
+
+- **`BuildContext` used across `await` (6 sites)** — `PermissionManager._promptUser` / `checkAndPrompt` and `ClientActionHandler` could raise a dialog on an element that had already been unmounted (a page popped while the action was in flight), which throws. All six now re-check `context.mounted` first; a gone surface yields "no decision" instead of an exception. One pre-existing `// ignore: use_build_context_synchronously` was replaced by a real guard. **Behaviour change**: a permission prompt whose surface disappeared mid-flight is now declined rather than throwing.
+- **`Radio` / `RadioListTile` migrated to a `RadioGroup` ancestor** — Flutter deprecated the per-widget `groupValue`/`onChanged` pair. `radioGroup` now wraps its tiles in one `RadioGroup`; the standalone `radio` widget carries its own single-item group so DSL documents are unchanged. **Behaviour change**: the widget tree gains a `RadioGroup` node, which downstream widget tests that assert on tree shape may see.
+- **`SemanticsService.announce` → `sendAnnouncement`** — the replacement requires a `FlutterView`, and these call sites are manager classes with no `BuildContext`, so they now resolve the same implicit view the deprecated call used internally. **Behaviour change**: with no implicit view (multi-window / view-less embedder) an announcement is skipped rather than asserted.
+- `cacheExtent` → `ScrollCacheExtent.pixels(...)` in `listview_factory` / `virtualized_list` (typed replacement; same pixel value, DSL key unchanged).
+- `Matrix4.scale` / `translate` → `scaleByDouble` / `translateByDouble`.
+- Deferred-renderer placeholders in `phase_2_4_factories` no longer bind unused locals (the property reads that record author intent remain).
+- Legacy-form bundle adapters (`bundle_page_adapter`, `bundle_ui_adapter`, `ui_definition`) read deprecated inline fields **on purpose** — that is what makes older bundles keep working. Those reads now carry a single-line `// ignore:` with the reason stated, instead of appearing as unresolved debt.
+- Assorted lints: `curly_braces_in_flow_control_structures`, `prefer_const_constructors`, `unnecessary_brace_in_string_interps`, `no_leading_underscores_for_local_identifiers`, a nullable `TabController` that is non-nullable.
+
+`dart analyze lib` is now **No issues found**, and the publish dry-run no longer reports an analyser warning.
+
+### Notes
+- Purely additive for existing documents: `from` absent means the current origin, so every 1.3 document keeps its exact meaning.
+- Tests: 21 new (`test/widgets/v14/` — `view` 10, `RouteValue` 11). **4341/4341 green** (full suite, re-run after the cleanup above).
+
 ## [0.5.2] - 2026-07-19 — `client.mcpStream` channel type: MCP-server-pushed live streams (spec 1.3 §8.6.2)
 
 ### Added
@@ -35,6 +114,43 @@
 - Lifecycle `_renderContext` null short-circuit replaced with explicit error log.
 
 ### Fixed
+- **Storage, one-shot reads and permissions did not scope to the origin
+  either.** A `resource` read from an embedded subtree returned the embedder's
+  resource under the embedded document's uri (a wrong answer, not a missing
+  one); two devices on one screen shared a single storage key space, so the
+  second to write a key silently overwrote the first and each read the other's
+  value back as its own; and an embedded document could prompt for — and be
+  granted — a permission the embedding app never held, which let any embedded
+  server escalate through the screen it was given. Reads now route through
+  `registerOriginResourceReader`, storage keys are prefixed by the scope's
+  origin, and a scoped action is refused before any prompt when the embedder
+  does not hold the permission.
+- **An embedded subtree rendered against its origin but did not act against
+  it.** `view` brought another origin's UI in; every `tool` action inside it
+  still took the app's own path and landed on a session with no client for that
+  device, so a composed screen looked finished and did nothing (observed as
+  `session.tool.no_client` while both tiles rendered). `RenderContext` now
+  carries an ambient `origin` — set on the embedded scope, inherited by every
+  descendant, never read from the renderer because an origin scopes a subtree
+  rather than a tree — and a scoped `tool` action routes through the host's
+  `registerOriginToolCaller`. A scoped subtree with no bridge reports rather
+  than redirecting: running one device's tool name against another server is
+  worse than failing.
+- **The resolver did not reach the context a page renders with.**
+  `registerDefinitionResolver` stores it on the `Renderer`, and each
+  `RenderContext` copied the field at construction — but two of the five
+  construction sites did not, including the router's, which is the path a
+  bundle takes. A host that had claimed the Composition Profile therefore saw
+  `view` report that the runtime does not implement it. `RenderContext`
+  now reads through to its renderer, so the profile reaches the tree by
+  construction rather than by every construction site remembering; an
+  explicitly-set resolver still wins.
+- `ApplicationDefinition.fromUIDefinition` narrowed `routes` to
+  `Map<String, String>`, so an application carrying a v1.4 route that names
+  another origin (`{"$ref": ..., "from": {"connection": ...}}`) threw while
+  parsing and the app could not open at all. The error named a type cast, not
+  routes, so nothing pointed at composition. Routes now keep their declared
+  shape.
 - Tool responses arriving in MCP wire shape were merged as `content` / `isError` literal keys instead of unwrapped — now spec §3.10 compliant.
 - `TemplateParamDefinition.validate` now skips declared-type and enum checks when the supplied argument is a binding expression (`"{{...}}"`). Mirrors the same fix in `flutter_mcp_ui_core`'s `TemplateDefinition.validate`; covers the extended-template (`resolveExtended`) path. Previously a template param declared `type: boolean` rejected every expression-bound argument (always a String at validate time), causing `use` invocations to surface the `Template not found:` placeholder. Spec §9.3.1 mandates only required / default / enum / validator and expressions resolve at runtime so cannot be compared against the enum list here either. Non-expression arguments still take the type / enum path unchanged. Regression: full templates test suite 88/88.
 - `TemplateRegistry._substituteValue` now type-preserves whole-value placeholders. A param value shaped as a single `"{{name}}"` (with no surrounding literal text) was previously stringified by `_substituteString` via `value?.toString()` — a List param landed in the expanded template body as `"[a, b]"`, a Map as `"{x: 1}"`, an action Map (`{type:"tool",...}`) as `"{type: tool, ...}"`. Downstream factories receiving those props could no longer cast back to `List` / `Map<String, dynamic>?` (observed runtime: `'String' is not a subtype of type 'Map<String, dynamic>?'` from `inkWell.onTap` when a `template params.onActivate` action Map was forwarded into a nested `use`). The substitution now short-circuits whole-value placeholders to the raw param value; partial placeholders (`"Hello {{name}}"`) still take the string path unchanged.
