@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
 
@@ -80,9 +79,9 @@ void main() {
       runtime = await boot(
         entry: EntryContext(
           route: '/contact',
-          params: <String, dynamic>{'plate': 'AB-1234'},
+          params: const <String, dynamic>{'plate': 'AB-1234'},
           issuer: const EntryIssuer(name: 'Fleet Co', verified: true),
-          grantScope: <String>['relay.notify'],
+          grantScope: const <String>['relay.notify'],
           canSteward: false,
           notice: EntryNotice.fromWire('custodyChanged', 'Contact updated'),
         ),
@@ -452,6 +451,118 @@ void main() {
       expect(context.resolve<dynamic>('{{entry.route}}'), '/home');
       expect(context.resolve<dynamic>('{{identity.state}}'), 'guest');
       await runtime.destroy();
+    });
+
+    // The defect these pin shipped in 0.5.3. The host adopts entry and
+    // identity, then the definition's own initial state is installed as a
+    // wholesale replacement, which cleared the container they had just been
+    // published into — so every §8.9 binding resolved to null for any
+    // definition declaring `state.initial`.
+    //
+    // The symptom is silence, not an error: a deep-linked screen renders with
+    // blanks where the link's parameters belong and reads as an ordinary visit
+    // by someone who is not signed in.
+    //
+    // Both definition types are covered because they reach the container
+    // through *different* calls — an application replaces, a page initializes
+    // — and every sample document in `content/sample` is a page. Testing one
+    // shape is what let this ship.
+    for (final (label, definition) in [
+      (
+        'application',
+        <String, dynamic>{
+          'type': 'application',
+          'title': 'Entry Test App',
+          'initialRoute': '/home',
+          'routes': <String, dynamic>{'/home': 'ui://pages/home'},
+          'state': <String, dynamic>{
+            'initial': <String, dynamic>{'greeting': 'hi'},
+          },
+        },
+      ),
+      (
+        'page',
+        <String, dynamic>{
+          'type': 'page',
+          'metadata': <String, dynamic>{'title': 'Greenhouse'},
+          'state': <String, dynamic>{
+            'initial': <String, dynamic>{'greeting': 'hi'},
+          },
+          'content': <String, dynamic>{'type': 'text', 'content': 'x'},
+        },
+      ),
+    ]) {
+      testWidgets(
+        "a $label's own initial state does not take entry with it",
+        (tester) async {
+          final runtime = MCPUIRuntime();
+          await runtime.initialize(
+            definition,
+            pageLoader: (uri) async => <String, dynamic>{
+              'type': 'page',
+              'content': <String, dynamic>{'type': 'text', 'content': uri},
+            },
+            entry: EntryContext(
+              route: '/home',
+              params: const {'ref': 'poster-3'},
+            ),
+            identity: const IdentityContext(
+              state: IdentityState.identified,
+              subjectRef: 'u-1',
+            ),
+          );
+          final c = rootContext(runtime);
+
+          expect(c.resolve<dynamic>('{{entry.route}}'), '/home');
+          expect(c.resolve<dynamic>('{{entry.params.ref}}'), 'poster-3');
+          expect(c.resolve<dynamic>('{{identity.state}}'), 'identified');
+          expect(c.resolve<dynamic>('{{identity.subject.ref}}'), 'u-1');
+          // The document's own state is installed as usual.
+          expect(c.resolve<dynamic>('{{greeting}}'), 'hi');
+          await runtime.destroy();
+        },
+      );
+    }
+
+    test('a reserved root survives both kinds of wholesale replacement', () {
+      // Restoring a cached state and installing a page's initial state take
+      // different calls, so neither one alone is the contract.
+      for (final replace in <void Function(StateManager, Map<String, dynamic>)>[
+        (s, v) => s.setState(v),
+        (s, v) => s.initialize(v),
+      ]) {
+        final state = StateManager()..reserveHostRoot('entry');
+        state.set('entry', <String, dynamic>{'route': '/x'});
+
+        replace(state, <String, dynamic>{'count': 1});
+
+        expect(state.get('count'), 1);
+        expect(state.get<dynamic>('entry.route'), '/x');
+      }
+    });
+
+    test('an unreserved root is still replaced', () {
+      // The container stays general: a document is free to keep its own state
+      // under any name in a scope where nothing was reserved.
+      final state = StateManager();
+      state.set('entry', <String, dynamic>{'route': '/x'});
+
+      state.setState(<String, dynamic>{'count': 1});
+
+      expect(state.get<dynamic>('entry'), isNull);
+    });
+
+    test('an incoming state cannot overwrite a reserved root', () {
+      final state = StateManager()..reserveHostRoot('identity');
+      state.set('identity', <String, dynamic>{'state': 'guest'});
+
+      state.setState(<String, dynamic>{
+        'identity': <String, dynamic>{'state': 'identified'},
+      });
+
+      // §8.9.2 read-only: a definition shipping an `identity` key is shadowing
+      // a fact, not supplying one.
+      expect(state.get<dynamic>('identity.state'), 'guest');
     });
 
     test('a neighbouring root that merely starts with the same letters is not locked',

@@ -46,3 +46,6 @@ app.*.map.json
 # GitHub workflows
 .github/workflows/
 EOF < /dev/null
+# Local-only: points a dependency at an in-tree path. Publishing it would
+# make a consumer resolve a directory that exists only on this machine.
+pubspec_overrides.yaml

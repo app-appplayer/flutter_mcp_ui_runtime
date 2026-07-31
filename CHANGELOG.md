@@ -1,3 +1,25 @@
+## [0.5.4] - 2026-07-31
+
+### Fixed — `registerAction` could not be called from outside the package
+
+`MCPUIRuntime.registerAction(String type, ActionExecutor executor)` is public, but neither `ActionExecutor` — the type it asks for — nor `ActionResult` — the type that must be returned — was exported from the library. A host had no way to name either, so the method was unreachable and custom action executors could not be supplied at all.
+
+Both are now exported. Additive: no existing name moved or changed. A regression compiles a host-defined executor against the library barrel, which is the only thing that can catch this — every in-package test names the types through their source files and passes regardless.
+
+### Fixed — a definition's own initial state discarded `entry.*` and `identity.*` (§8.9)
+
+A host adopts the entry and identity, then the definition's initial state is installed as a wholesale replacement of the state container — which cleared the roots they had just been published into. Every `entry.*` / `identity.*` binding then resolved to `null` for any definition declaring `state.initial`.
+
+The symptom is silence rather than an error. A deep-linked screen renders with blanks where the link's parameters belong and reads as an ordinary visit by someone who is not signed in, which is precisely the reading §8.9.6 reserves for a runtime that does not implement this section at all.
+
+Both definition types were affected through different calls — an application replaces the container, a page initializes it — and every sample document is a page. Routing was never affected: a launch route is read from the session rather than from state, so the deep link landed on the right screen and only its parameters went missing. `identity.*` recovered on the next promotion, since that writes a single path; `entry.*` never returned, because nothing re-adopts it.
+
+`StateManager` now takes reservations: `reserveHostRoot(root)` marks a root as held on behalf of someone other than the document, and both `setState` and `initialize` carry reserved roots across a replacement. `EntrySession` reserves `entry` and `identity` when it is constructed. A reserved key present in the incoming state does not win — §8.9.2 makes these read-only to the document, so a collision is shadowing rather than supplying.
+
+The reservation is registered rather than named inside `StateManager`, so a container that holds no host facts — an embedded scope's own state tree (§6.11.3) — reserves nothing, and a document there may keep its own state under those names.
+
+**Why it shipped:** the §8.9 suite booted definitions with no `state.initial`, which is the one shape that hides this, and the launch-route assertions read the session object rather than a binding. Both gaps are closed: the regressions now cover application and page, and assert through resolved bindings.
+
 ## [0.5.3] - 2026-07-28 — Composition Profile: rendering definitions from other origins (spec 1.4)
 
 Implements the consumer side of composition. Spec 1.3 §11.9 `dashboard` already said how an application presents itself *when embedded* — nothing said how an application *embeds*. This release adds that, so one bundle can compose several MCP servers into one product.
