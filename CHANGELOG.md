@@ -1,17 +1,5 @@
 ## [0.6.1] - 2026-08-03 — three declared properties are now read
 
-Picks up `flutter_mcp_ui_core 0.5.1`. The floor stays `^0.5.0` — this is the
-same 1.4 cut, finished, not a second one.
-
-Also documents two action types the runtime has always executed but §4 never
-declared: `submit` (§4.22, form-scoped — resolved by the widget against its
-nearest `form` ancestor, never reaching the dispatcher) and `event` (§4.23,
-publishes to `_events.<name>.data`/`.timestamp`). The `form` example in §2.6.23
-had been showing `{"type": "form", "action": "submit"}`, which no runtime has
-ever handled — corrected to `{"type": "submit"}`. Found once `form.children`
-gained a type constraint and the example's own children were validated for the
-first time.
-
 `dateTimePicker.dateFormat` / `timeFormat` and `pdfViewer.showZoom` were
 declared in the spec and never read by their factories, so setting them did
 nothing. Found by the drift audit once its prose parser learned to read table
@@ -23,7 +11,13 @@ regardless, so this changes only what the closed field shows. `showZoom: false`
 pins the view, since the PDF open-parameter set has no control for hiding the
 zoom widget on its own.
 
-Also picks up the schema constant fixes from `flutter_mcp_ui_core 0.5.1`.
+Picks up `flutter_mcp_ui_core 0.5.1`, whose schema stops silently accepting
+malformed children. The floor stays `^0.5.0` — this is the same 1.4 cut,
+finished, not a second one. Two documents in this package's own suite were
+relying on the gap: the `demo_ui` timeline fixture bound its entries to
+`events`, which the factory does not read (that panel had been rendering
+empty), and a form-flow document carried `marginTop` / `marginBottom` inside
+`style`, which nothing reads.
 
 ## [0.6.0] - 2026-08-03 — One asset path, 23 widgets, openUrl (spec 1.4)
 
