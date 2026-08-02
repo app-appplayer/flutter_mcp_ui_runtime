@@ -1,4 +1,11 @@
 import '../widgets/advanced/barcode_factory.dart';
+import '../widgets/dialog/popover_factory.dart';
+import '../widgets/interactive/context_menu_factory.dart';
+import '../widgets/layout/accordion_factory.dart';
+import '../widgets/navigation/breadcrumb_factory.dart';
+import '../widgets/navigation/link_factory.dart';
+import '../widgets/navigation/menu_factory.dart';
+import '../widgets/navigation/pagination_factory.dart';
 import '../widgets/advanced/qr_code_factory.dart';
 import '../widgets/input/combobox_factory.dart';
 import '../widgets/input/date_time_picker_factory.dart';
@@ -423,6 +430,16 @@ class DefaultWidgets {
     registry.register('fileInput', FileInputFactory());
     registry.register('qrCode', QrCodeFactory());
     registry.register('barcode', BarcodeFactory());
+    registry.register('accordion', AccordionFactory());
+    registry.register('collapsible', AccordionFactory()); // §17.3.1 alias
+    registry.register('popover', PopoverFactory());
+    registry.register('hoverCard', PopoverFactory()); // §17.3.1 alias
+    registry.register('menu', MenuFactory());
+    registry.register('contextMenu', ContextMenuFactory());
+    registry.register('breadcrumb', BreadcrumbFactory());
+    registry.register('pagination', PaginationFactory());
+    registry.register('link', LinkFactory());
+    registry.register('navLink', LinkFactory()); // §17.3.1 alias
 
     // v1.4 palette aliases (§17.3.1). A no-code builder's vocabulary was
     // aligned with this spec; twenty of its components turned out to be
