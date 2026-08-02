@@ -30,35 +30,48 @@ void main() {
         expect(find.text('Welcome to MCP UI DSL v1.4 Showcase'), findsOneWidget);
         expect(find.text('Key Features'), findsOneWidget);
 
-        // Test navigation through all pages
-        final pagesToTest = [
-          'Layout Widgets',
-          'Display Widgets', 
-          'Input Widgets',
-          'List Widgets',
-          'Navigation',
-          'Theme System',
-          'Actions & State',
-          'Advanced Features',
+        // The drawer entry and the page's own heading are not always the
+        // same string — "Navigation" opens a page headed "Navigation
+        // Patterns", "Actions & State" one headed "Actions & State
+        // Management". Asserting the entry name after the drawer closes
+        // looked for text that had just left the tree.
+        const pagesToTest = <(String, String)>[
+          ('Layout Widgets', 'Layout Widgets'),
+          ('Display Widgets', 'Display Widgets'),
+          ('Input Widgets', 'Input Widgets'),
+          ('List Widgets', 'List Widgets'),
+          ('Navigation', 'Navigation Patterns'),
+          ('Theme System', 'Theme System'),
+          ('Actions & State', 'Actions & State Management'),
+          ('Advanced Features', 'Advanced Features'),
         ];
 
-        for (final pageName in pagesToTest) {
-          // Open drawer
-          final scaffold = find.byType(Scaffold).first;
-          final scaffoldState = tester.state<ScaffoldState>(scaffold);
-          scaffoldState.openDrawer();
+        for (final (entry, heading) in pagesToTest) {
+          // Re-read the shell each time: navigating rebuilds the subtree, so a
+          // ScaffoldState captured before the move is stale.
+          tester
+              .state<ScaffoldState>(find.byType(Scaffold).first)
+              .openDrawer();
           await settleRuntime(tester);
 
-          // Navigate to page
-          await tester.tap(find.text(pageName).last);
+          // Navigate to page. The drawer list is longer than the viewport,
+          // so the later entries need scrolling into range before a tap can
+          // land on them.
+          final target = find.text(entry).last;
+          await tester.ensureVisible(target);
+          await settleRuntime(tester);
+          await tester.tap(target);
           await settleRuntime(tester);
 
-          // Verify page loaded
-          expect(find.text(pageName), findsWidgets);
+          // Verify the page itself loaded, by its own heading.
+          expect(find.text(heading), findsWidgets, reason: 'opening $entry');
           
-          // Close drawer if it's still open
-          if (scaffoldState.isDrawerOpen) {
-            Navigator.of(tester.element(scaffold)).pop();
+          // Close through the Scaffold, not the Navigator: popping the route
+          // takes the page with it, so the next iteration opened a drawer on
+          // a screen that had navigated backwards.
+          final shell = tester.state<ScaffoldState>(find.byType(Scaffold).first);
+          if (shell.isDrawerOpen) {
+            shell.closeDrawer();
             await settleRuntime(tester);
           }
         }
@@ -102,8 +115,10 @@ void main() {
         await settleRuntime(tester);
         expect(find.text('Toggle is ON'), findsOneWidget);
 
-        // 4. Change dropdown
-        final dropdown = find.byType(DropdownButton<String>).first;
+        // 4. Change dropdown. `select` is a PopupMenuButton-backed compact
+        // selector — Material's DropdownButton ships fixed padding that
+        // clashes with M3 surfaces, so the runtime does not use it.
+        final dropdown = find.byType(PopupMenuButton<int>).first;
         await tester.tap(dropdown);
         await settleRuntime(tester);
         
@@ -256,7 +271,12 @@ void main() {
         await settleRuntime(tester);
 
         // Check buttons have semantics
-        final semantics = tester.getSemantics(find.byType(ElevatedButton).first);
+        // `button` maps `variant` onto the Material widget, so a page may hold
+        // ElevatedButton, FilledButton, OutlinedButton or TextButton. Assert on
+        // the semantics of a button, not of one particular Material class.
+        final semantics = tester.getSemantics(
+          find.byWidgetPredicate((w) => w is ButtonStyleButton).first,
+        );
         expect(semantics.label, isNotEmpty);
         
         // Check text fields have labels

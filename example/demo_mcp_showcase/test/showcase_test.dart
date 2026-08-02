@@ -120,8 +120,13 @@ void main() {
         await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
-        // Should show drawer navigation
-        expect(find.byType(Drawer), findsOneWidget);
+        // A closed Drawer is not in the tree — Flutter inflates it on open.
+        // What the application shell guarantees is that the Scaffold *has*
+        // one, which is the assertion that survives.
+        expect(
+          tester.widget<Scaffold>(find.byType(Scaffold).first).drawer,
+          isNotNull,
+        );
         
         // Should show home page content
         expect(find.text('Welcome to MCP UI DSL v1.4 Showcase'), findsOneWidget);
@@ -454,8 +459,13 @@ void main() {
         final themeManager = runtime.engine.themeManager;
         final theme = themeManager.currentTheme;
         
-        expect(theme.primaryColor, equals(const Color(0xFF2196F3)));
-        expect(theme.scaffoldBackgroundColor, equals(const Color(0xFFFFFFFF)));
+        // The runtime builds a Material 3 ThemeData from a ColorScheme, so
+        // the declared colours land on `colorScheme` — `primaryColor` and
+        // `scaffoldBackgroundColor` are M2-era fields Flutter derives, and
+        // asserting on them checked Flutter's derivation rather than whether
+        // the definition was applied.
+        expect(theme.colorScheme.primary, equals(const Color(0xFF2196F3)));
+        expect(theme.colorScheme.surface, equals(const Color(0xFFFFFFFF)));
       });
 
       testWidgets('should render theme showcase correctly', (tester) async {

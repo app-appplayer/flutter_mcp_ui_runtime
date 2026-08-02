@@ -24,17 +24,22 @@ final Map<String, dynamic> showcaseDefinition = {
   },
   'theme': {
         'mode': 'light',
-        'colors': {
-          'primary': '#FF2196F3',
-          'secondary': '#FFFF4081',
-          'background': '#FFFFFFFF',
-          'surface': '#FFF5F5F5',
-          'error': '#FFF44336',
-          'textOnPrimary': '#FFFFFFFF',
-          'textOnSecondary': '#FF000000',
-          'textOnBackground': '#FF000000',
-          'textOnSurface': '#FF000000',
-          'textOnError': '#FFFFFFFF',
+        // Spec §5.3: the key is `color` (singular) and the roles are the
+        // Material 3 set. This was written against v1.0, where it was `colors`
+        // with `textOnX` foregrounds — the runtime read neither, so every
+        // declared colour was silently dropped and the theme fell back to a
+        // seed-derived palette.
+        'color': {
+          'primary': '#2196F3',
+          'onPrimary': '#FFFFFF',
+          'secondary': '#FF4081',
+          'onSecondary': '#000000',
+          'surface': '#FFFFFF',
+          'onSurface': '#000000',
+          'surfaceVariant': '#F5F5F5',
+          'onSurfaceVariant': '#000000',
+          'error': '#F44336',
+          'onError': '#FFFFFF',
         },
         'typography': {
           'h1': {'fontSize': 32, 'fontWeight': 'bold', 'letterSpacing': -1.5},
@@ -213,11 +218,11 @@ final Map<String, dynamic> _layoutPage = {
             'direction': 'horizontal',
             'alignment': 'center',
             'children': [
-              _colorBox('#FF2196F3', 'Blue'),
+              _colorBox('#2196F3', 'Blue'),
               {'type': 'box', 'width': 10},
-              _colorBox('#FFFF4081', 'Pink'),
+              _colorBox('#FF4081', 'Pink'),
               {'type': 'box', 'width': 10},
-              _colorBox('#FF4CAF50', 'Green'),
+              _colorBox('#4CAF50', 'Green'),
             ],
           },
         ),
@@ -233,7 +238,7 @@ final Map<String, dynamic> _layoutPage = {
             'children': [
               {
                 'type': 'box',
-                'backgroundColor': '#FFE3F2FD',
+                'backgroundColor': '#E3F2FD',
                 'borderRadius': 8,
               },
               {
@@ -280,13 +285,13 @@ final Map<String, dynamic> _layoutPage = {
               {
                 'type': 'expanded',
                 'flex': 2,
-                'child': _colorBox('#FF9C27B0', 'Flex: 2'),
+                'child': _colorBox('#9C27B0', 'Flex: 2'),
               },
               {'type': 'box', 'width': 10},
               {
                 'type': 'expanded',
                 'flex': 1,
-                'child': _colorBox('#FF00BCD4', 'Flex: 1'),
+                'child': _colorBox('#00BCD4', 'Flex: 1'),
               },
             ],
           },
@@ -347,11 +352,11 @@ final Map<String, dynamic> _displayPage = {
           {
             'type': 'richText',
             'spans': [
-              {'text': 'This is ', 'style': {'color': '#FF000000'}},
-              {'text': 'rich', 'style': {'color': '#FFF44336', 'fontWeight': 'bold'}},
-              {'text': ' text with ', 'style': {'color': '#FF000000'}},
-              {'text': 'multiple', 'style': {'color': '#FF2196F3', 'fontStyle': 'italic'}},
-              {'text': ' styles', 'style': {'color': '#FF4CAF50', 'fontSize': 20}},
+              {'text': 'This is ', 'style': {'color': '#000000'}},
+              {'text': 'rich', 'style': {'color': '#F44336', 'fontWeight': 'bold'}},
+              {'text': ' text with ', 'style': {'color': '#000000'}},
+              {'text': 'multiple', 'style': {'color': '#2196F3', 'fontStyle': 'italic'}},
+              {'text': ' styles', 'style': {'color': '#4CAF50', 'fontSize': 20}},
             ],
           },
         ),
@@ -367,9 +372,9 @@ final Map<String, dynamic> _displayPage = {
             'children': [
               {'type': 'icon', 'icon': 'home', 'size': 32, 'color': '{{theme.colors.primary}}'},
               {'type': 'box', 'width': 20},
-              {'type': 'icon', 'icon': 'favorite', 'size': 40, 'color': '#FFF44336'},
+              {'type': 'icon', 'icon': 'favorite', 'size': 40, 'color': '#F44336'},
               {'type': 'box', 'width': 20},
-              {'type': 'icon', 'icon': 'star', 'size': 48, 'color': '#FFFFC107'},
+              {'type': 'icon', 'icon': 'star', 'size': 48, 'color': '#FFC107'},
             ],
           },
         ),
@@ -385,21 +390,21 @@ final Map<String, dynamic> _displayPage = {
               {
                 'type': 'text',
                 'content': 'Images can be loaded from network URLs or local assets',
-                'style': {'fontSize': 14, 'color': '#FF666666'},
+                'style': {'fontSize': 14, 'color': '#666666'},
               },
               {'type': 'box', 'height': 10},
               {
                 'type': 'box',
                 'width': 150,
                 'height': 150,
-                'backgroundColor': '#FFE0E0E0',
+                'backgroundColor': '#E0E0E0',
                 'borderRadius': 8,
                 'child': {
                   'type': 'center',
                   'child': {
                     'type': 'text',
                     'content': 'Image Placeholder',
-                    'style': {'color': '#FF666666'},
+                    'style': {'color': '#666666'},
                   },
                 },
               },
@@ -452,14 +457,14 @@ final Map<String, dynamic> _displayPage = {
               {
                 'type': 'badge',
                 'content': '99+',
-                'backgroundColor': '#FFF44336',
+                'backgroundColor': '#F44336',
                 'child': {'type': 'icon', 'icon': 'mail', 'size': 32},
               },
               {'type': 'box', 'width': 30},
               {
                 'type': 'badge',
                 'content': 'NEW',
-                'backgroundColor': '#FF4CAF50',
+                'backgroundColor': '#4CAF50',
                 'child': {
                   'type': 'button',
                   'label': 'Updates',
@@ -572,7 +577,7 @@ final Map<String, dynamic> _inputPage = {
               {
                 'type': 'text',
                 'content': 'You typed: {{textInput}}',
-                'style': {'fontSize': 14, 'color': '#FF666666'},
+                'style': {'fontSize': 14, 'color': '#666666'},
               },
             ],
           },
@@ -730,7 +735,7 @@ final Map<String, dynamic> _inputPage = {
               {
                 'type': 'text',
                 'content': 'Selected: {{selectedOption}}',
-                'style': {'fontSize': 14, 'color': '#FF666666'},
+                'style': {'fontSize': 14, 'color': '#666666'},
               },
             ],
           },
@@ -988,7 +993,7 @@ final Map<String, dynamic> _themePage = {
                 'content': 'Caption Text',
                 'style': {
                   'fontSize': '{{theme.typography.caption.fontSize}}',
-                  'color': '#FF666666',
+                  'color': '#666666',
                 },
               },
             ],
@@ -1070,7 +1075,7 @@ final Map<String, dynamic> _actionsPage = {
               {
                 'type': 'text',
                 'content': 'Execute server-side tools with parameters',
-                'style': {'fontSize': 14, 'color': '#FF666666'},
+                'style': {'fontSize': 14, 'color': '#666666'},
               },
               {'type': 'box', 'height': 10},
               {
@@ -1081,7 +1086,7 @@ final Map<String, dynamic> _actionsPage = {
               {
                 'type': 'text',
                 'content': 'Navigate between pages and routes',
-                'style': {'fontSize': 14, 'color': '#FF666666'},
+                'style': {'fontSize': 14, 'color': '#666666'},
               },
               {'type': 'box', 'height': 10},
               {
@@ -1092,7 +1097,7 @@ final Map<String, dynamic> _actionsPage = {
               {
                 'type': 'text',
                 'content': 'Direct state updates and bindings',
-                'style': {'fontSize': 14, 'color': '#FF666666'},
+                'style': {'fontSize': 14, 'color': '#666666'},
               },
               {'type': 'box', 'height': 10},
               {
@@ -1103,7 +1108,7 @@ final Map<String, dynamic> _actionsPage = {
               {
                 'type': 'text',
                 'content': 'Subscribe/unsubscribe to resource updates',
-                'style': {'fontSize': 14, 'color': '#FF666666'},
+                'style': {'fontSize': 14, 'color': '#666666'},
               },
             ],
           },
@@ -1315,7 +1320,7 @@ Map<String, dynamic> _widgetDemo(String title, String description, Map<String, d
         {
           'type': 'text',
           'content': description,
-          'style': {'fontSize': 14, 'color': '#FF666666'},
+          'style': {'fontSize': 14, 'color': '#666666'},
         },
         {'type': 'box', 'height': 16},
         widget,
@@ -1388,7 +1393,7 @@ Map<String, dynamic> _featureItem(String title, String description) {
               {
                 'type': 'text',
                 'content': description,
-                'style': {'fontSize': 14, 'color': '#FF666666'},
+                'style': {'fontSize': 14, 'color': '#666666'},
               },
             ],
           },
@@ -1439,7 +1444,7 @@ Map<String, dynamic> _colorSwatch(String name, String colorBinding) {
         {
           'type': 'text',
           'content': colorBinding,
-          'style': {'fontSize': 12, 'color': '#FF666666'},
+          'style': {'fontSize': 12, 'color': '#666666'},
         },
       ],
     },
@@ -1472,7 +1477,7 @@ Map<String, dynamic> _spacingDemo(String name, String spacingBinding) {
         {
           'type': 'text',
           'content': '${spacingBinding}px',
-          'style': {'fontSize': 12, 'color': '#FF666666'},
+          'style': {'fontSize': 12, 'color': '#666666'},
         },
       ],
     },

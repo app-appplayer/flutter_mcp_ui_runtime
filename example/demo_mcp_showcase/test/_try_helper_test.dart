@@ -30,7 +30,7 @@ void main() {
     await settleRuntime(tester);
 
     // Verify Scaffold has drawer configured (Drawer widget inflates on open)
-    final scaffoldWidget = tester.widget<Scaffold>(find.byType(Scaffold));
+    final scaffoldWidget = tester.widget<Scaffold>(find.byType(Scaffold).first);
     expect(scaffoldWidget.drawer, isNotNull);
     // Home content
     expect(find.text('Welcome to MCP UI DSL v1.4 Showcase'), findsOneWidget);
