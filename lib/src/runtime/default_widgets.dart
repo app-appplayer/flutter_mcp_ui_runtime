@@ -1,3 +1,9 @@
+import '../widgets/advanced/qr_code_factory.dart';
+import '../widgets/input/combobox_factory.dart';
+import '../widgets/input/date_time_picker_factory.dart';
+import '../widgets/input/file_input_factory.dart';
+import '../widgets/input/multi_select_factory.dart';
+import '../widgets/input/otp_input_factory.dart';
 import 'widget_registry.dart';
 
 // Layout widgets
@@ -405,6 +411,16 @@ class DefaultWidgets {
     registry.register('appbar', AppBarWidgetFactory());
     registry.register(
         'bottomnavigationbar', BottomNavigationBarWidgetFactory());
+
+    // v1.4 widgets (§17.2.1). Registered as they are implemented; the spec
+    // declares the full set and drift_audit reports what has not landed yet.
+    registry.register('multiSelect', MultiSelectFactory());
+    registry.register('combobox', ComboboxFactory());
+    registry.register('autocomplete', ComboboxFactory()); // §17.3.1 alias
+    registry.register('otpInput', OtpInputFactory());
+    registry.register('dateTimePicker', DateTimePickerFactory());
+    registry.register('fileInput', FileInputFactory());
+    registry.register('qrCode', QrCodeFactory());
 
     // v1.4 palette aliases (§17.3.1). A no-code builder's vocabulary was
     // aligned with this spec; twenty of its components turned out to be

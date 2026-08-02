@@ -314,7 +314,7 @@ List<int> _reedSolomon(List<int> data, int ecLength) {
     generator = next;
   }
 
-  final remainder = List<int>.filled(ecLength, 0);
+  final remainder = List<int>.filled(ecLength, 0, growable: true);
   for (final byte in data) {
     final factor = byte ^ remainder[0];
     remainder.removeAt(0);
