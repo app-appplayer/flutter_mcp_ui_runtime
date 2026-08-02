@@ -1,3 +1,4 @@
+import '../widgets/advanced/barcode_factory.dart';
 import '../widgets/advanced/qr_code_factory.dart';
 import '../widgets/input/combobox_factory.dart';
 import '../widgets/input/date_time_picker_factory.dart';
@@ -421,6 +422,7 @@ class DefaultWidgets {
     registry.register('dateTimePicker', DateTimePickerFactory());
     registry.register('fileInput', FileInputFactory());
     registry.register('qrCode', QrCodeFactory());
+    registry.register('barcode', BarcodeFactory());
 
     // v1.4 palette aliases (§17.3.1). A no-code builder's vocabulary was
     // aligned with this spec; twenty of its components turned out to be
