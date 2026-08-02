@@ -19,6 +19,9 @@ class DateTimePickerFactory extends WidgetFactory {
     final minuteInterval =
         context.resolve<num?>(properties['minuteInterval'])?.toInt() ?? 1;
     final onChange = properties['onChange'] as Map<String, dynamic>?;
+    // Presented in the declared zone; the bound value carries its offset
+    // either way, because a timestamp without one is not an instant.
+    final timeZone = context.resolve<String?>(properties['timeZone']);
 
     final raw = binding != null
         ? context.getState(binding)?.toString()
@@ -81,7 +84,9 @@ class DateTimePickerFactory extends WidgetFactory {
             enabled: enabled,
             suffixIcon: const Icon(Icons.event),
           ),
-          child: Text(current == null ? '' : _format(current)),
+          child: Text(
+            current == null ? '' : _format(current, timeZone),
+          ),
         ),
       ),
     );
@@ -90,9 +95,13 @@ class DateTimePickerFactory extends WidgetFactory {
   static DateTime? _parse(String? value) =>
       value == null || value.isEmpty ? null : DateTime.tryParse(value);
 
-  static String _format(DateTime d) {
+  static String _format(DateTime d, String? timeZone) {
     String two(int v) => v.toString().padLeft(2, '0');
-    return '${d.year}-${two(d.month)}-${two(d.day)} '
+    final shown = '${d.year}-${two(d.month)}-${two(d.day)} '
         '${two(d.hour)}:${two(d.minute)}';
+    // The zone is labelled rather than converted: converting would need a tz
+    // database this runtime does not carry, and a silently shifted time is
+    // worse than a labelled one.
+    return timeZone == null ? shown : '$shown ($timeZone)';
   }
 }

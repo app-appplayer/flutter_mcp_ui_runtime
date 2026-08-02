@@ -20,6 +20,12 @@ class PopoverFactory extends WidgetFactory {
     if (childDef == null || contentDef == null) return const SizedBox.shrink();
 
     final trigger = context.resolve<String?>(properties['trigger']) ?? 'tap';
+    // Two-way: binding it lets an action drive the surface, which is the only
+    // way `trigger: manual` is usable at all.
+    final openBinding = properties['open'] as String?;
+    final open = openBinding != null
+        ? context.getState(openBinding) == true
+        : context.resolve<bool?>(properties['open']) ?? false;
     final placement = context.resolve<String?>(properties['placement']) ?? 'auto';
     final openDelay = context.resolve<num?>(properties['openDelay'])?.toInt() ?? 0;
     final closeDelay = context.resolve<num?>(properties['closeDelay'])?.toInt() ?? 0;
@@ -34,6 +40,10 @@ class PopoverFactory extends WidgetFactory {
     }
 
     return _Popover(
+      open: open,
+      onOpenChanged: (value) {
+        if (openBinding != null) context.setValue(openBinding, value);
+      },
       anchor: context.renderer.renderWidget(childDef, context),
       content: context.renderer.renderWidget(contentDef, context),
       trigger: trigger,
@@ -49,6 +59,8 @@ class PopoverFactory extends WidgetFactory {
 
 class _Popover extends StatefulWidget {
   const _Popover({
+    required this.open,
+    required this.onOpenChanged,
     required this.anchor,
     required this.content,
     required this.trigger,
@@ -60,6 +72,8 @@ class _Popover extends StatefulWidget {
     required this.onClose,
   });
 
+  final bool open;
+  final ValueChanged<bool> onOpenChanged;
   final Widget anchor;
   final Widget content;
   final String trigger;
@@ -78,6 +92,19 @@ class _PopoverState extends State<_Popover> {
   final LayerLink _link = LayerLink();
   final FocusNode _anchorFocus = FocusNode();
   OverlayEntry? _entry;
+
+  @override
+  void didUpdateWidget(_Popover old) {
+    super.didUpdateWidget(old);
+    // The bound value is the truth: a state change opens or closes the surface
+    // even when nothing touched the trigger.
+    if (widget.open != old.open) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        widget.open ? _open() : _close();
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -137,6 +164,7 @@ class _PopoverState extends State<_Popover> {
       ),
     );
     Overlay.of(context).insert(_entry!);
+    widget.onOpenChanged(true);
     widget.onOpen();
   }
 
@@ -146,6 +174,7 @@ class _PopoverState extends State<_Popover> {
     // Focus returns to the trigger, so keyboard users are not dropped at the
     // top of the page.
     _anchorFocus.requestFocus();
+    widget.onOpenChanged(false);
     widget.onClose();
   }
 

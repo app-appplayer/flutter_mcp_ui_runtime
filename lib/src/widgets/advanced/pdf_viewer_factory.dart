@@ -23,6 +23,21 @@ class PdfViewerFactory extends WidgetFactory {
     final height = context.resolve<num?>(properties['height'])?.toDouble();
     final onError = properties['onError'] as Map<String, dynamic>?;
 
+    // PDF open parameters — the standard fragment every browser viewer reads,
+    // which is how page, zoom and chrome stay addressable from the DSL rather
+    // than belonging to the viewer.
+    final pageBinding = properties['page'] as String?;
+    final page = pageBinding != null
+        ? (context.getState(pageBinding) as num?)?.toInt()
+        : context.resolve<num?>(properties['page'])?.toInt();
+    final zoomBinding = properties['zoom'] as String?;
+    final zoom = zoomBinding != null
+        ? (context.getState(zoomBinding) as num?)?.toDouble()
+        : context.resolve<num?>(properties['zoom'])?.toDouble();
+    final showToolbar = context.resolve<bool?>(properties['showToolbar']) ?? true;
+    final showPageNav = context.resolve<bool?>(properties['showPageNav']) ?? true;
+    final fit = context.resolve<String?>(properties['fit']) ?? 'width';
+
     void reportError(String message) {
       if (onError == null) return;
       context.actionHandler.execute(
@@ -69,8 +84,49 @@ class PdfViewerFactory extends WidgetFactory {
       );
     }
 
-    return buildPdfView(source: source, height: height ?? 480);
+    return buildPdfView(
+      source: _withOpenParameters(
+        source,
+        page: page,
+        zoom: zoom,
+        fit: fit,
+        showToolbar: showToolbar,
+        showPageNav: showPageNav,
+      ),
+      height: height ?? 480,
+    );
   }
+}
+
+/// Appends the PDF open-parameter fragment (Adobe's `#page=`, `#zoom=`, …),
+/// which every browser viewer honours.
+String _withOpenParameters(
+  String source, {
+  int? page,
+  double? zoom,
+  required String fit,
+  required bool showToolbar,
+  required bool showPageNav,
+}) {
+  final parts = <String>[
+    if (page != null) 'page=$page',
+    if (zoom != null)
+      'zoom=${(zoom * 100).round()}'
+    else if (fit == 'width')
+      'view=FitH'
+    else if (fit == 'height')
+      'view=FitV'
+    else
+      'view=Fit',
+    if (!showToolbar) 'toolbar=0',
+    if (!showPageNav) 'navpanes=0',
+  ];
+  if (parts.isEmpty) return source;
+  // A data: URI carries no fragment slot, so parameters are dropped rather
+  // than corrupting the payload.
+  if (source.startsWith('data:')) return source;
+  final base = source.split('#').first;
+  return '$base#${parts.join('&')}';
 }
 
 class _Unavailable extends StatefulWidget {

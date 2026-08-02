@@ -471,6 +471,7 @@ class DefaultWidgets {
     registry.register('audio', MediaPlayerWidgetFactory());
     registry.register('modal', DialogWidgetFactory());
     registry.register('dialog', DialogWidgetFactory());
+    registry.register('alert', AlertDialogWidgetFactory()); // §17.3.1
     registry.register('confirmDialog', AlertDialogWidgetFactory());
     registry.register('toast', SnackBarWidgetFactory());
     registry.register('skeleton', PlaceholderWidgetFactory());

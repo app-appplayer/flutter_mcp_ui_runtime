@@ -84,6 +84,7 @@ class BarcodeFactory extends WidgetFactory {
         return BarcodeFormat.itf;
       case 'codabar':
         return BarcodeFormat.codabar;
+      case 'code128':
       default:
         return BarcodeFormat.code128;
     }

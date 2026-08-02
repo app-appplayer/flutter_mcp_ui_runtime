@@ -21,15 +21,22 @@ class DiffViewerFactory extends WidgetFactory {
         context.resolve<bool?>(properties['showLineNumbers']) ?? true;
     final contextLines =
         context.resolve<num?>(properties['contextLines'])?.toInt();
+    // Read and carried so the widget declares what it was given. Token
+    // colouring is not implemented here; the value reaches the rendering as a
+    // semantics label so a document that sets it is not silently ignored.
+    final language = context.resolve<String?>(properties['language']);
 
     final rows = _diff(oldText.split('\n'), newText.split('\n'));
     final visible =
         contextLines == null ? rows : _withContext(rows, contextLines);
 
-    return SingleChildScrollView(
+    return Semantics(
+      label: language == null ? 'Diff' : 'Diff ($language)',
+      child: SingleChildScrollView(
       child: split
           ? _SplitView(rows: visible, showLineNumbers: showLineNumbers)
           : _UnifiedView(rows: visible, showLineNumbers: showLineNumbers),
+      ),
     );
   }
 

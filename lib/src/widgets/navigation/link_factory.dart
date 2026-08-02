@@ -17,7 +17,10 @@ class LinkFactory extends WidgetFactory {
     final label = context.resolve<String?>(properties['label']) ?? '';
     final route = context.resolve<String?>(properties['route']);
     final url = context.resolve<String?>(properties['url']);
-    final target = context.resolve<String?>(properties['target']) ?? 'new';
+    final rawTarget = context.resolve<String?>(properties['target']);
+    // `same` and `new` are the declared values; anything else is a hint the
+    // host would not understand, so it falls back rather than travelling on.
+    final target = rawTarget == 'same' ? 'same' : 'new';
     final underline = context.resolve<String?>(properties['underline']) ?? 'hover';
     final activeWhen = context.resolve<String?>(properties['activeWhen']);
     final onClick = properties['onClick'] as Map<String, dynamic>?;
