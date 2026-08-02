@@ -130,7 +130,7 @@ final Map<String, dynamic> _homePage = {
           'style': {
             'fontSize': '{{theme.typography.h1.fontSize}}',
             'fontWeight': '{{theme.typography.h1.fontWeight}}',
-            'color': '{{theme.colors.primary}}',
+            'color': '{{theme.color.primary}}',
           },
         },
         {'type': 'box', 'height': 20},
@@ -196,14 +196,14 @@ final Map<String, dynamic> _layoutPage = {
             'height': 100,
             'padding': {'all': 16},
             'margin': {'all': 8},
-            'backgroundColor': '{{theme.colors.primary}}',
+            'backgroundColor': '{{theme.color.primary}}',
             'borderRadius': '{{theme.borderRadius.md}}',
             'child': {
               'type': 'center',
               'child': {
                 'type': 'text',
                 'content': 'Box with decoration',
-                'style': {'color': '{{theme.colors.textOnPrimary}}'},
+                'style': {'color': '{{theme.color.textOnPrimary}}'},
               },
             },
           },
@@ -267,7 +267,7 @@ final Map<String, dynamic> _layoutPage = {
                   'type': 'icon',
                   'icon': 'star',
                   'size': 48,
-                  'color': '{{theme.colors.primary}}',
+                  'color': '{{theme.color.primary}}',
                 },
               },
             ],
@@ -332,7 +332,7 @@ final Map<String, dynamic> _displayPage = {
                 'style': {
                   'fontSize': '{{theme.typography.h3.fontSize}}',
                   'fontWeight': 'bold',
-                  'color': '{{theme.colors.primary}}',
+                  'color': '{{theme.color.primary}}',
                 },
               },
               {'type': 'box', 'height': 10},
@@ -370,7 +370,7 @@ final Map<String, dynamic> _displayPage = {
             'direction': 'horizontal',
             'alignment': 'center',
             'children': [
-              {'type': 'icon', 'icon': 'home', 'size': 32, 'color': '{{theme.colors.primary}}'},
+              {'type': 'icon', 'icon': 'home', 'size': 32, 'color': '{{theme.color.primary}}'},
               {'type': 'box', 'width': 20},
               {'type': 'icon', 'icon': 'favorite', 'size': 40, 'color': '#F44336'},
               {'type': 'box', 'width': 20},
@@ -772,13 +772,13 @@ final Map<String, dynamic> _listsPage = {
             'child': {
               'type': 'list',
               'items': List.generate(10, (i) => ({
-                'type': 'listTile',
+                'type': 'listItem',
                 'title': 'List Item ${i + 1}',
                 'subtitle': 'Subtitle for item ${i + 1}',
                 'leading': {
                   'type': 'icon',
                   'icon': 'folder',
-                  'color': '{{theme.colors.primary}}',
+                  'color': '{{theme.color.primary}}',
                 },
                 'trailing': {
                   'type': 'icon',
@@ -820,7 +820,7 @@ final Map<String, dynamic> _listsPage = {
                         'type': 'icon',
                         'icon': ['home', 'star', 'favorite', 'settings', 'info', 'help'][i],
                         'size': 48,
-                        'color': '{{theme.colors.primary}}',
+                        'color': '{{theme.color.primary}}',
                       },
                       {'type': 'box', 'height': 8},
                       {
@@ -948,11 +948,11 @@ final Map<String, dynamic> _themePage = {
             'type': 'linear',
             'direction': 'vertical',
             'children': [
-              _colorSwatch('Primary', '{{theme.colors.primary}}'),
-              _colorSwatch('Secondary', '{{theme.colors.secondary}}'),
-              _colorSwatch('Background', '{{theme.colors.background}}'),
-              _colorSwatch('Surface', '{{theme.colors.surface}}'),
-              _colorSwatch('Error', '{{theme.colors.error}}'),
+              _colorSwatch('Primary', '{{theme.color.primary}}'),
+              _colorSwatch('Secondary', '{{theme.color.secondary}}'),
+              _colorSwatch('Background', '{{theme.color.background}}'),
+              _colorSwatch('Surface', '{{theme.color.surface}}'),
+              _colorSwatch('Error', '{{theme.color.error}}'),
             ],
           },
         ),
@@ -1178,7 +1178,7 @@ final Map<String, dynamic> _advancedPage = {
                   'child': {
                     'type': 'text',
                     'content': 'This card is visible when toggle is ON',
-                    'style': {'color': '{{theme.colors.primary}}'},
+                    'style': {'color': '{{theme.color.primary}}'},
                   },
                 },
                 'false': {
@@ -1187,7 +1187,7 @@ final Map<String, dynamic> _advancedPage = {
                   'child': {
                     'type': 'text',
                     'content': 'This card is visible when toggle is OFF',
-                    'style': {'color': '{{theme.colors.error}}'},
+                    'style': {'color': '{{theme.color.error}}'},
                   },
                 },
               },
@@ -1270,7 +1270,7 @@ final Map<String, dynamic> _advancedPage = {
                   'type': 'icon',
                   'icon': 'info',
                   'size': 48,
-                  'color': '{{theme.colors.primary}}',
+                  'color': '{{theme.color.primary}}',
                 },
                 {'type': 'box', 'width': 16},
                 {
@@ -1336,7 +1336,7 @@ Map<String, dynamic> _sectionTitle(String title) {
     'style': {
       'fontSize': '{{theme.typography.h2.fontSize}}',
       'fontWeight': '{{theme.typography.h2.fontWeight}}',
-      'color': '{{theme.colors.primary}}',
+      'color': '{{theme.color.primary}}',
     },
   };
 }
@@ -1376,7 +1376,7 @@ Map<String, dynamic> _featureItem(String title, String description) {
           'type': 'icon',
           'icon': 'check_circle',
           'size': 20,
-          'color': '{{theme.colors.primary}}',
+          'color': '{{theme.color.primary}}',
         },
         {'type': 'box', 'width': 12},
         {
@@ -1405,13 +1405,13 @@ Map<String, dynamic> _featureItem(String title, String description) {
 
 Map<String, dynamic> _navigationItem(String title, String description) {
   return {
-    'type': 'listTile',
+    'type': 'listItem',
     'title': title,
     'subtitle': description,
     'leading': {
       'type': 'icon',
       'icon': 'navigation',
-      'color': '{{theme.colors.primary}}',
+      'color': '{{theme.color.primary}}',
     },
   };
 }
@@ -1470,7 +1470,7 @@ Map<String, dynamic> _spacingDemo(String name, String spacingBinding) {
           'type': 'box',
           'height': 20,
           'width': spacingBinding,
-          'backgroundColor': '{{theme.colors.primary}}',
+          'backgroundColor': '{{theme.color.primary}}',
           'borderRadius': 2,
         },
         {'type': 'box', 'width': 10},
@@ -1503,7 +1503,7 @@ Map<String, dynamic> _stateItem(String name, String valueBinding) {
         {
           'type': 'text',
           'content': valueBinding,
-          'style': {'color': '{{theme.colors.primary}}'},
+          'style': {'color': '{{theme.color.primary}}'},
         },
       ],
     },

@@ -7,7 +7,7 @@ void main() {
       expect(showcaseDefinition, isNotNull);
       expect(showcaseDefinition['type'], equals('application'));
       expect(showcaseDefinition['title'], equals('MCP UI DSL v1.4 Showcase'));
-      expect(showcaseDefinition['version'], equals('1.0.0'));
+      expect(showcaseDefinition['version'], equals('1.4.0'));
     });
 
     test('all required pages are defined', () {
@@ -28,10 +28,11 @@ void main() {
       expect(theme, isNotNull);
       expect(theme['mode'], equals('light'));
       
-      final colors = theme['colors'];
+      final colors = theme['color']; // §5.3 — singular
       expect(colors, isNotNull);
-      expect(colors['primary'], equals('#FF2196F3'));
-      expect(colors['background'], equals('#FFFFFFFF'));
+      expect(colors['primary'], equals('#2196F3'));
+      // M3 has no `background` role — it is `surface` (spec §5.3.1).
+      expect(colors['surface'], equals('#FFFFFF'));
       
       final typography = theme['typography'];
       expect(typography, isNotNull);
@@ -62,7 +63,7 @@ void main() {
       expect(items.length, equals(9));
       
       final firstItem = items[0];
-      expect(firstItem['title'], equals('Home'));
+      expect(firstItem['label'], equals('Home')); // §17.3.2 canonical
       expect(firstItem['icon'], equals('home'));
       expect(firstItem['route'], equals('/home'));
     });
@@ -222,10 +223,12 @@ void main() {
 
     group('Color Format Tests', () {
       test('theme colors use 8-digit hex format', () {
-        final colors = showcaseDefinition['theme']['colors'];
+        final colors = showcaseDefinition['theme']['color']; // §5.3
         
         colors.forEach((key, value) {
-          expect(value, matches(RegExp(r'^#[A-F0-9]{8}$')),
+          // Spec Color is `#RRGGBB[AA]`, so six digits with optional alpha —
+          // not Flutter's eight-digit `#AARRGGBB`.
+          expect(value, matches(RegExp(r'^#[A-Fa-f0-9]{6}([A-Fa-f0-9]{2})?$')),
               reason: 'Color $key should be 8-digit hex, got: $value');
         });
       });

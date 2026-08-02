@@ -18,6 +18,15 @@ void main() {
 
     group('Complete User Journey Tests', () {
       testWidgets('should complete full user journey through all pages', (tester) async {
+        // The drawer holds nine entries and the default 800x600 test surface
+        // cuts off the last few. Scrolling to reach them triggers Material 3's
+        // ink-sparkle shader, which fails to load under flutter_test when the
+        // bundled shader targets a different engine runtime-stages version —
+        // an environment mismatch that says nothing about this app. A taller
+        // surface removes the gesture instead of papering over the failure.
+        await tester.binding.setSurfaceSize(const Size(1024, 1400));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
         await initRuntimeWithRealTime(tester, () => runtime.initialize(
           showcaseDefinition,
           pageLoader: (uri) async => showcasePages[uri] ?? {},
@@ -54,13 +63,14 @@ void main() {
               .openDrawer();
           await settleRuntime(tester);
 
-          // Navigate to page. The drawer list is longer than the viewport,
-          // so the later entries need scrolling into range before a tap can
-          // land on them.
-          final target = find.text(entry).last;
-          await tester.ensureVisible(target);
-          await settleRuntime(tester);
-          await tester.tap(target);
+          // Target the entry inside the drawer specifically: several of these
+          // strings also appear in page content, and `.last` could pick the
+          // body copy instead of the navigation item.
+          final target = find.descendant(
+            of: find.byType(Drawer),
+            matching: find.text(entry),
+          );
+          await tester.tap(target.last);
           await settleRuntime(tester);
 
           // Verify the page itself loaded, by its own heading.

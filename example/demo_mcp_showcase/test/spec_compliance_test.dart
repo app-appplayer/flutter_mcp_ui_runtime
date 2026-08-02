@@ -25,16 +25,20 @@ void main() {
         expect(showcaseDefinition['runtime']?['services']?['state'], isNull);
       });
 
-      test('theme should be at top level per v1.0', () {
-        // Theme should be at application root, not in runtime.services
+      test('theme is at top level, with 1.4 keys and colour format', () {
+        // Theme sits at the application root, not under runtime.services.
         expect(showcaseDefinition['theme'], isNotNull);
-        expect(showcaseDefinition['theme']['colors'], isNotNull);
+        // §5.3: the key is `color` (singular). It was `colors` in v1.0, and
+        // the runtime reads neither name from the other — a definition using
+        // the old one has every colour silently dropped.
+        expect(showcaseDefinition['theme']['color'], isNotNull);
         expect(showcaseDefinition['theme']['typography'], isNotNull);
-        
-        // Colors should support 8-digit hex per spec update
-        final colors = showcaseDefinition['theme']['colors'];
-        expect(colors['primary'], matches(RegExp(r'^#[A-F0-9]{8}$')));
-        expect(colors['background'], matches(RegExp(r'^#[A-F0-9]{8}$')));
+
+        // Spec Color is `#RRGGBB[AA]` — alpha trails. Written as Flutter's
+        // `#AARRGGBB`, an opaque blue parses as red.
+        final color = showcaseDefinition['theme']['color'];
+        expect(color['primary'], matches(RegExp(r'^#[A-Fa-f0-9]{6}$')));
+        expect(color['surface'], matches(RegExp(r'^#[A-Fa-f0-9]{6}$')));
       });
 
       test('navigation should follow v1.0 structure', () {
@@ -42,12 +46,13 @@ void main() {
         expect(navigation['type'], equals('drawer'));
         expect(navigation['items'], isA<List>());
         
-        // Items should have title (not label)
+        // §17.3.2: `label` is canonical and `title` is the legacy alias, so a
+        // document authored today carries `label`.
         final firstItem = navigation['items'][0];
-        expect(firstItem['title'], isNotNull);
+        expect(firstItem['label'], isNotNull);
         expect(firstItem['icon'], isNotNull);
         expect(firstItem['route'], isNotNull);
-        expect(firstItem['label'], isNull); // Should not have label
+        expect(firstItem['title'], isNull);
       });
     });
 
@@ -86,14 +91,20 @@ void main() {
 
       test('should not use deprecated widget types', () {
         // Search all pages for deprecated types
+        // Legacy aliases per §17.3.1. The list used to run the other way —
+        // naming `toggle` and `listItem` as deprecated when they are the
+        // canonical names and `switch` / `listTile` are the aliases — so it
+        // would have failed a correctly written document. `template` was also
+        // listed as "not in v1.0"; it is the Template Profile's own widget.
         final deprecatedTypes = [
-          'column', 'row', // Should use linear
-          'container', // Should use box
-          'toggle', // Should use switch
-          'dropdown', // Should use select
-          'listItem', // Should use listTile
-          'appBar', // Should use headerBar
-          'template', // Not in v1.0 spec
+          'column', 'row', // canonical: linear
+          'container', 'decoratedBox', // canonical: box
+          'switch', // canonical: toggle
+          'dropdown', // canonical: select
+          'listTile', 'list-tile', // canonical: listItem
+          'appbar', // canonical: headerBar
+          'textField', 'textfield', // canonical: textInput
+          'listView', 'listview', 'gridview', // canonical: list / grid
         ];
 
         void checkForDeprecatedTypes(dynamic node, String uri) {
@@ -169,7 +180,7 @@ void main() {
         
         void checkForBindings(dynamic node) {
           if (node is String) {
-            if (node.contains('{{theme.colors.primary}}')) hasColorBinding = true;
+            if (node.contains('{{theme.color.primary}}')) hasColorBinding = true;
             if (node.contains('{{theme.typography.')) hasTypographyBinding = true;
             if (node.contains('{{theme.spacing.')) hasSpacingBinding = true;
           } else if (node is Map) {
@@ -235,9 +246,11 @@ void main() {
         expect(hasListWidget, isTrue);
         expect(hasItemsProperty, isTrue);
         
-        // Items should be listTile not listItem
-        expect(hasListTile, isTrue);
-        expect(hasListItem, isFalse);
+        // §17.3.1: `listItem` is canonical, `listTile` is the legacy alias.
+        // This assertion ran the other way and would have failed a correctly
+        // written document.
+        expect(hasListItem, isTrue);
+        expect(hasListTile, isFalse);
       });
 
       test('should use correct grid structure', () {
