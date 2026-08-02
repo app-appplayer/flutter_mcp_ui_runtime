@@ -406,6 +406,29 @@ class DefaultWidgets {
     registry.register(
         'bottomnavigationbar', BottomNavigationBarWidgetFactory());
 
+    // v1.4 palette aliases (§17.3.1). A no-code builder's vocabulary was
+    // aligned with this spec; twenty of its components turned out to be
+    // existing widgets under another name. Read-only: accepted on input,
+    // never emitted, so a document round-tripped through a tool converges on
+    // the canonical name (§18.2.10).
+    registry.register('dataGrid', DataTableWidgetFactory());
+    registry.register('treeView', TreeWidgetFactory());
+    registry.register('meter', GaugeWidgetFactory());
+    registry.register('video', MediaPlayerWidgetFactory());
+    registry.register('audio', MediaPlayerWidgetFactory());
+    registry.register('modal', DialogWidgetFactory());
+    registry.register('dialog', DialogWidgetFactory());
+    registry.register('confirmDialog', AlertDialogWidgetFactory());
+    registry.register('toast', SnackBarWidgetFactory());
+    registry.register('skeleton', PlaceholderWidgetFactory());
+    registry.register('tag', ChipWidgetFactory());
+    registry.register('steps', StepperWidgetFactory());
+    registry.register('scrollArea', ScrollViewFactory());
+    registry.register('numberInput', NumberFieldFactory());
+    registry.register('dropdownMenu', PopupMenuButtonWidgetFactory());
+    registry.register('code', CodeEditorWidgetFactory());
+    registry.register('label', TextWidgetFactory());
+
     // Kebab-case legacy aliases.
     //
     // Per spec §17.1.2 widget type names are canonical as camelCase. Only
