@@ -1,4 +1,7 @@
 import '../widgets/advanced/barcode_factory.dart';
+import '../widgets/advanced/diff_viewer_factory.dart';
+import '../widgets/layout/resizable_factory.dart';
+import '../widgets/layout/splitter_factory.dart';
 import '../widgets/dialog/popover_factory.dart';
 import '../widgets/interactive/context_menu_factory.dart';
 import '../widgets/layout/accordion_factory.dart';
@@ -440,6 +443,9 @@ class DefaultWidgets {
     registry.register('pagination', PaginationFactory());
     registry.register('link', LinkFactory());
     registry.register('navLink', LinkFactory()); // §17.3.1 alias
+    registry.register('splitter', SplitterFactory());
+    registry.register('resizable', ResizableFactory());
+    registry.register('diffViewer', DiffViewerFactory());
 
     // v1.4 palette aliases (§17.3.1). A no-code builder's vocabulary was
     // aligned with this spec; twenty of its components turned out to be
