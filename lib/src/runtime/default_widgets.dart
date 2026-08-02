@@ -1,6 +1,8 @@
 import '../widgets/advanced/barcode_factory.dart';
 import '../widgets/advanced/diff_viewer_factory.dart';
 import '../widgets/advanced/gantt_factory.dart';
+import '../widgets/advanced/pdf_viewer_factory.dart';
+import '../widgets/advanced/rich_text_editor_factory.dart';
 import '../widgets/advanced/kanban_factory.dart';
 import '../widgets/advanced/spreadsheet_factory.dart';
 import '../widgets/layout/resizable_factory.dart';
@@ -18,6 +20,7 @@ import '../widgets/input/date_time_picker_factory.dart';
 import '../widgets/input/file_input_factory.dart';
 import '../widgets/input/multi_select_factory.dart';
 import '../widgets/input/otp_input_factory.dart';
+import '../widgets/input/voice_input_factory.dart';
 import 'widget_registry.dart';
 
 // Layout widgets
@@ -452,6 +455,9 @@ class DefaultWidgets {
     registry.register('kanban', KanbanFactory());
     registry.register('gantt', GanttFactory());
     registry.register('spreadsheet', SpreadsheetFactory());
+    registry.register('richTextEditor', RichTextEditorFactory());
+    registry.register('pdfViewer', PdfViewerFactory());
+    registry.register('voiceInput', VoiceInputFactory());
 
     // v1.4 palette aliases (§17.3.1). A no-code builder's vocabulary was
     // aligned with this spec; twenty of its components turned out to be
