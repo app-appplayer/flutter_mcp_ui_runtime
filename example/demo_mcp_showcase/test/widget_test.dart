@@ -34,6 +34,6 @@ void main() {
       const Duration(seconds: 5),
     );
 
-    expect(find.text('Welcome to MCP UI DSL v1.0 Showcase'), findsOneWidget);
+    expect(find.text('Welcome to MCP UI DSL v1.4 Showcase'), findsOneWidget);
   });
 }

@@ -5,7 +5,7 @@ import 'package:demo_mcp_showcase/showcase_definition.dart';
 import '_runtime_test_helpers.dart';
 
 void main() {
-  group('MCP UI DSL v1.0 Showcase Tests', () {
+  group('MCP UI DSL v1.4 Showcase Tests', () {
     late MCPUIRuntime runtime;
 
     setUp(() async {
@@ -20,8 +20,8 @@ void main() {
       test('should initialize application with correct structure', () async {
         // Test application definition
         expect(showcaseDefinition['type'], equals('application'));
-        expect(showcaseDefinition['title'], equals('MCP UI DSL v1.0 Showcase'));
-        expect(showcaseDefinition['version'], equals('1.0.0'));
+        expect(showcaseDefinition['title'], equals('MCP UI DSL v1.4 Showcase'));
+        expect(showcaseDefinition['version'], equals('1.4.0'));
         expect(showcaseDefinition['initialRoute'], equals('/home'));
         
         // Test navigation structure
@@ -117,18 +117,14 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Should show drawer navigation
         expect(find.byType(Drawer), findsOneWidget);
         
         // Should show home page content
-        expect(find.text('Welcome to MCP UI DSL v1.0 Showcase'), findsOneWidget);
+        expect(find.text('Welcome to MCP UI DSL v1.4 Showcase'), findsOneWidget);
       });
 
       testWidgets('should navigate between pages', (tester) async {
@@ -137,15 +133,11 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Open drawer
-        final scaffold = find.byType(Scaffold);
+        final scaffold = find.byType(Scaffold).first;
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
         await settleRuntime(tester);
@@ -167,15 +159,11 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Navigate to input page
-        final scaffold = find.byType(Scaffold);
+        final scaffold = find.byType(Scaffold).first;
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
         await settleRuntime(tester);
@@ -210,15 +198,11 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Navigate to input page
-        final scaffold = find.byType(Scaffold);
+        final scaffold = find.byType(Scaffold).first;
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
         await settleRuntime(tester);
@@ -244,15 +228,11 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Navigate to input page
-        final scaffold = find.byType(Scaffold);
+        final scaffold = find.byType(Scaffold).first;
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
         await settleRuntime(tester);
@@ -277,15 +257,11 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Navigate to input page
-        final scaffold = find.byType(Scaffold);
+        final scaffold = find.byType(Scaffold).first;
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
         await settleRuntime(tester);
@@ -317,15 +293,11 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Navigate to layout page
-        final scaffold = find.byType(Scaffold);
+        final scaffold = find.byType(Scaffold).first;
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
         await settleRuntime(tester);
@@ -351,15 +323,11 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Navigate to display page
-        final scaffold = find.byType(Scaffold);
+        final scaffold = find.byType(Scaffold).first;
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
         await settleRuntime(tester);
@@ -391,15 +359,11 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Navigate to lists page
-        final scaffold = find.byType(Scaffold);
+        final scaffold = find.byType(Scaffold).first;
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
         await settleRuntime(tester);
@@ -425,15 +389,11 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Navigate to advanced page
-        final scaffold = find.byType(Scaffold);
+        final scaffold = find.byType(Scaffold).first;
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
         await settleRuntime(tester);
@@ -460,15 +420,11 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Navigate to actions page
-        final scaffold = find.byType(Scaffold);
+        final scaffold = find.byType(Scaffold).first;
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
         await settleRuntime(tester);
@@ -508,15 +464,11 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Navigate to theme page
-        final scaffold = find.byType(Scaffold);
+        final scaffold = find.byType(Scaffold).first;
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
         await settleRuntime(tester);
@@ -538,15 +490,11 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Navigate to navigation page
-        final scaffold = find.byType(Scaffold);
+        final scaffold = find.byType(Scaffold).first;
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
         await settleRuntime(tester);

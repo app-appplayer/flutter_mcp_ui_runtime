@@ -2,11 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:demo_mcp_showcase/showcase_definition.dart';
 
 void main() {
-  group('MCP UI DSL v1.0 Showcase Simple Tests', () {
+  group('MCP UI DSL v1.4 Showcase Simple Tests', () {
     test('showcase definition is valid', () {
       expect(showcaseDefinition, isNotNull);
       expect(showcaseDefinition['type'], equals('application'));
-      expect(showcaseDefinition['title'], equals('MCP UI DSL v1.0 Showcase'));
+      expect(showcaseDefinition['title'], equals('MCP UI DSL v1.4 Showcase'));
       expect(showcaseDefinition['version'], equals('1.0.0'));
     });
 

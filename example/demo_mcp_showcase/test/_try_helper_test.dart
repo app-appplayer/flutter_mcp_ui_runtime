@@ -26,17 +26,17 @@ void main() {
         pageLoader: (uri) async => showcasePages[uri] ?? {},
       );
     });
-    await tester.pumpWidget(MaterialApp(home: runtime.buildUI()));
+    await tester.pumpWidget(runtime.buildUI());
     await settleRuntime(tester);
 
     // Verify Scaffold has drawer configured (Drawer widget inflates on open)
     final scaffoldWidget = tester.widget<Scaffold>(find.byType(Scaffold));
     expect(scaffoldWidget.drawer, isNotNull);
     // Home content
-    expect(find.text('Welcome to MCP UI DSL v1.0 Showcase'), findsOneWidget);
+    expect(find.text('Welcome to MCP UI DSL v1.4 Showcase'), findsOneWidget);
 
     // Open drawer, then Drawer appears
-    final scaffoldState = tester.state<ScaffoldState>(find.byType(Scaffold));
+    final scaffoldState = tester.state<ScaffoldState>(find.byType(Scaffold).first);
     scaffoldState.openDrawer();
     await settleRuntime(tester);
     expect(find.byType(Drawer), findsOneWidget);

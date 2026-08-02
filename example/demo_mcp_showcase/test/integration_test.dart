@@ -5,7 +5,7 @@ import 'package:demo_mcp_showcase/showcase_definition.dart';
 import '_runtime_test_helpers.dart';
 
 void main() {
-  group('MCP UI DSL v1.0 Showcase Integration Tests', () {
+  group('MCP UI DSL v1.4 Showcase Integration Tests', () {
     late MCPUIRuntime runtime;
 
     setUp(() async {
@@ -23,15 +23,11 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Start at home page
-        expect(find.text('Welcome to MCP UI DSL v1.0 Showcase'), findsOneWidget);
+        expect(find.text('Welcome to MCP UI DSL v1.4 Showcase'), findsOneWidget);
         expect(find.text('Key Features'), findsOneWidget);
 
         // Test navigation through all pages
@@ -48,7 +44,7 @@ void main() {
 
         for (final pageName in pagesToTest) {
           // Open drawer
-          final scaffold = find.byType(Scaffold);
+          final scaffold = find.byType(Scaffold).first;
           final scaffoldState = tester.state<ScaffoldState>(scaffold);
           scaffoldState.openDrawer();
           await settleRuntime(tester);
@@ -76,15 +72,11 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Navigate to input page
-        final scaffold = find.byType(Scaffold);
+        final scaffold = find.byType(Scaffold).first;
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
         await settleRuntime(tester);
@@ -134,15 +126,11 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Navigate to input page
-        final scaffold = find.byType(Scaffold);
+        final scaffold = find.byType(Scaffold).first;
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
         await settleRuntime(tester);
@@ -180,15 +168,11 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Navigate to lists page
-        final scaffold = find.byType(Scaffold);
+        final scaffold = find.byType(Scaffold).first;
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
         await settleRuntime(tester);
@@ -221,11 +205,7 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Try to set invalid state
@@ -248,20 +228,16 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
-        expect(find.text('Welcome to MCP UI DSL v1.0 Showcase'), findsOneWidget);
+        expect(find.text('Welcome to MCP UI DSL v1.4 Showcase'), findsOneWidget);
 
         // Test tablet size
         tester.view.physicalSize = const Size(768, 1024);
         await settleRuntime(tester);
 
-        expect(find.text('Welcome to MCP UI DSL v1.0 Showcase'), findsOneWidget);
+        expect(find.text('Welcome to MCP UI DSL v1.4 Showcase'), findsOneWidget);
 
         // Reset
         tester.view.resetPhysicalSize();
@@ -276,11 +252,7 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Check buttons have semantics
@@ -288,7 +260,7 @@ void main() {
         expect(semantics.label, isNotEmpty);
         
         // Check text fields have labels
-        final scaffold = find.byType(Scaffold);
+        final scaffold = find.byType(Scaffold).first;
         final scaffoldState = tester.state<ScaffoldState>(scaffold);
         scaffoldState.openDrawer();
         await settleRuntime(tester);
@@ -308,16 +280,12 @@ void main() {
           pageLoader: (uri) async => showcasePages[uri] ?? {},
         ));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: runtime.buildUI(),
-          ),
-        );
+        await tester.pumpWidget(runtime.buildUI());
         await settleRuntime(tester);
 
         // Navigate between pages multiple times
         for (int i = 0; i < 3; i++) {
-          final scaffold = find.byType(Scaffold);
+          final scaffold = find.byType(Scaffold).first;
           final scaffoldState = tester.state<ScaffoldState>(scaffold);
           scaffoldState.openDrawer();
           await settleRuntime(tester);

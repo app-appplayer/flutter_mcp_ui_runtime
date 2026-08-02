@@ -1,12 +1,12 @@
 library showcase_definition;
 
-/// MCP UI DSL v1.0 Showcase Application Definition
+/// MCP UI DSL v1.4 Showcase Application Definition
 /// This file contains the complete application definition demonstrating all features
 
 final Map<String, dynamic> showcaseDefinition = {
   'type': 'application',
-  'title': 'MCP UI DSL v1.0 Showcase',
-  'version': '1.0.0',
+  'title': 'MCP UI DSL v1.4 Showcase',
+  'version': '1.4.0',
   'state': {
     'initial': {
           'appName': 'MCP UI DSL Showcase',
@@ -67,15 +67,15 @@ final Map<String, dynamic> showcaseDefinition = {
   'navigation': {
     'type': 'drawer',
     'items': [
-      {'title': 'Home', 'icon': 'home', 'route': '/home'},
-      {'title': 'Layout Widgets', 'icon': 'dashboard', 'route': '/layout'},
-      {'title': 'Display Widgets', 'icon': 'visibility', 'route': '/display'},
-      {'title': 'Input Widgets', 'icon': 'input', 'route': '/input'},
-      {'title': 'List Widgets', 'icon': 'list', 'route': '/lists'},
-      {'title': 'Navigation', 'icon': 'navigation', 'route': '/navigation'},
-      {'title': 'Theme System', 'icon': 'palette', 'route': '/theme'},
-      {'title': 'Actions & State', 'icon': 'play_arrow', 'route': '/actions'},
-      {'title': 'Advanced Features', 'icon': 'settings', 'route': '/advanced'},
+      {'label': 'Home', 'icon': 'home', 'route': '/home'},
+      {'label': 'Layout Widgets', 'icon': 'dashboard', 'route': '/layout'},
+      {'label': 'Display Widgets', 'icon': 'visibility', 'route': '/display'},
+      {'label': 'Input Widgets', 'icon': 'input', 'route': '/input'},
+      {'label': 'List Widgets', 'icon': 'list', 'route': '/lists'},
+      {'label': 'Navigation', 'icon': 'navigation', 'route': '/navigation'},
+      {'label': 'Theme System', 'icon': 'palette', 'route': '/theme'},
+      {'label': 'Actions & State', 'icon': 'play_arrow', 'route': '/actions'},
+      {'label': 'Advanced Features', 'icon': 'settings', 'route': '/advanced'},
     ],
   },
   'initialRoute': '/home',
@@ -110,7 +110,7 @@ final Map<String, dynamic> _homePage = {
   'type': 'page',
   'metadata': {
     'title': 'Welcome',
-    'description': 'MCP UI DSL v1.0 Showcase Home',
+    'description': 'MCP UI DSL v1.4 Showcase Home',
   },
   'content': {
     'type': 'singleChildScrollView',
@@ -121,7 +121,7 @@ final Map<String, dynamic> _homePage = {
       'children': [
         {
           'type': 'text',
-          'content': 'Welcome to MCP UI DSL v1.0 Showcase',
+          'content': 'Welcome to MCP UI DSL v1.4 Showcase',
           'style': {
             'fontSize': '{{theme.typography.h1.fontSize}}',
             'fontWeight': '{{theme.typography.h1.fontWeight}}',
