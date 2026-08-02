@@ -1172,7 +1172,10 @@ final Map<String, dynamic> _advancedPage = {
               {
                 'type': 'conditional',
                 'condition': '{{toggleValue}}',
-                'true': {
+                // Spec §2.4: the branches are `then` / `else`. `true`/`false`
+                // was the v1.0 shape, and the runtime reads neither from the
+                // other — so this rendered nothing at all, in both states.
+                'then': {
                   'type': 'card',
                   'padding': {'all': 16},
                   'child': {
@@ -1181,7 +1184,7 @@ final Map<String, dynamic> _advancedPage = {
                     'style': {'color': '{{theme.color.primary}}'},
                   },
                 },
-                'false': {
+                'else': {
                   'type': 'card',
                   'padding': {'all': 16},
                   'child': {

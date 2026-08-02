@@ -282,16 +282,19 @@ void main() {
       test('should use conditional widget correctly', () {
         bool hasConditionalWidget = false;
         bool hasCondition = false;
-        bool hasTrueBranch = false;
-        bool hasFalseBranch = false;
+        // §2.4 `conditional`: the branches are `then` / `else`. `true`/`false`
+        // was the v1.0 shape and the runtime reads neither from the other, so
+        // a definition using it renders nothing in either state.
+        bool hasThenBranch = false;
+        bool hasElseBranch = false;
         
         void checkConditionalStructure(dynamic node) {
           if (node is Map) {
             if (node['type'] == 'conditional') {
               hasConditionalWidget = true;
               if (node.containsKey('condition')) hasCondition = true;
-              if (node.containsKey('true')) hasTrueBranch = true;
-              if (node.containsKey('false')) hasFalseBranch = true;
+              if (node.containsKey('then')) hasThenBranch = true;
+              if (node.containsKey('else')) hasElseBranch = true;
             }
             
             node.values.forEach(checkConditionalStructure);
@@ -305,8 +308,8 @@ void main() {
         // Should have conditional with condition, true, false
         expect(hasConditionalWidget, isTrue);
         expect(hasCondition, isTrue);
-        expect(hasTrueBranch, isTrue);
-        expect(hasFalseBranch, isTrue);
+        expect(hasThenBranch, isTrue);
+        expect(hasElseBranch, isTrue);
       });
 
       test('should use batch actions correctly', () {

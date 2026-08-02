@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Allows real-time to flow for `MCPUIRuntime.initialize`, whose internal
@@ -16,6 +17,45 @@ Future<T> initRuntimeWithRealTime<T>(
 
 /// Pump pattern that tolerates runtime-side real-time activity.
 /// Call this wherever the test previously used `pumpAndSettle()`.
+/// Widens the test surface so the whole shell fits without scrolling.
+///
+/// The drawer holds nine entries and the default 800x600 cuts off the last
+/// few. Scrolling to reach them fires Material 3's ink-sparkle shader, which
+/// fails to load under `flutter_test` when the bundled shader targets a
+/// different engine runtime-stages version — an environment mismatch that
+/// says nothing about the widget under test. Removing the gesture is more
+/// honest than absorbing the exception.
+void useTallSurface(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1400, 2400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+}
+
+/// Opens the drawer and taps a navigation entry by its label.
+///
+/// Targets the entry *inside the drawer*: several of these strings also
+/// appear in page content, so a bare `find.text` can pick the body copy. The
+/// shell state is re-read on every call because navigating rebuilds it.
+Future<void> navigateTo(WidgetTester tester, String entry) async {
+  tester.state<ScaffoldState>(find.byType(Scaffold).first).openDrawer();
+  await settleRuntime(tester);
+  await tester.tap(
+    find
+        .descendant(of: find.byType(Drawer), matching: find.text(entry))
+        .last,
+  );
+  await tester.pump();
+  absorbInkSparkleFailure(tester);
+  await settleRuntime(tester);
+  absorbInkSparkleFailure(tester);
+  final shell = tester.state<ScaffoldState>(find.byType(Scaffold).first);
+  if (shell.isDrawerOpen) {
+    shell.closeDrawer();
+    await settleRuntime(tester);
+  }
+}
+
 /// Absorbs the Material 3 ink-sparkle shader failure.
 ///
 /// `FragmentProgram.fromAsset('shaders/ink_sparkle.frag')` throws under
