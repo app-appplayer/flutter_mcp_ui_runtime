@@ -1,5 +1,14 @@
 ## [0.6.0] - 2026-08-03 — One asset path, 23 widgets, openUrl (spec 1.4)
 
+### Changed — documentation
+
+- README states 1.4 rather than 1.3, and its Quick Start compiles. It showed
+  an `MCPUIRenderer` widget that **has never existed** in this package, with no
+  Flutter import. Rewritten around `MCPUIRuntime.initialize` + `buildUI()`,
+  including the point that `buildUI()` supplies its own MaterialApp when the
+  definition declares navigation — wrapping it in another is what made every
+  test in the showcase example see two Scaffolds.
+
 ### Fixed — the report that started this
 
 A server read its own bundle, resolved the assets to `data:` URIs and put them
