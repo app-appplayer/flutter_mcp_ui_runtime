@@ -82,13 +82,11 @@ class MCPUIServer {
   // Simulates a temperature sensor with real-time updates
   double _temperature = 20.0;
   Timer? _temperatureTimer;
-  final Set<String> _temperatureSubscribers = {}; // Track subscribers
   
   // Temperature monitoring state for standard mode
   // Demonstrates the difference between standard and extended notifications
   double _standardTemperature = 20.0;
   Timer? _standardTemperatureTimer;
-  final Set<String> _standardTemperatureSubscribers = {}; // Track standard subscribers
 
   MCPUIServer(this.server);
 
@@ -98,9 +96,11 @@ class MCPUIServer {
   }
 
   void _setupSubscriptionHandlers() {
-    // For now, assume we always have subscribers when notifications are sent
-    // TODO: Implement proper subscription tracking when MCP server library supports it
-    _log('Subscription handlers setup (simplified)');
+    // Notifications are sent unconditionally: this demo has no per-subscriber
+    // bookkeeping, so it does not pretend to. The subscriber sets that used to
+    // sit here were never read — a placeholder that looks like tracking is
+    // worse than none, because it reads as implemented.
+    _log('Subscription handlers setup (broadcast, no per-subscriber tracking)');
   }
 
   /// Initializes the server with resources and tools

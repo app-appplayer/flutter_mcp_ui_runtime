@@ -421,21 +421,19 @@ class _MCPClientDemoState extends State<MCPClientDemo> {
     
     // Show error state if connection failed
     if (_error != null) {
-      return MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Text('Error: $_error'),
-          ),
+      // Screen, not another MaterialApp: MCPClientApp already provides theme
+      // and navigator, and nesting a second one gives the subtree its own.
+      return Scaffold(
+        body: Center(
+          child: Text('Error: $_error'),
         ),
       );
     }
     
     // Show loading state while connecting
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
       ),
     );
   }

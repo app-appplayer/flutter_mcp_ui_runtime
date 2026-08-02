@@ -495,7 +495,7 @@ void main() {
         );
 
         // Check theme manager has correct values
-        final themeManager = runtime.engine!.themeManager;
+        final themeManager = runtime.engine.themeManager;
         final theme = themeManager.currentTheme;
         
         expect(theme.primaryColor, equals(const Color(0xFF2196F3)));

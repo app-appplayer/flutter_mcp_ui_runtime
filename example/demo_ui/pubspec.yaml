@@ -7,5 +7,4 @@ environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
-  mcp_server:
-    path: ../../../../../mcp_server/dart
+  mcp_server: ^2.2.3
