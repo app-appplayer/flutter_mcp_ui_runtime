@@ -1,5 +1,17 @@
 ## [0.6.1] - 2026-08-03 — three declared properties are now read
 
+Picks up `flutter_mcp_ui_core 0.5.1`. The floor stays `^0.5.0` — this is the
+same 1.4 cut, finished, not a second one.
+
+Also documents two action types the runtime has always executed but §4 never
+declared: `submit` (§4.22, form-scoped — resolved by the widget against its
+nearest `form` ancestor, never reaching the dispatcher) and `event` (§4.23,
+publishes to `_events.<name>.data`/`.timestamp`). The `form` example in §2.6.23
+had been showing `{"type": "form", "action": "submit"}`, which no runtime has
+ever handled — corrected to `{"type": "submit"}`. Found once `form.children`
+gained a type constraint and the example's own children were validated for the
+first time.
+
 `dateTimePicker.dateFormat` / `timeFormat` and `pdfViewer.showZoom` were
 declared in the spec and never read by their factories, so setting them did
 nothing. Found by the drift audit once its prose parser learned to read table

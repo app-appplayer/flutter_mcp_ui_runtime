@@ -63,7 +63,6 @@ void main() {
               'style': {
                 'fontSize': 24,
                 'fontWeight': 'bold',
-                'marginBottom': 20,
               },
             },
             // Personal Information Section
@@ -73,8 +72,6 @@ void main() {
               'style': {
                 'fontSize': 18,
                 'fontWeight': 'w600',
-                'marginTop': 16,
-                'marginBottom': 12,
               },
             },
             {
@@ -131,8 +128,6 @@ void main() {
               'style': {
                 'fontSize': 18,
                 'fontWeight': 'w600',
-                'marginTop': 16,
-                'marginBottom': 12,
               },
             },
             {
@@ -194,8 +189,6 @@ void main() {
               'style': {
                 'fontSize': 18,
                 'fontWeight': 'w600',
-                'marginTop': 16,
-                'marginBottom': 12,
               },
             },
             {
@@ -250,7 +243,6 @@ void main() {
             // Terms and Conditions
             {
               'type': 'box',
-              'marginTop': 20,
               'child': {
                 'type': 'linear',
                 'direction': 'vertical',
@@ -287,7 +279,6 @@ void main() {
               'condition': '{{validation.errors && Object.keys(validation.errors).length > 0}}',
               'then': {
                 'type': 'box',
-                'marginTop': 16,
                 'padding': {'all': 12},
                 'backgroundColor': '#FFEBEE',
                 'borderRadius': 8,
@@ -301,7 +292,6 @@ void main() {
             // Submit Button
             {
               'type': 'box',
-              'marginTop': 24,
               'child': {
                 'type': 'button',
                 'label': '{{ui.isSubmitting ? "Creating Account..." : "Create Account"}}',
@@ -377,7 +367,6 @@ void main() {
               'condition': '{{success == true}}',
               'then': {
                 'type': 'box',
-                'marginTop': 16,
                 'padding': {'all': 16},
                 'backgroundColor': '#E8F5E9',
                 'borderRadius': 8,
