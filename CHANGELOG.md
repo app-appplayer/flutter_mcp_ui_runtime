@@ -1,3 +1,104 @@
+## [0.6.0] - 2026-08-03 — One asset path, 23 widgets, openUrl (spec 1.4)
+
+### Fixed — the report that started this
+
+A server read its own bundle, resolved the assets to `data:` URIs and put them
+in state, and **neither widget that can paint an image could show them**.
+`image` rendered the words "Base64 not supported" where the picture belonged.
+`box.decoration.image` was the only field in its own resolver that never went
+through `context.resolve`, so a bound source arrived as the literal
+`"{{item.picture}}"` and matched no scheme.
+
+Both were symptoms of one absence: every factory hand-rolled its own
+`startsWith` chain, and between all of them only `http(s)`, `assets/` and
+`data:` were ever handled — exactly the three a **synchronous** loader can
+build. `bundle://` and `client://` were declared by the spec and implemented
+nowhere.
+
+- **`lib/src/assets/`** — `AssetRef` parsing, `AssetResolver` with injected
+  readers for bundle / client / origin sources, and `AssetRefImage` so the
+  asynchronous forms wait inside an `ImageProvider` and widgets stay
+  synchronous (spec §6.12.5).
+- `supportedForms` is honest by construction: a form appears only when the
+  reader serving it was injected, so a runtime cannot declare more than the
+  host wired (§6.12.4, §18.2.12).
+- `image` / `avatar` / `icon` / `box.decoration` converge on that one path.
+  `avatar` and `icon` consequently accept `data:`, `bundle://`, `client://`
+  and the object form, where they used to accept two schemes and one.
+- No `dart:io`: `client://` is an injected port, so the runtime still builds
+  for web and each host supplies the reader its platform can honour.
+
+### Changed — narrowing (why this is a minor)
+
+- An empty string is no longer a valid asset source. A source that may be
+  absent is expressed as a binding; the runtime treats a binding resolving to
+  empty as unresolved (§6.12.2a, §6.12.4).
+- `segmentedControl` renders its three variants differently. All three
+  resolved to `SegmentedButton`, so a document declaring `tabs` or `buttons`
+  got the same control and its declaration meant nothing.
+
+### Added — 23 widgets
+
+**Core** `fileInput` `multiSelect` `combobox` `otpInput` `dateTimePicker`
+`accordion` `popover` `menu` `contextMenu` `breadcrumb` `pagination` `link`
+**Advanced** `qrCode` `barcode` `pdfViewer` `diffViewer` `richTextEditor`
+`splitter` `resizable` `kanban` `gantt` `spreadsheet`
+**Client** `voiceInput`
+
+Each carries the part its composition drops. `otpInput` distributes a pasted
+or autofilled code across cells and declares one-time-code intent through a
+single field — a row of `textInput`s has neither. `combobox` owns focus: the
+list never takes it, arrows move a highlight without moving the caret, Escape
+closes without clearing. `accordion` keeps collapsed panels in the tree, since
+a removed subtree reads to assistive technology as content that does not
+exist. `kanban`'s drop targets are the gaps between cards, so a move reports
+*where* it landed. `gantt` lays header and rows from one scale, which is what
+a grid-based composition cannot keep aligned through scroll. `spreadsheet`
+evaluates formulas through the binding engine — the §7.1 sandbox — or not at
+all, and `formulas` is off by default.
+
+`qrCode` and `barcode` carry pure-Dart encoders rather than a dependency: this
+runtime is embedded in several hosts, so a rendering dependency here is one
+all of them take on every platform. Both refuse rather than emit something
+wrong — a payload past capacity, contrast below 3:1, an EAN-13 whose check
+digit does not match.
+
+`pdfViewer` and `voiceInput` split by conditional import. The web branch works
+for real (the browser's own PDF support; `SpeechRecognition`); the branch that
+cannot reports through `onError` rather than rendering a control that does
+nothing.
+
+### Added — `navigation.openUrl` (spec §4.3.3)
+
+Core had no way out of the application. Opening is the host's act, so the
+runtime enforces the §7.3.4 scheme policy — `javascript:`, `data:`, `file:`,
+`blob:`, `vbscript:` refused before the host is asked — and delegates through
+a callback, the shape `openApp` and `exitApp` already use. Every refusal
+reports: no handler, a host that declines, and a host that throws all fail
+loudly, because a silent no-op is indistinguishable from a broken document.
+
+### Added — 17 palette aliases
+
+`dataGrid` `treeView` `meter` `video` `audio` `modal` `dialog` `alert`
+`confirmDialog` `toast` `skeleton` `tag` `steps` `scrollArea` `numberInput`
+`dropdownMenu` `code` `label`, plus `autocomplete` `collapsible` `hoverCard`
+`navLink` on the new widgets. Accepted on input, never emitted.
+
+### Fixed — an intermittent lifecycle test, and the code under it
+
+`ResourceEntry.updateState` compared age with a strict `>`, so `Duration.zero`
+— which means "already stale/expired on load" — only took effect if the clock
+had ticked between `markReady` and the call. The same assertion passed or
+failed by scheduling, and the suite failed intermittently on a different case
+each run. Now inclusive; non-zero durations are unaffected, since age crosses
+those between ticks either way.
+
+### Dependencies
+
+- `flutter_mcp_ui_core ^0.4.3 → ^0.5.0`, `mcp_bundle ^0.4.8 → ^0.4.9`
+- adds `web` — reached only through conditional imports, never compiled into
+  native builds. `isA<JSFunction>` was avoided so the SDK floor stays at 3.0.
+
 ## [0.5.4] - 2026-07-31
 
 ### Fixed — `registerAction` could not be called from outside the package
