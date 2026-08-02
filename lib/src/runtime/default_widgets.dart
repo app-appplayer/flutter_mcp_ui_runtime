@@ -1,5 +1,8 @@
 import '../widgets/advanced/barcode_factory.dart';
 import '../widgets/advanced/diff_viewer_factory.dart';
+import '../widgets/advanced/gantt_factory.dart';
+import '../widgets/advanced/kanban_factory.dart';
+import '../widgets/advanced/spreadsheet_factory.dart';
 import '../widgets/layout/resizable_factory.dart';
 import '../widgets/layout/splitter_factory.dart';
 import '../widgets/dialog/popover_factory.dart';
@@ -446,6 +449,9 @@ class DefaultWidgets {
     registry.register('splitter', SplitterFactory());
     registry.register('resizable', ResizableFactory());
     registry.register('diffViewer', DiffViewerFactory());
+    registry.register('kanban', KanbanFactory());
+    registry.register('gantt', GanttFactory());
+    registry.register('spreadsheet', SpreadsheetFactory());
 
     // v1.4 palette aliases (§17.3.1). A no-code builder's vocabulary was
     // aligned with this spec; twenty of its components turned out to be
