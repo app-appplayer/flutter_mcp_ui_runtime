@@ -27,12 +27,16 @@ class SplitterFactory extends WidgetFactory {
             'horizontal';
     final gutterSize =
         context.resolve<num?>(properties['gutterSize'])?.toDouble() ?? 8.0;
-    final sizesBinding = properties['sizes'] as String?;
+    // §10: `sizes` is `array<number> | binding`. A bare state path is read
+    // from state; anything else (a literal array, a `{{...}}` expression)
+    // goes through the normal resolver.
+    final rawSizesProperty = properties['sizes'];
+    final sizesBinding = rawSizesProperty is String ? rawSizesProperty : null;
     final onDragEnd = properties['onDragEnd'] as Map<String, dynamic>?;
 
     final rawSizes = sizesBinding != null
         ? context.getState(sizesBinding)
-        : context.resolve<dynamic>(properties['sizes']);
+        : context.resolve<dynamic>(rawSizesProperty);
     final sizes = rawSizes is List && rawSizes.length == childDefs.length
         ? rawSizes.map((e) => (e as num).toDouble()).toList()
         : List<double>.filled(childDefs.length, 1 / childDefs.length);

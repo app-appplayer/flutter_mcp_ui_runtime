@@ -126,6 +126,10 @@ class SegmentedControlFactory extends WidgetFactory {
                   ))
               .toList(),
           selected: selectedValue != null ? {selectedValue} : {},
+          // A document may bind the selection to state that has no value yet
+          // — §2.6.0 does not require an initial one. Without this
+          // `SegmentedButton` asserts and the whole page fails to draw.
+          emptySelectionAllowed: selectedValue == null,
           onSelectionChanged: enabled
               ? (Set<String> selection) {
                   if (selection.isNotEmpty) select(selection.first);

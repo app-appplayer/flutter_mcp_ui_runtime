@@ -1,5 +1,44 @@
 ## [0.6.1] - 2026-08-03 — three declared properties are now read
 
+**Widgets are now drawn before release, not only validated.**
+`test/spec_compliance/widget_render_matrix_test.dart` renders every widget in
+the registry — each example the spec ships for it, plus a document synthesized
+from its required properties — and fails on a drawn error widget as well as on
+a thrown exception, since the renderer reports a broken widget by painting a
+red box rather than by throwing. The first run failed 29 of 158. Everything
+below is what that found; none of it was new breakage, and none of it was
+reachable by schema validation, unit tests or a build, all of which were green.
+
+- **`resolve<T>(null)` threw whenever `T` was non-nullable.** Factories were
+  written as `resolve<String>(properties['x']) as String? ?? ''` — the author
+  expecting null and supplying a fallback — and the cast threw before the
+  fallback could run, so **every one of those fallbacks was dead code**. That
+  is why `markdown` never once resolved the `content` alias its own source
+  comment says it accepts, and why any binding that had not been set yet
+  crashed the widget rather than falling back. Fixed at 26 call sites.
+- **JSON integers were cast straight to `double`.** `"width": 640` threw in 19
+  places across 8 widgets. They now go through `parseDimension`, which takes
+  both the number and the `{value, unit}` object the schema allows.
+- `dataTable` read `sortColumn` / `sortAscending` without resolving them,
+  though the spec declares both `binding` — the documented form threw. Both
+  were also read and discarded behind `ignore: unused_local_variable`, so the
+  documented sort did nothing at all. It now dispatches `onSort` from sortable
+  headers with `event.column` and applies the sort to the rendered rows.
+- `staggeredGrid` cast `columns` to a number, though §declares
+  `number | object` and its own example passes the responsive
+  `{ default, md, lg }` map; `scrollDirection` was read and discarded, so
+  `horizontal` looked like it had taken. Both honored.
+- `stepper` required each step's `title` to be a widget while §2.6.20's
+  example writes a string, falling back to a `titleText` key that appears
+  nowhere in the spec.
+- `splitter` read `sizes` as a string only, so the literal array in its own
+  example threw. `segmentedControl` asserted when its bound selection had no
+  value yet — the normal state of a fresh document. `dragTarget` rejected the
+  `children` form the registry documents. `webView` called `setState` from
+  `initState`, so any platform without a web view failed the whole page
+  instead of reporting through `onError`.
+
+
 `dateTimePicker.dateFormat` / `timeFormat` and `pdfViewer.showZoom` were
 declared in the spec and never read by their factories, so setting them did
 nothing. Found by the drift audit once its prose parser learned to read table
