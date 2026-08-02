@@ -36,6 +36,7 @@ class PdfViewerFactory extends WidgetFactory {
         : context.resolve<num?>(properties['zoom'])?.toDouble();
     final showToolbar = context.resolve<bool?>(properties['showToolbar']) ?? true;
     final showPageNav = context.resolve<bool?>(properties['showPageNav']) ?? true;
+    final showZoom = context.resolve<bool?>(properties['showZoom']) ?? true;
     final fit = context.resolve<String?>(properties['fit']) ?? 'width';
 
     void reportError(String message) {
@@ -92,6 +93,7 @@ class PdfViewerFactory extends WidgetFactory {
         fit: fit,
         showToolbar: showToolbar,
         showPageNav: showPageNav,
+        showZoom: showZoom,
       ),
       height: height ?? 480,
     );
@@ -107,6 +109,7 @@ String _withOpenParameters(
   required String fit,
   required bool showToolbar,
   required bool showPageNav,
+  required bool showZoom,
 }) {
   final parts = <String>[
     if (page != null) 'page=$page',
@@ -120,6 +123,9 @@ String _withOpenParameters(
       'view=Fit',
     if (!showToolbar) 'toolbar=0',
     if (!showPageNav) 'navpanes=0',
+    // No dedicated open parameter for the zoom control; hiding it means
+    // pinning the view so the control has nothing to change.
+    if (!showZoom && zoom == null) 'view=Fit',
   ];
   if (parts.isEmpty) return source;
   // A data: URI carries no fragment slot, so parameters are dropped rather

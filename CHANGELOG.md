@@ -1,3 +1,18 @@
+## [0.6.1] - 2026-08-03 — three declared properties are now read
+
+`dateTimePicker.dateFormat` / `timeFormat` and `pdfViewer.showZoom` were
+declared in the spec and never read by their factories, so setting them did
+nothing. Found by the drift audit once its prose parser learned to read table
+rows that name two properties in one cell.
+
+`dateFormat` / `timeFormat` substitute the common pattern tokens (`yyyy`,
+`MM`, `dd`, `HH`, `hh`, `mm`, `ss`, `a`); the bound value stays ISO-8601
+regardless, so this changes only what the closed field shows. `showZoom: false`
+pins the view, since the PDF open-parameter set has no control for hiding the
+zoom widget on its own.
+
+Also picks up the schema constant fixes from `flutter_mcp_ui_core 0.5.1`.
+
 ## [0.6.0] - 2026-08-03 — One asset path, 23 widgets, openUrl (spec 1.4)
 
 ### Changed — documentation
