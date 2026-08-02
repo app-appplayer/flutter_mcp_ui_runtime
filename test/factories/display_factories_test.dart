@@ -138,13 +138,18 @@ void main() {
       expect(imageWidget.fit, BoxFit.cover);
     });
 
-    testWidgets('Boundary - renders fallback for empty src',
+    testWidgets('Boundary - renders fallback when the source binds to empty',
         (WidgetTester tester) async {
+      // A literal `''` is not a valid AssetRef (spec §6.12.2a) — an absent
+      // source is expressed as a binding, and the runtime treats a binding
+      // that resolves to empty as an unresolved asset (§6.12.4). This is the
+      // path a real document takes, and the one worth pinning.
       await runtime.initialize({
         'type': 'page',
+        'state': {'initial': {'photo': ''}},
         'content': {
           'type': 'image',
-          'src': '',
+          'src': '{{photo}}',
           'width': 100,
           'height': 100,
         },
@@ -153,8 +158,9 @@ void main() {
       await tester.pumpWidget(MaterialApp(home: Scaffold(body: runtime.buildUI())));
       await tester.pump();
 
-      // Empty src should show fallback/error widget, not crash
+      // Falls back rather than crashing, and renders no image.
       expect(tester.takeException(), isNull);
+      expect(find.byType(Image), findsNothing);
     });
   });
 
