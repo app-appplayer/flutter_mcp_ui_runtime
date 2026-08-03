@@ -1,5 +1,38 @@
 ## [0.6.1] - 2026-08-03 — three declared properties are now read
 
+**Two deprecation warnings were pointed at the wrong people.**
+
+The legacy `tools.<tool>.result` mirror warned where it is *written* — on
+every successful tool call. An author using auto-merge, which is the
+recommended path and the common one, was told about a deprecation they cannot
+act on; an author who actually reads that namespace heard nothing, because
+reading a value that is present succeeds quietly. When the mirror goes, the
+second author is the one whose document stops resolving. The warning now fires
+at the read, once per path. The mirror itself still writes: removing it today
+would break those readers silently, which is the failure the warning exists to
+prevent. Its "removal in 0.6.0" line is gone too — this release is 0.6.1 and
+the mirror is still here, so the sentence had stopped being true.
+
+A theme that declares a role Material 3 retired (`background`, `onBackground`)
+now says so rather than quietly resolving to the replacement.
+
+**Chart padding scales with the box.** Every paint method opened with a flat
+40px gutter and returned early when it left no room. A 140-tall chart with a
+legend has 77px for the plot, so it drew a panel and nothing inside it — no
+exception, no error widget, no warning. Turning the legend on by default made
+that the common case; the flat number is what made it silent.
+
+**`data:` images are decoded once per URI.** `MemoryImage` keys on the byte
+list's identity, so decoding the same URI again produced a provider Flutter's
+image cache had never seen: every rebuild re-ran the base64 decode and the
+image decode for a picture that had not changed. Bounded at 64 entries,
+oldest-first — a document can name any number of data URIs, and holding all of
+them trades a stutter for a leak.
+
+**`label` is declared on the eleven input widgets whose factories already read
+it.** `otpInput` and `rating` are left alone: theirs do not.
+
+
 **Three properties were declared, validated, and never drawn.** A new suite
 asks what a widget *shows* rather than whether it drew — the render matrix
 cannot tell a working widget from one that ignores half its document, because

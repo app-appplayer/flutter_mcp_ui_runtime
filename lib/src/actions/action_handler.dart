@@ -324,7 +324,6 @@ class ToolActionExecutor extends ActionExecutor {
   // Deprecation-notice gates: emit once per process per legacy path to
   // alert tool authors / hosts without flooding logs.
   static bool _warnedEnvelopeUnwrap = false;
-  static bool _warnedNamespacedMirror = false;
 
   /// Test-only hook for resetting the deprecation latch so unit tests that
   /// assert the warning fires repeatedly can isolate their state. Not part
@@ -332,7 +331,6 @@ class ToolActionExecutor extends ActionExecutor {
   @visibleForTesting
   static void resetDeprecationWarningsForTesting() {
     _warnedEnvelopeUnwrap = false;
-    _warnedNamespacedMirror = false;
   }
 
   /// Unwrap the MCP wire shape `{content: [{type: 'text', text: S}], isError}`
@@ -682,13 +680,12 @@ class ToolActionExecutor extends ActionExecutor {
         // LEGACY mirror: namespaced `tools.<tool>.result`. See deprecation
         // note above. Behavior preserved for one release.
         if (isSuccess) {
-          if (!_warnedNamespacedMirror) {
-            _warnedNamespacedMirror = true;
-            _logger.warning(
-                'Writing legacy namespaced mirror at `tools.$tool.result`. '
-                'This mirror is DEPRECATED and slated for removal in 0.6.0. '
-                'Use explicit `bindResult` or auto-merged top-level keys.');
-          }
+          // The mirror is still written; what moved is the warning. It used to
+          // fire here, on every successful tool call, which told authors who
+          // never read the namespace about a deprecation they cannot act on
+          // and told the ones who do read it nothing. `BindingEngine` reports
+          // it at the read instead — that is where the dependency is, and
+          // where removing the mirror would actually break something.
           context.setValue('tools.$tool.result', resultData);
         }
 
@@ -726,13 +723,7 @@ class ToolActionExecutor extends ActionExecutor {
       //
       // LEGACY mirror: namespaced `tools.<tool>.result`. See deprecation
       // note above. Behavior preserved for one release.
-      if (!_warnedNamespacedMirror) {
-        _warnedNamespacedMirror = true;
-        _logger.warning(
-            'Writing legacy namespaced mirror at `tools.$tool.result`. '
-            'This mirror is DEPRECATED and slated for removal in 0.6.0. '
-            'Use explicit `bindResult` or auto-merged top-level keys.');
-      }
+      // Warned at the read, not here — see the note on the other mirror write.
       context.setValue('tools.$tool.result', result);
 
       // Explicit bindResult overrides auto-merge path

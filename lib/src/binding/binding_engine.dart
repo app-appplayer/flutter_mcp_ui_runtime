@@ -53,6 +53,30 @@ class ExpressionSandbox {
 
 /// Engine for handling data bindings
 class BindingEngine {
+
+  /// Paths already reported, so a document that reads one every frame says it
+  /// once.
+  static final Set<String> _warnedLegacyMirrors = <String>{};
+
+  /// A read of the legacy `tools.<tool>.result` mirror.
+  ///
+  /// The warning used to fire where the mirror is *written*, which is on every
+  /// successful tool call — so an author who never touches the namespace was
+  /// told about a deprecation they cannot act on, while an author who does
+  /// read it heard nothing, because reading a value that is present succeeds
+  /// quietly. The day the mirror goes, the second author is the one whose
+  /// document breaks. Reported here, where the dependency actually is.
+  void _warnIfLegacyToolMirror(String path) {
+    if (!path.startsWith('tools.')) return;
+    if (!_warnedLegacyMirrors.add(path)) return;
+    _logger.warning(
+      '`$path` reads the legacy namespaced tool mirror. It is deprecated and '
+      'will be removed; a document that depends on it stops resolving when it '
+      'goes. Use `bindResult` to name where the result lands, or read the '
+      "response's top-level keys, which auto-merge (spec §3.10).",
+    );
+  }
+
   final Map<String, Binding> _bindings = {};
   final Map<String, StreamSubscription> _subscriptions = {};
   final Map<String, Function> _transforms = {};
@@ -687,6 +711,8 @@ class BindingEngine {
       // In a full implementation, this would connect to the actual data source
       return binding.defaultValue;
     }
+
+    _warnIfLegacyToolMirror(path);
 
     // Handle prefixed paths (app.*, local.*, page.*) via context
     if (path.contains('.')) {
