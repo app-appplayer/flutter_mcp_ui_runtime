@@ -1,3 +1,31 @@
+## Unreleased — `lazy` implements what it declares
+
+Found after 0.6.1 shipped, by fixing a harness rather than by a report.
+
+**`lazy.content` accepts the source form.** §10.22 gives it two — an inline
+widget, and `{ source: "ui://..." }` naming a fragment to fetch. Only the
+first was implemented: a source went to the renderer as-is, which answered
+`Widget type is required`, because a source is not a widget. Resolution is
+delegated to `view` rather than rebuilt — `lazy` decides *when* a subtree is
+built, `view` decides *what* a source resolves to — which also carries
+`placeholder` and `onError` through to surfaces that already implement them.
+
+**`onLoad` and `onError` fire.** Both were read into locals and silenced with
+an `unused_local_variable` ignore, so a document that declared them waited for
+something that never came.
+
+Prose §10.22 named the `trigger` values `viewport` / `immediate` / `manual`
+while the registry and the runtime have always used `visible`; a document
+written from the prose failed schema validation. The prose now matches.
+
+**Why it took this long to see.** Every spec-compliance suite judged a frame
+after a single fixed 50 ms pump. `lazy` materializes from a post-frame
+callback, so its failure arrived after the assertion had already passed — the
+harness reported clean on a widget that drew an error box. The suites now
+settle (capped at one second, because an indeterminate progress indicator
+never settles and the default budget grinds for ten minutes before saying so).
+Re-run across all five axes, `lazy` was the only thing hiding there.
+
 ## [0.6.1] - 2026-08-03 — documents the schema accepts now draw
 
 **Every branch of every declared union now draws.** A property typed

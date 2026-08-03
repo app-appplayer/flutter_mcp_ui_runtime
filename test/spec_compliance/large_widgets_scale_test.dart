@@ -105,7 +105,24 @@ Future<String?> _draw(WidgetTester tester, Map<String, dynamic> widget) async {
       MaterialApp(home: Scaffold(body: runtime.buildUI())),
     );
     // Two frames: viewport and overflow failures land after the first.
-    await tester.pump(const Duration(milliseconds: 50));
+    // Settle rather than pump a fixed slice: a widget that materializes from
+    // a post-frame callback reaches its failure after the frame a single 50 ms
+    // pump produces. `pumpAndSettle` throws on a scene that never settles (an
+    // indeterminate progress indicator animates forever), so the fixed wait
+    // stays as the fallback for those.
+    try {
+      // Capped: an indeterminate progress indicator never settles, and the
+      // default budget grinds for ten minutes before saying so.
+      await tester.pumpAndSettle(
+        const Duration(milliseconds: 16),
+        EnginePhase.sendSemanticsUpdate,
+        const Duration(seconds: 1),
+      );
+    } catch (_) {
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
     await tester.pump(const Duration(milliseconds: 250));
   } catch (e) {
     failure = 'threw while building: $e';

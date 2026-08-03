@@ -136,7 +136,25 @@ Future<String?> _render(WidgetTester tester, _Case c) async {
     await tester.pumpWidget(
       MaterialApp(home: Scaffold(body: runtime.buildUI())),
     );
-    await tester.pump(const Duration(milliseconds: 50));
+    // Settle rather than pump a fixed slice. A widget that resolves its
+    // content asynchronously — `lazy` is the one here — reaches its failure
+    // *after* the frame a single 50 ms pump produces, so a fixed wait reports
+    // it clean. `pumpAndSettle` throws on a scene that never settles (a
+    // progress indicator animates forever), which is exactly why the fixed
+    // wait was there; the fallback keeps those cases working.
+    try {
+      // Capped: an indeterminate progress indicator never settles, and the
+      // default budget grinds for ten minutes before saying so.
+      await tester.pumpAndSettle(
+        const Duration(milliseconds: 16),
+        EnginePhase.sendSemanticsUpdate,
+        const Duration(seconds: 1),
+      );
+    } catch (_) {
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
   } catch (e) {
     FlutterError.onError = previous;
     await runtime.dispose();
@@ -252,7 +270,15 @@ List<_Case> _buildCases() {
       if (branches.length < 2) continue;
 
       for (final branch in branches) {
-        final value = _sampleForBranch(branch, prop, siblings: branches);
+        // The example's own value wins for the object branch. A union like
+        // `Widget | object` means a *particular* object — `lazy.content`
+        // takes `{source: …}` — and an empty map is a document naming
+        // neither, which §6.9 says to draw as an error. Synthesizing `{}`
+        // tested that rule, not the branch.
+        final fromExample = branch == 'object' ? base[name] : null;
+        final value = fromExample is Map
+            ? fromExample
+            : _sampleForBranch(branch, prop, siblings: branches);
         if (value == null) {
           _unsynthesizable.add('$type.$name ($branch)');
           continue;
