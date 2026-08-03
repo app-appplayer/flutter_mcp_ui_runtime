@@ -1,5 +1,19 @@
 ## [0.6.1] - 2026-08-03 — three declared properties are now read
 
+**`registerWidget` may now be called before `initialize`, and validation
+honours what it registers.** It used to throw before initialization, which
+made host widgets impossible to use as documented: schema validation runs
+inside `initialize`, so a type registered afterwards was rejected in the very
+document that introduced it, and the host was told its own extension was
+malformed. Offering an extension mechanism and refusing what it produces is a
+contract disagreeing with itself. The extension's own subtree is the host's
+contract and is not checked; everything around it still is, so an unregistered
+type stays the error it should be. `registerAction` is unchanged.
+
+`StateChangeEvent` is exported alongside `StateManager` — a host bridging two
+runtimes has to name the type it receives from `StateManager.stream`.
+
+
 **Widgets are now drawn before release, not only validated.**
 `test/spec_compliance/widget_render_matrix_test.dart` renders every widget in
 the registry — each example the spec ships for it, plus a document synthesized

@@ -470,11 +470,65 @@ void main() {
   });
 
   group('TC-009: MCPUIRuntime — registerWidget and registerAction', () {
-    test('Error: registerWidget before init throws', () {
+    test('registerWidget before init is allowed, and is what makes a host '
+        'widget validate', () {
+      // This used to throw. It could not stay that way: schema validation runs
+      // inside `initialize`, and it consults the widget registry so a host's
+      // own widget is not reported as a malformed document. A host that can
+      // only register afterwards has no way to get its extension past the
+      // validation of the very document that introduces it.
+      //
+      // Registering early is safe — the registry is built with the engine, not
+      // with the definition.
       final runtime = MCPUIRuntime(enableDebugMode: false);
       expect(
         () => runtime.registerWidget('custom', _DummyWidgetFactory()),
+        returnsNormally,
+      );
+    });
+
+    test('a registered host widget passes schema validation; an '
+        'unregistered one does not', () async {
+      // `registerWidget` invites a host to add types the DSL does not define —
+      // a dashboard slot, a vendor chart. The generated schema knows only the
+      // spec's set, so validating a document containing one used to reject it,
+      // and the host was told its own extension was a malformed document.
+      // Offering an extension mechanism and refusing what it produces is a
+      // contract disagreeing with itself.
+      //
+      // The extension's subtree is the host's contract, so it is not checked;
+      // everything around it still is, which is what keeps a typo an error.
+      final runtime = MCPUIRuntime(enableDebugMode: false);
+      runtime.registerWidget('vendorGauge', _DummyWidgetFactory());
+
+      final withExtension = <String, dynamic>{
+        'type': 'page',
+        'content': <String, dynamic>{
+          'type': 'linear',
+          'direction': 'vertical',
+          'children': <Object>[
+            <String, dynamic>{'type': 'text', 'content': 'ok'},
+            <String, dynamic>{'type': 'vendorGauge', 'reading': 12},
+          ],
+        },
+      };
+      await expectLater(runtime.initialize(withExtension), completes);
+      await runtime.destroy();
+
+      final unregistered = MCPUIRuntime(enableDebugMode: false);
+      await expectLater(
+        unregistered.initialize(<String, dynamic>{
+          'type': 'page',
+          'content': <String, dynamic>{
+            'type': 'linear',
+            'direction': 'vertical',
+            'children': <Object>[
+              <String, dynamic>{'type': 'vendrGauge', 'reading': 12},
+            ],
+          },
+        }),
         throwsA(isA<StateError>()),
+        reason: 'a type nothing registered is still a typo, not an extension',
       );
     });
 
