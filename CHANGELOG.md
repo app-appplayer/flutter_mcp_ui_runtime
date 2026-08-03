@@ -53,6 +53,16 @@ follow. `bounded_parent_axis_test` now pins that list against what actually
 happens under a scrolling page — including that the `sizedBox` remedy the
 section prescribes works.
 
+**A destroyed page no longer fires `onPause`.** §6.8.3 said the unmount
+sequence opened with it; §1.5.1 defines the same hook as losing focus *without*
+being destroyed, and §1.5.2 draws it as half of `(onPause ↔ onResume)*`. The
+spec contradicted itself — its own back-navigation line resumed a page the
+line above had destroyed — and the runtime followed the wrong half. On a
+routed page that made `onPause` fire *only* on the way to destruction while
+`onResume` never fired at all, so a draft save or a timer stop written there
+appeared to run and was discarded with the instance. §6.8.3 now splits on the
+one question that decides it: does the outgoing instance survive?
+
 §6.12.8 says what was previously nowhere: an asset carried as bytes through
 state gives up its identity, so it is re-sent and re-parsed on every delivery
 and the host never sees a reference it could apply a size policy to. §1.5.2

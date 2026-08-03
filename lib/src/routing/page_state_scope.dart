@@ -118,7 +118,9 @@ class _MCPPageWidgetState extends State<MCPPageWidget> {
 
   @override
   void dispose() {
-    // The runner fires onPause → onUnmount → onDestroy (§6.8.3). It is not
+    // The runner fires onUnmount → onDestroy (§6.8.3). `onPause` is not part
+    // of it: this page is being destroyed, and §1.5.1 defines that hook as
+    // losing focus *without* being destroyed. It is not
     // awaited: dispose cannot be async, and a hook that releases a
     // subscription must still be given the chance to run.
     unawaited(_runner?.unmount() ?? Future<void>.value());

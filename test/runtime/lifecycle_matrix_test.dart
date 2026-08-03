@@ -116,7 +116,12 @@ void main() {
       expect(fired, <String>['onInit', 'onMount', 'onReady']);
     });
 
-    test('unmount runs onPause → onUnmount → onDestroy', () async {
+    test('unmount runs onUnmount → onDestroy, without onPause', () async {
+      // This used to expect `onPause` first, pinning the §6.8.3 text of the
+      // time. That text contradicted §1.5.1, which reserves the hook for an
+      // instance that loses focus *without* being destroyed, and §1.5.2,
+      // which draws it as half of a pair. §6.8.3 now splits on whether the
+      // outgoing instance survives; a destroyed one goes straight out.
       final fired = <String>[];
       final runner = LifecycleRunner(
         lifecycle: LifecycleDefinition.fromDefinition(hooksBlock()),
@@ -125,7 +130,7 @@ void main() {
       await runner.mount();
       fired.clear();
       await runner.unmount();
-      expect(fired, <String>['onPause', 'onUnmount', 'onDestroy']);
+      expect(fired, <String>['onUnmount', 'onDestroy']);
     });
 
     test('mount is idempotent — a rebuild must not re-subscribe', () async {

@@ -736,8 +736,8 @@ class RuntimeEngine with ChangeNotifier {
     // Teardown of the outgoing page is NOT done here.
     //
     // The widget that mounted the page owns its unmount: it fires
-    // onPause → onUnmount → onDestroy from `dispose`, which is the moment the
-    // page actually leaves the tree. Running them here as well fired the same
+    // onUnmount → onDestroy from `dispose`, which is the moment the page
+    // actually leaves the tree. Running them here as well fired the same
     // hooks two and three times over — an unsubscribe hook then tried to
     // release a subscription that was already gone. (These used to be the
     // separate `onLeave` hook, which is why the overlap was invisible until
