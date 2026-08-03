@@ -20,6 +20,40 @@ IconData resolveIconData(String name) {
   return Icons.help_outline;
 }
 
+/// Resolves any `IconRef` form to [IconData].
+///
+/// `IconRef` (configs/_primitive) declares three forms — a name, a codepoint
+/// object `{codepoint, fontFamily?, fontPackage?}`, and a resource object
+/// `{uri, origin?}` — and says they are accepted *anywhere an icon is taken*.
+/// Every icon slot therefore has to read all three: a factory that does
+/// `properties['icon'] as String?` throws on the two object forms, which is a
+/// document the schema plainly allows.
+///
+/// The resource form has no [IconData] to resolve to; a slot that can draw an
+/// image should reach for [AssetRef] itself (as the `icon` widget does), and
+/// one that cannot gets the same missing-icon cue an unknown name gets.
+IconData resolveIconRef(Object? value) {
+  if (value is String) return resolveIconData(value);
+  if (value is Map) {
+    final codepoint = value['codepoint'];
+    if (codepoint is int) {
+      // Runtime codepoint: the const-inferring context cannot apply here.
+      // ignore: prefer_const_constructors
+      return IconData(
+        // ignore: non_const_argument_for_const_parameter
+        codepoint,
+        // ignore: non_const_argument_for_const_parameter
+        fontFamily: (value['fontFamily'] as String?) ?? 'MaterialIcons',
+        // ignore: non_const_argument_for_const_parameter
+        fontPackage: value['fontPackage'] as String?,
+      );
+    }
+    final name = value['name'];
+    if (name is String) return resolveIconData(name);
+  }
+  return Icons.help_outline;
+}
+
 // The map is intentionally flat (no computed keys) so a name can be resolved
 // in O(1) without instantiating Flutter's entire Icons class tree.
 const Map<String, IconData> _map = {

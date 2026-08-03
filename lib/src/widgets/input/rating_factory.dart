@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/icon_resolver.dart';
 import '../widget_factory.dart';
 import '../../renderer/render_context.dart';
 
@@ -34,7 +35,9 @@ class RatingFactory extends WidgetFactory {
     // Spec canonical `icon` (optional). Accepted; current painter renders
     // stars regardless of icon name (custom icons tracked separately).
     // ignore: unused_local_variable
-    final iconName = properties['icon'] as String?;
+    final iconName = properties['icon'] == null
+        ? null
+        : resolveIconRef(context.resolve<Object?>(properties['icon']));
     final filledColor =
         parseColor(context.resolve(properties['color']), context) ?? Colors.amber;
     // Filled star stays amber (universal convention). Empty star pulls

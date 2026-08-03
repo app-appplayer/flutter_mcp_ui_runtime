@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../renderer/render_context.dart';
 import '../../theme/menu_tokens.dart';
+import '../../utils/icon_resolver.dart';
 import '../widget_factory.dart';
 
 /// Factory for PopupMenuButton widgets.
@@ -63,9 +64,9 @@ class PopupMenuButtonWidgetFactory extends WidgetFactory {
       child = context.renderer
           .renderWidget(childrenDef.first as Map<String, dynamic>, context);
     } else {
-      final icon = properties['icon'] as String?;
+      final icon = properties['icon'];
       if (icon != null) {
-        child = Icon(_parseIconData(icon));
+        child = Icon(resolveIconRef(context.resolve<Object?>(icon)));
       } else {
         // If no child or icon is specified, use default icon
         child = const Icon(Icons.more_vert);
@@ -179,20 +180,6 @@ class PopupMenuButtonWidgetFactory extends WidgetFactory {
     return null;
   }
 
-  IconData _parseIconData(String iconName) {
-    switch (iconName) {
-      case 'more_vert':
-        return Icons.more_vert;
-      case 'more_horiz':
-        return Icons.more_horiz;
-      case 'menu':
-        return Icons.menu;
-      case 'settings':
-        return Icons.settings;
-      default:
-        return Icons.more_vert;
-    }
-  }
 
   Offset _parseOffset(dynamic offset) {
     if (offset == null) return Offset.zero;

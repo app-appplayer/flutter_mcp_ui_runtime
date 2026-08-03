@@ -26,14 +26,11 @@ class PdfViewerFactory extends WidgetFactory {
     // PDF open parameters — the standard fragment every browser viewer reads,
     // which is how page, zoom and chrome stay addressable from the DSL rather
     // than belonging to the viewer.
-    final pageBinding = properties['page'] as String?;
-    final page = pageBinding != null
-        ? (context.getState(pageBinding) as num?)?.toInt()
-        : context.resolve<num?>(properties['page'])?.toInt();
-    final zoomBinding = properties['zoom'] as String?;
-    final zoom = zoomBinding != null
-        ? (context.getState(zoomBinding) as num?)?.toDouble()
-        : context.resolve<num?>(properties['zoom'])?.toDouble();
+    // One-way: the fragment carries page/zoom *into* the embedded viewer and
+    // the viewer reports nothing back, so there is no change to write to
+    // state. `resolve` covers both declared branches.
+    final page = context.resolve<num?>(properties['page'])?.toInt();
+    final zoom = context.resolve<num?>(properties['zoom'])?.toDouble();
     final showToolbar = context.resolve<bool?>(properties['showToolbar']) ?? true;
     final showPageNav = context.resolve<bool?>(properties['showPageNav']) ?? true;
     final showZoom = context.resolve<bool?>(properties['showZoom']) ?? true;

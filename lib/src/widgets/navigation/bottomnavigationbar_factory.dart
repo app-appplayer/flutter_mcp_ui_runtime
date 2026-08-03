@@ -11,10 +11,9 @@ class BottomNavigationBarWidgetFactory extends WidgetFactory {
 
     // Spec §2.8.2 canonical `selectedIndex`; `currentIndex` kept as legacy
     // Flutter-style alias.
-    final currentIndex =
-        context.resolve<int?>(properties['selectedIndex'] ??
-                properties['currentIndex']) ??
-            0;
+    final rawIndex = context.resolve<num?>(
+            properties['selectedIndex'] ?? properties['currentIndex']) ??
+        0;
     final elevation = parseDimension(properties['elevation']);
     final type = _parseBottomNavigationBarType(properties['type']);
     final fixedColor = parseColor(context.resolve(properties['fixedColor']), context);
@@ -67,7 +66,12 @@ class BottomNavigationBarWidgetFactory extends WidgetFactory {
 
     Widget bottomBar = BottomNavigationBar(
       items: items,
-      currentIndex: currentIndex,
+      // Flutter asserts on an out-of-range index. A bound index can exceed
+      // the item count for a frame — clamping degrades that to the nearest
+      // real tab instead of taking the whole page down.
+      currentIndex: items.isEmpty
+          ? 0
+          : rawIndex.toInt().clamp(0, items.length - 1),
       elevation: elevation,
       type: type,
       fixedColor: fixedColor,

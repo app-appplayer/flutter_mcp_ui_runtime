@@ -1,4 +1,43 @@
-## [0.6.1] - 2026-08-03 — three declared properties are now read
+## [0.6.1] - 2026-08-03 — documents the schema accepts now draw
+
+**Every branch of every declared union now draws.** A property typed
+`number | binding` was read as `properties['x'] as String?` in seven widgets:
+the cast throws the moment an author writes the number the schema plainly
+allows. `resizable.width` and `.height`, `pdfViewer.page` and `.zoom`,
+`popover.open`, `stepper.currentStep`, `mediaQuery.condition`, `grid.columns`
+and `chart.data` all took the page down on a document that validates.
+
+Nothing caught it because nothing asked. The render matrix draws the examples
+the spec ships, and those examples happen to use the *other* branch — so the
+number form of `resizable.width` had never been rendered once.
+`widget_union_branch_test` closes that: 141 branches, one document per branch,
+built by overriding a single property on a document already known to draw.
+
+**Two-way properties wrote to the wrong place.** The path was taken raw, so a
+document written the documented way — `"width": "{{panel.width}}"` — read
+through the resolver from `panel.width` and wrote back to a key literally
+named `{{panel.width}}`. The read worked, the drag persisted nowhere, and no
+frame ever looked wrong. `twoWayPath` unwraps the braces and rejects an
+expression, which has no single target to write to.
+
+**`IconRef` means all three of its forms, everywhere.** The primitive says a
+name, a `{codepoint}` object and a `{uri}` object are accepted anywhere an
+icon is taken; seven slots accepted only the string, and two of those carried
+private icon tables that had drifted from the shared resolver. Fixing the
+crash surfaced two slots that were not drawing the author's icon at all —
+`accordion.icon` was read and never used, and `link.icon` drew `Icons.link`
+whatever the document said.
+
+**`grid.columns` accepts the responsive object the spec documents.** It never
+did; the property was read as `int?`. The registry described that object with
+a `{default, sm, md, lg}` vocabulary that appears nowhere else in the spec —
+it now names the §14.1.1 form-factor labels the picker actually resolves, and
+`pdfViewer`'s page and zoom are described as the one-way values they are,
+because an embedded viewer reports nothing back.
+
+An out-of-range `selectedIndex` on `bottomNavigation` now clamps instead of
+tripping a framework assertion and taking the page with it.
+
 
 **Two deprecation warnings were pointed at the wrong people.**
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../renderer/render_context.dart';
+import '../../utils/icon_resolver.dart';
 import '../widget_factory.dart';
 
 /// Factory for FloatingActionButton widgets
@@ -51,20 +52,22 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
       child = context.buildWidget(childrenDef.first as Map<String, dynamic>);
     } else {
       // Build from icon and label
-      final icon = properties['icon'] as String?;
+      final icon = properties['icon'] == null
+          ? null
+          : resolveIconRef(context.resolve<Object?>(properties['icon']));
       final label = context.resolve<String?>(properties['label']);
 
       if (isExtended && label != null) {
         child = Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (icon != null) Icon(_parseIconData(icon)),
+            if (icon != null) Icon(icon),
             if (icon != null && label.isNotEmpty) const SizedBox(width: 8),
             if (label.isNotEmpty) Text(label),
           ],
         );
       } else if (icon != null) {
-        child = Icon(_parseIconData(icon));
+        child = Icon(icon);
       }
     }
 
@@ -100,7 +103,7 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
         label:
             Text(context.resolve<String?>(properties['label']) ?? ''),
         icon: properties['icon'] != null
-            ? Icon(_parseIconData(properties['icon']))
+            ? Icon(resolveIconRef(context.resolve<Object?>(properties['icon'])))
             : null,
       );
     } else {
@@ -145,30 +148,6 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
     return applyCommonWrappers(fab, properties, context);
   }
 
-  IconData _parseIconData(String iconName) {
-    switch (iconName) {
-      case 'add':
-        return Icons.add;
-      case 'edit':
-        return Icons.edit;
-      case 'delete':
-        return Icons.delete;
-      case 'save':
-        return Icons.save;
-      case 'share':
-        return Icons.share;
-      case 'favorite':
-        return Icons.favorite;
-      case 'star':
-        return Icons.star;
-      case 'thumb_up':
-        return Icons.thumb_up;
-      case 'navigation':
-        return Icons.navigation;
-      default:
-        return Icons.add;
-    }
-  }
 
   ShapeBorder? _parseShapeBorder(dynamic shape) {
     if (shape == null) return null;

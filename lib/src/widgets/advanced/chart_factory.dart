@@ -80,8 +80,12 @@ class ChartWidgetFactory extends WidgetFactory {
       // Convert first dataset to ChartDataPoint for backward compat
       chartData = _datasetToPoints(datasets.isNotEmpty ? datasets.first : null, dataLabels);
     } else {
-      final data = context.resolve<List<dynamic>?>(rawData ?? []) ??
-          [];
+      // `data` is `object | array`. An object without `datasets` reached the
+      // list cast and threw — a shapeless object is schema-legal, so it draws
+      // an empty chart rather than taking the page down with it.
+      final resolvedData =
+          rawData is Map ? null : context.resolve<Object?>(rawData ?? []);
+      final data = resolvedData is List ? resolvedData : const <dynamic>[];
       chartData = _parseChartData(data, chartType);
       datasets = [];
       dataLabels = chartData.map((p) => p.label).toList();

@@ -17,9 +17,20 @@ class GridViewWidgetFactory extends WidgetFactory {
     final padding = parseEdgeInsets(properties['padding']);
 
     // Grid specific properties
-    // Support both 'columns' (MCP UI DSL v1.0) and 'crossAxisCount' (Flutter style)
-    final crossAxisCount =
-        (properties['columns'] ?? properties['crossAxisCount']) as int?;
+    // Support both 'columns' (MCP UI DSL v1.0) and 'crossAxisCount' (Flutter
+    // style). `columns` is `number | object`: the object form is a responsive
+    // override keyed by form factor (§14.1.1), which `pickResponsive` picks
+    // from. Reading it as `int?` threw on that form and on a bound value —
+    // both of which the schema allows.
+    final rawColumns = properties['columns'] ?? properties['crossAxisCount'];
+    final resolvedColumns = rawColumns is Map
+        ? context.pickResponsive(rawColumns)
+        : context.resolve<Object?>(rawColumns);
+    final crossAxisCount = resolvedColumns is num
+        ? resolvedColumns.toInt()
+        : (resolvedColumns is String
+            ? int.tryParse(resolvedColumns)
+            : null);
     final maxCrossAxisExtent = parseDimension(properties['maxCrossAxisExtent']);
     // Spec §2.7.2 canonical `rowGap` / `columnGap`; legacy
     // `mainAxisSpacing` / `crossAxisSpacing` (Flutter field names) and
