@@ -22,7 +22,7 @@ void main() {
     setUp(() {
       manager = ThemeManager();
       manager.setTheme(<String, dynamic>{
-        'colors': <String, dynamic>{'seed': '#3F51B5'},
+        'color': <String, dynamic>{'seed': '#3F51B5'},
       });
     });
 
@@ -41,6 +41,43 @@ void main() {
         expect(legacyValue, equals(canonicalValue),
             reason: '"$legacy" must resolve as "$canonical"');
       });
+    });
+
+    test('a binding into the theme map answers the same as a colour property',
+        () {
+      // konpi drew all four on one screen and three came back empty:
+      // `parseColor` resolves a bare slot name through the scheme, but
+      // `{{theme.color.background}}` goes through `getThemeValue`, and
+      // `ColorSchemeDefinition` carries no `background` field at all — M3
+      // folded that family into surface. The same name answered in one
+      // position and was empty in the other, which is worse than either
+      // answer alone.
+      final pairs = <String, String>{
+        'background': 'surface',
+        'onBackground': 'onSurface',
+        'inverseOnSurface': 'onInverseSurface',
+        'surfaceVariant': 'surfaceContainerHighest',
+      };
+      pairs.forEach((legacy, canonical) {
+        final viaBinding = manager.getThemeValue('color.$legacy');
+        expect(viaBinding, isNotNull,
+            reason: '{{theme.color.$legacy}} is documented in §5.3.1');
+        expect(viaBinding, equals(manager.getThemeValue('color.$canonical')),
+            reason: '"$legacy" must read as "$canonical"');
+      });
+    });
+
+    test('a theme that declares a legacy role keeps its own value', () {
+      // The alias is a fallback, not an override: an author who writes
+      // `surfaceVariant` explicitly gets what they wrote.
+      final declared = ThemeManager();
+      declared.setTheme(<String, dynamic>{
+        'color': <String, dynamic>{
+          'seed': '#3F51B5',
+          'surfaceVariant': '#123456',
+        },
+      });
+      expect(declared.getThemeValue('color.surfaceVariant'), '#123456');
     });
 
     test('a name that is not a role still resolves to null', () {

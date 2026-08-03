@@ -1,5 +1,41 @@
 ## [0.6.1] - 2026-08-03 — three declared properties are now read
 
+**Three properties were declared, validated, and never drawn.** A new suite
+asks what a widget *shows* rather than whether it drew — the render matrix
+cannot tell a working widget from one that ignores half its document, because
+both produce a clean frame.
+
+- `chart` read only `showLegend`, a name that appears nowhere in §10, and
+  defaulted it to false. A chart written the documented way — with
+  `options.legend.position` — declared its dataset labels and drew no legend
+  at all. The position is now read and honoured (`none` hides it); the legacy
+  flag is consulted only when the documented property is absent, so a stale
+  key cannot override the spec'd one.
+- `scrollView` read `child` and ignored `children` and `slivers`, both of
+  which the registry declares. Its own example scrolled an empty viewport.
+  Slivers are laid out in order rather than dropped: this scroll view cannot
+  host the sliver protocol, and content in the wrong arrangement beats content
+  that vanishes.
+- `floatingActionButton` required an undeclared `isExtended` flag before it
+  would draw its `label` — which §2.8.7 documents as "Extended FAB label",
+  with no such flag anywhere. Supplying a label now asks for the extended
+  form; `isExtended` still wins when set explicitly.
+
+**Theme roles resolve the same from both positions.** `{{theme.color.<role>}}`
+went through a path that only knew what the bundle had declared, while
+`color: "<role>"` derived the rest from `seed` — so a seed-only theme answered
+one way in a colour property and returned empty to a binding. §5.3.1 says the
+missing roles derive; that is now true from either.
+
+**`MCPLogger.onRecord`** lets a host receive the runtime's diagnostics.
+Without it they reach `dart:developer` and nobody else, which is the wrong
+audience for a message aimed at whoever wrote the document — a theme role
+declared and dropped, for instance. Records reach an installed sink in every
+build mode; `enableLogging` still governs only the developer-log path.
+Declaring a role Material 3 retired (`background`, `onBackground`) now says so
+instead of quietly resolving to its replacement.
+
+
 **`registerWidget` may now be called before `initialize`, and validation
 honours what it registers.** It used to throw before initialization, which
 made host widgets impossible to use as documented: schema validation runs
