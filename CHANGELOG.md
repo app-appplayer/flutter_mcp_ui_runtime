@@ -1,4 +1,15 @@
-## Unreleased — `lazy` implements what it declares
+## Unreleased — `lazy` implements what it declares, and an unknown colour says so
+
+**An unrecognised colour name is reported.** `parseColor` returned null and
+the widget drew with no colour at all. Found on a live marketplace shelf: two
+bundles used `color: "tomato"` and went through publish, approval, purchase
+and install, then drew an uncoloured box on the buyer's screen with nothing
+anywhere to read. `Color` takes hex, the ten basic names and the Material 3
+scheme slots — §5.3.4 says CSS keyword colours are not canonical — so the
+document is wrong, and the schema says so wherever a document is validated. An
+installed bundle is not, which is why the screen had to. Once per distinct
+value: a colour is read on every rebuild.
+
 
 Found after 0.6.1 shipped, by fixing a harness rather than by a report.
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../renderer/render_context.dart';
+import '../utils/mcp_logger.dart';
 
 /// Base class for widget factories
 abstract class WidgetFactory {
@@ -349,11 +350,44 @@ abstract class WidgetFactory {
         return context.themeManager.getColorValue(value);
       }
 
+      _reportUnrecognisedColor(value);
       return null;
     }
 
     return null;
   }
+
+  /// Says so when a colour string matches nothing.
+  ///
+  /// An unrecognised name returned null and the widget drew with no colour at
+  /// all — the author saw an uncoloured box and had nothing to read. The
+  /// common case is a CSS keyword outside the ten basic names: `Color` takes
+  /// hex, those ten, and the Material 3 scheme slots, and §5.3.4 says CSS
+  /// keyword colours are not canonical. The schema rejects such a document,
+  /// but only where a document is validated — a bundle installed from a
+  /// marketplace reaches the screen without that check, and the screen was
+  /// silent.
+  ///
+  /// Once per distinct value: a colour is read on every rebuild, and a
+  /// per-frame log is a log nobody reads.
+  static void _reportUnrecognisedColor(String value) {
+    if (value.isEmpty || !_warnedColors.add(value)) return;
+    MCPLogger('WidgetFactory').warning(
+      'color "$value" is not a value Color accepts (spec §5.3.4): use hex '
+      '(#RGB / #RRGGBB / #AARRGGBB), one of the ten basic names '
+      '(red, blue, green, yellow, orange, purple, black, white, grey, gray), '
+      'or a Material 3 scheme slot such as `primary` or `onSurfaceVariant` — '
+      'the only spelling that follows light / dark mode. Nothing is painted '
+      'for an unrecognised name.',
+    );
+  }
+
+  static final Set<String> _warnedColors = <String>{};
+
+  /// Test seam: the warn-once set is process-wide, so a suite asserting on the
+  /// warning has to be able to start from nothing.
+  @visibleForTesting
+  static void resetColorWarnings() => _warnedColors.clear();
 
   /// Parse Alignment
   Alignment? parseAlignment(dynamic value) {
