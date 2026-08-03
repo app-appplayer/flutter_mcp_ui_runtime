@@ -10,6 +10,8 @@
 // that ignored the property entirely would still pass. The discriminating
 // cases are `none` and `bottom`.
 
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
@@ -52,6 +54,61 @@ Future<bool> _legendShown(
   return shown;
 }
 
+/// Counts the pixels the chart painter actually put on the canvas.
+///
+/// A chart that draws nothing looks identical to one that draws correctly in
+/// every check that asks "did it render" — the panel is there either way, and
+/// the panel is drawn by a `Container`, not by the painter. So the painter is
+/// run onto a transparent surface of its own and the opaque pixels counted:
+/// zero means it returned before drawing.
+///
+/// `approximateBytesUsed` was the first attempt and it does not discriminate —
+/// an empty picture still reports a size, so the mutation that restored the
+/// bug survived the test.
+Future<int> _paintedPixels(
+  WidgetTester tester,
+  Map<String, dynamic> chart,
+) async {
+  final runtime = MCPUIRuntime();
+  await runtime.initialize(
+    <String, dynamic>{'type': 'page', 'content': chart},
+    useCache: false,
+  );
+  await tester.pumpWidget(
+    MaterialApp(home: Scaffold(body: runtime.buildUI())),
+  );
+  await tester.pump(const Duration(milliseconds: 50));
+
+  var painted = 0;
+  // Rasterising is real async work; the test binding's fake clock never
+  // completes it unless it runs outside.
+  await tester.runAsync(() async {
+    for (final element in find.byType(CustomPaint).evaluate()) {
+      final painter = (element.widget as CustomPaint).painter;
+      final size = element.size;
+      if (painter == null || size == null || size.isEmpty) continue;
+
+      final recorder = PictureRecorder();
+      painter.paint(Canvas(recorder), size);
+      final picture = recorder.endRecording();
+      final image = await picture.toImage(
+        size.width.round(),
+        size.height.round(),
+      );
+      final bytes = await image.toByteData(format: ImageByteFormat.rawRgba);
+      picture.dispose();
+      image.dispose();
+      if (bytes == null) continue;
+      final data = bytes.buffer.asUint8List();
+      for (var i = 3; i < data.length; i += 4) {
+        if (data[i] != 0) painted++;
+      }
+    }
+  });
+  await runtime.dispose();
+  return painted;
+}
+
 void main() {
   testWidgets('the legend is drawn by default', (tester) async {
     // §10 gives `position` a default of `top`, so a chart that says nothing
@@ -71,6 +128,29 @@ void main() {
       await _legendShown(tester, _chart(legend: {'position': 'bottom'})),
       isTrue,
     );
+  });
+
+  testWidgets('a short chart still draws its bars', (tester) async {
+    // mark found this from the browser: the legend appeared exactly where the
+    // document asked and the plot area was empty. Turning the legend on by
+    // default left 77px of the 140 for the plot, and the painter's flat 40px
+    // gutter takes 80 of it — so every paint method returned before drawing.
+    // The number was the silent part; the default only made it common.
+    final painted = await _paintedPixels(tester, <String, dynamic>{
+      'type': 'chart',
+      'chartType': 'bar',
+      'height': 140,
+      'data': <Map<String, dynamic>>[
+        <String, dynamic>{'label': 'A', 'value': 3},
+        <String, dynamic>{'label': 'B', 'value': 7},
+        <String, dynamic>{'label': 'C', 'value': 5},
+      ],
+      'options': <String, dynamic>{
+        'legend': <String, dynamic>{'position': 'bottom'},
+      },
+    });
+    expect(painted, greaterThan(0),
+        reason: 'the painter drew nothing into a 140-tall chart');
   });
 
   testWidgets('the legacy `showLegend` is read only when position is absent',

@@ -75,6 +75,44 @@ class AssetResolver {
         if (originReader != null) AssetForm.origin,
       };
 
+  /// Decoded `data:` payloads, keyed by the URI that produced them.
+  ///
+  /// `MemoryImage`'s cache key is the byte list's *identity*, so decoding the
+  /// same URI again yields a provider Flutter's image cache has never seen:
+  /// every rebuild re-runs the base64 decode and the image decode, for a
+  /// picture that has not changed. A menu photo runs to 130 kB of base64, and
+  /// a page with two of them re-does that work on every frame that rebuilds.
+  ///
+  /// Bounded rather than unbounded: a document can name any number of data
+  /// URIs, and holding all of them would trade a stutter for a leak. The bound
+  /// is on entries, not bytes, because the entries are what the cache key
+  /// space grows with, and eviction is oldest-first — a rebuild re-reads the
+  /// same handful of images, so recency is the right thing to keep.
+  /// Static, and deliberately so: the resolver is a `const` value that hosts
+  /// construct freely, and a per-instance cache would miss every time a new
+  /// one is made. The same `data:` URI is the same picture whoever asks.
+  static const _dataImageCacheLimit = 64;
+  static final Map<String, MemoryImage> _dataImages = <String, MemoryImage>{};
+
+  static MemoryImage? _dataImage(String uri) {
+    final hit = _dataImages[uri];
+    if (hit != null) {
+      // Move to the end so the eviction below drops what has not been asked
+      // for, rather than what happened to arrive first.
+      _dataImages.remove(uri);
+      _dataImages[uri] = hit;
+      return hit;
+    }
+    final bytes = decodeDataUri(uri);
+    if (bytes == null) return null;
+    final image = MemoryImage(bytes);
+    if (_dataImages.length >= _dataImageCacheLimit) {
+      _dataImages.remove(_dataImages.keys.first);
+    }
+    _dataImages[uri] = image;
+    return image;
+  }
+
   /// Whether [ref] can be resolved at all.
   bool supports(AssetRef ref) => supportedForms.contains(ref.form);
 
@@ -90,8 +128,7 @@ class AssetResolver {
       case AssetForm.flutterAsset:
         return AssetImage(ref.uri);
       case AssetForm.data:
-        final bytes = decodeDataUri(ref.uri);
-        return bytes == null ? null : MemoryImage(bytes);
+        return _dataImage(ref.uri);
       case AssetForm.bundle:
       case AssetForm.client:
       case AssetForm.origin:

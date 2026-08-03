@@ -434,7 +434,7 @@ class _ChartPainter extends CustomPainter {
   }
 
   void _paintLineChart(Canvas canvas, Size size) {
-    final padding = showLabels ? 40.0 : 20.0;
+    final padding = _paddingFor(size);
     final graphWidth = size.width - padding * 2;
     final graphHeight = size.height - padding * 2;
 
@@ -515,7 +515,7 @@ class _ChartPainter extends CustomPainter {
 
   /// Paint multi-dataset line chart
   void _paintMultiLineChart(Canvas canvas, Size size) {
-    final padding = showLabels ? 40.0 : 20.0;
+    final padding = _paddingFor(size);
     final graphWidth = size.width - padding * 2;
     final graphHeight = size.height - padding * 2;
 
@@ -617,7 +617,7 @@ class _ChartPainter extends CustomPainter {
 
   /// Paint area chart (line chart with filled area, no data points)
   void _paintAreaChart(Canvas canvas, Size size) {
-    final padding = showLabels ? 40.0 : 20.0;
+    final padding = _paddingFor(size);
     final graphWidth = size.width - padding * 2;
     final graphHeight = size.height - padding * 2;
 
@@ -913,8 +913,24 @@ class _ChartPainter extends CustomPainter {
     }
   }
 
+  /// Axis gutter, never more than the box can spare.
+  ///
+  /// This was a flat 40 when labels are shown, and every paint method starts
+  /// by returning early if the padding leaves no room. A chart 140 tall with a
+  /// legend has 77 for the plot, 40 + 40 takes more than that, and the widget
+  /// drew a panel with nothing in it — no error, no warning, just an empty
+  /// box. Turning the legend on by default is what pushed the common case
+  /// over that line; the flat number was the thing that made it silent.
+  double _paddingFor(Size size) {
+    final wanted = showLabels ? 40.0 : 20.0;
+    // Leave at least half the box to the data. Below that the labels are
+    // worth less than the thing they label.
+    final affordable = math.min(size.width, size.height) / 4;
+    return math.max(4.0, math.min(wanted, affordable));
+  }
+
   void _paintBarChart(Canvas canvas, Size size) {
-    final padding = showLabels ? 40.0 : 20.0;
+    final padding = _paddingFor(size);
     final graphWidth = size.width - padding * 2;
     final graphHeight = size.height - padding * 2;
 
@@ -1064,7 +1080,7 @@ class _ChartPainter extends CustomPainter {
   }
 
   void _paintScatterChart(Canvas canvas, Size size) {
-    final padding = showLabels ? 40.0 : 20.0;
+    final padding = _paddingFor(size);
     final graphWidth = size.width - padding * 2;
     final graphHeight = size.height - padding * 2;
 
@@ -1180,7 +1196,7 @@ class _ChartPainter extends CustomPainter {
   /// Bubble — scatter where each marker's radius is proportional to
   /// the data value (relative to the maximum value in the dataset).
   void _paintBubbleChart(Canvas canvas, Size size) {
-    final padding = showLabels ? 40.0 : 20.0;
+    final padding = _paddingFor(size);
     final w = size.width - padding * 2;
     final h = size.height - padding * 2;
     if (w <= 0 || h <= 0 || data.isEmpty) return;
