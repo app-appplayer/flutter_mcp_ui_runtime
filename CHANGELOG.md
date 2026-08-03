@@ -75,6 +75,12 @@ selection. A `resume` with no `pause` before it no longer fires — §1.5.2 draw
 them as a pair, and a page built already-selected was reporting `onReady` and
 then immediately `onResume`.
 
+What a paused page contains is paused too. An instance-level `lifecycle`
+block heard `onInit` → `onMount` → `onReady` when its page opened and then
+nothing ever again — leaving the page paused the page, not the widget inside
+it, so a timer or a subscription started on mount kept running behind a tab
+nobody was looking at. Embedded `view` definitions follow the same way.
+
 **A destroyed page no longer fires `onPause`.** §6.8.3 said the unmount
 sequence opened with it; §1.5.1 defines the same hook as losing focus *without*
 being destroyed, and §1.5.2 draws it as half of `(onPause ↔ onResume)*`. The
