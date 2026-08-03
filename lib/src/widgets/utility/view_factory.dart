@@ -369,7 +369,7 @@ class _ViewWidgetState extends State<_ViewWidget> {
     _runner = LifecycleRunner(
       lifecycle: hooks,
       label: 'embedded definition',
-      execute: (action) => scope.actionHandler.execute(action, scope),
+      execute: (action, hook) => scope.actionHandler.execute(action, scope),
     );
 
     // Scheduled as a microtask, not a post-frame callback.

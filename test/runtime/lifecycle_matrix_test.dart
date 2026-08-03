@@ -110,7 +110,7 @@ void main() {
       final fired = <String>[];
       final runner = LifecycleRunner(
         lifecycle: LifecycleDefinition.fromDefinition(hooksBlock()),
-        execute: (a) async => fired.add(a['value'] as String),
+        execute: (a, hook) async => fired.add(a['value'] as String),
       );
       await runner.mount();
       expect(fired, <String>['onInit', 'onMount', 'onReady']);
@@ -125,7 +125,7 @@ void main() {
       final fired = <String>[];
       final runner = LifecycleRunner(
         lifecycle: LifecycleDefinition.fromDefinition(hooksBlock()),
-        execute: (a) async => fired.add(a['value'] as String),
+        execute: (a, hook) async => fired.add(a['value'] as String),
       );
       await runner.mount();
       fired.clear();
@@ -137,7 +137,7 @@ void main() {
       final fired = <String>[];
       final runner = LifecycleRunner(
         lifecycle: LifecycleDefinition.fromDefinition(hooksBlock()),
-        execute: (a) async => fired.add(a['value'] as String),
+        execute: (a, hook) async => fired.add(a['value'] as String),
       );
       await runner.mount();
       await runner.mount();
@@ -148,7 +148,7 @@ void main() {
       final fired = <String>[];
       final runner = LifecycleRunner(
         lifecycle: LifecycleDefinition.fromDefinition(hooksBlock()),
-        execute: (a) async => fired.add(a['value'] as String),
+        execute: (a, hook) async => fired.add(a['value'] as String),
       );
       await runner.unmount();
       expect(fired, isEmpty,
@@ -160,7 +160,7 @@ void main() {
       final fired = <String>[];
       final runner = LifecycleRunner(
         lifecycle: LifecycleDefinition.fromDefinition(hooksBlock()),
-        execute: (a) async {
+        execute: (a, hook) async {
           if (a['value'] == 'onMount') throw StateError('boom');
           fired.add(a['value'] as String);
         },

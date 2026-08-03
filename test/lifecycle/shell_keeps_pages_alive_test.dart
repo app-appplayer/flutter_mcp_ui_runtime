@@ -79,6 +79,35 @@ Future<(MCPUIRuntime, List<String>)> _open(
 }
 
 void main() {
+  testWidgets('a page hook is dispatched under its own event name',
+      (tester) async {
+    // The page path routes hooks through LifecycleManager, which dispatches
+    // any listener registered for that event. Every hook used to be labelled
+    // `mount`, so a host listening for `pause` heard nothing and one
+    // listening for `mount` heard all seven.
+    final (runtime, _) = await _open(tester, 'bottomNavigation');
+    final heard = <String>[];
+    for (final event in <LifecycleEvent>[
+      LifecycleEvent.pause,
+      LifecycleEvent.resume,
+      LifecycleEvent.mount,
+    ]) {
+      runtime.engine.lifecycle.addListener(event, () => heard.add(event.name));
+    }
+
+    await tester.tap(find.text('Order').last);
+    await tester.pumpAndSettle();
+    expect(heard, contains('pause'),
+        reason: 'leaving a page is a pause, whatever else it is');
+    heard.clear();
+
+    await tester.tap(find.text('Till').last);
+    await tester.pumpAndSettle();
+    expect(heard, contains('resume'));
+
+    await runtime.dispose();
+  });
+
   for (final navType in <String>['bottomNavigation', 'rail', 'tabs']) {
     group(navType, () {
       testWidgets('only the opened page initializes', (tester) async {

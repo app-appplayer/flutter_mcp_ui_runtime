@@ -81,6 +81,11 @@ nothing ever again — leaving the page paused the page, not the widget inside
 it, so a timer or a subscription started on mount kept running behind a tab
 nobody was looking at. Embedded `view` definitions follow the same way.
 
+Each page hook is now dispatched under its own event name. All seven were
+labelled `mount`, so a host listening for `pause` would have heard nothing and
+one listening for `mount` would have heard every hook. Nothing registers such
+a listener today, which is why it was invisible.
+
 **A destroyed page no longer fires `onPause`.** §6.8.3 said the unmount
 sequence opened with it; §1.5.1 defines the same hook as losing focus *without*
 being destroyed, and §1.5.2 draws it as half of `(onPause ↔ onResume)*`. The

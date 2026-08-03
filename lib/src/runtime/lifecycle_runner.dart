@@ -43,9 +43,17 @@ class LifecycleRunner {
 
   final LifecycleDefinition? lifecycle;
 
-  /// Runs one action. The caller supplies it so the runner stays free of any
-  /// particular scope, render context or action handler.
-  final Future<void> Function(Map<String, dynamic> action) execute;
+  /// Runs one action, told which hook it belongs to.
+  ///
+  /// The caller supplies it so the runner stays free of any particular scope,
+  /// render context or action handler. The hook name comes with it because a
+  /// caller that routes through [LifecycleManager] has to name the event: it
+  /// used to pass `mount` for all seven, so a listener registered for `pause`
+  /// would never fire and one registered for `mount` would fire on every
+  /// hook. Nothing registers listeners today, which is exactly why this was
+  /// invisible.
+  final Future<void> Function(Map<String, dynamic> action, String hook)
+      execute;
 
   /// Used in log lines to say which definition a failing hook belongs to.
   final String label;
@@ -101,7 +109,7 @@ class LifecycleRunner {
     if (actions == null || actions.isEmpty) return;
     for (final action in actions) {
       try {
-        await execute(action);
+        await execute(action, name);
       } catch (e) {
         _logger.warning('$label $name failed: $e');
       }

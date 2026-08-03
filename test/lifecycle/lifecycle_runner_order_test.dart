@@ -37,7 +37,7 @@ void main() {
     fired = <String>[];
     runner = LifecycleRunner(
       lifecycle: _allSeven(),
-      execute: (action) async => fired.add(action['tool'] as String),
+      execute: (action, hook) async => fired.add(action['tool'] as String),
     );
   });
 
@@ -82,6 +82,32 @@ void main() {
     expect(fired, isEmpty,
         reason: 'releasing what was never started would tear down a resource '
             'this definition does not hold');
+  });
+
+  test('each action is told which hook it belongs to', () async {
+    // The runner used to hand every action to the caller with no hook name,
+    // and the one caller that routes through LifecycleManager labelled all
+    // seven `mount`. A listener registered for `pause` would never have
+    // fired, and one registered for `mount` would have fired on every hook.
+    // Nothing registers listeners today, which is why it was invisible.
+    final seen = <String>[];
+    final named = LifecycleRunner(
+      lifecycle: _allSeven(),
+      execute: (action, hook) async => seen.add(hook),
+    );
+    await named.mount();
+    await named.pause();
+    await named.resume();
+    await named.unmount();
+    expect(seen, <String>[
+      'onInit',
+      'onMount',
+      'onReady',
+      'onPause',
+      'onResume',
+      'onUnmount',
+      'onDestroy',
+    ]);
   });
 
   test('mount and unmount are each idempotent', () async {

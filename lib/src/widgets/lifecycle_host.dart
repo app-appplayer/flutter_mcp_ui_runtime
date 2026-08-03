@@ -65,7 +65,7 @@ class _LifecycleHostState extends State<LifecycleHost> {
   late final LifecycleRunner _runner = LifecycleRunner(
     lifecycle: widget.hooks,
     label: widget.label,
-    execute: (action) => widget.context.actionHandler.execute(
+    execute: (action, hook) => widget.context.actionHandler.execute(
       action,
       widget.context,
     ),

@@ -168,13 +168,34 @@ class _MCPPageWidgetState extends State<MCPPageWidget>
     _runner = LifecycleRunner(
       lifecycle: widget.pageDefinition.lifecycleDefinition,
       label: 'page',
-      execute: (action) =>
+      execute: (action, hook) =>
           widget.runtimeEngine.lifecycle.executeLifecycleHooks(
-        LifecycleEvent.mount,
+        _eventFor(hook),
         <dynamic>[action],
       ),
     );
     unawaited(_runner!.mount());
+  }
+
+  /// The hook's own event, so a listener registered for it actually hears it.
+  static LifecycleEvent _eventFor(String hook) {
+    switch (hook) {
+      case 'onInit':
+        return LifecycleEvent.initialize;
+      case 'onMount':
+        return LifecycleEvent.mount;
+      case 'onReady':
+        return LifecycleEvent.ready;
+      case 'onPause':
+        return LifecycleEvent.pause;
+      case 'onResume':
+        return LifecycleEvent.resume;
+      case 'onUnmount':
+        return LifecycleEvent.unmount;
+      case 'onDestroy':
+        return LifecycleEvent.destroy;
+    }
+    return LifecycleEvent.mount;
   }
 
   LifecycleRunner? _runner;
