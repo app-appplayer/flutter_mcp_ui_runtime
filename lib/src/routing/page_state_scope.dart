@@ -8,6 +8,7 @@ import '../runtime/lifecycle_manager.dart';
 import '../runtime/lifecycle_runner.dart';
 import '../renderer/render_context.dart';
 import '../services/navigation_service.dart';
+import 'page_activity_scope.dart';
 
 /// Provides a page-specific state scope for multi-page applications
 class PageStateScope extends InheritedNotifier<PageStateNotifier> {
@@ -102,6 +103,7 @@ class _MCPPageWidgetState extends State<MCPPageWidget>
   void didUpdateWidget(MCPPageWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.isActive == widget.isActive) return;
+    _active.value = widget.isActive;
     unawaited(widget.isActive
         ? (_runner?.resume() ?? Future<void>.value())
         : (_runner?.pause() ?? Future<void>.value()));
@@ -125,6 +127,7 @@ class _MCPPageWidgetState extends State<MCPPageWidget>
   /// Another route was pushed over this page — it stays mounted.
   @override
   void didPushNext() {
+    _active.value = false;
     unawaited(_runner?.pause() ?? Future<void>.value());
   }
 
@@ -133,6 +136,7 @@ class _MCPPageWidgetState extends State<MCPPageWidget>
   /// `onInit` a replaced page gets on its next visit (§6.8.3).
   @override
   void didPopNext() {
+    _active.value = true;
     unawaited(_runner?.resume() ?? Future<void>.value());
   }
 
@@ -175,9 +179,14 @@ class _MCPPageWidgetState extends State<MCPPageWidget>
 
   LifecycleRunner? _runner;
 
+  /// Published to the subtree so instance-level `lifecycle` blocks and
+  /// embedded views can follow the page they are in.
+  final ValueNotifier<bool> _active = ValueNotifier<bool>(true);
+
   @override
   void dispose() {
     NavigationService.instance.routeObserver.unsubscribe(this);
+    _active.dispose();
     // The runner fires onUnmount → onDestroy (§6.8.3). `onPause` is not part
     // of it: this page is being destroyed, and §1.5.1 defines that hook as
     // losing focus *without* being destroyed. It is not
@@ -226,7 +235,9 @@ class _MCPPageWidgetState extends State<MCPPageWidget>
     final suppressAppBar = outerScaffold != null ||
         title == null ||
         title.isEmpty;
-    return Scaffold(
+    return PageActivityScope(
+      isActive: _active,
+      child: Scaffold(
       appBar: suppressAppBar
           ? null
           : AppBar(
@@ -243,7 +254,8 @@ class _MCPPageWidgetState extends State<MCPPageWidget>
                     ]
                   : const <Widget>[],
             ),
-      body: body,
+        body: body,
+      ),
     );
   }
 }
