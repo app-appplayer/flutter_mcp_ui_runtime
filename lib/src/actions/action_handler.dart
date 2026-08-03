@@ -438,9 +438,22 @@ class ToolActionExecutor extends ActionExecutor {
     // Try to find specific tool executor, fallback to 'default' handler
     final toolExecutor = _toolExecutors?[tool] ?? _toolExecutors?['default'];
     if (toolExecutor == null) {
-      _logger.error(
-          'Tool executor not found: $tool, available: ${_toolExecutors?.keys}');
-      return ActionResult.error('Tool executor not found: $tool');
+      // An empty map is a different failure from a missing name: no executor
+      // has been registered at all, which is what an application-level
+      // `onInit` hits when the host passes `onToolCall` only to `buildUI`.
+      // Reported apart because "not found" reads as a host that forgot to
+      // register, and sends the reader looking in the wrong place.
+      final none = _toolExecutors == null || _toolExecutors!.isEmpty;
+      final message = none
+          ? 'Tool executor not found: $tool — no executor is registered at '
+              'all. If this call came from a definition-level `onInit`, that '
+              'hook runs during initialize(): pass `onToolCall` to '
+              '`initialize`, because passing it only to `buildUI` registers '
+              'after the hook has already run.'
+          : 'Tool executor not found: $tool, '
+              'available: ${_toolExecutors?.keys}';
+      _logger.error(message);
+      return ActionResult.error(message);
     }
 
     _logger.debug('Found tool executor for: $tool');

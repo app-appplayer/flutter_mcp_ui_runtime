@@ -38,6 +38,27 @@ because an embedded viewer reports nothing back.
 An out-of-range `selectedIndex` on `bottomNavigation` now clamps instead of
 tripping a framework assertion and taking the page with it.
 
+**A definition-level `onInit` can call a tool again.** The hook runs inside
+`initialize` (§1.5.2 puts it before the first render) and the tool executor was
+registered from `buildUI`, so an application whose `onInit` loaded its first
+data reached nothing at all — no error to the author, and the server never saw
+the call. `initialize` now takes `onToolCall` too. A host that passes it only
+to `buildUI` keeps working and is told what happened: the "no executor
+registered *at all*" case is reported apart from "that tool is not registered",
+because the two send the reader to different places.
+
+**`kanban` joined §2.15.** It grew per-column scrolling in this cut, which is
+what makes a widget need a bounded parent, and the hand-written list did not
+follow. `bounded_parent_axis_test` now pins that list against what actually
+happens under a scrolling page — including that the `sizedBox` remedy the
+section prescribes works.
+
+§6.12.8 says what was previously nowhere: an asset carried as bytes through
+state gives up its identity, so it is re-sent and re-parsed on every delivery
+and the host never sees a reference it could apply a size policy to. §1.5.2
+says the other thing that was nowhere: returning to a page is a new instance,
+not a resume, so a fetch in a page's `onInit` runs on every visit.
+
 
 **Two deprecation warnings were pointed at the wrong people.**
 

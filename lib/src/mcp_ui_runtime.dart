@@ -175,6 +175,15 @@ class MCPUIRuntime {
   /// `entry.*` absent, because §8.9.1 reserves that tree for definitions
   /// reached from outside. A document deciding "was I scanned?" would
   /// otherwise read a navigation as a scan.
+  ///
+  /// [onToolCall] is the same callback [buildUI] takes, registered *before*
+  /// the definition's `onInit` runs. §1.5.3 shows a definition-level
+  /// `onInit` calling a tool, and §1.5.2 puts `onInit` ahead of the first
+  /// render — so a host that only passes the callback to `buildUI` has no
+  /// executor at the moment the hook fires, and an application-level
+  /// `onInit` tool call reaches nothing. Passing it here closes that window.
+  /// Hosts that pass it only to `buildUI` keep working unchanged; their
+  /// application-level `onInit` tool calls are the ones that cannot land.
   Future<void> initialize(
     Map<String, dynamic> definition, {
     Function(String)? pageLoader,
@@ -183,9 +192,15 @@ class MCPUIRuntime {
     EntryContext? entry,
     IdentityContext? identity,
     String? launchRoute,
+    Function(String, Map<String, dynamic>)? onToolCall,
   }) async {
     if (_isInitialized) {
       throw StateError('MCP UI Runtime is already initialized');
+    }
+
+    // Before `_engine.initialize`, which is where `onInit` fires.
+    if (onToolCall != null) {
+      _engine.actionHandler.registerToolExecutor('default', onToolCall);
     }
 
     if (validateSchema) {
