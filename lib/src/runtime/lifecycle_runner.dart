@@ -54,6 +54,7 @@ class LifecycleRunner {
 
   bool _mounted = false;
   bool _unmounted = false;
+  bool _paused = false;
 
   /// `onInit` → `onMount` → `onReady`. Idempotent: a rebuild must not
   /// re-subscribe, so a second call is a no-op.
@@ -76,10 +77,25 @@ class LifecycleRunner {
   }
 
   /// Focus lost without teardown — the definition stays mounted.
-  Future<void> pause() => _run('onPause', lifecycle?.onPause);
+  /// A second call while already paused is a no-op: the instance cannot lose
+  /// focus it has already lost.
+  Future<void> pause() async {
+    if (!_mounted || _unmounted || _paused) return;
+    _paused = true;
+    await _run('onPause', lifecycle?.onPause);
+  }
 
   /// Focus regained after [pause].
-  Future<void> resume() => _run('onResume', lifecycle?.onResume);
+  ///
+  /// Only fires when this instance was actually paused. §1.5.2 draws the two
+  /// as a pair, so a resume with no pause before it says something that did
+  /// not happen — a shell that builds a page already selected would otherwise
+  /// report `onReady` and then immediately `onResume`.
+  Future<void> resume() async {
+    if (!_paused) return;
+    _paused = false;
+    await _run('onResume', lifecycle?.onResume);
+  }
 
   Future<void> _run(String name, List<Map<String, dynamic>>? actions) async {
     if (actions == null || actions.isEmpty) return;

@@ -888,6 +888,11 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
               return MaterialApp(
                 navigatorKey:
                     navKey, // Essential for dialogs and navigation to work
+                // Feeds `onPause` / `onResume`: a page covered by a pushed
+                // route is not disposed, so this is the only report of it.
+                navigatorObservers: <NavigatorObserver>[
+                  NavigationService.instance.routeObserver,
+                ],
                 title: appDefinition.title,
                 theme: widget.engine.themeManager.toFlutterTheme(),
                 darkTheme:
@@ -913,6 +918,11 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
               return MaterialApp(
                 navigatorKey:
                     navKey, // Essential for dialogs and navigation to work
+                // Feeds `onPause` / `onResume`: a page covered by a pushed
+                // route is not disposed, so this is the only report of it.
+                navigatorObservers: <NavigatorObserver>[
+                  NavigationService.instance.routeObserver,
+                ],
                 title: appDefinition.title,
                 theme: widget.engine.themeManager.toFlutterTheme(),
                 darkTheme:
@@ -1167,6 +1177,54 @@ class _ApplicationShellState extends State<_ApplicationShell> {
     super.dispose();
   }
 
+  /// Indices the user has actually opened. A page is built on its first
+  /// visit and kept from then on, so switching back is a resume rather than a
+  /// rebuild — but an app with six tabs does not pay for five of them at
+  /// startup, and their `onInit` does not fire before anyone has looked.
+  final Set<int> _visited = <int>{0};
+
+  /// The shell body: every visited page, kept alive, with one of them shown.
+  ///
+  /// Each branch used to build its own `FutureBuilder` keyed on the current
+  /// route, which destroys and rebuilds the page on every switch — `onInit` →
+  /// `onMount` → `onReady` again, tools called again, images fetched and
+  /// decoded again. That is not what a Flutter app does with a tab bar, and
+  /// it is not what §6.8.3 describes for a navigation that keeps its pages:
+  /// leaving one is `onPause`, coming back is `onResume`, and the instance in
+  /// between is the same one.
+  Widget _shellBody(NavigationDefinition navigation) {
+    _visited.add(_currentIndex);
+    return IndexedStack(
+      index: _currentIndex,
+      sizing: StackFit.expand,
+      children: <Widget>[
+        for (var i = 0; i < navigation.items.length; i++)
+          if (!_visited.contains(i))
+            const SizedBox.shrink()
+          else
+            FutureBuilder<PageDefinition>(
+              key: ValueKey<String>(navigation.items[i].route),
+              future: _loadPageDefinition(navigation.items[i].route),
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  return AnimatedBuilder(
+                    animation: widget.engine.stateManager,
+                    builder: (context, child) => MCPPageWidget(
+                      pageDefinition: snapshot.data!,
+                      runtimeEngine: widget.engine,
+                      isActive: i == _currentIndex,
+                    ),
+                  );
+                } else if (snapshot.hasError) {
+                  return _buildErrorPage(snapshot.error);
+                }
+                return _buildLoadingPage();
+              },
+            ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final navigation = widget.appDefinition.navigationDefinition;
@@ -1196,8 +1254,6 @@ class _ApplicationShellState extends State<_ApplicationShell> {
       );
     }
 
-    // Get current route
-    final currentRoute = navigation.items[_currentIndex].route;
 
     switch (navigation.type) {
       case 'tabs':
@@ -1234,32 +1290,34 @@ class _ApplicationShellState extends State<_ApplicationShell> {
                         .toList(),
                   ),
                 ),
+            // TabBarView rather than the shared IndexedStack body, because
+            // swiping between tabs is the point of this shape. Its children
+            // keep themselves alive (`MCPPageWidget` is an
+            // AutomaticKeepAliveClient), so a swipe away and back is the same
+            // instance here too.
             body: TabBarView(
-              children: navigation.items.map((navItem) {
-                final route = navItem.route;
-                return FutureBuilder<PageDefinition>(
-                  key: ValueKey(route),
-                  future: _loadPageDefinition(route),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasData) {
-                      // Wrap in AnimatedBuilder to listen to StateManager changes
-                      return AnimatedBuilder(
-                        animation: widget.engine.stateManager,
-                        builder: (context, child) {
-                          return MCPPageWidget(
+              children: <Widget>[
+                for (var i = 0; i < navigation.items.length; i++)
+                  FutureBuilder<PageDefinition>(
+                    key: ValueKey<String>(navigation.items[i].route),
+                    future: _loadPageDefinition(navigation.items[i].route),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        return AnimatedBuilder(
+                          animation: widget.engine.stateManager,
+                          builder: (context, child) => MCPPageWidget(
                             pageDefinition: snapshot.data!,
                             runtimeEngine: widget.engine,
-                          );
-                        },
-                      );
-                    } else if (snapshot.hasError) {
-                      return _buildErrorPage(snapshot.error);
-                    } else {
+                            isActive: i == _currentIndex,
+                          ),
+                        );
+                      } else if (snapshot.hasError) {
+                        return _buildErrorPage(snapshot.error);
+                      }
                       return _buildLoadingPage();
-                    }
-                  },
-                );
-              }).toList(),
+                    },
+                  ),
+              ],
             ),
               );
             },
@@ -1307,24 +1365,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
               ),
               const VerticalDivider(thickness: 1, width: 1),
               Expanded(
-                child: FutureBuilder<PageDefinition>(
-                  key: ValueKey(currentRoute),
-                  future: _loadPageDefinition(currentRoute),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasData) {
-                      return AnimatedBuilder(
-                        animation: widget.engine.stateManager,
-                        builder: (context, child) => MCPPageWidget(
-                          pageDefinition: snapshot.data!,
-                          runtimeEngine: widget.engine,
-                        ),
-                      );
-                    } else if (snapshot.hasError) {
-                      return _buildErrorPage(snapshot.error);
-                    }
-                    return _buildLoadingPage();
-                  },
-                ),
+                child: _shellBody(navigation),
               ),
             ],
           ),
@@ -1339,28 +1380,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
             title: Text(widget.appDefinition.title),
             actions: _shellAppBarActions(),
           ),
-          body: FutureBuilder<PageDefinition>(
-            key: ValueKey(currentRoute),
-            future: _loadPageDefinition(currentRoute),
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                // Wrap in AnimatedBuilder to listen to StateManager changes
-                return AnimatedBuilder(
-                  animation: widget.engine.stateManager,
-                  builder: (context, child) {
-                    return MCPPageWidget(
-                      pageDefinition: snapshot.data!,
-                      runtimeEngine: widget.engine,
-                    );
-                  },
-                );
-              } else if (snapshot.hasError) {
-                return _buildErrorPage(snapshot.error);
-              } else {
-                return _buildLoadingPage();
-              }
-            },
-          ),
+          body: _shellBody(navigation),
           bottomNavigationBar: BottomNavigationBar(
             type: BottomNavigationBarType.fixed,
             currentIndex: _currentIndex,
@@ -1429,28 +1449,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
               ],
             ),
           ),
-          body: FutureBuilder<PageDefinition>(
-            key: ValueKey(currentRoute),
-            future: _loadPageDefinition(currentRoute),
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                // Wrap in AnimatedBuilder to listen to StateManager changes
-                return AnimatedBuilder(
-                  animation: widget.engine.stateManager,
-                  builder: (context, child) {
-                    return MCPPageWidget(
-                      pageDefinition: snapshot.data!,
-                      runtimeEngine: widget.engine,
-                    );
-                  },
-                );
-              } else if (snapshot.hasError) {
-                return _buildErrorPage(snapshot.error);
-              } else {
-                return _buildLoadingPage();
-              }
-            },
-          ),
+          body: _shellBody(navigation),
         );
     }
   }

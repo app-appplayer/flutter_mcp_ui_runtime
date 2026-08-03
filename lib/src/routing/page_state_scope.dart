@@ -7,6 +7,7 @@ import '../runtime/runtime_engine.dart';
 import '../runtime/lifecycle_manager.dart';
 import '../runtime/lifecycle_runner.dart';
 import '../renderer/render_context.dart';
+import '../services/navigation_service.dart';
 
 /// Provides a page-specific state scope for multi-page applications
 class PageStateScope extends InheritedNotifier<PageStateNotifier> {
@@ -61,13 +62,33 @@ class MCPPageWidget extends StatefulWidget {
     super.key,
     required this.pageDefinition,
     required this.runtimeEngine,
+    this.isActive = true,
   });
+
+  /// Whether this page is the one currently shown.
+  ///
+  /// A shell that keeps its pages alive (a tab bar, a rail, a bottom bar)
+  /// leaves every visited page mounted and shows one of them, so no route
+  /// changes and `RouteAware` hears nothing. Flipping this is that shell's
+  /// report of the same event `didPushNext` / `didPopNext` reports for a
+  /// pushed route — and it is why leaving a tab is `onPause` rather than the
+  /// `onUnmount` → `onDestroy` it used to be.
+  final bool isActive;
 
   @override
   State<MCPPageWidget> createState() => _MCPPageWidgetState();
 }
 
-class _MCPPageWidgetState extends State<MCPPageWidget> {
+class _MCPPageWidgetState extends State<MCPPageWidget>
+    with RouteAware, AutomaticKeepAliveClientMixin {
+  // TabBarView disposes children that scroll out of view. That is right for a
+  // list and wrong for a page: a swipe to the next tab and back would rebuild
+  // the one behind, re-running `onInit` and everything it fetches. Kept alive,
+  // the swipe back is the same instance — which is what makes `onPause` /
+  // `onResume` mean anything here.
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +96,44 @@ class _MCPPageWidgetState extends State<MCPPageWidget> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializePage();
     });
+  }
+
+  @override
+  void didUpdateWidget(MCPPageWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive == widget.isActive) return;
+    unawaited(widget.isActive
+        ? (_runner?.resume() ?? Future<void>.value())
+        : (_runner?.pause() ?? Future<void>.value()));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // `onPause` / `onResume` (§1.5.1) describe a page that loses focus
+    // *without* being destroyed, and a page covered by a pushed route is
+    // exactly that: its element stays in the tree, so `dispose` never runs
+    // and nothing else reports the change. `RouteAware` is the framework's
+    // own answer to that question, so the hooks ride on it rather than on a
+    // second mechanism.
+    final route = ModalRoute.of(context);
+    if (route is ModalRoute<void>) {
+      NavigationService.instance.routeObserver.subscribe(this, route);
+    }
+  }
+
+  /// Another route was pushed over this page — it stays mounted.
+  @override
+  void didPushNext() {
+    unawaited(_runner?.pause() ?? Future<void>.value());
+  }
+
+  /// The route above this page was popped — this instance is visible again,
+  /// and it is the *same* instance, which is what separates this from the
+  /// `onInit` a replaced page gets on its next visit (§6.8.3).
+  @override
+  void didPopNext() {
+    unawaited(_runner?.resume() ?? Future<void>.value());
   }
 
   /// Seeds page state and channels, then runs the page's own lifecycle.
@@ -118,6 +177,7 @@ class _MCPPageWidgetState extends State<MCPPageWidget> {
 
   @override
   void dispose() {
+    NavigationService.instance.routeObserver.unsubscribe(this);
     // The runner fires onUnmount → onDestroy (§6.8.3). `onPause` is not part
     // of it: this page is being destroyed, and §1.5.1 defines that hook as
     // losing focus *without* being destroyed. It is not
@@ -132,6 +192,7 @@ class _MCPPageWidgetState extends State<MCPPageWidget> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // AutomaticKeepAliveClientMixin
     // Create render context with BuildContext for state resolution
     final renderContext = RenderContext(
       renderer: widget.runtimeEngine.renderer,

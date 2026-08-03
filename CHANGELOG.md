@@ -53,6 +53,28 @@ follow. `bounded_parent_axis_test` now pins that list against what actually
 happens under a scrolling page — including that the `sizedBox` remedy the
 section prescribes works.
 
+**A tab bar no longer rebuilds the page you came back to.** Every branch of
+the application shell built its body from a `FutureBuilder` keyed on the
+current route, so switching destroyed the outgoing page and built the incoming
+one from nothing — `onInit` → `onMount` → `onReady` again, tools called again,
+images fetched and decoded again, on every tap. A page that loads its data in
+`onInit`, which is the shape §1.5.3 shows, re-fetched on every visit.
+
+Pages now stay mounted: leaving one fires `onPause`, returning fires
+`onResume`, and it is the same instance in between. A page is built on its
+first visit, so six tabs do not run five `onInit`s before anyone has opened
+them.
+
+`onPause` / `onResume` had in fact never fired for a routed page at all. A
+page covered by a pushed route is not disposed either — `dispose` never runs
+and nothing else reports the change — so it heard nothing on the way out and
+nothing on the way back. Both paths now report: the pushed-over case through
+`RouteAware`'s `didPushNext` / `didPopNext`, which is the framework's own
+answer to that question, and the shell case through the shell that owns the
+selection. A `resume` with no `pause` before it no longer fires — §1.5.2 draws
+them as a pair, and a page built already-selected was reporting `onReady` and
+then immediately `onResume`.
+
 **A destroyed page no longer fires `onPause`.** §6.8.3 said the unmount
 sequence opened with it; §1.5.1 defines the same hook as losing focus *without*
 being destroyed, and §1.5.2 draws it as half of `(onPause ↔ onResume)*`. The
