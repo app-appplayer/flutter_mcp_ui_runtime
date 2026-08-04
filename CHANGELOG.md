@@ -1,3 +1,163 @@
+## Unreleased — expressions the spec's own examples use
+
+**A `validation` block does something.** The rules were parsed, `validate` was
+called on every keystroke, and the result was dropped — under a comment saying
+it would be used "later if needed". A field declaring `required` or
+`minLength` therefore accepted anything, which reads as input that was always
+valid. The message now shows on the field; an explicit `error` still wins.
+
+**§3.8 computed properties and §3.9 state watchers reach a document.** Both
+were implemented and wired only to a runtime `services.state` block, so a page
+or application that declared them the way the spec writes them — inside its own
+`state` — got nothing at all: a computed value that never appeared and a
+watcher whose actions never ran, neither of which reports anything. They are
+read from the definition's `state` now, in the spec's own shape
+(`"total": "{{a + b}}"`, dependencies detected from the expression) as well as
+the older `{expression, dependencies}` wrap.
+
+**`debounce` on a text field took the page down.** The debounced field looked
+its own factory up as `TextField` while the registry key is `textInput`, so
+the lookup returned null and the `!` threw during `initState` — every document
+that declared `debounce`, which is the property a search box exists to use,
+replaced its page with a null-check error. Both lookups use the canonical key
+now, and the window itself is pinned: held until it closes, only the last
+value in a burst delivered, and the caret never waits on it.
+
+**A bound `selectedDate` moves the calendar.** The date was read once in
+`initState`, so a calendar bound to state kept showing the month it first
+rendered — a server push or a date picked elsewhere on the page changed
+nothing, with no sign that anything had been asked of it. Its day-select event
+also reports `event.value` now, alongside the `event.date` it already sent:
+every other input reports `value`, and that is what a document binds by habit.
+
+**`channel.send` on an inbound-only channel is reported.** It logged one debug
+line and returned, so a document sending on an `mcpStream` got a success it
+could not tell apart from a delivered message.
+
+**A comma inside a quoted argument ended the argument.** `format(price,
+'#,##0.00')` — §3.6.1's own example — arrived as three arguments, so the
+pattern lost its grouping and its decimals and `1234.5` came back as `1235`.
+`split(text, ',')` had the same shape. The splitter respects quotes now, as it
+already respected parentheses.
+
+**A nested call was read as a variable name.** An argument that was itself a
+call fell through to the path branch, so `length(filter(items, 'completed'))`
+— again the spec's example — looked up a variable literally named
+`filter(items, 'completed')`, found nothing, and answered 0 for every input.
+
+**`min` / `max` take the arguments they are documented with.** §3.6.1 writes
+`max(a, b, ...)`; the implementation handled exactly two, and a third made the
+whole call resolve to null — which a document shows as an empty value rather
+than as an error.
+
+**`map` accepts a lambda.** `filter` and `reduce` both read one; `map` went
+straight to the property-name branch, stringified the lambda into a property no
+item carries, and returned every item unchanged — the input list, which reads
+as a mapping that did nothing rather than one that never ran.
+
+**`{{runtime.version}}` reports the version this package implements.** It
+answered a hardcoded `1.1`, two cuts stale and a number nothing else in the
+system used; it reads `MCPUIDSLVersion.current` now.
+
+**Client resources**: a workspace or temp file could be written and then not
+read back. The containment check resolved the *target* through symlinks and
+compared it against an unresolved root, so any workspace reached through a
+link — `/var/folders/…` on macOS, and anything under it — rejected its own
+files as escaping. Both sides are resolved now. A custom resource provider
+that throws is reported as a result rather than escaping to the caller, and an
+unknown file extension is treated as binary, which is what its own
+`application/octet-stream` content type already said.
+
+**Channels**: stopping a channel moves its state. The subscription was
+cancelled but `_channelStates` stayed on `connected`, so `getChannelState` and
+every binding reading it reported a live channel that would never deliver
+again — and `toggleChannel`, reading the same stale picture, refused to turn it
+back on. A channel action naming a channel that was never declared is reported
+(`NOT_FOUND`) instead of returning success, which left a page waiting for data
+with `onError` never firing.
+
+**Dialogs**: `showOverlay` never worked — it looked for an `Overlay` *above*
+the overlay's own context and threw every time; it reads the navigator's
+overlay now. `showInput` disposed its controller while the dialog was still
+animating out, tripping a framework assertion in debug and leaving a listener
+on a dead object in release.
+
+**Batch**: an empty `actions` list is a batch with nothing to do rather than an
+authoring error — a document that builds its actions from a filtered list
+produces one legitimately. A *missing* list is still an error.
+
+**Error boundary**: the global `FlutterError.onError` and `ErrorWidget.builder`
+are restored when the boundary is disposed. Both were taken over and never
+given back — and `ErrorWidget.builder` was assigned from `build`, so the last
+boundary to build owned the application's error surface for the rest of the
+process, including after it was gone.
+
+## Unreleased — a shell app can reach its own pages
+
+**A route declared in `routes` was unreachable inside a navigation shell.**
+Four things had to line up and none of them did. The shell's `MaterialApp` was
+built with `home:` and no `routes:` table, so no named route resolved there.
+The shell registers a handler that maps a route to a tab index and returns
+`false` for anything else — its own comment says "let other handlers process
+this" — but the executor read that `false` as a refusal and stopped, so the
+fall-through to the navigator never ran. The tab strip itself was placed with
+`DefaultTabController(initialIndex:)`, which only applies at creation, so a
+route-driven switch moved `_currentIndex` and the navigation state while the
+screen stayed where it was. And that controller's listener was attached inside
+`build`, stacking a new one on every rebuild.
+
+Now: the document's routes are registered in both branches; a declining
+handler hands the route on instead of ending it; a programmatic index change
+drives the controller (a user tap still moves the controller first, and the
+shell follows it — pushing back in that direction fought the gesture); the
+listener attaches once.
+
+**A launch route is honoured wherever there is a shell.** The shell picked its
+tab from `appDefinition.initialRoute` and never consulted `RouteManager`, so
+three stations opening the same application at `/kiosk`, `/pos` and `/kds` all
+drew the first tab (reported by konpi, 2026-08-03; present since 0.1.0). It
+reads `RouteManager.initialRoute` now, which is the requested route when the
+document declares it and the document's own otherwise. A launch route that
+names a declared page with no tab of its own — the usual shape of a scanned
+code — opens over the shell once the first frame exists, so back returns to
+the tab the document names.
+
+**`ComputedManager`**: every computed property threw. `_recompute` hands
+`BindingEngine` a `SimpleComputedContext`, and the engine's resolution chain
+asks for `themeManager` before it knows whether the path is a theme path — the
+context was written to refuse, so nothing resolved. Watchers primed their
+baseline only when `immediate: true`, so the first change reported `null` as
+the old value and setting an unchanged value counted as a change. And
+`dispose` cleared its own maps while leaving its closures on the shared
+`StateManager`, so a discarded manager kept delivering for the life of the
+state object.
+
+## Unreleased — one reading of `Color`, `lazy` implements what it declares
+
+**Four color parsers became one.** The warning below was added to
+`WidgetFactory.parseColor` and then the axis was measured properly: three more
+parsers answered the same question differently, so whether a document was legal
+depended on which property it landed in. The page renderer took `pink` and
+`transparent` — neither is in §5.3.4 — knew no scheme slot at all, so a page
+`backgroundColor: "primary"` was silently dropped, and read `#fff` as
+`0xFF000FFF`, a near-black blue, where the spec says white. The theme took
+`rgb()` and nothing else: no three-digit hex, none of the ten names. A dialog
+parsed `#RRGGBB` without an alpha channel, producing `0x00RRGGBB` — fully
+transparent, for a background that had been asked for explicitly. All four now
+call `DslColor.parse`, which is §5.3.4 and nothing else: scheme slot, hex in
+three lengths, the ten basic names, and `rgb()`/`rgba()` (accepted here for the
+first time — the spec rated it SHOULD and the runtime rejected it).
+
+**Three holes in the warning itself.** A malformed hex (`#12345`) returned null
+without a word, which is the failure the warning exists to stop. A valid scheme
+slot read on a surface with no theme was reported as *not a color*, sending an
+author to fix a correct line. And the warn-once set was an unbounded
+process-wide `Set` — colors arrive from state, so it grew for the life of the
+process; it is capped at 128 distinct values and says when it stops.
+
+An unresolved binding reaching the parser stays silent: it is the binding
+layer's failure, and naming it a color error points at the wrong line.
+
 ## Unreleased — `lazy` implements what it declares, and an unknown colour says so
 
 **An unrecognised colour name is reported.** `parseColor` returned null and

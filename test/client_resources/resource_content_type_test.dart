@@ -122,9 +122,10 @@ void main() {
     });
 
     group('TC-022: Unknown content type', () {
-      test('TC-022 Normal: unknown extension defaults to non-binary', () {
+      test('TC-022 Normal: unknown extension defaults to binary', () {
         final ct = ResourceContentType.fromExtension('xyz');
-        expect(ct.isBinary, false);
+        expect(ct.isBinary, true,
+            reason: 'octet-stream and "treat as text" cannot both be true');
         expect(ct.mimeType, 'application/octet-stream');
       });
 

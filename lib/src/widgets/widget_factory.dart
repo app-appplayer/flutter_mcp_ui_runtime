@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../renderer/render_context.dart';
-import '../utils/mcp_logger.dart';
+import '../utils/color_parser.dart';
 
 /// Base class for widget factories
 abstract class WidgetFactory {
@@ -220,62 +220,6 @@ abstract class WidgetFactory {
     return parseAlignment(value);
   }
 
-  /// Canonical M3 28-role color slot names resolved by [parseColor] when a
-  /// [RenderContext] is provided. Spec §5.3 — `theme.color.<slot>`.
-  static const Set<String> _themeSlotNames = <String>{
-    // Primary family
-    'primary',
-    'onPrimary',
-    'primaryContainer',
-    'onPrimaryContainer',
-    // Secondary family
-    'secondary',
-    'onSecondary',
-    'secondaryContainer',
-    'onSecondaryContainer',
-    // Tertiary family
-    'tertiary',
-    'onTertiary',
-    'tertiaryContainer',
-    'onTertiaryContainer',
-    // Error family
-    'error',
-    'onError',
-    'errorContainer',
-    'onErrorContainer',
-    // Surface family
-    'surface',
-    'onSurface',
-    'onSurfaceVariant',
-    'surfaceTint',
-    'surfaceBright',
-    'surfaceDim',
-    'surfaceContainerLowest',
-    'surfaceContainerLow',
-    'surfaceContainer',
-    'surfaceContainerHigh',
-    'surfaceContainerHighest',
-    // Outline / inverse / misc
-    'outline',
-    'outlineVariant',
-    'inverseSurface',
-    'onInverseSurface',
-    // §5.3.1 legacy spellings, resolved by `ThemeManager._colorFromScheme`.
-    'inverseOnSurface',
-    'background',
-    'onBackground',
-    'surfaceVariant',
-    'inversePrimary',
-    'scrim',
-    'shadow',
-    // Semantic (additions beyond M3).
-    'success',
-    'onSuccess',
-    'warning',
-    'onWarning',
-    'info',
-    'onInfo',
-  };
 
   /// Parse a DSL color value into a Flutter [Color].
   ///
@@ -292,102 +236,11 @@ abstract class WidgetFactory {
   ///     authors should prefer slots over literal hex for any color that
   ///     needs to track theme.
   Color? parseColor(dynamic value, [RenderContext? context]) {
-    if (value == null) return null;
-
-    if (value is String) {
-      if (value.startsWith('#')) {
-        String hex = value.substring(1);
-
-        try {
-          // 8-digit AARRGGBB format
-          if (hex.length == 8) {
-            return Color(int.parse(hex, radix: 16));
-          }
-          // 6-digit RRGGBB format (add alpha channel FF)
-          else if (hex.length == 6) {
-            return Color(int.parse('FF$hex', radix: 16));
-          }
-          // 3-digit RGB shorthand
-          else if (hex.length == 3) {
-            String expanded = hex.split('').map((c) => '$c$c').join();
-            return Color(int.parse('FF$expanded', radix: 16));
-          }
-        } catch (e) {
-          // Return null if hex contains invalid characters
-          return null;
-        }
-
-        return null;
-      }
-
-      // Named colors
-      switch (value.toLowerCase()) {
-        case 'red':
-          return Colors.red;
-        case 'blue':
-          return Colors.blue;
-        case 'green':
-          return Colors.green;
-        case 'yellow':
-          return Colors.yellow;
-        case 'orange':
-          return Colors.orange;
-        case 'purple':
-          return Colors.purple;
-        case 'black':
-          return Colors.black;
-        case 'white':
-          return Colors.white;
-        case 'grey':
-        case 'gray':
-          return Colors.grey;
-      }
-
-      // Spec §5.3 canonical scheme slot — adapts to the active
-      // light / dark mode of the host theme. Token names are matched
-      // case-sensitively to mirror the binding path `theme.colorScheme.<slot>`.
-      if (context != null && _themeSlotNames.contains(value)) {
-        return context.themeManager.getColorValue(value);
-      }
-
-      _reportUnrecognisedColor(value);
-      return null;
-    }
-
-    return null;
-  }
-
-  /// Says so when a colour string matches nothing.
-  ///
-  /// An unrecognised name returned null and the widget drew with no colour at
-  /// all — the author saw an uncoloured box and had nothing to read. The
-  /// common case is a CSS keyword outside the ten basic names: `Color` takes
-  /// hex, those ten, and the Material 3 scheme slots, and §5.3.4 says CSS
-  /// keyword colours are not canonical. The schema rejects such a document,
-  /// but only where a document is validated — a bundle installed from a
-  /// marketplace reaches the screen without that check, and the screen was
-  /// silent.
-  ///
-  /// Once per distinct value: a colour is read on every rebuild, and a
-  /// per-frame log is a log nobody reads.
-  static void _reportUnrecognisedColor(String value) {
-    if (value.isEmpty || !_warnedColors.add(value)) return;
-    MCPLogger('WidgetFactory').warning(
-      'color "$value" is not a value Color accepts (spec §5.3.4): use hex '
-      '(#RGB / #RRGGBB / #AARRGGBB), one of the ten basic names '
-      '(red, blue, green, yellow, orange, purple, black, white, grey, gray), '
-      'or a Material 3 scheme slot such as `primary` or `onSurfaceVariant` — '
-      'the only spelling that follows light / dark mode. Nothing is painted '
-      'for an unrecognised name.',
+    return DslColor.parse(
+      value,
+      slotResolver: context?.themeManager.getColorValue,
     );
   }
-
-  static final Set<String> _warnedColors = <String>{};
-
-  /// Test seam: the warn-once set is process-wide, so a suite asserting on the
-  /// warning has to be able to start from nothing.
-  @visibleForTesting
-  static void resetColorWarnings() => _warnedColors.clear();
 
   /// Parse Alignment
   Alignment? parseAlignment(dynamic value) {

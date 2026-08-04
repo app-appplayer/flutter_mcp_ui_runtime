@@ -1,3 +1,4 @@
+import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart' as core;
 import 'dart:async';
 import 'dart:convert';
 
@@ -824,8 +825,11 @@ class BindingEngine {
   dynamic _resolveRuntimeBinding(String path, RenderContext context) {
     switch (path) {
       case 'version':
-        // Return the detected MCP UI DSL version
-        return '1.1';
+        // Core owns the version contract; this used to answer a hardcoded
+        // '1.1', which was two cuts stale and disagreed with both the schema
+        // and `MCPUIDSLVersion.current`. A document branching on it was
+        // branching on a number nothing else in the system used.
+        return core.MCPUIDSLVersion.current;
       case 'platform':
         return _clientBindingResolver.resolve('{{client.platform}}');
       case 'locale':
@@ -1248,14 +1252,24 @@ class BindingEngine {
     // Handle built-in functions
     switch (expr.methodName) {
       case 'min':
-        if (args.length == 2 && args[0] is num && args[1] is num) {
-          return args[0] < args[1] ? args[0] : args[1];
+        // §3.6.1 writes these as `min(a, b, ...)` — the smallest *argument*,
+        // not the smaller of two. A third argument used to make the whole call
+        // resolve to null, which reads as "no data" in whatever the document
+        // was showing.
+        {
+          final nums = args.whereType<num>().toList();
+          if (nums.length == args.length && nums.isNotEmpty) {
+            return nums.reduce((a, b) => a < b ? a : b);
+          }
         }
         break;
 
       case 'max':
-        if (args.length == 2 && args[0] is num && args[1] is num) {
-          return args[0] > args[1] ? args[0] : args[1];
+        {
+          final nums = args.whereType<num>().toList();
+          if (nums.length == args.length && nums.isNotEmpty) {
+            return nums.reduce((a, b) => a > b ? a : b);
+          }
         }
         break;
 
@@ -1388,6 +1402,22 @@ class BindingEngine {
         break;
 
       case 'map':
+        // map(array, lambda) - derive each item.
+        //
+        // `filter` and `reduce` both read a lambda here; `map` did not, so a
+        // lambda fell through to the property branch below, was stringified
+        // into a property name no item carries, and every item came back
+        // unchanged. The result is the input list — which reads as "the
+        // mapping did nothing useful" rather than "the mapping never ran".
+        if (args.length >= 2 && args[0] is List && args[1] is BindingExpression) {
+          final list = args[0] as List;
+          final limit = sandbox.maxIterations;
+          final capped = list.length > limit ? list.sublist(0, limit) : list;
+          final lambdaExpr = args[1] as BindingExpression;
+          return capped
+              .map((item) => _evaluateLambdaBody(lambdaExpr, item, context))
+              .toList();
+        }
         // map(array, key) - extract property from each item
         if (args.length >= 2 && args[0] is List) {
           final list = args[0] as List;

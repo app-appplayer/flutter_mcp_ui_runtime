@@ -577,6 +577,8 @@ class RuntimeEngine with ChangeNotifier {
             'Initialized app state in StateManager with ${_applicationDefinition!.initialState!.length} keys');
       }
 
+      _initializeDeclaredStateExtras(_parsedUIDefinition!.state);
+
       // Initialize services from application definition
       if (_applicationDefinition!.servicesDefinition != null) {
         await _initializeServicesV1(
@@ -610,6 +612,8 @@ class RuntimeEngine with ChangeNotifier {
         _stateManager.initialize(pageDefinition.initialState!);
         _logger.debug('Page state initialized from state.initial');
       }
+
+      _initializeDeclaredStateExtras(_parsedUIDefinition!.state);
 
       // Initialize services from page runtime definition if present
       final runtimeServices =
@@ -1242,11 +1246,20 @@ class RuntimeEngine with ChangeNotifier {
   void _initializeComputedProperties(Map<String, dynamic> computed) {
     for (final entry in computed.entries) {
       final key = entry.key;
-      final config = entry.value as Map<String, dynamic>;
+      final raw = entry.value;
 
-      final expression = config['expression'] as String?;
-      final dependencies =
-          (config['dependencies'] as List?)?.cast<String>() ?? [];
+      // §3.8 writes a computed value as the expression itself
+      // (`"total": "{{a + b}}"`); the older services block wrapped it in
+      // `{expression, dependencies}`. Both are read, and dependencies are
+      // detected from the expression when they are not listed — which is what
+      // §3.8 says happens ("Dependencies are detected automatically").
+      final String? expression =
+          raw is String ? raw : (raw is Map ? raw['expression'] as String? : null);
+      final declared = raw is Map ? (raw['dependencies'] as List?) : null;
+      final dependencies = declared?.cast<String>() ??
+          (expression == null
+              ? const <String>[]
+              : bindingEngine.extractDependencies(expression).toList());
 
       if (expression != null) {
         _computedManager.registerComputed(
@@ -1257,6 +1270,27 @@ class RuntimeEngine with ChangeNotifier {
           ),
         );
       }
+    }
+  }
+
+  /// Wire `state.computed` (§3.8) and `state.watchers` (§3.9) from a page or
+  /// application definition.
+  ///
+  /// Both sections were implemented and reachable only from a runtime
+  /// `services.state` block, so a document that declared them the way the spec
+  /// writes them got nothing: a computed value that never appeared and a
+  /// watcher that never fired, with no error either way.
+  void _initializeDeclaredStateExtras(Map<String, dynamic>? stateBlock) {
+    if (stateBlock == null) return;
+
+    final computed = stateBlock['computed'];
+    if (computed is Map<String, dynamic>) {
+      _initializeComputedProperties(computed);
+    }
+
+    final watchers = stateBlock['watchers'];
+    if (watchers is List) {
+      _initializeWatchers(watchers);
     }
   }
 

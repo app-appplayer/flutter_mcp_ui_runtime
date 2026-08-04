@@ -204,8 +204,10 @@ class TextFieldWidgetFactory extends WidgetFactory {
     Map<String, dynamic> definition,
     RenderContext context,
     TextEditingController controller,
-    Function(String) onValueChanged,
-  ) {
+    Function(String) onValueChanged, {
+    String? validationMessage,
+    void Function(String? message)? onValidated,
+  }) {
     final properties = extractProperties(definition);
 
     // Extract properties
@@ -278,7 +280,9 @@ class TextFieldWidgetFactory extends WidgetFactory {
         suffixIcon: suffixIcon != null ? Icon(_parseIcon(suffixIcon)) : null,
         border: const OutlineInputBorder(),
         counterText: maxLength != null ? null : '',
-        errorText: errorText,
+        // An explicit `error` wins; otherwise the field shows what its own
+        // validation rules said about the current value.
+        errorText: errorText ?? validationMessage,
       ),
       obscureText: obscureText,
       enabled: enabled,
@@ -293,7 +297,8 @@ class TextFieldWidgetFactory extends WidgetFactory {
 
         // Validate if rules are defined
         if (hasValidation) {
-          ValidationEngine.validate(newValue, validationRules);
+          final result = ValidationEngine.validate(newValue, validationRules);
+          onValidated?.call(result.isValid ? null : result.message);
         }
 
         // Update state if binding is specified
@@ -455,8 +460,12 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
   void initState() {
     super.initState();
 
+    // The registry key is `textInput` (the canonical widget name); asking for
+    // `TextField` returned null and the `!` threw, so *any* field declaring
+    // `debounce` took the page down with a null-check error the author could
+    // not connect to the property they had just added.
     final properties = widget.context.renderer.widgetRegistry
-        .get('TextField')!
+        .get('textInput')!
         .extractProperties(widget.definition);
 
     // Get initial value
@@ -481,8 +490,12 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
   }
 
   void _handleChange(String newValue) {
+    // The registry key is `textInput` (the canonical widget name); asking for
+    // `TextField` returned null and the `!` threw, so *any* field declaring
+    // `debounce` took the page down with a null-check error the author could
+    // not connect to the property they had just added.
     final properties = widget.context.renderer.widgetRegistry
-        .get('TextField')!
+        .get('textInput')!
         .extractProperties(widget.definition);
 
     // Update local value immediately for responsive UI
@@ -523,7 +536,8 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
 
   @override
   Widget build(BuildContext context) {
-    final factory = widget.context.renderer.widgetRegistry.get('TextField')
+    // Same registry key as initState — `textInput`.
+    final factory = widget.context.renderer.widgetRegistry.get('textInput')
         as TextFieldWidgetFactory;
     final properties = factory.extractProperties(widget.definition);
 
@@ -598,6 +612,7 @@ class _StatefulTextField extends StatefulWidget {
 }
 
 class _StatefulTextFieldState extends State<_StatefulTextField> {
+  String? _validationMessage;
   late TextEditingController _controller;
   late String _currentValue;
 
@@ -679,7 +694,17 @@ class _StatefulTextFieldState extends State<_StatefulTextField> {
       (value) {
         // Update our internal state
         _currentValue = value;
-      }
+      },
+      validationMessage: _validationMessage,
+      onValidated: (message) {
+        if (message == _validationMessage) return;
+        // Validation used to run and its result was dropped on the floor —
+        // `ValidationEngine.validate(...)` was called and the answer thrown
+        // away under a comment saying it would be used "later if needed". A
+        // declared `validation` block therefore did nothing at all, which
+        // reads as input that was always valid.
+        setState(() => _validationMessage = message);
+      },
     );
   }
 }

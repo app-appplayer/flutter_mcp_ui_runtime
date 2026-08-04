@@ -1,3 +1,5 @@
+import '../utils/color_parser.dart';
+import '../theme/theme_manager.dart';
 import 'dart:async' show Future, TimeoutException;
 import 'dart:convert' show jsonDecode;
 import 'dart:math' show pow;
@@ -999,17 +1001,23 @@ class NavigationActionExecutor extends ActionExecutor {
           .debug('Using global handler: ${handler != null}');
     }
 
-    // If custom handler is available, use it
+    // If a custom handler is available it gets first refusal.
+    //
+    // `false` means "not mine" — the shell's handler says so in its own
+    // comment, returning false for any route its tab strip does not carry.
+    // Reading that as a rejection ended navigation there: a page declared in
+    // `routes` but not pinned to a tab could not be reached from a button, a
+    // scan, or a deep link, and the author got nothing on screen and nothing
+    // in the log. Fall through to the navigator instead, which is what the
+    // handler expected to happen.
     if (handler != null) {
       final navParams = Map<String, dynamic>.from(params ?? {});
       if (index != null) {
         navParams['index'] = index;
       }
-      final handled = handler(actionType, route ?? '', navParams);
-      if (!handled) {
-        return ActionResult.error('Navigation handler rejected the navigation');
+      if (handler(actionType, route ?? '', navParams)) {
+        return ActionResult.success();
       }
-      return ActionResult.success();
     }
 
     // Otherwise, use the global navigator key for actual navigation
@@ -1533,8 +1541,15 @@ class BatchActionExecutor extends ActionExecutor {
     }
 
     final actions = action['actions'] as List<dynamic>?;
-    if (actions == null || actions.isEmpty) {
+    if (actions == null) {
       return ActionResult.error('Actions list is required for batch');
+    }
+    // An empty list is a batch with nothing to do, which is what a document
+    // that builds its actions from a filtered list produces. Treating that as
+    // an authoring error made a correct document fail on an empty input; a
+    // *missing* list is still an error, because that is a typo.
+    if (actions.isEmpty) {
+      return ActionResult.success();
     }
 
     final parallel = action['parallel'] as bool? ?? false;
@@ -1828,12 +1843,16 @@ class DialogActionExecutor extends ActionExecutor {
     }
   }
 
-  Color? _parseColor(String colorString) {
-    if (colorString.startsWith('#')) {
-      return Color(int.parse(colorString.substring(1), radix: 16));
-    }
-    return null;
-  }
+  /// Dialog colors through the one §5.3.4 parser.
+  ///
+  /// The previous copy read `#RRGGBB` with `int.parse` and no alpha channel,
+  /// so a six-digit hex became `0x00RRGGBB` — fully transparent. A dialog
+  /// asked for a background and got none.
+  Color? _parseColor(String colorString) => DslColor.parse(
+        colorString,
+        slotResolver: ThemeManager.instance.getColorValue,
+        where: 'dialog color',
+      );
 
   /// Resolves the widget content for `customDialog` / `bottomSheet`.
   /// Canonical key is `child` per spec §2.11; legacy authors may pass a
@@ -1966,9 +1985,18 @@ class ChannelActionExecutor extends ActionExecutor {
     final manager = channelManager!;
 
     if (!manager.hasChannel(channelName)) {
-      // Graceful degradation: warn and skip instead of error (P2)
-      _logger.warning('Channel not found: $channelName - skipping action');
-      return ActionResult.success();
+      // Reported, not skipped. The log line existed, but the *document* was
+      // told the action succeeded: `channel.start` on a channel that was
+      // never declared left a page waiting for data that could not arrive,
+      // with `onError` never firing because nothing failed. §8.2.5 has a
+      // result shape for this, and a host that wants to shrug can ignore it.
+      _logger.warning('Channel not found: $channelName');
+      return ActionResult.error(
+        'Channel "$channelName" is not declared, so channel.$op has nothing '
+        'to act on.',
+        errorCode: 'NOT_FOUND',
+        errorDetails: <String, dynamic>{'channel': channelName, 'action': op},
+      );
     }
 
     try {

@@ -463,8 +463,11 @@ void main() {
         {'type': 'navigation', 'action': 'push', 'route': '/test'},
         context,
       );
-      // Handler rejected, so error result
-      expect(result.success, isFalse);
+      // `false` means "not mine" — the name of this case has always said so.
+      // It used to end navigation with an error instead, which is what made a
+      // page declared in `routes` but absent from a shell's tab strip
+      // unreachable from a button, a scan or a deep link.
+      expect(result.success, isTrue);
     });
 
     test('TC-007 Boundary: Handler registered then replaced, new handler used', () async {

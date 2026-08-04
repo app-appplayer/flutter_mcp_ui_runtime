@@ -227,7 +227,7 @@ void main() {
   });
 
   group('TC-059: BatchActionExecutor — empty actions list', () {
-    test('TC-059 Error: empty actions list returns error', () async {
+    test('TC-059: an empty actions list is a batch with nothing to do', () async {
       final result = await actionHandler.execute(
         {
           'type': 'batch',
@@ -236,8 +236,11 @@ void main() {
         context,
       );
 
-      expect(result.success, isFalse);
-      expect(result.error, contains('Actions list is required'));
+      expect(result.success, isTrue,
+          reason: 'a document that builds its actions from a filtered list '
+              'legitimately produces an empty batch; a *missing* list is '
+              'still an error, because that is a typo');
+      expect(result.error, isNull);
     });
 
     test('TC-059 Error: null actions returns error', () async {

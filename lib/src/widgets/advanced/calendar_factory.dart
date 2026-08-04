@@ -215,6 +215,22 @@ class _CalendarWidgetState extends State<_CalendarWidget> {
   }
 
   @override
+  void didUpdateWidget(covariant _CalendarWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A bound `selectedDate` has to follow its binding. The state was read
+    // once in `initState`, so a document that moved the selection — a server
+    // push, a date picked elsewhere on the page — kept showing the month it
+    // first rendered, with no sign that anything had been asked of it.
+    if (widget.selectedDate != oldWidget.selectedDate) {
+      setState(() {
+        _selectedDate = widget.selectedDate;
+        _currentMonth =
+            DateTime(_selectedDate.year, _selectedDate.month, 1);
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
@@ -700,6 +716,9 @@ class _CalendarWidgetState extends State<_CalendarWidget> {
       final eventContext = widget.context.createChildContext(
         variables: {
           'event': {
+            // `value` is what every other input reports, and what a document
+            // binds by habit; `date` stays for anything already reading it.
+            'value': date.toIso8601String(),
             'date': date.toIso8601String(),
             'year': date.year,
             'month': date.month,

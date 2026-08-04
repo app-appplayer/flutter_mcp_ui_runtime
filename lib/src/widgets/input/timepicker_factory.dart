@@ -1,3 +1,4 @@
+import '../../utils/icon_resolver.dart';
 import 'package:flutter/material.dart';
 
 import '../../renderer/render_context.dart';
@@ -18,7 +19,10 @@ class TimePickerWidgetFactory extends WidgetFactory {
         : TimeOfDay.now();
     final timeFormat = properties['timeFormat'] as String? ?? 'HH:mm';
     final variant = properties['variant'] as String? ?? 'elevated';
-    final icon = properties['icon'] as String? ?? 'access_time';
+    // §2.5 `IconRef` — all three forms.
+    final iconData = properties['icon'] == null
+        ? resolveIconData('access_time')
+        : resolveIconRef(properties['icon']);
     final use24HourFormat = properties['use24HourFormat'] as bool? ?? true;
 
     // Spec §2.6.0: canonical `binding`; accept legacy `bindTo` alias.
@@ -46,7 +50,7 @@ class TimePickerWidgetFactory extends WidgetFactory {
           label: selectedTime != null
               ? _formatTime(selectedTime, timeFormat, use24HourFormat)
               : label,
-          icon: _parseIcon(icon),
+          icon: iconData,
           onPressed: () async {
             final picked = await showTimePicker(
               context: buildContext,
@@ -157,16 +161,6 @@ class TimePickerWidgetFactory extends WidgetFactory {
     }
   }
 
-  IconData _parseIcon(String? icon) {
-    switch (icon) {
-      case 'access_time':
-        return Icons.access_time;
-      case 'schedule':
-        return Icons.schedule;
-      case 'alarm':
-        return Icons.alarm;
-      default:
-        return Icons.access_time;
-    }
-  }
+  // `_parseIcon` moved to `resolveIconRef` in utils/icon_resolver.dart —
+  // one icon vocabulary, all three IconRef forms.
 }

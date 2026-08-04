@@ -115,15 +115,17 @@ void main() {
         expect(parsed.path, 'data');
       });
 
-      test('TC-009 Error: unknown extension returns octet-stream', () {
+      test('TC-009 Error: unknown extension is binary octet-stream', () {
         final contentType = ResourceContentType.fromExtension('xyz');
-        expect(contentType.isBinary, false);
+        expect(contentType.isBinary, true,
+            reason: 'the same object already declares application/octet-stream; '
+                'reading those bytes as UTF-8 corrupts them without failing');
         expect(contentType.mimeType, 'application/octet-stream');
       });
 
-      test('TC-009 Error: empty extension returns octet-stream', () {
+      test('TC-009 Error: empty extension is binary octet-stream', () {
         final contentType = ResourceContentType.fromExtension('');
-        expect(contentType.isBinary, false);
+        expect(contentType.isBinary, true);
         expect(contentType.mimeType, 'application/octet-stream');
       });
     });

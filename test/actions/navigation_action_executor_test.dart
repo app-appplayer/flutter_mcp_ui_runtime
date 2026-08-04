@@ -329,8 +329,13 @@ void main() {
         context,
       );
 
-      expect(result.success, isFalse);
-      expect(result.error, contains('rejected'));
+      // A handler returning `false` declines the route; the executor falls
+      // through to the navigator rather than treating a decline as a refusal.
+      // (With no navigator attached in a unit context, that fall-through is
+      // where it ends — see `shell_named_routes_probe_test.dart` for the
+      // rendered path.)
+      expect(result.success, isTrue);
+      expect(result.error, isNull);
     });
 
     test('TC-029 Normal: handler returning true produces success result', () async {
@@ -344,7 +349,8 @@ void main() {
       expect(result.success, isTrue);
     });
 
-    test('TC-029 Boundary: global handler rejection also produces error', () async {
+    test('TC-029 Boundary: a global handler declining also falls through',
+        () async {
       actionHandler.registerNavigationHandler((action, route, params) => false);
 
       final result = await actionHandler.execute(
@@ -352,7 +358,9 @@ void main() {
         context,
       );
 
-      expect(result.success, isFalse);
+      // Same contract at the global level: declining hands the route on, it
+      // does not refuse it.
+      expect(result.success, isTrue);
     });
   });
 }

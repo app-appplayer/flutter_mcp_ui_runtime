@@ -885,6 +885,17 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
               MCPLogger('MCPRuntimeWidget').debug(
                   'Creating MaterialApp with navigatorKey for ApplicationShell: $navKey');
 
+              // The document's routes are registered here too. Without them a
+              // shell had no named route at all: `navigation.push` reached
+              // `Navigator.pushNamed`, found nothing registered, and returned
+              // silently — a declared page was unreachable, and the tab strip
+              // was the only way to move. A tab is one way to click to a page,
+              // not the definition of which pages exist. `home:` supplies the
+              // root, so a `/` entry is dropped rather than colliding with it.
+              final shellRoutes = Map<String, WidgetBuilder>.from(
+                widget.engine.routeManager!.generateRoutes(context),
+              )..remove('/');
+
               return MaterialApp(
                 navigatorKey:
                     navKey, // Essential for dialogs and navigation to work
@@ -893,6 +904,7 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
                 navigatorObservers: <NavigatorObserver>[
                   NavigationService.instance.routeObserver,
                 ],
+                routes: shellRoutes,
                 title: appDefinition.title,
                 theme: widget.engine.themeManager.toFlutterTheme(),
                 darkTheme:
@@ -1037,6 +1049,27 @@ class _ApplicationShell extends StatefulWidget {
 
 class _ApplicationShellState extends State<_ApplicationShell> {
   int _currentIndex = 0;
+  TabController? _tabController;
+
+  /// Set when code moved the index (a route, a launch route, a deep link), so
+  /// the controller can be pushed to follow. A user tap moves the controller
+  /// first and the shell follows it — pushing back in that direction fights
+  /// the gesture and snaps the tab bar to where it just left.
+  bool _indexDrivenByCode = false;
+
+  /// User-driven tab moves flow the other way: the controller changed, so the
+  /// shell follows it.
+  void _onTabControllerChanged() {
+    final controller = _tabController;
+    if (controller == null || controller.indexIsChanging) return;
+    if (controller.index == _currentIndex) return;
+    if (!mounted) return;
+    setState(() {
+      _indexDrivenByCode = false;
+      _currentIndex = controller.index;
+    });
+    _updateNavigationState(controller.index);
+  }
   final Map<String, PageDefinition> _pageDefinitionCache = {};
 
   /// Builds the host-inserted close button for the shell AppBar's `actions`
@@ -1058,13 +1091,26 @@ class _ApplicationShellState extends State<_ApplicationShell> {
   void initState() {
     super.initState();
 
-    // Find initial route index based on the application's initial route
-    if (widget.appDefinition.navigationDefinition != null) {
-      final initialRoute = widget.appDefinition.initialRoute;
-      final index = widget.appDefinition.navigationDefinition!.items
-          .indexWhere((item) => item.route == initialRoute);
+    // Where to stand at launch. `RouteManager.initialRoute` is the requested
+    // route when the document declares it and the document's own otherwise —
+    // reading `appDefinition.initialRoute` here meant a shell ignored every
+    // launch route, so three stations opening the same app at `/kiosk`,
+    // `/pos` and `/kds` all drew the first tab.
+    final nav = widget.appDefinition.navigationDefinition;
+    if (nav != null) {
+      final initialRoute = widget.engine.routeManager?.initialRoute ??
+          widget.appDefinition.initialRoute;
+      final index = nav.items.indexWhere((item) => item.route == initialRoute);
       if (index >= 0) {
         _currentIndex = index;
+      } else if (widget.appDefinition.routes.containsKey(initialRoute)) {
+        // Declared, but no tab points at it — which is the usual shape of a
+        // scanned or deep-linked target. Open it over the shell once the
+        // first frame exists, so back returns to the tab the document names.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final navigator = NavigationService.instance.navigatorKey.currentState;
+          navigator?.pushNamed(initialRoute);
+        });
       }
     }
 
@@ -1154,6 +1200,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
         // Route found, update the current index to navigate
         if (mounted) {
           setState(() {
+            _indexDrivenByCode = true;
             _currentIndex = targetIndex;
           });
           // Update navigation state in StateManager
@@ -1232,7 +1279,8 @@ class _ApplicationShellState extends State<_ApplicationShell> {
     if (navigation == null) {
       // No navigation, just show the initial route
       return FutureBuilder<PageDefinition>(
-        future: _loadPageDefinition(widget.appDefinition.initialRoute),
+        future: _loadPageDefinition(widget.engine.routeManager?.initialRoute ??
+            widget.appDefinition.initialRoute),
         builder: (context, snapshot) {
           if (snapshot.hasData) {
             // Wrap in AnimatedBuilder to listen to StateManager changes
@@ -1264,16 +1312,28 @@ class _ApplicationShellState extends State<_ApplicationShell> {
             builder: (context) {
               final TabController tabController =
                   DefaultTabController.of(context);
-              // Listen to tab changes
-              tabController.addListener(() {
-                if (!tabController.indexIsChanging && 
-                    tabController.index != _currentIndex) {
-                  setState(() {
-                    _currentIndex = tabController.index;
-                  });
-                  _updateNavigationState(tabController.index);
-                }
-              });
+              // Attach once. This used to run on every rebuild, stacking a new
+              // listener each time, so one tap eventually ran the same
+              // setState many times over.
+              if (!identical(_tabController, tabController)) {
+                _tabController?.removeListener(_onTabControllerChanged);
+                _tabController = tabController;
+                tabController.addListener(_onTabControllerChanged);
+              }
+
+              // The controller is the one that moves the view; `initialIndex`
+              // only places it at creation. Without this, a route-driven
+              // switch (a button, a scan, `navigation.push`) updated
+              // `_currentIndex` and the navigation state while the screen
+              // stayed on the tab it was already showing.
+              if (_indexDrivenByCode && tabController.index != _currentIndex) {
+                _indexDrivenByCode = false;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && tabController.index != _currentIndex) {
+                    tabController.animateTo(_currentIndex);
+                  }
+                });
+              }
               
               return Scaffold(
                 appBar: AppBar(

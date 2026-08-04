@@ -94,7 +94,8 @@ void main() {
         expect(receivedPath, 'users/123');
       });
 
-      test('TC-057 Error: custom handler throws - error caught', () async {
+      test('TC-057 Error: custom handler throws - reported as a result',
+          () async {
         registry.register(CustomResourceProvider(
           scheme: 'failing',
           handler: (path, config) async {
@@ -102,10 +103,13 @@ void main() {
           },
         ));
 
-        expect(
-          () => registry.resolve('failing', 'path'),
-          throwsException,
-        );
+        // A provider is host code, and every caller here expects a result
+        // envelope. Letting the exception escape turned a resource read into
+        // an unhandled error at whatever call site asked for it.
+        final result = await registry.resolve('failing', 'path');
+        expect(result.success, isFalse);
+        expect(result.error, contains('failing'));
+        expect(result.error, contains('Handler error'));
       });
     });
 

@@ -14,13 +14,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
+import 'package:flutter_mcp_ui_runtime/src/utils/color_parser.dart';
 import 'package:flutter_mcp_ui_runtime/src/widgets/widget_factory.dart';
 
 Future<List<MCPLogRecord>> _render(
   WidgetTester tester,
   Map<String, dynamic> content,
 ) async {
-  WidgetFactory.resetColorWarnings();
+  DslColor.resetWarnings();
   final records = <MCPLogRecord>[];
   MCPLogger.onRecord = records.add;
   addTearDown(() => MCPLogger.onRecord = null);
@@ -68,7 +69,7 @@ void main() {
         'color': value,
         'child': <String, dynamic>{'type': 'text', 'content': 'x'},
       });
-      expect(records.where((r) => r.message.contains('not a value Color')),
+      expect(records.where((r) => r.message.contains('is not a color the DSL accepts')),
           isEmpty,
           reason: '$value is legal and must not be warned about');
     }
@@ -81,7 +82,7 @@ void main() {
       'color': 'primary',
       'child': <String, dynamic>{'type': 'text', 'content': 'x'},
     });
-    expect(records.where((r) => r.message.contains('not a value Color')),
+    expect(records.where((r) => r.message.contains('is not a color the DSL accepts')),
         isEmpty);
   });
 
@@ -108,7 +109,7 @@ void main() {
     expect(
         records.where((r) =>
             r.message.contains('tomato') &&
-            r.message.contains('not a value Color')),
+            r.message.contains('is not a color the DSL accepts')),
         hasLength(1),
         reason: 'a colour is read on every rebuild — a per-frame log is a log '
             'nobody reads');
