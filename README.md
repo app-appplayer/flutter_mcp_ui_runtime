@@ -6,6 +6,8 @@ Comprehensive runtime for building dynamic, reactive Flutter UIs from JSON speci
 
 - **Dynamic UI rendering** — 158 widgets across layout, display, input, list, navigation, scroll, animation, interaction, dialog and advanced categories.
 - **One asset path** — every slot typed `AssetRef` (`image` · `icon` · `avatar` · `BackgroundImage` · `mediaPlayer` · …) resolves through a single resolver: `data:`, `assets/` and `http(s)` out of the box, and `bundle://`, `client://` or an origin-served `{uri, origin?}` once the host injects a reader. A runtime declares only the forms it was wired for.
+- **Vector assets** — SVG payloads draw in every `AssetRef` slot, including `icon`, where a colour filter tints them the way it tints the named and codepoint forms. Same scheme dispatch as raster, on every platform the runtime ships to (web included). Adds `flutter_svg`.
+- **Unresolvable assets stay off the screen** — an asset the runtime cannot reach takes the slot's declared `fallback` / `fallbackUrl` / `fallbackBehavior`, and the reason goes to the diagnostic channel. A box naming the runtime's limitation is not rendered in place of the picture (spec §6.12.4).
 - **Material 3 theming** — `ThemeManager` + `McpUiThemeBuilder` map a strongly-typed `ThemeDefinition` (28-role color, 15-role typography, 7-family shape, 6-level elevation, density, surface containers) onto Flutter's `ThemeData`.
 - **HCT seed palettes** — single seed color drives the full M3 light/dark palette.
 - **Page-level theme overrides** — `applyOverride(Map)` deep-merges 14-domain JSON with a restore callback.

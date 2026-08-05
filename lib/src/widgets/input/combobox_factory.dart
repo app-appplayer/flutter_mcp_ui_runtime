@@ -25,8 +25,8 @@ class ComboboxFactory extends WidgetFactory {
     final minChars = context.resolve<num?>(properties['minChars'])?.toInt() ?? 1;
     final debounceMs =
         context.resolve<num?>(properties['debounceMs'])?.toInt() ?? 250;
-    final onSearch = properties['onSearch'] as Map<String, dynamic>?;
-    final onChange = properties['onChange'] as Map<String, dynamic>?;
+    final onSearch = actionOf(properties['onSearch'], context);
+    final onChange = actionOf(properties['onChange'], context);
 
     final current = binding != null
         ? (context.getState(binding)?.toString() ?? '')

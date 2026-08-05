@@ -16,7 +16,7 @@ class DialogWidgetFactory extends WidgetFactory {
     final shadowColor = parseColor(context.resolve(properties['shadowColor']), context);
     final surfaceTintColor =
         parseColor(context.resolve(properties['surfaceTintColor']), context);
-    final insetPadding = parseEdgeInsets(properties['insetPadding']) ??
+    final insetPadding = edgeInsetsOf(properties['insetPadding'], context) ??
         const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0);
     final clipBehavior = _parseClip(properties['clipBehavior']);
     final shape = _parseShapeBorder(properties['shape']);

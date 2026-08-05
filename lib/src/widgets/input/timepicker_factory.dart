@@ -18,7 +18,7 @@ class TimePickerWidgetFactory extends WidgetFactory {
         ? (_parseTimeOfDay(properties['initialTime']) ?? TimeOfDay.now())
         : TimeOfDay.now();
     final timeFormat = properties['timeFormat'] as String? ?? 'HH:mm';
-    final variant = properties['variant'] as String? ?? 'elevated';
+    final variant = readEnum(properties['variant'], context) ?? 'elevated';
     // §2.5 `IconRef` — all three forms.
     final iconData = properties['icon'] == null
         ? resolveIconData('access_time')
@@ -36,7 +36,7 @@ class TimePickerWidgetFactory extends WidgetFactory {
     }
 
     // Extract action handler
-    final onChange = (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
+    final onChange = actionOf(properties['onChange'] ?? properties['change'], context);
 
     Widget timePicker = StatefulBuilder(
       builder: (buildContext, setState) {

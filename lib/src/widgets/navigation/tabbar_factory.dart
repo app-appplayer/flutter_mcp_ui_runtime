@@ -28,18 +28,18 @@ class TabBarWidgetFactory extends WidgetFactory {
 
     // Extract properties
     final isScrollable = properties['isScrollable'] as bool? ?? false;
-    final padding = parseEdgeInsets(properties['padding']);
+    final padding = edgeInsetsOf(properties['padding'], context);
     final indicatorColor =
         parseColor(context.resolve(properties['indicatorColor']), context);
     final indicatorWeight = parseDimension(properties['indicatorWeight']) ?? 2.0;
     final indicatorPadding =
-        parseEdgeInsets(properties['indicatorPadding']) ?? EdgeInsets.zero;
+        edgeInsetsOf(properties['indicatorPadding'], context) ?? EdgeInsets.zero;
     final indicator = _parseDecoration(properties['indicator'], context);
     final indicatorSize =
         _parseTabBarIndicatorSize(properties['indicatorSize']);
     final labelColor = parseColor(context.resolve(properties['labelColor']), context);
     final labelStyle = _parseTextStyle(properties['labelStyle'], context);
-    final labelPadding = parseEdgeInsets(properties['labelPadding']);
+    final labelPadding = edgeInsetsOf(properties['labelPadding'], context);
     final unselectedLabelColor =
         parseColor(context.resolve(properties['unselectedLabelColor']), context);
     final unselectedLabelStyle =
@@ -58,10 +58,12 @@ class TabBarWidgetFactory extends WidgetFactory {
     final selectedIndex = (properties['selectedIndex'] is int)
         ? properties['selectedIndex'] as int
         : context.resolve<int>(properties['selectedIndex'] ?? 0);
-    final onChange = (properties['onChange'] ??
+    final onChange = actionOf(
+        properties['onChange'] ??
             properties['onTap'] ??
             properties['click'] ??
-            properties['change']) as Map<String, dynamic>?;
+            properties['change'],
+        context);
 
     // Wrap TabBar with DefaultTabController to provide required TabController
     Widget tabBar = DefaultTabController(

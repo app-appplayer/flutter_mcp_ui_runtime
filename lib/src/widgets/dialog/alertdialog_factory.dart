@@ -20,7 +20,7 @@ class AlertDialogWidgetFactory extends WidgetFactory {
         parseColor(context.resolve(properties['surfaceTintColor']), context);
     final shape = _parseShapeBorder(properties['shape']);
     final alignment = parseAlignment(properties['alignment']);
-    final insetPadding = parseEdgeInsets(properties['insetPadding']) ??
+    final insetPadding = edgeInsetsOf(properties['insetPadding'], context) ??
         const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0);
     final clipBehavior = _parseClip(properties['clipBehavior']);
     final scrollable = properties['scrollable'] as bool? ?? false;

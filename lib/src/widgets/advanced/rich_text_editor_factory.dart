@@ -32,7 +32,7 @@ class RichTextEditorFactory extends WidgetFactory {
             const ['bold', 'italic', 'link', 'bulletList', 'heading'])
         .map((e) => e.toString())
         .toSet();
-    final onChange = properties['onChange'] as Map<String, dynamic>?;
+    final onChange = actionOf(properties['onChange'], context);
 
     final current = binding != null
         ? (context.getState(binding)?.toString() ?? '')

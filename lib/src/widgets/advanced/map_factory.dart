@@ -26,7 +26,7 @@ class MapWidgetFactory extends WidgetFactory {
     // Spec §10.5: `mapType`. Accepted by schema; the built-in stub renders a
     // schematic grid regardless of type.
     // ignore: unused_local_variable
-    final mapType = properties['mapType'] as String? ?? 'standard';
+    final mapType = readEnum(properties['mapType'], context) ?? 'standard';
     final markers = context.resolve<List<dynamic>?>(properties['markers'] ?? []) ??
         [];
     final interactive =
@@ -52,8 +52,8 @@ class MapWidgetFactory extends WidgetFactory {
         parseColor(context.resolve(properties['markerColor']), context) ?? Colors.red;
 
     // Extract action handlers
-    final onMarkerTap = properties['onMarkerTap'] as Map<String, dynamic>?;
-    final onMapTap = properties['onMapTap'] as Map<String, dynamic>?;
+    final onMarkerTap = actionOf(properties['onMarkerTap'], context);
+    final onMapTap = actionOf(properties['onMapTap'], context);
 
     // Parse markers
     final parsedMarkers = _parseMarkers(markers);

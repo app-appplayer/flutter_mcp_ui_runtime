@@ -289,7 +289,7 @@ void main() {
           'content': {
             'type': 'linear',
             'direction': 'horizontal',
-            'distribution': 'space-between',
+            'distribution': 'spaceBetween',
             'alignment': 'center',
             'gap': 16,
             'padding': {'all': 20},

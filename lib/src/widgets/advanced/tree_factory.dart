@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../renderer/render_context.dart';
 import '../../utils/icon_resolver.dart';
+import '../../utils/binding_path.dart';
 import '../widget_factory.dart';
 
 /// Factory for Tree widgets (Advanced conformance level)
@@ -20,16 +21,16 @@ class TreeWidgetFactory extends WidgetFactory {
     // ignore: unused_local_variable
     final childrenKey = properties['childrenKey'] as String? ?? 'children';
     // ignore: unused_local_variable
-    final onNodeTap = properties['onNodeTap'] as Map<String, dynamic>?;
+    final onNodeTap = actionOf(properties['onNodeTap'], context);
     final showLines = context.resolve<bool>(properties['showLines'] ?? true);
     final selectable = context.resolve<bool>(properties['selectable'] ?? false);
     final width = parseDimension(context.resolve((properties['width'])));
     final height = parseDimension(context.resolve((properties['height'])));
-    final indentation = (properties['indentation'] as num?)?.toDouble() ?? 24.0;
+    final indentation = (dimensionOf(properties['indentation'], context))?.toDouble() ?? 24.0;
     // Spec §10.11 `itemPadding`: EdgeInsets applied inside every row so the
     // vertical component drives row height. Falls back to the design-doc
     // default of 4px vertical + 8px right.
-    final itemPadding = parseEdgeInsets(properties['itemPadding']) ??
+    final itemPadding = edgeInsetsOf(properties['itemPadding'], context) ??
         const EdgeInsets.only(top: 4, bottom: 4, right: 8);
     final expandable =
         context.resolve<bool>(properties['expandable'] ?? true);
@@ -51,9 +52,9 @@ class TreeWidgetFactory extends WidgetFactory {
         context.themeManager.getColorValue('onSurface') ?? Colors.black87;
 
     // Extract action handlers
-    final onSelect = (properties['onSelect'] ?? properties['select']) as Map<String, dynamic>?;
-    final onExpand = properties['onExpand'] as Map<String, dynamic>?;
-    final onCollapse = properties['onCollapse'] as Map<String, dynamic>?;
+    final onSelect = actionOf(properties['onSelect'] ?? properties['select'], context);
+    final onExpand = actionOf(properties['onExpand'], context);
+    final onCollapse = actionOf(properties['onCollapse'], context);
 
     if (data.isEmpty) {
       return applyCommonWrappers(
@@ -72,8 +73,26 @@ class TreeWidgetFactory extends WidgetFactory {
     }
 
     // Build tree nodes
+    // `checkable` / `checkedKeys` (1.4): a checkbox per node, with the checked
+    // set carried in state. Declared and never wired — a document asking for
+    // selection by checkbox got a plain tree and no diagnostic.
+    final checkable = context.resolve<bool>(properties['checkable'] ?? false);
+    final checkedKeysPath = properties['checkedKeys'] is String &&
+            (properties['checkedKeys'] as String).contains('{{')
+        ? twoWayPath(properties['checkedKeys'])
+        : null;
+    final checkedKeys = <String>{
+      ...?(context.resolve<dynamic>(properties['checkedKeys']) as List?)
+          ?.map((e) => e.toString()),
+    };
+
     Widget tree = _TreeView(
       nodes: data,
+      checkable: checkable,
+      checkedKeys: checkedKeys,
+      onCheckedChanged: checkedKeysPath == null
+          ? null
+          : (keys) => context.setValue(checkedKeysPath, keys.toList()),
       expandAll: expandAll,
       expandable: expandable,
       showLines: showLines,
@@ -124,9 +143,15 @@ class _TreeView extends StatefulWidget {
   final Map<String, dynamic>? onCollapse;
   final RenderContext context;
   final int depth;
+  final bool checkable;
+  final Set<String> checkedKeys;
+  final void Function(Set<String>)? onCheckedChanged;
 
   const _TreeView({
     required this.nodes,
+    this.checkable = false,
+    this.checkedKeys = const <String>{},
+    this.onCheckedChanged,
     required this.expandAll,
     required this.expandable,
     required this.showLines,
@@ -175,6 +200,7 @@ class _TreeViewState extends State<_TreeView> {
 
     // Build label widget - use itemTemplate if provided
     Widget labelWidget;
+    // (checkbox is prepended below once the label is built)
     if (widget.itemTemplate != null) {
       final childContext = widget.context.createChildContext(
         variables: {
@@ -202,6 +228,28 @@ class _TreeViewState extends State<_TreeView> {
             fontWeight: hasChildren ? FontWeight.w500 : FontWeight.normal,
           ),
         ),
+      );
+    }
+
+    if (widget.checkable) {
+      final checked = widget.checkedKeys.contains(id);
+      labelWidget = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Checkbox(
+            value: checked,
+            onChanged: (v) {
+              final next = Set<String>.from(widget.checkedKeys);
+              if (v == true) {
+                next.add(id);
+              } else {
+                next.remove(id);
+              }
+              widget.onCheckedChanged?.call(next);
+            },
+          ),
+          Flexible(child: labelWidget),
+        ],
       );
     }
 
@@ -243,6 +291,9 @@ class _TreeViewState extends State<_TreeView> {
           }
         },
         childrenBuilder: () => _TreeView(
+          checkable: widget.checkable,
+          checkedKeys: widget.checkedKeys,
+          onCheckedChanged: widget.onCheckedChanged,
           nodes: children,
           expandAll: widget.expandAll,
           expandable: widget.expandable,

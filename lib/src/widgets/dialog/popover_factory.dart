@@ -30,8 +30,8 @@ class PopoverFactory extends WidgetFactory {
     final closeDelay = context.resolve<num?>(properties['closeDelay'])?.toInt() ?? 0;
     final dismissOnOutside =
         context.resolve<bool?>(properties['dismissOnOutside']) ?? true;
-    final onOpen = properties['onOpen'] as Map<String, dynamic>?;
-    final onClose = properties['onClose'] as Map<String, dynamic>?;
+    final onOpen = actionOf(properties['onOpen'], context);
+    final onClose = actionOf(properties['onClose'], context);
 
     void emit(Map<String, dynamic>? action) {
       if (action == null) return;

@@ -19,7 +19,7 @@ class CheckboxWidgetFactory extends WidgetFactory {
     final enabled = properties['enabled'] as bool? ?? true;
     final tristate = properties['tristate'] as bool? ?? false;
     final onChange =
-        (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
+        actionOf(properties['onChange'] ?? properties['change'], context);
 
     ValueChanged<bool?>? handler;
     if (enabled && (binding != null || onChange != null)) {

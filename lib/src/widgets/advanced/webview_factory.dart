@@ -22,8 +22,8 @@ class WebViewWidgetFactory extends WidgetFactory {
     // generics throw when the property is absent (null).
     final url = context.resolve<String?>(properties['url']);
     final html = context.resolve<String?>(properties['html']);
-    final width = (properties['width'] as num?)?.toDouble();
-    final height = (properties['height'] as num?)?.toDouble() ?? 300;
+    final width = (dimensionOf(properties['width'], context))?.toDouble();
+    final height = (dimensionOf(properties['height'], context))?.toDouble() ?? 300;
 
     // Options
     final enableJavaScript = properties['enableJavaScript'] as bool? ?? true;
@@ -37,10 +37,10 @@ class WebViewWidgetFactory extends WidgetFactory {
             Colors.white;
 
     // Action handlers
-    final onPageStarted = properties['onPageStarted'] as Map<String, dynamic>?;
+    final onPageStarted = actionOf(properties['onPageStarted'], context);
     final onPageFinished =
-        properties['onPageFinished'] as Map<String, dynamic>?;
-    final onError = properties['onError'] as Map<String, dynamic>?;
+        actionOf(properties['onPageFinished'], context);
+    final onError = actionOf(properties['onError'], context);
 
     Widget webView = _WebViewWidget(
       url: url,

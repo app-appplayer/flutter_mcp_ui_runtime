@@ -13,14 +13,14 @@ class CheckboxGroupFactory extends WidgetFactory {
     final options = properties['options'] as List<dynamic>? ?? [];
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
     final direction =
-        (properties['direction'] ?? properties['orientation']) as String? ??
+        readEnum(properties['direction'] ?? properties['orientation'], context) ??
             'vertical';
 
     // Spec §2.6.0 / §2.6.7: top-level `binding` holds an array of selected values.
     // Legacy: per-option `binding` (boolean state per option) remains supported.
     final groupBinding = properties['binding'] as String?;
     final onChange =
-        (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
+        actionOf(properties['onChange'] ?? properties['change'], context);
 
     List<dynamic> selectedValues = const [];
     if (groupBinding != null) {

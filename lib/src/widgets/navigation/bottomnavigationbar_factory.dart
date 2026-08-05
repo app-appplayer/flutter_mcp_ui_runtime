@@ -61,8 +61,7 @@ class BottomNavigationBarWidgetFactory extends WidgetFactory {
     }).toList();
 
     // on + PascalCase optimal, legacy short names as fallback
-    final onTap = (properties['onChange'] ?? properties['onTap'] ?? properties['change'] ?? properties['click'])
-        as Map<String, dynamic>?;
+    final onTap = actionOf(properties['onChange'] ?? properties['onTap'] ?? properties['change'] ?? properties['click'], context);
 
     Widget bottomBar = BottomNavigationBar(
       items: items,

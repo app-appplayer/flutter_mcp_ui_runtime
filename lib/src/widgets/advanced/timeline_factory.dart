@@ -14,7 +14,7 @@ class TimelineWidgetFactory extends WidgetFactory {
     // Extract properties
     final items = context.resolve<List<dynamic>?>(properties['items'] ?? []) ??
         [];
-    final orientation = properties['orientation'] as String? ?? 'vertical';
+    final orientation = readEnum(properties['orientation'], context) ?? 'vertical';
     final lineColor =
         parseColor(context.resolve(properties['lineColor']), context) ??
             context.themeManager.getColorValue('outlineVariant') ??

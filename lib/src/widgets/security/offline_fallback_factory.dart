@@ -17,7 +17,7 @@ class OfflineFallbackWidgetFactory extends WidgetFactory {
         ? null
         : resolveIconRef(context.resolve<Object?>(properties['icon']));
     final showRetry = context.resolve<bool>(properties['showRetry'] ?? true);
-    final onRetry = properties['onRetry'] as Map<String, dynamic>?;
+    final onRetry = actionOf(properties['onRetry'], context);
 
     // Check connectivity binding
     final isOnline = context.resolve<bool?>(properties['isOnline']);

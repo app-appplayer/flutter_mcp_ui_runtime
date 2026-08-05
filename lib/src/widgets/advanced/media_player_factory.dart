@@ -21,11 +21,11 @@ class MediaPlayerWidgetFactory extends WidgetFactory {
     final autoplay = context.resolve<bool>(
         properties['autoPlay'] ?? properties['autoplay'] ?? false);
     // ignore: unused_local_variable
-    final volume = (properties['volume'] as num?)?.toDouble();
+    final volume = (dimensionOf(properties['volume'], context))?.toDouble();
     // ignore: unused_local_variable
-    final onTimeUpdate = properties['onTimeUpdate'] as Map<String, dynamic>?;
+    final onTimeUpdate = actionOf(properties['onTimeUpdate'], context);
     // ignore: unused_local_variable
-    final onErrorAction = properties['onError'] as Map<String, dynamic>?;
+    final onErrorAction = actionOf(properties['onError'], context);
     final controls = context.resolve<bool>(properties['controls'] ?? true);
     final loop = context.resolve<bool>(properties['loop'] ?? false);
     final muted = context.resolve<bool>(properties['muted'] ?? false);
@@ -50,10 +50,10 @@ class MediaPlayerWidgetFactory extends WidgetFactory {
         parseColor(context.resolve(properties['accentColor']), context) ?? Colors.blue;
 
     // Extract action handlers
-    final onPlay = properties['onPlay'] as Map<String, dynamic>?;
-    final onPause = properties['onPause'] as Map<String, dynamic>?;
-    final onEnded = properties['onEnded'] as Map<String, dynamic>?;
-    final onSeek = properties['onSeek'] as Map<String, dynamic>?;
+    final onPlay = actionOf(properties['onPlay'], context);
+    final onPause = actionOf(properties['onPause'], context);
+    final onEnded = actionOf(properties['onEnded'], context);
+    final onSeek = actionOf(properties['onSeek'], context);
 
     // Build media player widget
     Widget player = _MediaPlayerWidget(

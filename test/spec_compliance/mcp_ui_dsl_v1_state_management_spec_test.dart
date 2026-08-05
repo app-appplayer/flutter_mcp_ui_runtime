@@ -433,7 +433,7 @@ void main() {
                 'itemTemplate': {
                   'type': 'linear',
                   'direction': 'horizontal',
-                  'distribution': 'space-between',
+                  'distribution': 'spaceBetween',
                   'children': [
                     {
                       'type': 'text',

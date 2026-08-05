@@ -14,7 +14,7 @@ class GridViewWidgetFactory extends WidgetFactory {
     final reverse = properties['reverse'] as bool? ?? false;
     final shrinkWrap = properties['shrinkWrap'] as bool? ?? false;
     final physics = _parseScrollPhysics(properties['physics']);
-    final padding = parseEdgeInsets(properties['padding']);
+    final padding = edgeInsetsOf(properties['padding'], context);
 
     // Grid specific properties
     // Support both 'columns' (MCP UI DSL v1.0) and 'crossAxisCount' (Flutter

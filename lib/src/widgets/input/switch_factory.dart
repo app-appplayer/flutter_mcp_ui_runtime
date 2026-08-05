@@ -17,7 +17,7 @@ class SwitchWidgetFactory extends WidgetFactory {
     final label = properties['label'] as String?;
     final enabled = properties['enabled'] as bool? ?? true;
     final onChange =
-        (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
+        actionOf(properties['onChange'] ?? properties['change'], context);
 
     ValueChanged<bool>? handler;
     if (enabled && (binding != null || onChange != null)) {

@@ -26,8 +26,8 @@ class GanttFactory extends WidgetFactory {
         context.resolve<bool?>(properties['showDependencies']) ?? true;
     final todayMarker = context.resolve<bool?>(properties['todayMarker']) ?? true;
     final rowHeight = context.resolve<num?>(properties['rowHeight'])?.toDouble() ?? 32.0;
-    final onTaskChange = properties['onTaskChange'] as Map<String, dynamic>?;
-    final onTaskClick = properties['onTaskClick'] as Map<String, dynamic>?;
+    final onTaskChange = actionOf(properties['onTaskChange'], context);
+    final onTaskClick = actionOf(properties['onTaskClick'], context);
 
     final tasks = <_Task>[];
     for (final raw in rawTasks) {

@@ -15,14 +15,14 @@ class NumberFieldFactory extends WidgetFactory {
     final helperText = context.resolve(properties['helperText']) as String?;
     final suffix = properties['suffix'] as String?;
     final prefix = properties['prefix'] as String?;
-    final min = properties['min'] as num?;
-    final max = properties['max'] as num?;
-    final step = properties['step'] as num? ?? 1;
+    final min = dimensionOf(properties['min'], context);
+    final max = dimensionOf(properties['max'], context);
+    final step = dimensionOf(properties['step'], context) ?? 1;
     final decimals = properties['decimals'] as int? ?? 0;
     // Support 'decimalPlaces' as alias for 'decimals'
-    final decimalPlaces = properties['decimalPlaces'] as int?;
+    final decimalPlaces = dimensionOf(properties['decimalPlaces'], context)?.toInt();
     final effectiveDecimals = decimalPlaces ?? decimals;
-    final format = properties['format'] as String?;
+    final format = readEnum(properties['format'], context);
     final thousandSeparator =
         properties['thousandSeparator'] as String? ?? '';
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
@@ -147,8 +147,11 @@ class NumberFieldFactory extends WidgetFactory {
       },
     );
 
-    // Add increment/decrement buttons if step is defined
-    if (step > 0) {
+    // Add increment/decrement buttons if step is defined.
+    // `showStepper: false` leaves keyboard entry only — the document says the
+    // field takes numbers, not that it must offer buttons for them.
+    final showStepper = context.resolve<bool>(properties['showStepper'] ?? true);
+    if (step > 0 && showStepper) {
       textField = Row(
         children: [
           IconButton(

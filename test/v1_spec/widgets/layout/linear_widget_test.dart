@@ -164,7 +164,7 @@ void main() {
             'child': {
               'type': 'linear',
               'direction': 'horizontal',
-              'distribution': 'space-between',
+              'distribution': 'spaceBetween',
               'children': [
                 {'type': 'text', 'content': 'Left'},
                 {'type': 'text', 'content': 'Right'},
@@ -190,7 +190,7 @@ void main() {
           'content': {
             'type': 'linear',
             'direction': 'horizontal',
-            'distribution': 'space-around',
+            'distribution': 'spaceAround',
             'children': [
               {'type': 'text', 'content': 'A'},
               {'type': 'text', 'content': 'B'},
@@ -213,7 +213,7 @@ void main() {
           'content': {
             'type': 'linear',
             'direction': 'horizontal',
-            'distribution': 'space-evenly',
+            'distribution': 'spaceEvenly',
             'children': [
               {'type': 'text', 'content': 'X'},
               {'type': 'text', 'content': 'Y'},
@@ -508,7 +508,7 @@ void main() {
               {
                 'type': 'linear',
                 'direction': 'horizontal',
-                'distribution': 'space-between',
+                'distribution': 'spaceBetween',
                 'children': [
                   {'type': 'button', 'label': 'Left'},
                   {'type': 'button', 'label': 'Center'},

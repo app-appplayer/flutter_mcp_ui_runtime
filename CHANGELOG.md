@@ -1,4 +1,48 @@
-## Unreleased — expressions the spec's own examples use
+## [0.7.0] - 2026-08-05 — vector assets, and the ink that was painted under the page
+
+**SVG draws, in both the image and the icon slot, on every platform including
+the web.** `IconRef` has named `data:image/svg+xml` as an ordinary form since
+1.4 and `icon`'s own example in the registry is `assets/icons/heart.svg`, so a
+runtime that could not draw them made the spec's shipped example false. Vectors
+take a picture widget rather than an `ImageProvider`, so the scheme dispatch
+lives in `AssetResolver.vectorWidgetFor` beside the raster one — §6.12 requires
+one resolution path for every `AssetRef` slot, and two dispatches would drift.
+All five forms resolve: `data:`, `assets/`, `bundle://`, `client://` / origin
+(asynchronous, with the slot's loading state while the read is in flight), and
+network. Icons tint through a colour filter, which is what makes §2.5's "`color`
+applies to the SVG form" true rather than aspirational. Adds `flutter_svg`.
+
+**A tile reading `SVG not supported` was removed — it violated §6.12.4.** That
+section forbids rendering the runtime's limitation in place of the asset, with
+`Base64 not supported` as its example; an undecodable payload takes the slot's
+declared fallback and the reason goes to the diagnostic channel. It was shipped
+for one round, verified as correct by a live check, and was wrong the whole
+time.
+
+**Ink is painted where the document can see it.** `ListTile.tileColor`,
+`selectedTileColor` and the splash / focus / hover overlays are painted into the
+nearest `Material`, which is normally the app's — below every background the
+document paints on the way down. A page with its own background therefore
+covered them completely: the properties validated, rendered no error, and drew
+nothing. Both widgets now own a transparent `Material`, which is the fix
+Flutter's own assertion names. Measured live: 0 → 7,054 splash pixels with the
+page background in place.
+
+**Union-typed slots read every branch they declare.** `Dimension` slots were
+read as `as num?` in 40 places, so the `{value, unit}` object and the binding
+form threw on sight; `Action` slots were cast to `Map<String, dynamic>?` in 120
+places, so a list of actions rendered a cast error, and the common `click` slot
+accepted a list, rendered without complaint, and did nothing when tapped. Enum
+slots resolve their binding before matching. `EdgeInsets` accepts a binding, per
+entry as well as whole — `{left: "{{sidebar.width}}", top: 8}` is the shape
+documents actually write.
+
+**Properties the registry declared and the factory ignored, implemented:**
+`dataTable.filterable` / `resizableColumns` / `virtualScroll`,
+`tree.checkable` / `checkedKeys`, `textInput.showToggle` / `defaultCountry`,
+`numberField.showStepper`, `codeEditor.copyable`, `list.overscan`.
+
+### Also in 0.7.0 — expressions the spec's own examples use
 
 **A `validation` block does something.** The rules were parsed, `validate` was
 called on every keystroke, and the result was dropped — under a comment saying
@@ -92,7 +136,7 @@ given back — and `ErrorWidget.builder` was assigned from `build`, so the last
 boundary to build owned the application's error surface for the rest of the
 process, including after it was gone.
 
-## Unreleased — a shell app can reach its own pages
+### Also in 0.7.0 — a shell app can reach its own pages
 
 **A route declared in `routes` was unreachable inside a navigation shell.**
 Four things had to line up and none of them did. The shell's `MaterialApp` was
@@ -132,7 +176,7 @@ the old value and setting an unchanged value counted as a change. And
 `StateManager`, so a discarded manager kept delivering for the life of the
 state object.
 
-## Unreleased — one reading of `Color`, `lazy` implements what it declares
+### Also in 0.7.0 — one reading of `Color`
 
 **Four color parsers became one.** The warning below was added to
 `WidgetFactory.parseColor` and then the axis was measured properly: three more
@@ -158,7 +202,7 @@ process; it is capped at 128 distinct values and says when it stops.
 An unresolved binding reaching the parser stays silent: it is the binding
 layer's failure, and naming it a color error points at the wrong line.
 
-## Unreleased — `lazy` implements what it declares, and an unknown colour says so
+### Also in 0.7.0 — `lazy` implements what it declares, and an unknown colour says so
 
 **An unrecognised colour name is reported.** `parseColor` returned null and
 the widget drew with no colour at all. Found on a live marketplace shelf: two

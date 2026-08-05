@@ -18,16 +18,16 @@ class RangeSliderWidgetFactory extends WidgetFactory {
     final values = _parseRangeValues(rawValue) ?? const RangeValues(0.2, 0.8);
     final min = properties['min']?.toDouble() ?? 0.0;
     final max = properties['max']?.toDouble() ?? 1.0;
-    final divisions = properties['divisions'] as int?;
+    final divisions = dimensionOf(properties['divisions'], context)?.toInt();
     final labels = _parseRangeLabels(properties['labels'], context);
     final activeColor = parseColor(context.resolve(properties['activeColor']), context);
     final inactiveColor =
         parseColor(context.resolve(properties['inactiveColor']), context);
 
     // Extract action handlers
-    final onChange = (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
-    final onChangeStart = properties['onChangeStart'] as Map<String, dynamic>?;
-    final onChangeEnd = properties['onChangeEnd'] as Map<String, dynamic>?;
+    final onChange = actionOf(properties['onChange'] ?? properties['change'], context);
+    final onChangeStart = actionOf(properties['onChangeStart'], context);
+    final onChangeEnd = actionOf(properties['onChangeEnd'], context);
 
     Widget rangeSlider = RangeSlider(
       values: RangeValues(

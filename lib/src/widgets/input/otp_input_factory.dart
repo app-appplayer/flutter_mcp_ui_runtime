@@ -23,8 +23,11 @@ class OtpInputFactory extends WidgetFactory {
     final masked = context.resolve<bool?>(properties['masked']) ?? false;
     final enabled = context.resolve<bool?>(properties['enabled']) ?? true;
     final autofill = context.resolve<bool?>(properties['autofill']) ?? true;
-    final autoSubmit = properties['autoSubmit'] as Map<String, dynamic>?;
-    final onChange = properties['onChange'] as Map<String, dynamic>?;
+    // §17.1.4 canonical `onComplete`; `autoSubmit` is the older spelling and
+    // still works.
+    final autoSubmit = actionOf(
+        properties['onComplete'] ?? properties['autoSubmit'], context);
+    final onChange = actionOf(properties['onChange'], context);
 
     final current = binding != null
         ? (context.getState(binding)?.toString() ?? '')

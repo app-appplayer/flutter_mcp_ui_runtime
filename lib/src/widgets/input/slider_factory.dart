@@ -15,7 +15,7 @@ class SliderWidgetFactory extends WidgetFactory {
     final value = (resolvedValue ?? 0.0).toDouble();
     final min = properties['min']?.toDouble() ?? 0.0;
     final max = properties['max']?.toDouble() ?? 1.0;
-    final divisions = properties['divisions'] as int?;
+    final divisions = dimensionOf(properties['divisions'], context)?.toInt();
     final label = context.resolve<String?>(properties['label']);
     final activeColor = parseColor(context.resolve(properties['activeColor']), context);
     final inactiveColor =
@@ -24,13 +24,9 @@ class SliderWidgetFactory extends WidgetFactory {
 
     // Extract action handlers - A2 naming: on + PascalCase as primary key
     // Legacy kebab-case and camelCase kept as fallbacks
-    final changeAction = (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
-    final changeStartAction = (properties['onChangeStart'] ??
-        properties['change-start'] ??
-        properties['changeStart']) as Map<String, dynamic>?;
-    final changeEndAction = (properties['onChangeEnd'] ??
-        properties['change-end'] ??
-        properties['changeEnd']) as Map<String, dynamic>?;
+    final changeAction = actionOf(properties['onChange'] ?? properties['change'], context);
+    final changeStartAction = actionOf(properties['onChangeStart'] ?? properties['change-start'] ?? properties['changeStart'], context);
+    final changeEndAction = actionOf(properties['onChangeEnd'] ?? properties['change-end'] ?? properties['changeEnd'], context);
 
     Widget slider = Slider(
       value: value.clamp(min, max).toDouble(),

@@ -1,6 +1,6 @@
 name: flutter_mcp_ui_runtime
 description: Runtime for building dynamic Flutter UIs from JSON with lifecycle management, state handling, and MCP protocol support.
-version: 0.6.1
+version: 0.7.0
 homepage: https://app-appplayer.github.io/makemind
 repository: https://github.com/app-appplayer/flutter_mcp_ui_runtime
 issue_tracker: https://github.com/app-appplayer/flutter_mcp_ui_runtime/issues
@@ -11,12 +11,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_mcp_ui_core: ^0.5.0
+  flutter_mcp_ui_core: ^0.6.0
   mcp_bundle: ^0.4.9
   provider: ^6.1.1
   collection: ^1.18.0
   crypto: ^3.0.3
   http: ^1.2.0
+  # Vector assets: the spec ships SVG examples in `icon` and names
+  # `data:image/svg+xml` as an ordinary `AssetRef` form (§2.5, §2.6). Web
+  # included — the renderer is the same on every platform.
+  flutter_svg: ^2.0.10
   shared_preferences: ^2.2.2
   # v1.1 dependencies
   path: ^1.9.0
@@ -37,6 +41,10 @@ dev_dependencies:
   # (`specs/mcp_ui_dsl/spec/1.4/widgets/**.yaml`) to enumerate every declared
   # widget and its examples. Dev deps do not reach consumers.
   yaml: ^3.1.2
+  # Test-only: the backward-compatibility probe builds a validator from a
+  # *published* schema constant (0.4.3 / 0.5.1) as well as the working tree's,
+  # which the core's own validator API cannot do — it carries one schema.
+  json_schema: ^5.1.1
 
 flutter:
   uses-material-design: true

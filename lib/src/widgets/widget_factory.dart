@@ -53,9 +53,12 @@ abstract class WidgetFactory {
     var clickWrapped = false;
     final rawClick = properties['click'];
     if (rawClick != null) {
-      final resolvedClick = context.resolve(rawClick);
-      if (resolvedClick is Map) {
-        final clickAction = Map<String, dynamic>.from(resolvedClick);
+      // The slot takes one action, a list of them, or a binding resolving to
+      // either. Handling only the map form left `click: [a, b]` rendering
+      // without complaint and doing nothing when tapped — the worst of the
+      // three outcomes, because the document looks like it worked.
+      final clickAction = readAction(rawClick, context);
+      if (clickAction != null) {
         widget = GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () => context.actionHandler.execute(clickAction, context),
@@ -172,9 +175,23 @@ abstract class WidgetFactory {
     return widget;
   }
 
+  /// An `EdgeInsets` slot, read the way the registry declares it — a number,
+  /// the `{value, unit}` dimension object, the `{all|horizontal|top|…}` map,
+  /// or a binding resolving to any of them. `parseEdgeInsets` alone takes the
+  /// raw value, so a bound padding produced no inset and no diagnostic.
+  EdgeInsets? edgeInsetsOf(dynamic raw, RenderContext context) =>
+      parseEdgeInsets(context.resolve(raw));
+
   /// Parse EdgeInsets
   EdgeInsets? parseEdgeInsets(dynamic value) {
     if (value == null) return null;
+
+    // A binding resolves to whatever the state holds, which is typically a
+    // `Map<dynamic, dynamic>` — testing for `Map<String, dynamic>` alone
+    // dropped the bound form on the floor while the literal worked.
+    if (value is Map && value is! Map<String, dynamic>) {
+      value = Map<String, dynamic>.from(value);
+    }
 
     if (value is Map<String, dynamic>) {
       if (value.containsKey('all')) {
@@ -309,6 +326,28 @@ abstract class WidgetFactory {
     return null;
   }
 
+  /// A `Dimension` slot, read the way the registry declares it.
+  ///
+  /// The registry gives every dimension three branches — a number, the v1.0
+  /// `{value, unit}` object, and a binding — so a factory that writes
+  /// `dimensionOf(properties['width'], context)` throws on two of the three forms the same
+  /// document is told it may use. The 0.6.1 cut fixed nine such slots with a
+  /// local lambda per factory; this is that lambda in one place, so the next
+  /// slot inherits it instead of repeating the defect.
+  double? dimensionOf(dynamic raw, RenderContext context) =>
+      readDimension(raw, context);
+
+  /// An `Action` slot as the list of actions to run.
+  ///
+  /// The slot accepts one action, a list of them, or a binding resolving to
+  /// either. Casting it to `Map<String, dynamic>?` renders an error for the
+  /// list form — which the registry declares and documents use.
+  List<Map<String, dynamic>> actionsOf(dynamic raw, RenderContext context) =>
+      readActions(raw, context);
+
+  Map<String, dynamic>? actionOf(dynamic raw, RenderContext context) =>
+      readAction(raw, context);
+
   /// Parse BoxConstraints
   BoxConstraints? parseConstraints(dynamic value) {
     if (value == null) return null;
@@ -407,4 +446,51 @@ abstract class WidgetFactory {
     }
     return null;
   }
+}
+
+/// A `Dimension` slot, read the way the registry declares it — a number, the
+/// v1.0 `{value, unit}` object, or a binding resolving to either. A factory
+/// that writes `properties['width'] as num?` throws on two of the three forms
+/// the same document is told it may use.
+double? readDimension(dynamic raw, RenderContext context) {
+  final v = context.resolve<dynamic>(raw);
+  if (v is num) return v.toDouble();
+  if (v is Map && v['value'] is num) return (v['value'] as num).toDouble();
+  return null;
+}
+
+/// An `Action` slot as the list of actions to run. The slot accepts one
+/// action, a list of them, or a binding resolving to either; casting it to
+/// `Map<String, dynamic>?` renders an error for the list form.
+List<Map<String, dynamic>> readActions(dynamic raw, RenderContext context) {
+  final resolved = context.resolve<dynamic>(raw);
+  if (resolved is Map) {
+    return <Map<String, dynamic>>[Map<String, dynamic>.from(resolved)];
+  }
+  if (resolved is List) {
+    return resolved
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+  return const <Map<String, dynamic>>[];
+}
+
+/// The single-action view of an `Action` slot. A list collapses to a
+/// `sequence`, which is what running them in order means (§4.6) — not to its
+/// first entry, which would silently drop the rest.
+Map<String, dynamic>? readAction(dynamic raw, RenderContext context) {
+  final actions = readActions(raw, context);
+  if (actions.isEmpty) return null;
+  if (actions.length == 1) return actions.first;
+  return <String, dynamic>{'type': 'sequence', 'actions': actions};
+}
+
+/// An enum-valued slot: resolve the binding, then take the value only if it
+/// resolved to a string. `context.resolve<String?>` throws when the document
+/// legitimately carries another shape in the same slot (a `button.style`
+/// object, for instance), which turns a widened schema into a render error.
+String? readEnum(dynamic raw, RenderContext context) {
+  final v = context.resolve<dynamic>(raw);
+  return v is String ? v : null;
 }

@@ -23,7 +23,7 @@ class PaginationFactory extends WidgetFactory {
         context.resolve<bool?>(properties['showSizeChanger']) ?? false;
     final sizeOptions =
         context.resolve<List<dynamic>?>(properties['pageSizeOptions']) ?? const [10, 20, 50];
-    final onChange = properties['onChange'] as Map<String, dynamic>?;
+    final onChange = actionOf(properties['onChange'], context);
 
     final pageCount = pageSize <= 0 ? 1 : (total / pageSize).ceil().clamp(1, 1 << 30);
     final rawCurrent = binding != null

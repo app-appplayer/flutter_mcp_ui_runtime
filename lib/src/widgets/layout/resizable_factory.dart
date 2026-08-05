@@ -24,8 +24,8 @@ class ResizableFactory extends WidgetFactory {
         .toSet();
     final keepRatio =
         context.resolve<bool?>(properties['keepAspectRatio']) ?? false;
-    final onResize = properties['onResize'] as Map<String, dynamic>?;
-    final onResizeEnd = properties['onResizeEnd'] as Map<String, dynamic>?;
+    final onResize = actionOf(properties['onResize'], context);
+    final onResizeEnd = actionOf(properties['onResizeEnd'], context);
 
     // `resolve` handles both branches — a literal number and a binding
     // expression — so the read needs no special case for the bound form.

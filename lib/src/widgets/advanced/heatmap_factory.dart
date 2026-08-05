@@ -28,7 +28,7 @@ class HeatmapWidgetFactory extends WidgetFactory {
     // ignore: unused_local_variable
     final showValues = properties['showValues'] as bool? ?? false;
     // ignore: unused_local_variable
-    final onCellTap = properties['onCellTap'] as Map<String, dynamic>?;
+    final onCellTap = actionOf(properties['onCellTap'], context);
 
     // Parse data into 2D array
     List<List<double>> heatmapData = [];

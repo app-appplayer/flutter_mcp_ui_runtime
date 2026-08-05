@@ -40,8 +40,8 @@ class TextFormFieldWidgetFactory extends WidgetFactory {
     final obscureText = properties['obscureText'] as bool? ?? false;
     final enabled = properties['enabled'] as bool? ?? true;
     final readOnly = properties['readOnly'] as bool? ?? false;
-    final maxLines = properties['maxLines'] as int? ?? 1;
-    final maxLength = properties['maxLength'] as int?;
+    final maxLines = dimensionOf(properties['maxLines'], context)?.toInt() ?? 1;
+    final maxLength = dimensionOf(properties['maxLength'], context)?.toInt();
     // spec v1.0: 'inputType', legacy: 'keyboardType'
     final keyboardType = _parseKeyboardType(
         properties['inputType'] ?? properties['keyboardType']);

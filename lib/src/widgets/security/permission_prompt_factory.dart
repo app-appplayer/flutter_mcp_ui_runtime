@@ -21,8 +21,8 @@ class PermissionPromptWidgetFactory extends WidgetFactory {
     final icon = properties['icon'] == null
         ? null
         : resolveIconRef(context.resolve<Object?>(properties['icon']));
-    final onAllow = properties['onAllow'] as Map<String, dynamic>?;
-    final onDeny = properties['onDeny'] as Map<String, dynamic>?;
+    final onAllow = actionOf(properties['onAllow'], context);
+    final onDeny = actionOf(properties['onDeny'], context);
     final allowPartial =
         context.resolve<bool>(properties['allowPartial'] ?? false);
 

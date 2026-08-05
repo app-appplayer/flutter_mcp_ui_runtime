@@ -15,7 +15,7 @@ class TableWidgetFactory extends WidgetFactory {
       textDirection: _resolveTextDirection(properties['textDirection']),
       textBaseline: _resolveTextBaseline(properties['textBaseline']),
       defaultVerticalAlignment: _resolveTableCellVerticalAlignment(
-          properties['defaultVerticalAlignment']),
+          readEnum(properties['defaultVerticalAlignment'], context)),
       children: rows.map((row) {
         final rowData = row as Map<String, dynamic>;
         final cells = rowData['cells'] as List<dynamic>? ?? [];

@@ -15,8 +15,8 @@ class LazyWidgetFactory extends WidgetFactory {
         as Map<String, dynamic>?;
     final trigger = context.resolve<String>(properties['trigger'] ?? 'visible');
     final delay = context.resolve<int?>(properties['delay']);
-    final onLoad = properties['onLoad'] as Map<String, dynamic>?;
-    final onError = properties['onError'] as Map<String, dynamic>?;
+    final onLoad = actionOf(properties['onLoad'], context);
+    final onError = actionOf(properties['onError'], context);
 
     return _LazyWidget(
       childDefinition: child,

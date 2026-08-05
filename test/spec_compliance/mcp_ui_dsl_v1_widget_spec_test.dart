@@ -107,7 +107,7 @@ void main() {
             'content': {
               'type': 'linear',
               'direction': 'horizontal',
-              'distribution': 'space-between',
+              'distribution': 'spaceBetween',
               'children': [
                 {'type': 'text', 'content': 'Start'},
                 {'type': 'text', 'content': 'End'},

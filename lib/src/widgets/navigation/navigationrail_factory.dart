@@ -49,7 +49,7 @@ class NavigationRailWidgetFactory extends WidgetFactory {
 
     // Extract action handler
     final onDestinationSelected =
-        (properties['onChange'] ?? properties['onSelect'] ?? properties['change'] ?? properties['select'] ?? properties['onDestinationSelected']) as Map<String, dynamic>?;
+        actionOf(properties['onChange'] ?? properties['onSelect'] ?? properties['change'] ?? properties['select'] ?? properties['onDestinationSelected'], context);
 
     Widget navigationRail = NavigationRail(
       selectedIndex: selectedIndex.clamp(0, destinations.length - 1),

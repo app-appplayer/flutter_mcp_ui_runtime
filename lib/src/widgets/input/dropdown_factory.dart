@@ -38,7 +38,7 @@ class DropdownWidgetFactory extends WidgetFactory {
     final style = _parseTextStyle(properties['style'], context);
 
     final onChange =
-        (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
+        actionOf(properties['onChange'] ?? properties['change'], context);
 
     // Resolve compact menu tokens. Spec-bound dropdown props are
     // `{type, binding, value, options, items, placeholder, onChange,

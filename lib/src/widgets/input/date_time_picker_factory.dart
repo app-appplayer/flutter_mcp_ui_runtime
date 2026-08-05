@@ -18,7 +18,7 @@ class DateTimePickerFactory extends WidgetFactory {
     final label = context.resolve<String?>(properties['label']);
     final minuteInterval =
         context.resolve<num?>(properties['minuteInterval'])?.toInt() ?? 1;
-    final onChange = properties['onChange'] as Map<String, dynamic>?;
+    final onChange = actionOf(properties['onChange'], context);
     // Presented in the declared zone; the bound value carries its offset
     // either way, because a timestamp without one is not an instant.
     final timeZone = context.resolve<String?>(properties['timeZone']);

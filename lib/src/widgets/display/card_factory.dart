@@ -38,7 +38,7 @@ class CardWidgetFactory extends WidgetFactory {
     final semanticContainer = properties['semanticContainer'] as bool? ?? true;
 
     // Extract margin (external spacing)
-    final margin = parseEdgeInsets(properties['margin']);
+    final margin = edgeInsetsOf(properties['margin'], context);
 
     // Card is a single-child widget, so child should be in properties
     Widget? child;

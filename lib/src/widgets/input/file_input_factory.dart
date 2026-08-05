@@ -36,8 +36,8 @@ class FileInputFactory extends WidgetFactory {
         (context.resolve<List<dynamic>?>(properties['accept']) ?? const [])
             .map((e) => e.toString())
             .toList();
-    final onChange = properties['onChange'] as Map<String, dynamic>?;
-    final onError = properties['onError'] as Map<String, dynamic>?;
+    final onChange = actionOf(properties['onChange'], context);
+    final onError = actionOf(properties['onError'], context);
 
     final selected =
         binding != null && context.getState(binding) is List

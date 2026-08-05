@@ -21,7 +21,7 @@ class PdfViewerFactory extends WidgetFactory {
     final raw = context.resolve<dynamic>(properties['src']);
     final ref = AssetRef.parse(raw);
     final height = context.resolve<num?>(properties['height'])?.toDouble();
-    final onError = properties['onError'] as Map<String, dynamic>?;
+    final onError = actionOf(properties['onError'], context);
 
     // PDF open parameters — the standard fragment every browser viewer reads,
     // which is how page, zoom and chrome stay addressable from the DSL rather

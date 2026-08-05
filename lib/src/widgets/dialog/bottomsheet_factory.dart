@@ -24,7 +24,7 @@ class BottomSheetWidgetFactory extends WidgetFactory {
     final shadowColor = parseColor(context.resolve(properties['shadowColor']), context);
 
     // Extract action handlers
-    final onClosing = properties['onClosing'] as Map<String, dynamic>?;
+    final onClosing = actionOf(properties['onClosing'], context);
 
     // Build child widget
     final childrenData = definition['children'] as List<dynamic>?;

@@ -67,7 +67,7 @@ class ViewFactory extends WidgetFactory {
       props: _asMap(definition['props']),
       fallback: definition['fallback'],
       loading: definition['loading'],
-      onError: definition['onError'] as Map<String, dynamic>?,
+      onError: actionOf(definition['onError'], context),
       themeMode: definition['theme'] as String? ?? 'inherit',
       context: context,
     );

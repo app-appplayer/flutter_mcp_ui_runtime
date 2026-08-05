@@ -16,8 +16,8 @@ class TimeFieldFactory extends WidgetFactory {
     final use24HourFormat = properties['use24HourFormat'] as bool? ?? false;
     // Spec §2.6.14: `format` controls displayed string (HH:mm default);
     // `mode` switches picker style.
-    final formatStr = (properties['format'] as String?) ?? 'HH:mm';
-    final modeStr = (properties['mode'] as String?) ?? 'spinner';
+    final formatStr = readEnum(properties['format'], context) ?? 'HH:mm';
+    final modeStr = readEnum(properties['mode'], context) ?? 'spinner';
 
     // Get current value
     String? currentValue;
@@ -50,9 +50,15 @@ class TimeFieldFactory extends WidgetFactory {
               final pickedTime = await showTimePicker(
                 context: context.buildContext!,
                 initialTime: initialTime,
-                initialEntryMode: modeStr == 'input'
-                    ? TimePickerEntryMode.input
-                    : TimePickerEntryMode.dial,
+                // `spinner` and `dial` are the same Material surface (the
+                // clock face); `input` is the keyboard entry form. Named
+                // rather than left as an else-branch so the declared value
+                // is visible in the implementation.
+                initialEntryMode: switch (modeStr) {
+                  'input' => TimePickerEntryMode.input,
+                  'dial' => TimePickerEntryMode.dial,
+                  _ => TimePickerEntryMode.dial,
+                },
                 builder: (context, child) {
                   if (!use24HourFormat) return child!;
 

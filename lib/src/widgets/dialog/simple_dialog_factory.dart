@@ -17,14 +17,14 @@ class SimpleDialogWidgetFactory extends WidgetFactory {
         parseColor(context.resolve(properties['backgroundColor']), context);
     final elevation = properties['elevation']?.toDouble();
     final shape = _parseShapeBorder(properties['shape']);
-    final contentPadding = parseEdgeInsets(properties['contentPadding']) ??
+    final contentPadding = edgeInsetsOf(properties['contentPadding'], context) ??
         const EdgeInsets.fromLTRB(0.0, 12.0, 0.0, 16.0);
-    final titlePadding = parseEdgeInsets(properties['titlePadding']) ??
+    final titlePadding = edgeInsetsOf(properties['titlePadding'], context) ??
         const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0.0);
 
     // Extract options list
     final optionsData = properties['options'] as List<dynamic>?;
-    final onSelect = (properties['onSelect'] ?? properties['select']) as Map<String, dynamic>?;
+    final onSelect = actionOf(properties['onSelect'] ?? properties['select'], context);
 
     // Build option widgets
     List<Widget> children = [];

@@ -25,7 +25,7 @@ class StepperWidgetFactory extends WidgetFactory {
         _parseStepperType(properties['stepperType'] ?? properties['type']) ??
             StepperType.vertical;
     final physics = _parseScrollPhysics(properties['physics']);
-    final margin = parseEdgeInsets(properties['margin']);
+    final margin = edgeInsetsOf(properties['margin'], context);
 
     // Extract steps
     final stepsData = properties['steps'] as List<dynamic>? ?? [];
@@ -33,10 +33,10 @@ class StepperWidgetFactory extends WidgetFactory {
         stepsData.map((stepData) => _buildStep(stepData, context)).toList();
 
     // Extract action handlers
-    final onStepTapped = properties['onStepTapped'] as Map<String, dynamic>?;
+    final onStepTapped = actionOf(properties['onStepTapped'], context);
     final onStepContinue =
-        properties['onStepContinue'] as Map<String, dynamic>?;
-    final onStepCancel = properties['onStepCancel'] as Map<String, dynamic>?;
+        actionOf(properties['onStepContinue'], context);
+    final onStepCancel = actionOf(properties['onStepCancel'], context);
 
     Widget stepper = Stepper(
       currentStep: currentStep.clamp(0, steps.isEmpty ? 0 : steps.length - 1),

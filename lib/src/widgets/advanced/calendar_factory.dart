@@ -75,9 +75,12 @@ class CalendarWidgetFactory extends WidgetFactory {
     }
 
     // on + PascalCase optimal, legacy short names as fallback
-    final onDateSelect = (properties['onDateSelect'] ??
-        properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
-    final onMonthChange = properties['onMonthChange'] as Map<String, dynamic>?;
+    final onDateSelect = actionOf(
+        properties['onDateSelect'] ??
+            properties['onChange'] ??
+            properties['change'],
+        context);
+    final onMonthChange = actionOf(properties['onMonthChange'], context);
 
     // Parse selected date
     DateTime selectedDate;

@@ -23,7 +23,7 @@ class AccordionFactory extends WidgetFactory {
         context.resolve<bool?>(properties['allowMultiple']) ?? false;
     final bordered = context.resolve<bool?>(properties['bordered']) ?? true;
     final expandedBinding = properties['expandedIds'] as String?;
-    final onChange = properties['onChange'] as Map<String, dynamic>?;
+    final onChange = actionOf(properties['onChange'], context);
 
     final expanded = <String>{
       ...?_expandedFrom(expandedBinding, properties, context),

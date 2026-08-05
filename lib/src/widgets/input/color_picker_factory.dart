@@ -21,7 +21,7 @@ class ColorPickerFactory extends WidgetFactory {
     // ignore: unused_local_variable
     final showLabel = properties['showLabel'] as bool? ?? true;
     // ignore: unused_local_variable
-    final pickerType = properties['pickerType'] as String? ?? 'palette';
+    final pickerType = readEnum(properties['pickerType'], context) ?? 'palette';
     // ignore: unused_local_variable
     final enableHistory = properties['enableHistory'] as bool? ?? false;
 

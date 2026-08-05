@@ -23,7 +23,7 @@ class IconButtonWidgetFactory extends WidgetFactory {
     iconData ??= Icons.error;
 
     // Callback property: onTap as primary, event name 'click' as fallback
-    final clickAction = (properties['onTap'] ?? properties['click']) as Map<String, dynamic>?;
+    final clickAction = actionOf(properties['onTap'] ?? properties['click'], context);
     final onPressed = clickAction != null
         ? () => context.handleAction(clickAction)
         : null;

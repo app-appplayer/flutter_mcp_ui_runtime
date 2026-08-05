@@ -22,7 +22,7 @@ class MultiSelectFactory extends WidgetFactory {
     final showChips = context.resolve<bool?>(properties['showChips']) ?? true;
     final selectAll = context.resolve<bool?>(properties['selectAll']) ?? false;
     final maxSelections = context.resolve<num?>(properties['maxSelections'])?.toInt();
-    final onChange = properties['onChange'] as Map<String, dynamic>?;
+    final onChange = actionOf(properties['onChange'], context);
 
     final selected = _selectedValues(binding, properties, context);
 

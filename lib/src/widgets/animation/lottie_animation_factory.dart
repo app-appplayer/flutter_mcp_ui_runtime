@@ -20,7 +20,7 @@ class LottieAnimationWidgetFactory extends WidgetFactory {
     final height = parseDimension(context.resolve((properties['height'])));
     final fit = context.resolve<String>(properties['fit'] ?? 'contain');
     final speed = parseDimension(context.resolve((properties['speed']))) ?? 1.0;
-    final onComplete = properties['onComplete'] as Map<String, dynamic>?;
+    final onComplete = actionOf(properties['onComplete'], context);
     // Theme-adaptive placeholder chrome — the stub widget renders its
     // own box (since the platform Lottie package isn't wired up), so
     // authors setting `backgroundColor: surface` expect it to respect

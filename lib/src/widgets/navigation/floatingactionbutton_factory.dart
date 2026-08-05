@@ -72,8 +72,8 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
     }
 
     // Extract action handler
-    final onPressed = (properties['onTap'] ?? properties['click'] ?? properties['onPressed']) as Map<String, dynamic>?;
-    final onLongPress = (properties['onLongPress'] ?? properties['long-press'] ?? properties['longPress']) as Map<String, dynamic>?;
+    final onPressed = actionOf(properties['onTap'] ?? properties['click'] ?? properties['onPressed'], context);
+    final onLongPress = actionOf(properties['onLongPress'] ?? properties['long-press'] ?? properties['longPress'], context);
 
     Widget fab;
 

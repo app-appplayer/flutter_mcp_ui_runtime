@@ -17,7 +17,7 @@ class GraphWidgetFactory extends WidgetFactory {
     // collides with the widget-type discriminator, so `chartType` is the
     // preferred form.
     final type =
-        (properties['chartType'] ?? properties['type']) as String? ?? 'line';
+        readEnum(properties['chartType'] ?? properties['type'], context) ?? 'line';
     final width = properties['width']?.toDouble() ?? 300.0;
     final height = properties['height']?.toDouble() ?? 200.0;
     final showGrid = properties['showGrid'] as bool? ?? true;

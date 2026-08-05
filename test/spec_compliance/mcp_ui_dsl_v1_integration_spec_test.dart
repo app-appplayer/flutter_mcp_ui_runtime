@@ -629,7 +629,7 @@ void main() {
               {
                 'type': 'linear',
                 'direction': 'horizontal',
-                'distribution': 'space-around',
+                'distribution': 'spaceAround',
                 'padding': {'vertical': 16},
                 'children': [
                   {
@@ -733,7 +733,7 @@ void main() {
               {
                 'type': 'linear',
                 'direction': 'horizontal',
-                'distribution': 'space-between',
+                'distribution': 'spaceBetween',
                 'padding': {'all': 16},
                 'children': [
                   {

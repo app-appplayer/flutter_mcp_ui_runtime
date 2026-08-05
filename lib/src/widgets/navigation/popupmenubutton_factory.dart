@@ -22,7 +22,7 @@ class PopupMenuButtonWidgetFactory extends WidgetFactory {
     // Extract properties
     final tooltip = context.resolve<String?>(properties['tooltip']);
     final padding =
-        parseEdgeInsets(properties['padding']) ?? const EdgeInsets.all(8.0);
+        edgeInsetsOf(properties['padding'], context) ?? const EdgeInsets.all(8.0);
     final splashRadius = parseDimension(properties['splashRadius']);
     final iconSize = parseDimension(properties['iconSize']);
     final offset = _parseOffset(properties['offset']);
@@ -74,9 +74,9 @@ class PopupMenuButtonWidgetFactory extends WidgetFactory {
     }
 
     // Extract action handlers
-    final onSelected = (properties['onSelected'] ?? properties['onChange'] ?? properties['onSelect'] ?? properties['select'] ?? properties['change']) as Map<String, dynamic>?;
-    final onOpened = properties['onOpened'] as Map<String, dynamic>?;
-    final onCanceled = properties['onCanceled'] as Map<String, dynamic>?;
+    final onSelected = actionOf(properties['onSelected'] ?? properties['onChange'] ?? properties['onSelect'] ?? properties['select'] ?? properties['change'], context);
+    final onOpened = actionOf(properties['onOpened'], context);
+    final onCanceled = actionOf(properties['onCanceled'], context);
 
     Widget popupMenuButton = PopupMenuButton<String>(
       itemBuilder: (BuildContext ctx) => items,

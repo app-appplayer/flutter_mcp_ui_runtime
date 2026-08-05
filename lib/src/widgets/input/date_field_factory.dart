@@ -15,8 +15,8 @@ class DateFieldFactory extends WidgetFactory {
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
     // Spec §2.6.13: `format` controls displayed date string; `mode` chooses
     // between calendar dialog and input, `locale` for localization.
-    final formatStr = (properties['format'] as String?) ?? 'yyyy-MM-dd';
-    final modeStr = (properties['mode'] as String?) ?? 'calendar';
+    final formatStr = readEnum(properties['format'], context) ?? 'yyyy-MM-dd';
+    final modeStr = readEnum(properties['mode'], context) ?? 'calendar';
     final localeStr = properties['locale'] as String?;
 
     // Parse date constraints

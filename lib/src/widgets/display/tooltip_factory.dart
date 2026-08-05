@@ -16,8 +16,8 @@ class TooltipWidgetFactory extends WidgetFactory {
         ? _buildInlineSpan(properties['richMessage'], context)
         : null;
     final height = parseDimension(properties['height']);
-    final padding = parseEdgeInsets(properties['padding']);
-    final margin = parseEdgeInsets(properties['margin']);
+    final padding = edgeInsetsOf(properties['padding'], context);
+    final margin = edgeInsetsOf(properties['margin'], context);
     final verticalOffset = parseDimension(properties['verticalOffset']);
     final preferBelow = properties['preferBelow'] as bool?;
     final excludeFromSemantics = properties['excludeFromSemantics'] as bool?;

@@ -21,10 +21,10 @@ class DateRangePickerFactory extends WidgetFactory {
     final errorText = context.resolve(properties['errorText']) as String?;
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
     final onChange =
-        (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
+        actionOf(properties['onChange'] ?? properties['change'], context);
     // Spec §2.6.17: `format` and `locale`. format uses the same token
     // subset as dateField (`yyyy`, `MM`, `dd`, etc.).
-    final formatStr = (properties['format'] as String?) ?? 'yyyy-MM-dd';
+    final formatStr = readEnum(properties['format'], context) ?? 'yyyy-MM-dd';
     final localeStr = properties['locale'] as String?;
 
     // Get current values

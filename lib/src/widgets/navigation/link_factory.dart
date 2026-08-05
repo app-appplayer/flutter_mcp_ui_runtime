@@ -24,7 +24,7 @@ class LinkFactory extends WidgetFactory {
     final target = rawTarget == 'same' ? 'same' : 'new';
     final underline = context.resolve<String?>(properties['underline']) ?? 'hover';
     final activeWhen = context.resolve<String?>(properties['activeWhen']);
-    final onClick = properties['onClick'] as Map<String, dynamic>?;
+    final onClick = actionOf(properties['onClick'], context);
     final child = properties['child'] as Map<String, dynamic>?;
     final icon = properties['icon'] == null
         ? null

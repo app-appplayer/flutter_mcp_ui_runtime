@@ -34,7 +34,7 @@ class SafeAreaWidgetFactory extends WidgetFactory {
     final right = properties['right'] as bool? ?? true;
 
     // Minimum padding
-    final minimum = parseEdgeInsets(properties['minimum']) ?? EdgeInsets.zero;
+    final minimum = edgeInsetsOf(properties['minimum'], context) ?? EdgeInsets.zero;
 
     // Maintain bottom view padding (useful for keyboard avoidance)
     final maintainBottomViewPadding =

@@ -4,6 +4,7 @@
 library code_editor_factory;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../renderer/render_context.dart';
 import '../widget_factory.dart';
@@ -83,7 +84,7 @@ class CodeEditorWidgetFactory extends WidgetFactory {
         ? context.resolve(properties['code'])
         : (binding != null ? context.getState(binding) : '');
     final code = rawCode?.toString() ?? '';
-    final rawLang = properties['language'] as String? ?? 'plaintext';
+    final rawLang = readEnum(properties['language'], context) ?? 'plaintext';
     // Canonicalise legacy `plain` to `plaintext`; keep declared spec
     // languages as-is so callers can later add highlighting per name.
     final language = rawLang == 'plain' ? 'plaintext' : rawLang;
@@ -94,16 +95,16 @@ class CodeEditorWidgetFactory extends WidgetFactory {
         : 'plaintext';
     final readOnly = properties['readOnly'] as bool? ?? false;
     final showLineNumbers = properties['showLineNumbers'] as bool? ?? true;
-    final fontSize = (properties['fontSize'] as num?)?.toDouble() ?? 14.0;
+    final fontSize = (dimensionOf(properties['fontSize'], context))?.toDouble() ?? 14.0;
     // Spec §10.14: `theme` selects light / dark palette. Defaults to
     // 'dark' to match the VS Code convention most code surfaces ship
     // with. `tabSize` is parsed but not yet wired into rendering.
-    final theme = (properties['theme'] as String?) ?? 'dark';
+    final theme = readEnum(properties['theme'], context) ?? 'dark';
     // ignore: unused_local_variable
-    final tabSize = (properties['tabSize'] as num?)?.toInt() ?? 2;
-    final lineHeight = (properties['lineHeight'] as num?)?.toDouble() ?? 1.5;
-    final width = (properties['width'] as num?)?.toDouble();
-    final height = (properties['height'] as num?)?.toDouble() ?? 300.0;
+    final tabSize = (dimensionOf(properties['tabSize'], context))?.toInt() ?? 2;
+    final lineHeight = (dimensionOf(properties['lineHeight'], context))?.toDouble() ?? 1.5;
+    final width = (dimensionOf(properties['width'], context))?.toDouble();
+    final height = (dimensionOf(properties['height'], context))?.toDouble() ?? 300.0;
 
     // Theme palette — author-supplied properties win, then the
     // `theme` prop selects a named palette (spec § 10.14:
@@ -122,7 +123,7 @@ class CodeEditorWidgetFactory extends WidgetFactory {
         parseColor(properties['lineNumberColor'], context) ?? defaultLineNum;
 
     // Action handlers
-    final onChange = (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
+    final onChange = actionOf(properties['onChange'] ?? properties['change'], context);
 
     Widget editor = _CodeEditor(
       code: code,
@@ -137,6 +138,28 @@ class CodeEditorWidgetFactory extends WidgetFactory {
       onChange: onChange,
       context: context,
     );
+
+    // `copyable` offers a copy-to-clipboard control over the editor surface.
+    // Declared in 1.4 and never wired, so a document asking for it got a
+    // plain editor with no way to tell the control was missing.
+    final copyable = context.resolve<bool>(properties['copyable'] ?? false);
+    if (copyable) {
+      editor = Stack(
+        children: [
+          Positioned.fill(child: editor),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: IconButton(
+              tooltip: 'Copy',
+              iconSize: 18,
+              icon: const Icon(Icons.copy),
+              onPressed: () => Clipboard.setData(ClipboardData(text: code)),
+            ),
+          ),
+        ],
+      );
+    }
 
     editor = SizedBox(
       width: width,

@@ -19,7 +19,7 @@ class MenuFactory extends WidgetFactory {
     final collapsed = context.resolve<bool?>(properties['collapsed']) ?? false;
     final selectedBinding = properties['selectedKey'] as String?;
     final openBinding = properties['openKeys'] as String?;
-    final onSelect = properties['onSelect'] as Map<String, dynamic>?;
+    final onSelect = actionOf(properties['onSelect'], context);
 
     final selectedKey = selectedBinding != null
         ? context.getState(selectedBinding)?.toString()

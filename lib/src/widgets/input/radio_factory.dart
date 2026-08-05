@@ -22,7 +22,7 @@ class RadioWidgetFactory extends WidgetFactory {
     final splashRadius = properties['splashRadius']?.toDouble();
 
     // Extract action handler
-    final onChange = (properties['onChange'] ?? properties['change']) as Map<String, dynamic>?;
+    final onChange = actionOf(properties['onChange'] ?? properties['change'], context);
 
     // Flutter moved selection + change onto a RadioGroup ancestor; a standalone
     // `radio` widget therefore carries its own single-item group so the DSL

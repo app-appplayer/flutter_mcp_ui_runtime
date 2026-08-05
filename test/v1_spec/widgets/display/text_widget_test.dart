@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
 
@@ -245,6 +246,21 @@ void main() {
         expect(text.textAlign, TextAlign.left);
       });
       
+      testWidgets('absolute alignment is declared, not runtime-only',
+          (WidgetTester tester) async {
+        // `left` / `right` are not spellings of `start` / `end`: those follow
+        // the text direction and these do not. A document that needs a column
+        // pinned to one side whatever the locale has no other way to say it,
+        // so the registry declares them and the runtime draws them.
+        final verdict = validateMcpUiDslWidget(const <String, dynamic>{
+          'type': 'text',
+          'content': 'Absolute',
+          'textAlign': 'left',
+        });
+        expect(verdict.isValid, isTrue,
+            reason: verdict.errors.take(2).join('\n'));
+      });
+
       testWidgets('should support center alignment', (WidgetTester tester) async {
         await runtime.initialize({
           'type': 'page',

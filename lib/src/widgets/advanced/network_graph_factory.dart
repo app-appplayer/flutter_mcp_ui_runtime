@@ -37,8 +37,8 @@ class NetworkGraphWidgetFactory extends WidgetFactory {
             context.themeManager.getColorValue('onSurface') ??
             Colors.black87;
 
-    final onNodeTap = properties['onNodeTap'] as Map<String, dynamic>?;
-    final onEdgeTap = properties['onEdgeTap'] as Map<String, dynamic>?;
+    final onNodeTap = actionOf(properties['onNodeTap'], context);
+    final onEdgeTap = actionOf(properties['onEdgeTap'], context);
 
     final parsedNodes = _parseNodes(nodes);
     final parsedEdges = _parseEdges(edges);
