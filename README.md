@@ -70,11 +70,31 @@ class _AppState extends State<App> {
 
 ## Build Note: Dynamic Icons
 
-Apps using dynamic icon names must build with `--no-tree-shake-icons`:
+**Every release build of an app embedding this runtime needs
+`--no-tree-shake-icons`, on every target — web included.**
 
 ```sh
-flutter build apk --no-tree-shake-icons
+flutter build web --no-tree-shake-icons
+flutter build apk --no-tree-shake-icons        # same for appbundle, ipa, macos …
 ```
+
+Without it the build **fails**, and the error names files inside this package
+rather than the app:
+
+```
+Target web_release_bundle failed: Avoid non-constant invocations of IconData
+  flutter_mcp_ui_runtime/lib/src/utils/icon_resolver.dart
+  flutter_mcp_ui_runtime/lib/src/widgets/display/icon_factory.dart
+```
+
+That is not a defect to report — it is what the DSL asks for. A document names
+its icon at render time (`"home"`, or `{codepoint: 0xe88a}` served by a host),
+so the codepoint cannot be a compile-time constant and the icon tree-shaker
+cannot know which glyphs survive. The flag tells it to keep them all.
+
+`flutter test` and `flutter test --platform chrome` do not tree-shake, so a
+suite passing says nothing about this — the failure appears only in a release
+build.
 
 ## Support
 
