@@ -440,6 +440,22 @@ void main() {
       expect(port.openedAsVideo, [false]);
     });
 
+    testWidgets('the legacy `src` spelling is inferred from too', (tester) async {
+      // The player opens `src ?? source`; inference read `source` alone, so a
+      // document using the alias pointed at an mp3 and still asked for video.
+      final port = _FakeMediaPort();
+      await pump(
+        tester,
+        {
+          'type': 'mediaPlayer',
+          'src': 'https://example.com/lecture.mp3',
+        },
+        capabilities: RuntimeCapabilities(media: port),
+      );
+      await tester.pumpAndSettle();
+      expect(port.openedAsVideo, [false]);
+    });
+
     testWidgets('a declared mediaType still wins over the source',
         (tester) async {
       final port = _FakeMediaPort(video: true);

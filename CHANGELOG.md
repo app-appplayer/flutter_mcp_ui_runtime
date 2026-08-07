@@ -1,3 +1,11 @@
+## [0.7.2] - 2026-08-07 — the alias is inferred from too
+
+`mediaPlayer` opens `src ?? source` and 0.7.1 inferred the kind from `source`
+alone, so a document written with the legacy spelling pointed at an `.mp3`,
+inferred nothing, and fell back to video — the host was asked for the video
+capability and an audio-only one reported it absent. Both now read the same
+value. Reported by sbuilder against the published cut.
+
 ## [0.7.1] - 2026-08-07 — the spec states the standard, the runtime keeps reading the legacy
 
 Backward compatibility is measured here, not asserted: `compat_probe_test`
