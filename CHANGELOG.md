@@ -1,3 +1,56 @@
+## [0.7.3] - 2026-08-07 — the runtime answers for the spec's own examples
+
+Six binding defects, all of them written down in the specification as its own
+examples, all of them present in every release back to 0.5.1. None of them was
+found by this package's 5,600 tests, because no test read the spec: the schema
+says a document is well formed and the widget suites cover the paths their
+author thought of. The first person to execute §3.6.1's own line was an author
+following the document, after upload.
+
+### The gate that ends this class
+
+`test/spec/spec_expressions_test.dart` runs the forms §3 documents against the
+engine, and `test/spec/input_binding_readback_test.dart` asks every input
+widget the §2.6.0 question. Both are backed by a mechanical inventory: every
+`{{ … }}` in the 1.4 prose is extracted (`tools/spec_codegen/bin/spec_examples.dart`)
+and an expression that appears in NO bucket fails the suite — so a new example
+cannot land unanswered, and nothing lands in "skip" without a written reason.
+Its live half (`tool/capability_probe/run_corpus.py` in appplayer_core) reads
+the same corpus off a painted screen.
+
+The previous cut fixed two holes in the same argument parser (commas inside
+quoted arguments, nested calls) and walked past the third, because nothing
+enumerated the forms.
+
+### Fixed
+
+- **A function argument may be an operation.** §3.2.1's grammar makes an
+  argument an `Expression`, and §3.6.1's example is `round(price * quantity, 2)`.
+  Arguments that were not literals, paths or nested calls fell through to the
+  path branch, so `floor(9 / 2)` became a lookup for a variable *named*
+  `9 / 2` → null → an empty string on screen. Silent: an author sees `2:5`
+  render as `:`.
+- **A leading sign is not a binary operator.** `-1.57 + (value / max) * 6.28`
+  (§10's gauge needle) split at index 0 and answered with the right-hand term
+  alone — a needle drawn at the wrong angle, reported by nothing.
+- **`filter(list, 'prop')`** — §3.6.2's truthy shorthand. Only the 3-argument
+  and lambda forms existed, so §3.6.1's `length(filter(items, 'completed'))`
+  answered 0 for every input, which reads like real data.
+- **`reduce(list, (acc, item) => …, initial)`** — §3.6.3's accumulator form.
+  Only single-parameter lambdas parsed, so the spec's own example returned its
+  initial value: a total of 0 that reads like an empty cart.
+- **`page.` and `state.` prefixes** — §3.5 makes `page.` the explicit alias of
+  the bare resolution target (v1.0) and §17.2.5 lists `state.` as its synonym;
+  §16.1.1 writes `{{state.isActive ? 1.0 : 0.3}}` as its own example. Neither
+  resolved: the store was asked for a key literally called `page.count`.
+- **`slider` read its binding back.** §2.6.0 is normative that `binding` is
+  two-way — "the runtime reads the current value from the path and writes user
+  input back". Only the write half was wired, so a bound slider sat at its
+  minimum while the value beside it was right. The read-back matrix now covers
+  the input widgets; `slider` was the one that failed it.
+
+Reported by konpi, from documents written by following the spec.
+
 ## [0.7.2] - 2026-08-07 — the alias is inferred from too
 
 `mediaPlayer` opens `src ?? source` and 0.7.1 inferred the kind from `source`
