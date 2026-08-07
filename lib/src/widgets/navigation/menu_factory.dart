@@ -17,8 +17,8 @@ class MenuFactory extends WidgetFactory {
     final items = context.resolve<List<dynamic>?>(properties['items']) ?? const [];
     final mode = context.resolve<String?>(properties['mode']) ?? 'vertical';
     final collapsed = context.resolve<bool?>(properties['collapsed']) ?? false;
-    final selectedBinding = properties['selectedKey'] as String?;
-    final openBinding = properties['openKeys'] as String?;
+    final selectedBinding = stringOf(properties['selectedKey'], context);
+    final openBinding = stringOf(properties['openKeys'], context);
     final onSelect = actionOf(properties['onSelect'], context);
 
     final selectedKey = selectedBinding != null

@@ -23,11 +23,11 @@ class InkWellWidgetFactory extends WidgetFactory {
     // final splashRadius = context.resolve<num?>(properties['splashRadius'])?.toDouble();
     final borderRadius = _parseBorderRadius(properties['borderRadius']);
     final customBorder = _parseShapeBorder(properties['customBorder']);
-    final enableFeedback = properties['enableFeedback'] as bool? ?? true;
+    final enableFeedback = boolOf(properties['enableFeedback'], context) ?? true;
     final excludeFromSemantics =
-        properties['excludeFromSemantics'] as bool? ?? false;
-    final canRequestFocus = properties['canRequestFocus'] as bool? ?? true;
-    final autofocus = properties['autofocus'] as bool? ?? false;
+        boolOf(properties['excludeFromSemantics'], context) ?? false;
+    final canRequestFocus = boolOf(properties['canRequestFocus'], context) ?? true;
+    final autofocus = boolOf(properties['autofocus'], context) ?? false;
 
     // Extract child widget (support both 'child' and 'children' per MCP UI DSL spec)
     final childDef = (properties['child'] ?? definition['child'])

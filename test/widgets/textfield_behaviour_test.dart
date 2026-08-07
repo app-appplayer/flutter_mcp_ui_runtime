@@ -160,9 +160,9 @@ void main() {
       await mount(tester, <String, dynamic>{
         'type': 'textField',
         'label': 'Name',
-        // §: validation is an array of typed rules.
+        // §7.2.1 Shape B: an array of rules, keyed `rule`.
         'validation': <dynamic>[
-          <String, dynamic>{'type': 'required', 'message': 'name is required'},
+          <String, dynamic>{'rule': 'required', 'message': 'name is required'},
         ],
       });
 
@@ -182,7 +182,7 @@ void main() {
         'type': 'textField',
         'validation': <dynamic>[
           <String, dynamic>{
-            'type': 'minLength',
+            'rule': 'minLength',
             'value': 4,
             'message': 'too short',
           },

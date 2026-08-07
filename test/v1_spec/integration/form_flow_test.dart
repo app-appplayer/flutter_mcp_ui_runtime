@@ -507,7 +507,7 @@ void main() {
                 'value': '{{event.value}}',
               },
               'validation': [
-                {'type': 'email', 'message': 'Invalid email format'},
+                {'rule': 'email', 'message': 'Invalid email format'},
               ],
               'error': '{{errors.email}}',
             },
@@ -523,7 +523,7 @@ void main() {
                 'value': '{{event.value}}',
               },
               'validation': [
-                {'type': 'minLength', 'value': 8, 'message': 'Password too short'},
+                {'rule': 'minLength', 'value': 8, 'message': 'Password too short'},
               ],
               'error': '{{errors.password}}',
             },

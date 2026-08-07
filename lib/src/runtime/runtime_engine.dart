@@ -1,4 +1,6 @@
 import '../assets/asset_resolver.dart';
+import '../capabilities/media_registry.dart';
+import '../capabilities/runtime_capabilities.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../renderer/render_context.dart';
@@ -189,6 +191,18 @@ class RuntimeEngine with ChangeNotifier {
   /// origin-served assets by supplying readers — and only then may the
   /// runtime declare those forms (§18.2.12).
   AssetResolver assetResolver = AssetResolver.builtin;
+
+  /// Behaviours this runtime can actually perform (spec §6.13): sound, media
+  /// decoding, a web engine, a tile source. Wired by the host exactly as
+  /// [assetResolver] is. The default is [RuntimeCapabilities.none] — a runtime
+  /// that performs none of them and says so, which is conformant; drawing a
+  /// facsimile instead is not.
+  RuntimeCapabilities capabilities = RuntimeCapabilities.none;
+
+  /// Mounted media players, addressed by the `id` their document gave them
+  /// (§4.9b). Lives on the engine because a media action runs from the action
+  /// handler, which has no widget to search from.
+  final MediaRegistry mediaRegistry = MediaRegistry();
 
   /// Optional one-shot `list` callback (spec §4.5). Null when the host did
   /// not register one; callers fall back to `onResourceSubscribe`.

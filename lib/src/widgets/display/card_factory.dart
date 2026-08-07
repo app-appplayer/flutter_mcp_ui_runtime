@@ -35,7 +35,7 @@ class CardWidgetFactory extends WidgetFactory {
       shape = _parseShape(rawShape) ?? parseThemeShapeMap(rawShape);
     }
     final clipBehavior = _parseClipBehavior(properties['clipBehavior']);
-    final semanticContainer = properties['semanticContainer'] as bool? ?? true;
+    final semanticContainer = boolOf(properties['semanticContainer'], context) ?? true;
 
     // Extract margin (external spacing)
     final margin = edgeInsetsOf(properties['margin'], context);

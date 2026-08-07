@@ -12,7 +12,7 @@ class AnimatedContainerWidgetFactory extends WidgetFactory {
     // Extract properties
     final duration =
         Duration(milliseconds: dimensionOf(properties['duration'], context)?.toInt() ?? 300);
-    final curve = _parseCurve(properties['curve'] as String?);
+    final curve = _parseCurve(stringOf(properties['curve'], context));
     final width = parseDimension(properties['width']);
     final height = parseDimension(properties['height']);
     final padding = edgeInsetsOf(properties['padding'], context);

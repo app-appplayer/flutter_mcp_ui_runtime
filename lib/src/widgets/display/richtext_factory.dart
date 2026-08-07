@@ -13,7 +13,7 @@ class RichTextWidgetFactory extends WidgetFactory {
     final textAlign =
         _parseTextAlign(readEnum(properties['textAlign'], context)) ?? TextAlign.start;
     final textDirection = _parseTextDirection(readEnum(properties['textDirection'], context));
-    final softWrap = properties['softWrap'] as bool? ?? true;
+    final softWrap = boolOf(properties['softWrap'], context) ?? true;
     final overflow =
         _parseTextOverflow(readEnum(properties['overflow'], context)) ?? TextOverflow.clip;
     final textScaler = properties['textScaleFactor'] != null

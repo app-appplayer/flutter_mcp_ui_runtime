@@ -12,7 +12,7 @@ class DialogWidgetFactory extends WidgetFactory {
     // Extract properties
     final backgroundColor =
         parseColor(context.resolve(properties['backgroundColor']), context);
-    final elevation = properties['elevation']?.toDouble();
+    final elevation = numberOf(properties['elevation'], context);
     final shadowColor = parseColor(context.resolve(properties['shadowColor']), context);
     final surfaceTintColor =
         parseColor(context.resolve(properties['surfaceTintColor']), context);
@@ -23,7 +23,7 @@ class DialogWidgetFactory extends WidgetFactory {
     final alignment = parseAlignment(properties['alignment']);
 
     // Extract dialog type
-    final type = properties['type'] as String? ?? 'custom';
+    final type = stringOf(properties['type'], context) ?? 'custom';
 
     Widget dialog;
 
@@ -91,7 +91,7 @@ class DialogWidgetFactory extends WidgetFactory {
       actions: actions,
       backgroundColor:
           parseColor(context.resolve(properties['backgroundColor']), context),
-      elevation: properties['elevation']?.toDouble(),
+      elevation: numberOf(properties['elevation'], context),
       shape: _parseShapeBorder(properties['shape']),
     );
   }
@@ -115,7 +115,7 @@ class DialogWidgetFactory extends WidgetFactory {
       title: title != null ? Text(title) : null,
       backgroundColor:
           parseColor(context.resolve(properties['backgroundColor']), context),
-      elevation: properties['elevation']?.toDouble(),
+      elevation: numberOf(properties['elevation'], context),
       shape: _parseShapeBorder(properties['shape']),
       children: children,
     );

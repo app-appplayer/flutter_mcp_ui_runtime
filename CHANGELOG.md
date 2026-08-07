@@ -1,3 +1,113 @@
+## [0.7.1] - 2026-08-07 — the spec states the standard, the runtime keeps reading the legacy
+
+Backward compatibility is measured here, not asserted: `compat_probe_test`
+runs 577 documents from this workspace through the last pre-1.4 registry, the
+published one, and this tree. **A document the published registry accepts and
+this one does not now fails the suite** — widening is free, taking a form away
+closes bundles that are already in the field.
+
+Result of that gate today: **0 documents lost**, 57 gained (forms that were
+rejected at load and are accepted again).
+
+### Legacy values are declared, not advertised
+
+The registry gained `legacyValues:`. Those spellings go into the schema — so a
+bundle carrying one still opens — and stay out of the prose, the generated
+tables and anything that offers an author a choice:
+
+- `linear.distribution` — `space-between` / `space-around` / `space-evenly`
+- `qrCode.errorCorrection` — `L` / `M` / `Q` / `H`
+- `codeEditor.theme` — `light` / `dark`
+- `Color` — the pre-M3 slot names (`divider`, `foreground`, `textOnSurface`,
+  `textOnPrimary`, `textOnSecondary`, `textOnBackground`, `textOnError`).
+  These now *resolve* as well as validate: each maps onto the M3 role it meant,
+  so a document that used to load and paint nothing paints the right colour.
+
+A new audit section (`drift_audit` §L) reports any spelling the runtime renders
+that the schema refuses, so this class cannot come back silently.
+
+### Declared defaults now say what the runtime does
+
+`drift_audit` §M compares each registry `default:` against the literal the
+factory falls back to. Ten disagreed; in every case the implementation was
+left alone and the documentation corrected, because the default is what a
+document that says nothing already gets:
+
+`gauge.strokeWidth` 20→10 · `gauge.labelFormat` `{value}`→`{value}%` ·
+`gauge.startAngle` 135→-220 · `gauge.sweepAngle` 270→260 ·
+`heatmap.showValues` false→true · `signature.showGuide` false→true ·
+`codeEditor.theme` vsLight→dark · `terminal.prompt` `$`→`$ ` ·
+`timeField.use24HourFormat` true→false · `timePicker.use24HourFormat`
+false→true. (The last two disagree with each other; both are documented as
+implemented rather than unified, because unifying them would change screens
+that never named the property.)
+
+### Visible without declaring anything
+
+Four changes alter what an existing document draws even if it declares none of
+the properties involved:
+
+- **chart** — the entry reveal declared by `options.animation.duration`
+  (default 1000 ms) now runs. `options.animation.duration: 0` restores the
+  instant draw.
+- **calendar** — the month fits the box it is given instead of scrolling, and
+  a month that begins on the week's first day no longer carries a leading week
+  of the previous month.
+- **networkGraph** — the graph is fitted to its box (placements were built
+  around a fixed centre of 200,200) and each `layout` draws its own shape.
+- **codeEditor** — Tab indents by `tabSize` instead of moving focus.
+
+`colorPicker` keeps its preset swatches: the registry said `pickerType: wheel`
+while no implementation ever drew one, so the default is now `palette` — what
+every picker has always shown — and `wheel` / `both` are opt-in.
+
+### Also in 0.7.1 — validation that was declared but never applied
+
+**Additive only.** A schema narrowing is a bundle break, not an authoring
+hint: the runtime validates documents *at load*, so a slot that stops
+accepting a value stops the bundles carrying it from opening. Nothing here
+narrows anything — measured, not assumed (see below).
+
+**A `validation` block written to `07_Security.md` §7.2.1 produced no rules at
+all.** The section publishes two shapes and says a runtime MUST support both.
+Shape B is an array keyed `rule`; this engine only ever read `type`, and its
+switch had no default, so an array in the published spelling parsed to an
+empty rule set — and an empty rule set validates everything. Shape A, the
+constraint object, was answered with "legacy validation format detected" and
+discarded. The workspace corpus holds **117 Shape B blocks, every one of them
+already in the `rule` spelling**, so every declared constraint in it was
+inert: the field accepted anything, quietly, and nothing anywhere said so.
+
+- `rule` is read, and `type` still is. Documents authored against the shipped
+  engine keep validating; documents authored against the published spec start.
+- Shape A parses. `kind` becomes the matching rule, `maxLength` and `pattern`
+  become their own, and they compose — `{kind: email, maxLength: 12}` now
+  rejects on either.
+- `phone`, `number`, `integer` and `date` are implemented. §7.2.1 published
+  them; the enum had no entry, so they parsed to nothing even under the right
+  key. Each checks shape only: an empty value is `required`'s business, so
+  "optional, but must look like a phone number" stays expressible.
+- An unrecognised rule or kind is now reported. A constraint nobody parses is
+  one the author believes is running, and a typo used to be indistinguishable
+  from a field with no rules.
+
+**This changes behaviour for existing bundles, deliberately.** A form whose
+`required` rule was inert will start refusing empty input. The author declared
+that constraint; applying it is the fix, not a regression — but a bundle that
+had come to depend on the constraint *not* running will behave differently.
+
+**`box.margin` now takes the M3 spacing token, like `padding`.** Both slots
+have always resolved it through the same helper; only the declaration was
+narrower, which made the token unauthorable rather than unrenderable. A token
+the theme does not declare produces no inset and is now reported once per
+distinct value — `"16px"` in a padding slot has always resolved to nothing,
+and saying so is the whole of the fix. The registry still accepts it:
+tightening that pattern would stop published bundles from opening.
+
+Verified additive by differential: 20 value shapes × 2 slots run against the
+published registry and this one — **0 narrowed, 7 widened, 33 identical**
+(`test/spec_compliance/box_spacing_widening_probe.dart`).
+
 ## [0.7.0] - 2026-08-05 — vector assets, and the ink that was painted under the page
 
 **SVG draws, in both the image and the icon slot, on every platform including

@@ -13,16 +13,16 @@ class ListViewWidgetFactory extends WidgetFactory {
     // Extract properties (spec v1.0: 'orientation', legacy: 'scrollDirection')
     final scrollDirection = _parseAxis(
         properties['orientation'] ?? properties['scrollDirection']);
-    final reverse = properties['reverse'] as bool? ?? false;
+    final reverse = boolOf(properties['reverse'], context) ?? false;
     // Follow MCP UI DSL v1.0 spec: shrinkWrap defaults to false
-    final shrinkWrap = properties['shrinkWrap'] as bool? ?? false;
+    final shrinkWrap = boolOf(properties['shrinkWrap'], context) ?? false;
     final physics = _parseScrollPhysics(properties['physics']);
     final padding = edgeInsetsOf(properties['padding'], context);
     // spec v1.0: 'spacing', legacy: 'itemSpacing'
     final itemSpacing = parseDimension(
         properties['spacing'] ?? properties['itemSpacing']) ?? 0.0;
     final emptyMessage = context.resolve<String?>(properties['emptyMessage']);
-    final virtual = properties['virtual'] as bool? ?? false;
+    final virtual = boolOf(properties['virtual'], context) ?? false;
     // `cacheExtent` was deprecated in favour of the typed `ScrollCacheExtent`;
     // the DSL still expresses it as a plain pixel number.
     final itemExtent = parseDimension(properties['itemExtent']);

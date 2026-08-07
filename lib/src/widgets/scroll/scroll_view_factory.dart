@@ -15,9 +15,9 @@ class ScrollViewFactory extends WidgetFactory {
         scrollDirectionStr == 'horizontal' ? Axis.horizontal : Axis.vertical;
 
     // Get other properties
-    final reverse = properties['reverse'] as bool? ?? false;
+    final reverse = boolOf(properties['reverse'], context) ?? false;
     final padding = edgeInsetsOf(properties['padding'], context);
-    final primary = properties['primary'] as bool?;
+    final primary = boolOf(properties['primary'], context);
     // Spec § scrollView v1.3 — `scrollPhysics` (canonical) replaces
     // the legacy `physics` key. Both accepted for backward compat.
     final physics = _parseScrollPhysics(

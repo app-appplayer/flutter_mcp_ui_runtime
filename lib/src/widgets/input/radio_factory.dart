@@ -19,7 +19,7 @@ class RadioWidgetFactory extends WidgetFactory {
         : null;
     final focusColor = parseColor(context.resolve(properties['focusColor']), context);
     final hoverColor = parseColor(context.resolve(properties['hoverColor']), context);
-    final splashRadius = properties['splashRadius']?.toDouble();
+    final splashRadius = numberOf(properties['splashRadius'], context);
 
     // Extract action handler
     final onChange = actionOf(properties['onChange'] ?? properties['change'], context);
@@ -29,8 +29,8 @@ class RadioWidgetFactory extends WidgetFactory {
     // keeps working unchanged.
     void handleChange(dynamic newValue) {
       // Spec §2.6.0: canonical `binding`; accept legacy `bindTo`.
-      final path = (properties['binding'] as String?) ??
-          (properties['bindTo'] as String?);
+      final path = (stringOf(properties['binding'], context)) ??
+          (stringOf(properties['bindTo'], context));
       if (path != null) {
         context.setValue(path, newValue);
       }
@@ -68,7 +68,7 @@ class RadioWidgetFactory extends WidgetFactory {
                     // Simulate radio tap when label is clicked
                     if (value != groupValue) {
                       // Update state if bindTo is specified
-                      final path = properties['bindTo'] as String?;
+                      final path = stringOf(properties['bindTo'], context);
                       if (path != null) {
                         context.setValue(path, value);
                       }

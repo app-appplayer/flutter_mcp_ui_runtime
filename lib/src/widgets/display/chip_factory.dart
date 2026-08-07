@@ -28,7 +28,7 @@ class ChipWidgetFactory extends WidgetFactory {
         parseColor(context.resolve(properties['backgroundColor']), context);
     final labelStyle = _parseTextStyle(properties['labelStyle'], context);
     final padding = edgeInsetsOf(properties['padding'], context);
-    final elevation = properties['elevation']?.toDouble();
+    final elevation = numberOf(properties['elevation'], context);
     final shadowColor = parseColor(context.resolve(properties['shadowColor']), context);
     final side = _parseBorderSide(properties['side'], context);
     final shape = _parseOutlinedBorder(properties['shape']);

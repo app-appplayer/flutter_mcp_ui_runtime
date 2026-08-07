@@ -17,7 +17,7 @@ class IconButtonWidgetFactory extends WidgetFactory {
       // ignore: non_const_argument_for_const_parameter
       iconData = IconData(icon,
           // ignore: non_const_argument_for_const_parameter
-          fontFamily: properties['fontFamily'] as String?);
+          fontFamily: stringOf(properties['fontFamily'], context));
     }
 
     iconData ??= Icons.error;
@@ -29,10 +29,10 @@ class IconButtonWidgetFactory extends WidgetFactory {
         : null;
 
     // Spec §2.6.2: `size` (canonical) and `enabled`. `iconSize` kept as legacy.
-    final size = properties['size']?.toDouble() ??
-        properties['iconSize']?.toDouble() ??
+    final size = numberOf(properties['size'], context) ??
+        numberOf(properties['iconSize'], context) ??
         24.0;
-    final enabled = properties['enabled'] as bool? ?? true;
+    final enabled = boolOf(properties['enabled'], context) ?? true;
 
     return IconButton(
       icon: Icon(iconData),
@@ -46,7 +46,7 @@ class IconButtonWidgetFactory extends WidgetFactory {
       padding:
           resolveEdgeInsets(properties['padding']) ?? const EdgeInsets.all(8.0),
       alignment: resolveAlignment(properties['alignment']) ?? Alignment.center,
-      splashRadius: properties['splashRadius']?.toDouble(),
+      splashRadius: numberOf(properties['splashRadius'], context),
       enableFeedback: properties['enableFeedback'] ?? true,
     );
   }

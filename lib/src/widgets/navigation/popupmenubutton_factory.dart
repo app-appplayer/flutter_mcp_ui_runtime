@@ -26,7 +26,7 @@ class PopupMenuButtonWidgetFactory extends WidgetFactory {
     final splashRadius = parseDimension(properties['splashRadius']);
     final iconSize = parseDimension(properties['iconSize']);
     final offset = _parseOffset(properties['offset']);
-    final enabled = properties['enabled'] as bool? ?? true;
+    final enabled = boolOf(properties['enabled'], context) ?? true;
     final color = parseColor(context.resolve(properties['color']), context);
     final shadowColor = parseColor(context.resolve(properties['shadowColor']), context);
     final surfaceTintColor =

@@ -129,7 +129,10 @@ void main() {
     <String, dynamic>{'type': 'floatingActionButton', 'mini': true},  // floatingActionButton.mini
     <String, dynamic>{'type': 'floatingActionButton', 'shape': <String, dynamic>{}},  // floatingActionButton.shape
     <String, dynamic>{'type': 'floatingActionButton', 'splashColor': '#112233'},  // floatingActionButton.splashColor
-    <String, dynamic>{'type': 'graph', 'data': 'x', 'labelColor': '#112233'},  // graph.labelColor
+    // `data` is the required companion here, and a bare string was only ever
+    // valid because the registry declared `binding` as one of its types — the
+    // stand-in has to be data.
+    <String, dynamic>{'type': 'graph', 'data': <dynamic>[1, 2], 'labelColor': '#112233'},  // graph.labelColor
     <String, dynamic>{'type': 'grid', 'mainAxisExtent': 12},  // grid.mainAxisExtent
     <String, dynamic>{'type': 'grid', 'maxCrossAxisExtent': 12},  // grid.maxCrossAxisExtent
     <String, dynamic>{'type': 'grid', 'padding': 2},  // grid.padding

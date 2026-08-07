@@ -34,6 +34,10 @@ class DslColor {
     'tertiary', 'onTertiary', 'tertiaryContainer', 'onTertiaryContainer',
     'error', 'onError', 'errorContainer', 'onErrorContainer',
     'surface', 'onSurface', 'onSurfaceVariant',
+    // The theme resolves these three and the schema declares them; leaving
+    // them out here meant a document that named one validated, loaded, and
+    // painted nothing.
+    'surfaceTint', 'surfaceBright', 'surfaceDim',
     'surfaceContainerLowest', 'surfaceContainerLow', 'surfaceContainer',
     'surfaceContainerHigh', 'surfaceContainerHighest',
     'outline', 'outlineVariant',
@@ -41,6 +45,24 @@ class DslColor {
     'background', 'onBackground', 'surfaceVariant',
     'inversePrimary', 'scrim', 'shadow',
     'success', 'onSuccess', 'warning', 'onWarning', 'info', 'onInfo',
+  };
+
+  /// Pre-M3 slot names that documents in the field still carry.
+  ///
+  /// They were the vocabulary before §5.3.1's roles, and a document written
+  /// then names them in `penColor`, a border, a divider. Refusing them stops
+  /// the whole document at load (validation runs before the first frame) and
+  /// resolving them to nothing paints an invisible line — so they map onto the
+  /// role each one meant. Not advertised: §5.3.1 lists the canonical roles,
+  /// and these resolve without appearing in a completion list.
+  static const Map<String, String> legacyAliases = <String, String>{
+    'divider': 'outlineVariant',
+    'foreground': 'onSurface',
+    'textOnPrimary': 'onPrimary',
+    'textOnSecondary': 'onSecondary',
+    'textOnBackground': 'onBackground',
+    'textOnSurface': 'onSurface',
+    'textOnError': 'onError',
   };
 
   static const Map<String, Color> _basicNames = <String, Color>{
@@ -102,6 +124,15 @@ class DslColor {
 
     final functional = _functional.firstMatch(raw);
     if (functional != null) return _fromFunctional(functional, raw, where);
+
+    final canonical = legacyAliases[raw];
+    if (canonical != null) {
+      if (slotResolver == null) return null;
+      final resolved = slotResolver(canonical);
+      if (resolved != null) return resolved;
+      _report(raw, where, 'the active theme has no `$canonical` slot');
+      return null;
+    }
 
     if (schemeSlots.contains(raw)) {
       if (slotResolver == null) {

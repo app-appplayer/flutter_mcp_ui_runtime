@@ -79,7 +79,7 @@ class CodeEditorWidgetFactory extends WidgetFactory {
 
     // Extract properties — spec §2.6.0 binding shorthand: when `code` is
     // omitted, read from the `binding` state path.
-    final binding = properties['binding'] as String?;
+    final binding = stringOf(properties['binding'], context);
     final rawCode = properties['code'] != null
         ? context.resolve(properties['code'])
         : (binding != null ? context.getState(binding) : '');
@@ -93,14 +93,16 @@ class CodeEditorWidgetFactory extends WidgetFactory {
     final declaredLanguage = _editorSupportedLanguages.contains(language)
         ? language
         : 'plaintext';
-    final readOnly = properties['readOnly'] as bool? ?? false;
-    final showLineNumbers = properties['showLineNumbers'] as bool? ?? true;
+    final readOnly = boolOf(properties['readOnly'], context) ?? false;
+    final showLineNumbers = boolOf(properties['showLineNumbers'], context) ?? true;
     final fontSize = (dimensionOf(properties['fontSize'], context))?.toDouble() ?? 14.0;
     // Spec §10.14: `theme` selects light / dark palette. Defaults to
-    // 'dark' to match the VS Code convention most code surfaces ship
-    // with. `tabSize` is parsed but not yet wired into rendering.
-    final theme = readEnum(properties['theme'], context) ?? 'dark';
-    // ignore: unused_local_variable
+    // `vsDark` — the same palette the legacy `dark` spelling resolves to, and
+    // the canonical name. A default has to be a value the spec advertises;
+    // `dark` is accepted but no longer offered.
+    final theme = readEnum(properties['theme'], context) ?? 'vsDark';
+    // Read and discarded before: pressing Tab in an editor that declared
+    // `tabSize: 4` moved focus out of the field instead of indenting.
     final tabSize = (dimensionOf(properties['tabSize'], context))?.toInt() ?? 2;
     final lineHeight = (dimensionOf(properties['lineHeight'], context))?.toDouble() ?? 1.5;
     final width = (dimensionOf(properties['width'], context))?.toDouble();
@@ -129,6 +131,7 @@ class CodeEditorWidgetFactory extends WidgetFactory {
       code: code,
       language: declaredLanguage,
       readOnly: readOnly,
+      tabSize: tabSize,
       showLineNumbers: showLineNumbers,
       fontSize: fontSize,
       lineHeight: lineHeight,
@@ -175,6 +178,9 @@ class _CodeEditor extends StatefulWidget {
   final String code;
   final String language;
   final bool readOnly;
+
+  /// Spaces inserted when Tab is pressed.
+  final int tabSize;
   final bool showLineNumbers;
   final double fontSize;
   final double lineHeight;
@@ -188,6 +194,7 @@ class _CodeEditor extends StatefulWidget {
     required this.code,
     required this.language,
     required this.readOnly,
+    this.tabSize = 2,
     required this.showLineNumbers,
     required this.fontSize,
     required this.lineHeight,
@@ -316,7 +323,11 @@ class _CodeEditorState extends State<_CodeEditor> {
             child: SingleChildScrollView(
               controller: _scrollController,
               padding: const EdgeInsets.all(12),
-              child: TextField(
+              child: CallbackShortcuts(
+                bindings: <ShortcutActivator, VoidCallback>{
+                  const SingleActivator(LogicalKeyboardKey.tab): _insertTab,
+                },
+                child: TextField(
                 controller: _controller,
                 readOnly: widget.readOnly,
                 maxLines: null,
@@ -333,10 +344,29 @@ class _CodeEditorState extends State<_CodeEditor> {
                   isDense: true,
                 ),
               ),
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// Indents by [tabSize] spaces at the caret. Without this, Tab in a code
+  /// editor moves focus to the next widget — the one thing an editor must
+  /// not do with that key.
+  void _insertTab() {
+    if (widget.readOnly) return;
+    final selection = _controller.selection;
+    final text = _controller.text;
+    final start = selection.start < 0 ? text.length : selection.start;
+    final end = selection.end < 0 ? text.length : selection.end;
+    final indent = ' ' * widget.tabSize;
+    final updated = text.replaceRange(start, end, indent);
+    _controller.value = TextEditingValue(
+      text: updated,
+      selection: TextSelection.collapsed(offset: start + indent.length),
+    );
+    _onChanged(updated);
   }
 }

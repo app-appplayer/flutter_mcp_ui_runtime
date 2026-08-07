@@ -35,9 +35,9 @@ class BottomNavigationBarWidgetFactory extends WidgetFactory {
         _parseTextStyle(properties['selectedLabelStyle'], context);
     final unselectedLabelStyle =
         _parseTextStyle(properties['unselectedLabelStyle'], context);
-    final showSelectedLabels = properties['showSelectedLabels'] as bool?;
-    final showUnselectedLabels = properties['showUnselectedLabels'] as bool?;
-    final enableFeedback = properties['enableFeedback'] as bool?;
+    final showSelectedLabels = boolOf(properties['showSelectedLabels'], context);
+    final showUnselectedLabels = boolOf(properties['showUnselectedLabels'], context);
+    final enableFeedback = boolOf(properties['enableFeedback'], context);
 
     // Extract items
     final itemsData = properties['items'] as List<dynamic>? ?? [];
@@ -90,7 +90,7 @@ class BottomNavigationBarWidgetFactory extends WidgetFactory {
       onTap: onTap != null
           ? (index) {
               // Update state if bindTo is specified
-              final path = properties['bindTo'] as String?;
+              final path = stringOf(properties['bindTo'], context);
               if (path != null) {
                 context.setValue(path, index);
               }

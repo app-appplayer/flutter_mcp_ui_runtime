@@ -6,6 +6,13 @@
 // box with no diagnostic again.
 //
 // Each case here is a document the registry is *supposed* to reject.
+//
+// The line is what the runtime can actually read. `tomato` and `16px` resolve
+// to nothing, so rejecting them tells an author something true. A pre-M3 slot
+// name like `textOnSurface` is a different thing: documents in the field carry
+// it, the parser maps it onto the role it meant (`DslColor.legacyAliases`), and
+// it paints. The spec advertises the canonical roles (§5.3.1); the
+// implementation keeps reading the old names.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart';
@@ -30,6 +37,8 @@ void main() {
     rejects('a CSS keyword outside the ten basic names',
         <String, dynamic>{'type': 'box', 'color': 'tomato'});
     rejects('a scheme slot that does not exist',
+        <String, dynamic>{'type': 'box', 'color': 'onSurfaceInverted'});
+    accepts('a pre-M3 slot name the parser still maps',
         <String, dynamic>{'type': 'box', 'color': 'textOnSurface'});
     rejects('a dimension string in a colour slot',
         <String, dynamic>{'type': 'box', 'color': '16px'});

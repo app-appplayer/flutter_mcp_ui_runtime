@@ -27,7 +27,7 @@ class TabBarWidgetFactory extends WidgetFactory {
     }).toList();
 
     // Extract properties
-    final isScrollable = properties['isScrollable'] as bool? ?? false;
+    final isScrollable = boolOf(properties['isScrollable'], context) ?? false;
     final padding = edgeInsetsOf(properties['padding'], context);
     final indicatorColor =
         parseColor(context.resolve(properties['indicatorColor']), context);
@@ -50,7 +50,7 @@ class TabBarWidgetFactory extends WidgetFactory {
             parseColor(context.resolve(properties['overlayColor']), context))
         : null;
     final mouseCursor = _parseMouseCursor(properties['mouseCursor']);
-    final enableFeedback = properties['enableFeedback'] as bool?;
+    final enableFeedback = boolOf(properties['enableFeedback'], context);
     final physics = _parseScrollPhysics(properties['physics']);
 
     // Spec §2.8.3: canonical `selectedIndex` + `onChange`. Accept legacy

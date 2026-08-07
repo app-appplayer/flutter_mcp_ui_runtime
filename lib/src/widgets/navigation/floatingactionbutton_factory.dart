@@ -20,15 +20,15 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
     final hoverColor = parseColor(context.resolve(properties['hoverColor']), context);
     final splashColor = parseColor(context.resolve(properties['splashColor']), context);
     final heroTag = properties['heroTag'];
-    final elevation = properties['elevation']?.toDouble();
-    final focusElevation = properties['focusElevation']?.toDouble();
-    final hoverElevation = properties['hoverElevation']?.toDouble();
-    final highlightElevation = properties['highlightElevation']?.toDouble();
-    final disabledElevation = properties['disabledElevation']?.toDouble();
-    final mini = properties['mini'] as bool? ?? false;
+    final elevation = numberOf(properties['elevation'], context);
+    final focusElevation = numberOf(properties['focusElevation'], context);
+    final hoverElevation = numberOf(properties['hoverElevation'], context);
+    final highlightElevation = numberOf(properties['highlightElevation'], context);
+    final disabledElevation = numberOf(properties['disabledElevation'], context);
+    final mini = boolOf(properties['mini'], context) ?? false;
     final shape = _parseShapeBorder(properties['shape']);
     final clipBehavior = _parseClip(properties['clipBehavior']) ?? Clip.none;
-    final autofocus = properties['autofocus'] as bool? ?? false;
+    final autofocus = boolOf(properties['autofocus'], context) ?? false;
     final materialTapTargetSize =
         _parseMaterialTapTargetSize(properties['materialTapTargetSize']);
     // §2.8.7 documents `label` as "Extended FAB label" and declares no
@@ -36,7 +36,7 @@ class FloatingActionButtonWidgetFactory extends WidgetFactory {
     // extended form. Requiring an undeclared flag on top meant the label was
     // accepted, validated, and never drawn. `isExtended` still wins when set,
     // so a document can ask for the compact form with a label present.
-    final declaredExtended = properties['isExtended'] as bool?;
+    final declaredExtended = boolOf(properties['isExtended'], context);
     final isExtended = declaredExtended ??
         (context.resolve<String?>(properties['label'])?.isNotEmpty ?? false);
 

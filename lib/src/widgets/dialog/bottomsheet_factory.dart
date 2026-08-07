@@ -12,12 +12,12 @@ class BottomSheetWidgetFactory extends WidgetFactory {
     // Extract properties
     final backgroundColor =
         parseColor(context.resolve(properties['backgroundColor']), context);
-    final elevation = properties['elevation']?.toDouble();
+    final elevation = numberOf(properties['elevation'], context);
     final shape = _parseShapeBorder(properties['shape']);
     final clipBehavior = _parseClip(properties['clipBehavior']);
     final constraints = _parseBoxConstraints(properties['constraints']);
-    final enableDrag = properties['enableDrag'] as bool? ?? true;
-    final showDragHandle = properties['showDragHandle'] as bool? ?? false;
+    final enableDrag = boolOf(properties['enableDrag'], context) ?? true;
+    final showDragHandle = boolOf(properties['showDragHandle'], context) ?? false;
     final dragHandleColor =
         parseColor(context.resolve(properties['dragHandleColor']), context);
     final dragHandleSize = _parseSize(properties['dragHandleSize']);

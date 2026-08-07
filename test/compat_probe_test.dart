@@ -115,11 +115,10 @@ void main() {
     final widgetTypes =
         _knownTypes(sources['working tree']!, widgetsOnly: true);
 
-    final docs = (jsonDecode(File('/tmp/dsl_docs.json').readAsStringSync())
-            as List)
-        .cast<String>()
-        .where((p) => !p.contains('/tools/legacy/'))
-        .toList();
+    final docs = _corpus(repo);
+    expect(docs, isNotEmpty,
+        reason: 'a compatibility probe with nothing to probe passes for the '
+            'wrong reason');
 
     final verdicts = <String, Map<String, bool>>{
       for (final k in schemas.keys) k: <String, bool>{},
@@ -159,6 +158,21 @@ void main() {
     };
     File(Platform.environment['COMPAT_OUT'] ?? '/tmp/compat_matrix.json')
         .writeAsStringSync(jsonEncode(out));
+
+    // The compatibility rule, as a gate rather than a number: a document the
+    // PUBLISHED registry accepts must still load. Widening is free — the spec
+    // may say only the canonical form while the implementation keeps reading
+    // the legacy one — but taking a form away closes bundles that are already
+    // in the field, and validation runs before the first frame.
+    final publishedV = verdicts['0.5.1 (published)']!;
+    final workingV = verdicts['working tree']!;
+    final closed = publishedV.keys
+        .where((k) => publishedV[k] == true && workingV[k] != true)
+        .toList()
+      ..sort();
+    expect(closed, isEmpty,
+        reason: 'these documents open on the published registry and no longer '
+            'open on this one:\n  ${closed.take(10).join('\n  ')}');
 
     // Phase 2: for every document the pre-1.4 registry accepted and this one
     // does not, find the *deepest* node that fails. Parents fail too — the
@@ -215,4 +229,35 @@ void main() {
       print('COMPAT $name: ${m.length} docs, ${m.values.where((v) => v).length} valid');
     });
   });
+}
+
+/// Every UI DSL document in the workspace, found rather than listed.
+///
+/// This used to read a path list a previous run had left in `/tmp`. When the
+/// scratch file went away the probe stopped having anything to check — and a
+/// harness that finds nothing reports the same "no regressions" as one that
+/// checked five hundred documents. Collecting the corpus here means the gate
+/// either runs on the real documents or fails.
+List<String> _corpus(String repo) {
+  const roots = ['os', 'packages', 'specs', 'tools', 'apps'];
+  const skip = [
+    '/build/',
+    '/.dart_tool/',
+    '/node_modules/',
+    '/tools/legacy/',
+    '/.git/',
+  ];
+  final out = <String>[];
+  for (final root in roots) {
+    final dir = Directory('$repo/$root');
+    if (!dir.existsSync()) continue;
+    for (final entity in dir.listSync(recursive: true, followLinks: false)) {
+      if (entity is! File || !entity.path.endsWith('.json')) continue;
+      final path = entity.path;
+      if (skip.any(path.contains)) continue;
+      out.add(path.substring(repo.length + 1));
+    }
+  }
+  out.sort();
+  return out;
 }

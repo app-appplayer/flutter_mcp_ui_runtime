@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../assets/asset_ref.dart';
 import '../../renderer/render_context.dart';
+import '../capability_absent.dart';
 import '../widget_factory.dart';
 import 'platform/pdf_view.dart';
 
@@ -17,6 +18,23 @@ class PdfViewerFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
+
+    // §6.13 — PDF rendering is a platform power. With a host surface wired this draws
+    // the real thing; without one it reports the absence rather than drawing
+    // something that looks like a rendered document.
+    final surface = context.capabilities.pdfBuilder;
+    if (surface != null) {
+      return applyCommonWrappers(
+        Builder(
+          builder: (ctx) =>
+              surface(ctx, properties, surfaceEventsFor(properties, context),
+                  surfaceAssetsFor(context)) ??
+              const SizedBox.shrink(),
+        ),
+        properties,
+        context,
+      );
+    }
 
     final raw = context.resolve<dynamic>(properties['src']);
     final ref = AssetRef.parse(raw);

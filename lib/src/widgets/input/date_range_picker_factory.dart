@@ -9,15 +9,15 @@ class DateRangePickerFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     // Extract properties
-    final label = properties['label'] as String?;
+    final label = stringOf(properties['label'], context);
     // Spec §2.6.17: canonical `startDate` / `endDate` are state paths.
     // Legacy `startBinding` / `endBinding` accepted as aliases.
-    final startPath = (properties['startDate'] as String?) ??
-        (properties['startBinding'] as String?);
-    final endPath = (properties['endDate'] as String?) ??
-        (properties['endBinding'] as String?);
-    final firstDateStr = properties['firstDate'] as String?;
-    final lastDateStr = properties['lastDate'] as String?;
+    final startPath = (stringOf(properties['startDate'], context)) ??
+        (stringOf(properties['startBinding'], context));
+    final endPath = (stringOf(properties['endDate'], context)) ??
+        (stringOf(properties['endBinding'], context));
+    final firstDateStr = stringOf(properties['firstDate'], context);
+    final lastDateStr = stringOf(properties['lastDate'], context);
     final errorText = context.resolve(properties['errorText']) as String?;
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
     final onChange =
@@ -25,7 +25,7 @@ class DateRangePickerFactory extends WidgetFactory {
     // Spec §2.6.17: `format` and `locale`. format uses the same token
     // subset as dateField (`yyyy`, `MM`, `dd`, etc.).
     final formatStr = readEnum(properties['format'], context) ?? 'yyyy-MM-dd';
-    final localeStr = properties['locale'] as String?;
+    final localeStr = stringOf(properties['locale'], context);
 
     // Get current values
     final startDate = startPath != null

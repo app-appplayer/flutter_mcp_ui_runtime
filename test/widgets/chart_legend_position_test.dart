@@ -77,7 +77,14 @@ Future<int> _paintedPixels(
   await tester.pumpWidget(
     MaterialApp(home: Scaffold(body: runtime.buildUI())),
   );
-  await tester.pump(const Duration(milliseconds: 50));
+  // Past the entry reveal (§10 `options.animation.duration`, 1000 ms by
+  // default). At 50 ms the chart is a sliver of itself, and counting its
+  // pixels then measures the animation rather than the drawing.
+  // Two pumps: the first starts the entry reveal, the second runs past it
+  // (§10 `options.animation.duration`, 1000 ms by default). Counting pixels
+  // on the first frame measures the animation, not the drawing.
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 1200));
 
   var painted = 0;
   // Rasterising is real async work; the test binding's fake clock never

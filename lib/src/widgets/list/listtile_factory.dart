@@ -12,10 +12,10 @@ class ListTileWidgetFactory extends WidgetFactory {
     // Extract properties
     final titleProp = properties['title'];
     final subtitleProp = properties['subtitle'];
-    final isThreeLine = properties['isThreeLine'] as bool? ?? false;
-    final dense = properties['dense'] as bool? ?? false;
-    final enabled = properties['enabled'] as bool? ?? true;
-    final selected = properties['selected'] as bool? ?? false;
+    final isThreeLine = boolOf(properties['isThreeLine'], context) ?? false;
+    final dense = boolOf(properties['dense'], context) ?? false;
+    final enabled = boolOf(properties['enabled'], context) ?? true;
+    final selected = boolOf(properties['selected'], context) ?? false;
     final iconColor = parseColor(context.resolve(properties['iconColor']), context);
     final textColor = parseColor(context.resolve(properties['textColor']), context);
     final contentPadding = edgeInsetsOf(properties['contentPadding'], context);

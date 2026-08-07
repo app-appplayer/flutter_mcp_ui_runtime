@@ -13,7 +13,7 @@ class DateTimePickerFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    final binding = properties['binding'] as String?;
+    final binding = stringOf(properties['binding'], context);
     final enabled = context.resolve<bool?>(properties['enabled']) ?? true;
     final label = context.resolve<String?>(properties['label']);
     final minuteInterval =

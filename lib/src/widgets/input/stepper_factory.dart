@@ -11,7 +11,7 @@ class StepperWidgetFactory extends WidgetFactory {
 
     // Spec §2.6.0/§2.6.20: `binding` shorthand maps to the active step index.
     // Legacy `currentStep` property remains a one-way read-only source.
-    final binding = properties['binding'] as String?;
+    final binding = stringOf(properties['binding'], context);
     // `currentStep` is `number | binding`; reading it as `int?` threw on the
     // binding form, which the schema plainly allows.
     final int currentStep = binding != null

@@ -23,7 +23,7 @@ class DatePickerWidgetFactory extends WidgetFactory {
     final lastDate = properties['lastDate'] != null
         ? DateTime.parse(properties['lastDate'])
         : DateTime(2100);
-    final dateFormat = properties['dateFormat'] as String? ?? 'yyyy-MM-dd';
+    final dateFormat = stringOf(properties['dateFormat'], context) ?? 'yyyy-MM-dd';
     final variant = readEnum(properties['variant'], context) ?? 'elevated';
     // §2.5 `IconRef`: a name, a `{codepoint}` object or a `{uri}` object,
     // accepted anywhere an icon is taken. Reading it as a String threw on the
@@ -33,8 +33,8 @@ class DatePickerWidgetFactory extends WidgetFactory {
         : resolveIconRef(properties['icon']);
 
     // Spec §2.6.0: canonical `binding`; accept legacy `bindTo` alias.
-    final binding = (properties['binding'] as String?) ??
-        (properties['bindTo'] as String?);
+    final binding = (stringOf(properties['binding'], context)) ??
+        (stringOf(properties['bindTo'], context));
     String? currentValue;
     if (binding != null) {
       currentValue = context.getValue(binding) as String?;

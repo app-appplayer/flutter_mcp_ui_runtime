@@ -11,8 +11,8 @@ class GridViewWidgetFactory extends WidgetFactory {
 
     // Extract properties
     final scrollDirection = _parseAxis(properties['scrollDirection']);
-    final reverse = properties['reverse'] as bool? ?? false;
-    final shrinkWrap = properties['shrinkWrap'] as bool? ?? false;
+    final reverse = boolOf(properties['reverse'], context) ?? false;
+    final shrinkWrap = boolOf(properties['shrinkWrap'], context) ?? false;
     final physics = _parseScrollPhysics(properties['physics']);
     final padding = edgeInsetsOf(properties['padding'], context);
 

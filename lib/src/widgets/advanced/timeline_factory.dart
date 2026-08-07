@@ -21,9 +21,9 @@ class TimelineWidgetFactory extends WidgetFactory {
             Colors.grey;
     final onSurface =
         context.themeManager.getColorValue('onSurface') ?? Colors.black87;
-    final lineWidth = properties['lineWidth']?.toDouble() ?? 2.0;
-    final nodeSize = properties['nodeSize']?.toDouble() ?? 20.0;
-    final spacing = properties['spacing']?.toDouble() ?? 20.0;
+    final lineWidth = numberOf(properties['lineWidth'], context) ?? 2.0;
+    final nodeSize = numberOf(properties['nodeSize'], context) ?? 20.0;
+    final spacing = numberOf(properties['spacing'], context) ?? 20.0;
     final itemTemplate =
         properties['itemTemplate'] as Map<String, dynamic>?;
 

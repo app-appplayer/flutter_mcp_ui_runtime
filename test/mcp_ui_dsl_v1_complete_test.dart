@@ -643,11 +643,11 @@ void main() {
             'value': '{{email}}',
             'validation': [
               {
-                'type': 'required',
+                'rule': 'required',
                 'message': 'Email is required'
               },
               {
-                'type': 'email',
+                'rule': 'email',
                 'message': 'Invalid email format'
               }
             ]

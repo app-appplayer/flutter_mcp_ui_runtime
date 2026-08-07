@@ -38,7 +38,7 @@ void main() {
                 'label': 'Name',
                 'value': '{{form.name}}',
                 'validation': [
-                  {'type': 'required', 'message': 'Name is required'},
+                  {'rule': 'required', 'message': 'Name is required'},
                 ],
                 'error': '{{errors.name}}',
                 'onChange': {
@@ -132,7 +132,7 @@ void main() {
                 'label': 'First Name',
                 'value': '{{form.firstName}}',
                 'validation': [
-                  {'type': 'required'},
+                  {'rule': 'required'},
                 ],
                 'error': '{{errors.firstName}}',
                 'onChange': {
@@ -147,7 +147,7 @@ void main() {
                 'label': 'Last Name',
                 'value': '{{form.lastName}}',
                 'validation': [
-                  {'type': 'required'},
+                  {'rule': 'required'},
                 ],
                 'error': '{{errors.lastName}}',
                 'onChange': {
@@ -162,8 +162,8 @@ void main() {
                 'label': 'Email',
                 'value': '{{form.email}}',
                 'validation': [
-                  {'type': 'required'},
-                  {'type': 'email'},
+                  {'rule': 'required'},
+                  {'rule': 'email'},
                 ],
                 'error': '{{errors.email}}',
                 'onChange': {
@@ -251,7 +251,7 @@ void main() {
                 'label': 'Email',
                 'value': '{{email}}',
                 'validation': [
-                  {'type': 'email', 'message': 'Please enter a valid email'},
+                  {'rule': 'email', 'message': 'Please enter a valid email'},
                 ],
                 'error': '{{emailError}}',
                 'onChange': {
@@ -358,7 +358,7 @@ void main() {
                 'value': '{{password}}',
                 'obscureText': true,
                 'validation': [
-                  {'type': 'minLength', 'value': 8, 'message': 'Password must be at least 8 characters'},
+                  {'rule': 'minLength', 'value': 8, 'message': 'Password must be at least 8 characters'},
                 ],
                 'error': '{{passwordError}}',
                 'onChange': {
@@ -439,7 +439,7 @@ void main() {
             'label': 'Username',
             'value': '{{username}}',
             'validation': [
-              {'type': 'maxLength', 'value': 15, 'message': 'Username cannot exceed 15 characters'},
+              {'rule': 'maxLength', 'value': 15, 'message': 'Username cannot exceed 15 characters'},
             ],
             'maxLength': 15, // Also enforce in UI
             'error': '{{usernameError}}',
@@ -510,7 +510,7 @@ void main() {
                 'value': '{{phone}}',
                 'placeholder': '123-456-7890',
                 'validation': [
-                  {'type': 'pattern', 'value': r'^\d{3}-\d{3}-\d{4}$', 'message': 'Please use format: 123-456-7890'},
+                  {'rule': 'pattern', 'value': r'^\d{3}-\d{3}-\d{4}$', 'message': 'Please use format: 123-456-7890'},
                 ],
                 'error': '{{phoneError}}',
                 'onChange': {
@@ -604,7 +604,7 @@ void main() {
                 'value': '{{confirmPassword}}',
                 'obscureText': true,
                 'validation': [
-                  {'type': 'custom', 'value': 'passwordMatch', 'message': 'Passwords do not match'},
+                  {'rule': 'custom', 'value': 'passwordMatch', 'message': 'Passwords do not match'},
                 ],
                 'error': '{{confirmError}}',
                 'onChange': {
@@ -798,7 +798,7 @@ void main() {
                     'label': 'Name',
                     'value': '{{form.name}}',
                     'validation': [
-                      {'type': 'required'},
+                      {'rule': 'required'},
                     ],
                     'error': '{{errors.name}}',
                     'onChange': {
@@ -813,8 +813,8 @@ void main() {
                     'label': 'Email',
                     'value': '{{form.email}}',
                     'validation': [
-                      {'type': 'required'},
-                      {'type': 'email'},
+                      {'rule': 'required'},
+                      {'rule': 'email'},
                     ],
                     'error': '{{errors.email}}',
                     'onChange': {
@@ -830,9 +830,9 @@ void main() {
                     'value': '{{form.age}}',
                     'keyboardType': 'number',
                     'validation': [
-                      {'type': 'required'},
-                      {'type': 'min', 'value': 18},
-                      {'type': 'max', 'value': 100},
+                      {'rule': 'required'},
+                      {'rule': 'min', 'value': 18},
+                      {'rule': 'max', 'value': 100},
                     ],
                     'error': '{{errors.age}}',
                     'onChange': {
@@ -982,9 +982,9 @@ void main() {
                 'label': 'Quantity',
                 'value': '{{quantity}}',
                 'validation': [
-                  {'type': 'required', 'message': 'Quantity is required'},
-                  {'type': 'min', 'value': 1, 'message': 'Minimum quantity is 1'},
-                  {'type': 'max', 'value': 100, 'message': 'Maximum quantity is 100'},
+                  {'rule': 'required', 'message': 'Quantity is required'},
+                  {'rule': 'min', 'value': 1, 'message': 'Minimum quantity is 1'},
+                  {'rule': 'max', 'value': 100, 'message': 'Maximum quantity is 100'},
                 ],
                 'error': '{{quantityError}}',
                 'onChange': {
@@ -1073,7 +1073,7 @@ void main() {
                 'label': 'Start Date',
                 'value': '{{startDate}}',
                 'validation': [
-                  {'type': 'required', 'message': 'Start date is required'},
+                  {'rule': 'required', 'message': 'Start date is required'},
                 ],
                 'error': '{{dateError}}',
                 'onChange': {
@@ -1175,7 +1175,7 @@ void main() {
                 'label': 'Secondary Color',
                 'value': '{{secondaryColor}}',
                 'validation': [
-                  {'type': 'required', 'message': 'Secondary color is required'},
+                  {'rule': 'required', 'message': 'Secondary color is required'},
                 ],
                 'error': '{{colorError}}',
                 'onChange': {

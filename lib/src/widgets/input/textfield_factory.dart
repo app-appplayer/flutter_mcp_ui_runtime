@@ -19,7 +19,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     // Check if debouncing is enabled
-    final debounceDelay = properties['debounce'] as int?;
+    final debounceDelay = readInt(properties['debounce'], context);
 
     if (debounceDelay != null && debounceDelay > 0) {
       return _DebouncedTextField(
@@ -44,13 +44,13 @@ class TextFieldWidgetFactory extends WidgetFactory {
     final hint = context.resolve<String?>(properties['hint']) ??
         context.resolve<String?>(properties['placeholder']) ??
         '';
-    final label = properties['label'] as String?;
-    final helperText = properties['helperText'] as String?;
-    final prefixIcon = properties['prefixIcon'] as String?;
-    final suffixIcon = properties['suffixIcon'] as String?;
-    final obscureText = properties['obscureText'] as bool? ?? false;
-    final enabled = properties['enabled'] as bool? ?? true;
-    final readOnly = properties['readOnly'] as bool? ?? false;
+    final label = readString(properties['label'], context);
+    final helperText = readString(properties['helperText'], context);
+    final prefixIcon = readString(properties['prefixIcon'], context);
+    final suffixIcon = readString(properties['suffixIcon'], context);
+    final obscureText = readBool(properties['obscureText'], context) ?? false;
+    final enabled = readBool(properties['enabled'], context) ?? true;
+    final readOnly = readBool(properties['readOnly'], context) ?? false;
     final maxLines = dimensionOf(properties['maxLines'], context)?.toInt() ?? 1;
     final maxLength = dimensionOf(properties['maxLength'], context)?.toInt();
     // spec v1.0: 'inputType', legacy: 'keyboardType'
@@ -83,7 +83,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
     final focusAction = actionOf(properties['onFocus'] ?? properties['focus'], context);
 
     // Get initial value from binding or value property
-    final bindingPath = properties['binding'] as String?;
+    final bindingPath = readString(properties['binding'], context);
     String initialValue = '';
     if (bindingPath != null) {
       initialValue = context.getState(bindingPath)?.toString() ?? '';
@@ -160,7 +160,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
         }
 
         // Update state if binding is specified
-        final path = properties['binding'] as String?;
+        final path = readString(properties['binding'], context);
         if (path != null) {
           context.setValue(path, newValue);
         }
@@ -181,7 +181,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
       },
       onSubmitted: (newValue) {
         // Update state if binding is specified
-        final path = properties['binding'] as String?;
+        final path = readString(properties['binding'], context);
         if (path != null) {
           context.setValue(path, newValue);
         }
@@ -259,13 +259,13 @@ class TextFieldWidgetFactory extends WidgetFactory {
     final hint = context.resolve<String?>(properties['hint']) ??
         context.resolve<String?>(properties['placeholder']) ??
         '';
-    final label = properties['label'] as String?;
-    final helperText = properties['helperText'] as String?;
-    final prefixIcon = properties['prefixIcon'] as String?;
-    final suffixIcon = properties['suffixIcon'] as String?;
-    final obscureText = properties['obscureText'] as bool? ?? false;
-    final enabled = properties['enabled'] as bool? ?? true;
-    final readOnly = properties['readOnly'] as bool? ?? false;
+    final label = readString(properties['label'], context);
+    final helperText = readString(properties['helperText'], context);
+    final prefixIcon = readString(properties['prefixIcon'], context);
+    final suffixIcon = readString(properties['suffixIcon'], context);
+    final obscureText = readBool(properties['obscureText'], context) ?? false;
+    final enabled = readBool(properties['enabled'], context) ?? true;
+    final readOnly = readBool(properties['readOnly'], context) ?? false;
     final maxLines = dimensionOf(properties['maxLines'], context)?.toInt() ?? 1;
     final maxLength = dimensionOf(properties['maxLength'], context)?.toInt();
     // spec v1.0: 'inputType', legacy: 'keyboardType'
@@ -294,7 +294,8 @@ class TextFieldWidgetFactory extends WidgetFactory {
     final changeAction = actionOf(properties['onChange'] ?? properties['change'], context);
     final submitAction = actionOf(properties['onSubmit'] ?? properties['submit'], context);
     final blurAction = actionOf(properties['onBlur'] ?? properties['blur'], context);
-    // ignore: unused_local_variable
+    // Read and dropped: a field declaring `onFocus` never fired it, while
+    // `onBlur` beside it worked.
     final focusAction = actionOf(properties['onFocus'] ?? properties['focus'], context);
 
     // Parse style
@@ -347,7 +348,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
         }
 
         // Update state if binding is specified
-        final path = properties['binding'] as String?;
+        final path = readString(properties['binding'], context);
         if (path != null) {
           context.setValue(path, newValue);
         }
@@ -367,7 +368,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
       },
       onSubmitted: (newValue) {
         // Update state if binding is specified
-        final path = properties['binding'] as String?;
+        final path = readString(properties['binding'], context);
         if (path != null) {
           context.setValue(path, newValue);
         }
@@ -387,21 +388,21 @@ class TextFieldWidgetFactory extends WidgetFactory {
       },
     );
 
-    // Wrap in Focus if blur action is specified
-    if (blurAction != null) {
+    // Wrap in Focus when either focus action is specified
+    if (blurAction != null || focusAction != null) {
       textField = Focus(
         onFocusChange: (hasFocus) {
-          if (!hasFocus) {
-            final eventContext = context.createChildContext(
-              variables: {
-                'event': {
-                  'value': controller.text,
-                  'type': 'blur',
-                },
+          final action = hasFocus ? focusAction : blurAction;
+          if (action == null) return;
+          final eventContext = context.createChildContext(
+            variables: {
+              'event': {
+                'value': controller.text,
+                'type': hasFocus ? 'focus' : 'blur',
               },
-            );
-            eventContext.handleAction(blurAction);
-          }
+            },
+          );
+          eventContext.handleAction(action);
         },
         child: textField,
       );
@@ -514,7 +515,7 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
         .extractProperties(widget.definition);
 
     // Get initial value
-    final bindingPath = properties['binding'] as String?;
+    final bindingPath = readString(properties['binding'], widget.context);
     String initialValue = '';
     if (bindingPath != null) {
       initialValue = widget.context.getState(bindingPath)?.toString() ?? '';
@@ -558,7 +559,7 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
       }
 
       // Update state if binding is specified
-      final path = properties['binding'] as String?;
+      final path = readString(properties['binding'], widget.context);
       if (path != null) {
         widget.context.setValue(path, newValue);
       }
@@ -674,7 +675,7 @@ class _StatefulTextFieldState extends State<_StatefulTextField> {
     final properties = factory.extractProperties(widget.definition);
 
     // Get initial value from binding or value property
-    final bindingPath = properties['binding'] as String?;
+    final bindingPath = readString(properties['binding'], widget.context);
     String initialValue = '';
     if (bindingPath != null) {
       initialValue = widget.context.getState(bindingPath)?.toString() ?? '';
@@ -695,7 +696,7 @@ class _StatefulTextFieldState extends State<_StatefulTextField> {
     final properties = factory.extractProperties(widget.definition);
 
     // Check if value from state has changed
-    final bindingPath = properties['binding'] as String?;
+    final bindingPath = readString(properties['binding'], widget.context);
     String newValue = '';
     if (bindingPath != null) {
       newValue = widget.context.getState(bindingPath)?.toString() ?? '';

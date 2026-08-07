@@ -1,12 +1,16 @@
-// The pre-1.3 spellings still render; they are not declared.
+// The pre-1.3 spellings render, and validate.
 //
-// §17.1.3 spells multi-word enum values in camelCase, and 1.3 decided that
-// legacy spellings live in the implementation rather than the canonical
-// surface. Both halves have to hold at once: a document written before that
-// rule keeps drawing, and an editor offering values does not offer the old
-// ones. Pinning only one half lets the other drift — which is how
-// `space-between` came to be declared in the registry while the prose named
-// `spaceBetween` two lines above it.
+// §17.1.3 spells multi-word enum values in camelCase, and this file used to
+// pin the other half of that decision as "legacy spellings live in the
+// implementation, not the canonical surface" — declared nowhere, rendered
+// anyway. That split cannot hold: `initialize` validates the document and
+// throws before the first frame, so a bundle carrying `space-between` never
+// reached the factory branch written to render it. The test passed because it
+// called the factory directly, which no real document does.
+//
+// So both spellings validate, and the canonical one is what the prose, the
+// description and an editor's completion list advertise. Being non-canonical
+// is a matter of what is recommended, not of what loads.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,7 +31,7 @@ void main() {
       ['spaceAround', 'space-around'],
       ['spaceEvenly', 'space-evenly'],
     ]) {
-      test('${pair[0]} is declared, ${pair[1]} is not', () {
+      test('${pair[0]} and ${pair[1]} both load', () {
         expect(
             validateMcpUiDslWidget(<String, dynamic>{
               'type': 'linear',
@@ -41,12 +45,13 @@ void main() {
               'children': <dynamic>[],
               'distribution': pair[1],
             }).isValid,
-            isFalse,
-            reason: '${pair[1]} is a legacy spelling, not a declared value');
+            isTrue,
+            reason: 'the runtime renders ${pair[1]}; rejecting it here stops '
+                'the whole document at initialize');
       });
     }
 
-    test('the QR levels follow the same split', () {
+    test('the QR letters load the same way', () {
       expect(
           validateMcpUiDslWidget(<String, dynamic>{
             'type': 'qrCode',
@@ -60,15 +65,16 @@ void main() {
             'value': 'x',
             'errorCorrection': 'H',
           }).isValid,
-          isFalse,
-          reason: 'the standard\'s single letters are legacy, not declared');
+          isTrue,
+          reason: 'the factory maps H to high; a code that renders must not '
+              'be a document that refuses to open');
     });
   });
 
   testWidgets('the legacy spelling still lays out', (tester) async {
-    // Rendered through the factory rather than a validated document, which is
-    // exactly the position a legacy spelling occupies: the runtime honours it,
-    // the registry does not advertise it.
+    // Validation says the document opens; this says the layout is the same
+    // one the canonical spelling produces. Both halves, or the value is
+    // accepted at the door and then ignored.
     final registry = WidgetRegistry();
     DefaultWidgets.registerAll(registry);
     final renderer = Renderer(

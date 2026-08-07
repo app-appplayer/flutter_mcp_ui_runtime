@@ -16,7 +16,7 @@ class OtpInputFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    final binding = properties['binding'] as String?;
+    final binding = stringOf(properties['binding'], context);
     final length = context.resolve<num?>(properties['length'])?.toInt() ?? 6;
     final inputType =
         context.resolve<String?>(properties['inputType']) ?? 'numeric';

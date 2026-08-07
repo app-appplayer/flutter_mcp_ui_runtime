@@ -21,7 +21,7 @@ class MarkdownWidgetFactory extends WidgetFactory {
         context.resolve<String?>(properties['text']) ??
             context.resolve<String?>(properties['content']) ??
             '';
-    final selectable = properties['selectable'] as bool? ?? false;
+    final selectable = boolOf(properties['selectable'], context) ?? false;
     final width = (dimensionOf(properties['width'], context))?.toDouble();
     final height = (dimensionOf(properties['height'], context))?.toDouble();
 

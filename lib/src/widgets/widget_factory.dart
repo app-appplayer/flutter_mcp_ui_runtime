@@ -103,8 +103,8 @@ abstract class WidgetFactory {
 
     // Handle key / testKey — wrap with KeyedSubtree for widget identity
     // testKey takes precedence over key (design doc: testKey is for testing)
-    final testKey = properties['testKey'] as String?;
-    final keyProp = properties['key'] as String?;
+    final testKey = stringOf(properties['testKey'], context);
+    final keyProp = stringOf(properties['key'], context);
     final widgetKey = testKey ?? keyProp;
     if (widgetKey != null) {
       widget = KeyedSubtree(
@@ -337,6 +337,22 @@ abstract class WidgetFactory {
   double? dimensionOf(dynamic raw, RenderContext context) =>
       readDimension(raw, context);
 
+  /// A boolean / number / integer / string slot, resolved (§3).
+  ///
+  /// Every one of these used to be read with a raw cast, so a setting bound to
+  /// state either reverted to its default or threw. They sit beside
+  /// [dimensionOf] so the next factory inherits the fix instead of repeating
+  /// the defect.
+  bool? boolOf(dynamic raw, RenderContext context) => readBool(raw, context);
+
+  double? numberOf(dynamic raw, RenderContext context) =>
+      readNumber(raw, context);
+
+  int? intOf(dynamic raw, RenderContext context) => readInt(raw, context);
+
+  String? stringOf(dynamic raw, RenderContext context) =>
+      readString(raw, context);
+
   /// An `Action` slot as the list of actions to run.
   ///
   /// The slot accepts one action, a list of them, or a binding resolving to
@@ -450,12 +466,54 @@ abstract class WidgetFactory {
 
 /// A `Dimension` slot, read the way the registry declares it — a number, the
 /// v1.0 `{value, unit}` object, or a binding resolving to either. A factory
-/// that writes `properties['width'] as num?` throws on two of the three forms
+/// that writes `numberOf(properties['width'], context)` throws on two of the three forms
 /// the same document is told it may use.
 double? readDimension(dynamic raw, RenderContext context) {
   final v = context.resolve<dynamic>(raw);
   if (v is num) return v.toDouble();
   if (v is Map && v['value'] is num) return (v['value'] as num).toDouble();
+  return null;
+}
+
+/// A boolean slot, read the way §3 says every value may be written.
+///
+/// `boolOf(properties['showGrid'], context)` was the common spelling, and it answers
+/// null for `"{{state.showGrid}}"` — the setting silently reverts to its
+/// default the moment it is bound to state, which is the only way a setting is
+/// ever *toggled*. The string forms are accepted for the same reason a
+/// document may carry `"true"` from a form field or a query string.
+bool? readBool(dynamic raw, RenderContext context) {
+  final v = context.resolve<dynamic>(raw);
+  if (v is bool) return v;
+  if (v is num) return v != 0;
+  if (v is String) {
+    final t = v.trim().toLowerCase();
+    if (t == 'true') return true;
+    if (t == 'false') return false;
+  }
+  return null;
+}
+
+/// A number slot. Same reason as [readBool]; `?.toDouble()` on a binding
+/// string throws rather than reverting, which is worse.
+double? readNumber(dynamic raw, RenderContext context) {
+  final v = context.resolve<dynamic>(raw);
+  if (v is num) return v.toDouble();
+  if (v is Map && v['value'] is num) return (v['value'] as num).toDouble();
+  if (v is String) return double.tryParse(v.trim());
+  return null;
+}
+
+/// An integer slot — a count of columns, a page index, a maximum length.
+int? readInt(dynamic raw, RenderContext context) => readNumber(raw, context)?.round();
+
+/// A string slot, resolved. `as String?` answers null for a bound value the
+/// binding engine would have produced from a number.
+String? readString(dynamic raw, RenderContext context) {
+  final v = context.resolve<dynamic>(raw);
+  if (v == null) return null;
+  if (v is String) return v;
+  if (v is num || v is bool) return v.toString();
   return null;
 }
 

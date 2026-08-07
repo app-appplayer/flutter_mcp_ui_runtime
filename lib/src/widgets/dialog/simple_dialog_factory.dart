@@ -15,7 +15,7 @@ class SimpleDialogWidgetFactory extends WidgetFactory {
     final title = context.resolve<String?>(properties['title']);
     final backgroundColor =
         parseColor(context.resolve(properties['backgroundColor']), context);
-    final elevation = properties['elevation']?.toDouble();
+    final elevation = numberOf(properties['elevation'], context);
     final shape = _parseShapeBorder(properties['shape']);
     final contentPadding = edgeInsetsOf(properties['contentPadding'], context) ??
         const EdgeInsets.fromLTRB(0.0, 12.0, 0.0, 16.0);

@@ -21,7 +21,7 @@ class SnackBarWidgetFactory extends WidgetFactory {
     final shape = _parseShapeBorder(properties['shape']);
     final behavior = _parseSnackBarBehavior(properties['behavior']);
     final duration = Duration(milliseconds: properties['duration'] ?? 4000);
-    final showCloseIcon = properties['showCloseIcon'] as bool? ?? false;
+    final showCloseIcon = boolOf(properties['showCloseIcon'], context) ?? false;
     final closeIconColor =
         parseColor(context.resolve(properties['closeIconColor']), context);
     final dismissDirection =

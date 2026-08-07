@@ -355,11 +355,24 @@ class _CalendarWidgetState extends State<_CalendarWidget> {
     final days = _getDaysInMonth();
     final today = DateTime.now();
 
-    return GridView.builder(
+    // The month fits the box it was given. Square cells meant six rows of
+    // one-seventh-of-the-width each, which is taller than any calendar is
+    // ever given — the grid scrolled, and a month that ends on the 14th is
+    // what a dashboard tile showed.
+    return LayoutBuilder(builder: (context, constraints) {
+      final rows = (days.length / 7).ceil();
+      final cellWidth = (constraints.maxWidth - 16 - 2 * 6) / 7;
+      final available = constraints.hasBoundedHeight
+          ? constraints.maxHeight - 16 - 2 * (rows - 1)
+          : double.infinity;
+      final cellHeight = available.isFinite
+          ? (available / rows).clamp(28.0, cellWidth)
+          : cellWidth;
+      return GridView.builder(
       padding: const EdgeInsets.all(8),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
-        childAspectRatio: 1.0,
+        childAspectRatio: cellHeight <= 0 ? 1.0 : cellWidth / cellHeight,
         crossAxisSpacing: 2,
         mainAxisSpacing: 2,
       ),
@@ -419,7 +432,8 @@ class _CalendarWidgetState extends State<_CalendarWidget> {
           ),
         );
       },
-    );
+      );
+    });
   }
 
   Widget _buildWeekView() {
@@ -601,9 +615,13 @@ class _CalendarWidgetState extends State<_CalendarWidget> {
     final firstDay = DateTime(_currentMonth.year, _currentMonth.month, 1);
     final lastDay = DateTime(_currentMonth.year, _currentMonth.month + 1, 0);
 
-    // Adjust for first day of week
-    int startWeekday = firstDay.weekday - widget.firstDayOfWeek;
-    if (startWeekday < 0) startWeekday += 7;
+    // Dart counts Monday as 1 and Sunday as 7; the spec counts Sunday as 0.
+    // Subtracting one from the other left a month that begins on a Sunday
+    // with seven leading blanks — a whole week of the previous month above
+    // the 1st, and the weekday header (which does use the spec's numbering)
+    // one column out of step with the grid beneath it.
+    final startWeekday =
+        (_weekIndex(firstDay) - widget.firstDayOfWeek + 7) % 7;
 
     final List<DateTime?> days = [];
 
@@ -627,9 +645,12 @@ class _CalendarWidgetState extends State<_CalendarWidget> {
     return days;
   }
 
+  /// The spec's weekday numbering: Sunday 0 … Saturday 6.
+  int _weekIndex(DateTime date) => date.weekday % 7;
+
   DateTime _getWeekStart(DateTime date) {
-    int daysFromStart = date.weekday - widget.firstDayOfWeek;
-    if (daysFromStart < 0) daysFromStart += 7;
+    final daysFromStart =
+        (_weekIndex(date) - widget.firstDayOfWeek + 7) % 7;
     return DateTime(date.year, date.month, date.day - daysFromStart);
   }
 

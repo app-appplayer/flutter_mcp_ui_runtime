@@ -21,6 +21,12 @@ class DataTableWidgetFactory extends WidgetFactory {
     final sortAscending =
         context.resolve<bool?>(properties['sortAscending']) ?? true;
     final onSort = actionOf(properties['onSort'], context);
+    // §10.4 `editable`: in-place cell editing, reported through `onCellEdit`.
+    // Both were declared and neither was read — a table marked editable had
+    // no editable cell, and the action its own description names did not
+    // exist in the registry.
+    final editable = boolOf(properties['editable'], context) ?? false;
+    final onCellEdit = actionOf(properties['onCellEdit'], context);
     // 1.4 additions that were declared and never wired.
     final filterable = context.resolve<bool>(properties['filterable'] ?? false);
     final resizableColumns =
@@ -99,12 +105,15 @@ class DataTableWidgetFactory extends WidgetFactory {
     final dataRows = rows.map<DataRow>((row) {
       final rowData = row as Map<String, dynamic>;
       return DataRow(
-        onSelectChanged: selectable
-            ? (_) {
-                if (rowClickAction != null) {
-                  context.handleAction(rowClickAction);
-                }
-              }
+        // A declared `onRowTap` fires whether or not the table is selectable —
+        // gating it on `selectable` left a table whose taps went nowhere — and
+        // it fires through `_tapRow`, which is the only place that knows to
+        // put the row in the event. Three call sites fired the same action
+        // with three different contexts, and two of them carried no row: a
+        // document reading `{{event.row.id}}`, which is the spec's own
+        // example, got null from whichever one happened to win the gesture.
+        onSelectChanged: (selectable || rowClickAction != null)
+            ? (_) => tapRow(context, rowClickAction, rowData)
             : null,
         cells: columns.map<DataCell>((col) {
           final colDef = col as Map<String, dynamic>;
@@ -116,7 +125,7 @@ class DataTableWidgetFactory extends WidgetFactory {
                 ? Center(child: Text(cellValue))
                 : Text(cellValue),
             onTap: rowClickAction != null
-                ? () => context.handleAction(rowClickAction)
+                ? () => tapRow(context, rowClickAction, rowData)
                 : null,
           );
         }).toList(),
@@ -136,6 +145,8 @@ class DataTableWidgetFactory extends WidgetFactory {
       virtualScroll: virtualScroll,
       rowHeight: rowHeight,
       rowClickAction: rowClickAction,
+      editable: editable,
+      onCellEdit: onCellEdit,
       context: context,
     );
   }
@@ -147,6 +158,22 @@ class DataTableWidgetFactory extends WidgetFactory {
 /// outlives one build — the per-column filter text, the dragged widths, and
 /// the scroll position — so the table itself is stateful rather than each of
 /// the three being approximated statelessly.
+/// Fires a row tap with the row in the event (§10.4 — `event.row` is the row
+/// object). Shared so every path that can start a row tap reports the same
+/// thing.
+void tapRow(
+  RenderContext context,
+  Map<String, dynamic>? action,
+  Map<String, dynamic> row,
+) {
+  if (action == null) return;
+  context
+      .createChildContext(variables: {
+        'event': {'row': row},
+      })
+      .handleAction(action);
+}
+
 class _DataTableView extends StatefulWidget {
   final List<dynamic> columns;
   final List<dynamic> rows;
@@ -160,6 +187,8 @@ class _DataTableView extends StatefulWidget {
   final bool virtualScroll;
   final double? rowHeight;
   final Map<String, dynamic>? rowClickAction;
+  final bool editable;
+  final Map<String, dynamic>? onCellEdit;
   final RenderContext context;
 
   const _DataTableView({
@@ -175,6 +204,8 @@ class _DataTableView extends StatefulWidget {
     required this.virtualScroll,
     required this.rowHeight,
     required this.rowClickAction,
+    this.editable = false,
+    this.onCellEdit,
     required this.context,
   });
 
@@ -188,6 +219,26 @@ class _DataTableViewState extends State<_DataTableView> {
 
   String _key(dynamic col) =>
       (col as Map<String, dynamic>)['key']?.toString() ?? '';
+
+  /// Reports an edit. The widget never rewrites `rows` itself — §10.4 says
+  /// the document decides what an edit means.
+  void _commitEdit(
+    Map<String, dynamic> row,
+    String column,
+    String value,
+    String previous,
+  ) {
+    final action = widget.onCellEdit;
+    if (action == null || value == previous) return;
+    widget.context.createChildContext(variables: {
+      'event': {
+        'row': row,
+        'column': column,
+        'value': value,
+        'previous': previous,
+      },
+    }).handleAction(action);
+  }
 
   List<dynamic> get _visibleRows {
     if (!widget.filterable || _filters.values.every((v) => v.isEmpty)) {
@@ -229,6 +280,12 @@ class _DataTableViewState extends State<_DataTableView> {
             height: widget.rowHeight != null
                 ? (widget.rowHeight! * (rows.length.clamp(0, 12)))
                 : 320,
+            // The whole table sits in a horizontal scroll view, so the row
+            // list has no width to expand into and threw "vertical viewport
+            // was given unbounded width" — `virtualScroll: true` did not
+            // scroll, it crashed the page. The rows are as wide as the
+            // columns, which is the width the header already uses.
+            width: _tableWidth,
             child: ListView.builder(
               itemCount: rows.length,
               itemExtent: widget.rowHeight,
@@ -265,6 +322,13 @@ class _DataTableViewState extends State<_DataTableView> {
       child: table,
     );
   }
+
+  /// The width the columns add up to, including the resize handles.
+  double get _tableWidth => widget.columns.fold<double>(
+        0,
+        (total, col) =>
+            total + _widthFor(col) + (widget.resizableColumns ? 8 : 0),
+      );
 
   /// The pre-built rows restricted to what the filters leave visible. Index
   /// alignment holds because `_visibleRows` preserves source order.
@@ -325,19 +389,38 @@ class _DataTableViewState extends State<_DataTableView> {
   Widget _bodyRow(dynamic row) {
     final data = row as Map<String, dynamic>;
     final cells = widget.columns.map<Widget>((col) {
+      final key = _key(col);
+      final value = data[key]?.toString() ?? '';
       return SizedBox(
         width: _widthFor(col) + (widget.resizableColumns ? 8 : 0),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          child: Text(data[_key(col)]?.toString() ?? '',
-              overflow: TextOverflow.ellipsis),
+          child: widget.editable
+              ? TextFormField(
+                  key: ValueKey('cell-${widget.rows.indexOf(row)}-$key'),
+                  initialValue: value,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  // On commit, not per keystroke: an edit is a decision, and
+                  // a document that writes every character to a tool would
+                  // fire once per letter.
+                  onFieldSubmitted: (edited) =>
+                      _commitEdit(data, key, edited, value),
+                  onTapOutside: (_) {},
+                )
+              : Text(value, overflow: TextOverflow.ellipsis),
         ),
       );
     }).toList();
     final content = Row(children: cells);
     if (widget.rowClickAction == null) return content;
     return InkWell(
-      onTap: () => widget.context.handleAction(widget.rowClickAction!),
+      onTap: () =>
+          tapRow(widget.context, widget.rowClickAction, data),
       child: content,
     );
   }

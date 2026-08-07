@@ -20,12 +20,12 @@ class ImageWidgetFactory extends WidgetFactory {
     final height = parseDimension(properties['height']);
     final fit = _parseBoxFit(readEnum(properties['fit'], context));
     final alignment = _parseAlignment(properties['alignment']);
-    final placeholder = properties['placeholder'] as String?;
-    final errorWidget = properties['errorWidget'] as String?;
+    final placeholder = stringOf(properties['placeholder'], context);
+    final errorWidget = stringOf(properties['errorWidget'], context);
     final fallback = properties['fallback'] as Map<String, dynamic>?;
     final fallbackUrl = context.resolve<String?>(properties['fallbackUrl']);
     final fallbackBehavior =
-        properties['fallbackBehavior'] as String? ?? 'placeholder';
+        stringOf(properties['fallbackBehavior'], context) ?? 'placeholder';
     final loading = properties['loading'] as Map<String, dynamic>?;
 
     Widget image;

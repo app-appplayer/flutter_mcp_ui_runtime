@@ -10,14 +10,14 @@ class RangeSliderWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     // Spec §2.6.0: binding shorthand — read from state path if set.
-    final binding = (properties['binding'] as String?) ??
-        (properties['bindTo'] as String?);
+    final binding = (stringOf(properties['binding'], context)) ??
+        (stringOf(properties['bindTo'], context));
     final dynamic rawValue = binding != null
         ? context.getState(binding)
         : context.resolve(properties['value'] ?? properties['values']);
     final values = _parseRangeValues(rawValue) ?? const RangeValues(0.2, 0.8);
-    final min = properties['min']?.toDouble() ?? 0.0;
-    final max = properties['max']?.toDouble() ?? 1.0;
+    final min = numberOf(properties['min'], context) ?? 0.0;
+    final max = numberOf(properties['max'], context) ?? 1.0;
     final divisions = dimensionOf(properties['divisions'], context)?.toInt();
     final labels = _parseRangeLabels(properties['labels'], context);
     final activeColor = parseColor(context.resolve(properties['activeColor']), context);
@@ -52,7 +52,7 @@ class RangeSliderWidgetFactory extends WidgetFactory {
               };
               // Persist to state when `binding` (canonical) or legacy
               // `bindTo` is provided.
-              final path = binding ?? (properties['bindTo'] as String?);
+              final path = binding ?? (stringOf(properties['bindTo'], context));
               if (path != null) {
                 context.setValue(path, payload);
               }

@@ -35,11 +35,11 @@ class SignatureWidgetFactory extends WidgetFactory {
     final borderColor = parseColor(properties['borderColor'], context) ??
         context.themeManager.getColorValue('outlineVariant') ??
         Colors.grey.shade300;
-    final borderWidth = (properties['borderWidth'] as num?)?.toDouble() ?? 1.0;
+    final borderWidth = (numberOf(properties['borderWidth'], context))?.toDouble() ?? 1.0;
 
     // Options
-    final showClearButton = properties['showClearButton'] as bool? ?? true;
-    final showGuide = properties['showGuide'] as bool? ?? true;
+    final showClearButton = boolOf(properties['showClearButton'], context) ?? true;
+    final showGuide = boolOf(properties['showGuide'], context) ?? true;
 
     // Action handlers
     final onSignatureStart =
@@ -49,7 +49,7 @@ class SignatureWidgetFactory extends WidgetFactory {
     final onClear = actionOf(properties['onClear'], context);
 
     // State binding
-    final stateBinding = properties['binding'] as String?;
+    final stateBinding = stringOf(properties['binding'], context);
 
     Widget signature = _SignaturePad(
       penColor: penColor,

@@ -9,6 +9,8 @@ import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart'
     show ActionDefinition, ActionTypes, IdentityPromotion, PromotionOutcome;
 
 import '../renderer/render_context.dart';
+import '../assets/asset_ref.dart';
+import '../capabilities/runtime_capabilities.dart';
 import '../utils/mcp_logger.dart';
 import '../services/dialog_service.dart';
 import '../services/navigation_service.dart';
@@ -100,6 +102,21 @@ class ActionHandler {
     _executors['sequence'] = sequenceExecutor;
 
     _executors['notification'] = NotificationActionExecutor();
+
+    // v1.4 Sound actions (spec §4.9a). Core Profile: a served application and a
+    // browser-rendered one need to be heard too, and a sound carries none of
+    // the user's data. Canonical dotted keys — there is no sub-operation field.
+    final soundExecutor = SoundActionExecutor();
+    _executors['sound.play'] = soundExecutor;
+    _executors['sound.stop'] = soundExecutor;
+
+    // v1.4 media transport (spec §4.9b) — drives a mounted `mediaPlayer` by id
+    // so `controls: false` is a design choice rather than a dead end.
+    final mediaExecutor = MediaActionExecutor();
+    _executors['media.play'] = mediaExecutor;
+    _executors['media.pause'] = mediaExecutor;
+    _executors['media.toggle'] = mediaExecutor;
+    _executors['media.seek'] = mediaExecutor;
 
     // v1.1 Event bus executor
     _executors['event'] = EventActionExecutor();
@@ -2137,6 +2154,131 @@ class SequenceActionExecutor extends ActionExecutor {
 }
 
 /// Executes notification actions (v1.1)
+/// `sound.play` / `sound.stop` (spec §4.9a).
+///
+/// The runtime resolves the binding and the scheme (§6.12.2) and hands the host
+/// a reference; producing the sound is the host's power. With no [SoundPort]
+/// wired the action does NOT quietly succeed — it reports, because a beep that
+/// silently does nothing is indistinguishable from a device with the volume
+/// down, and the author has no way to learn which one they shipped.
+class SoundActionExecutor extends ActionExecutor {
+  @override
+  Future<ActionResult> execute(
+    Map<String, dynamic> action,
+    RenderContext context,
+  ) async {
+    final type = action['type'] as String?;
+    final port = context.capabilities.sound;
+
+    if (type == 'sound.stop') {
+      if (port == null) {
+        return ActionResult.error(
+            const CapabilityUnavailable(RuntimeCapability.sound).toString());
+      }
+      await port.stop(id: context.resolve<String?>(action['id']));
+      return ActionResult.success();
+    }
+
+    final rawSource = action['source'];
+    final resolved =
+        rawSource is String ? context.resolve<String>(rawSource) : rawSource;
+    final ref = AssetRef.parse(resolved);
+    if (ref == null) {
+      return ActionResult.error('sound.play requires a source (AssetRef)');
+    }
+
+    final loop = context.resolve<bool>(action['loop'] ?? false);
+    final id = context.resolve<String?>(action['id']);
+    if (loop && (id == null || id.isEmpty)) {
+      // §4.9a — an unnamed loop cannot be stopped, so it is a document error
+      // rather than a sound that plays until the app closes.
+      return ActionResult.error('a looping sound.play requires an id');
+    }
+
+    if (port == null) {
+      // The handler fires this action's `onError` for any error result, with
+      // `event.code` / `event.message` — the shape every other action already
+      // uses. Firing our own would be a second spelling of the same event.
+      const failure = CapabilityUnavailable(RuntimeCapability.sound);
+      return ActionResult.error(failure.toString(),
+          errorCode: 'CAPABILITY_UNAVAILABLE');
+    }
+
+    try {
+      await port.play(SoundRequest(
+        source: ref,
+        // A bundled beep is the normal case. The same reader that makes a
+        // `bundle://` image appear is what lets it be heard.
+        readBytes: () => context.assetResolver.bytesFor(ref),
+        volume: (context.resolve<num?>(action['volume']) ?? 1.0).toDouble(),
+        id: id,
+        loop: loop,
+      ));
+      return ActionResult.success();
+    } catch (e) {
+      // A host refusal — a browser before the first gesture, a muted device, a
+      // policy — is an error the document can see (§4.9a), never a rendering.
+      return ActionResult.error(e.toString(), errorCode: 'SOUND_REFUSED');
+    }
+  }
+
+}
+
+/// `media.play` / `media.pause` / `media.toggle` / `media.seek` (spec §4.9b).
+class MediaActionExecutor extends ActionExecutor {
+  @override
+  Future<ActionResult> execute(
+    Map<String, dynamic> action,
+    RenderContext context,
+  ) async {
+    final type = action['type'] as String?;
+    final id = context.resolve<String?>(action['id']);
+    if (id == null || id.isEmpty) {
+      return ActionResult.error('$type requires the target player id');
+    }
+
+    final registry = context.mediaRegistry;
+    final session = registry?[id];
+    if (session == null) {
+      // Naming a player that is not mounted and doing nothing would look
+      // exactly like a player that is there and refusing.
+      return ActionResult.error(
+        'no mounted mediaPlayer with id "$id"',
+        errorCode: 'MEDIA_TARGET_NOT_FOUND',
+        errorDetails: <String, dynamic>{
+          'id': id,
+          'mounted': registry?.mountedIds.toList() ?? const <String>[],
+        },
+      );
+    }
+
+    try {
+      switch (type) {
+        case 'media.play':
+          await session.play();
+        case 'media.pause':
+          await session.pause();
+        case 'media.toggle':
+          final playing = await session.playing.first
+              .timeout(const Duration(milliseconds: 200), onTimeout: () => false);
+          await (playing ? session.pause() : session.play());
+        case 'media.seek':
+          final seconds = context.resolve<num?>(action['position']);
+          if (seconds == null) {
+            return ActionResult.error('media.seek requires `position` seconds');
+          }
+          await session.seek(
+              Duration(milliseconds: (seconds * 1000).round()));
+        default:
+          return ActionResult.error('unknown media action: $type');
+      }
+      return ActionResult.success();
+    } catch (e) {
+      return ActionResult.error(e.toString(), errorCode: 'MEDIA_FAILED');
+    }
+  }
+}
+
 class NotificationActionExecutor extends ActionExecutor {
   @override
   Future<ActionResult> execute(

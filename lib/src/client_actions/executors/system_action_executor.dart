@@ -79,11 +79,15 @@ class SystemActionExecutor {
 
         case 'image':
           // Image clipboard requires platform-specific implementation
-          return ActionResult.success(data: {
-            'hasContent': false,
-            'format': 'image',
-            'note': 'Image clipboard read is not implemented by this runtime',
-          });
+          // §6.13.1 — reporting success for something not performed is the
+          // failure this rule exists to stop. `hasContent: false` reads as "the
+          // clipboard is empty", which is a different fact from "this runtime
+          // cannot look".
+          return ActionResult.error(
+            'client.clipboard cannot read images in this runtime',
+            errorCode: 'UNSUPPORTED',
+            errorDetails: <String, dynamic>{'format': 'image'},
+          );
 
         case 'text':
         default:

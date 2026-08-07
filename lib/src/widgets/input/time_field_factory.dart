@@ -9,11 +9,11 @@ class TimeFieldFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     // Extract properties
-    final label = properties['label'] as String?;
-    final binding = properties['binding'] as String?;
+    final label = stringOf(properties['label'], context);
+    final binding = stringOf(properties['binding'], context);
     final errorText = context.resolve(properties['errorText']) as String?;
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
-    final use24HourFormat = properties['use24HourFormat'] as bool? ?? false;
+    final use24HourFormat = boolOf(properties['use24HourFormat'], context) ?? false;
     // Spec §2.6.14: `format` controls displayed string (HH:mm default);
     // `mode` switches picker style.
     final formatStr = readEnum(properties['format'], context) ?? 'HH:mm';

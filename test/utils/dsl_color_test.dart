@@ -1,6 +1,9 @@
 // §5.3.4 has one reading now. These pin the holes that were open when four
 // parsers each had their own.
 
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/src/utils/color_parser.dart';
@@ -98,5 +101,55 @@ void main() {
         reason: 'an unbounded warn-once set grows for the life of the '
             'process; the cap is the point');
     expect(logs.last, contains('stopped reporting'));
+  });
+
+  test('a legacy slot name resolves onto the role it meant', () {
+    // A document written before §5.3.1's roles says `divider`. It used to
+    // resolve to nothing — an invisible line — and after 1.4 typed the
+    // property as `Color` it stopped loading at all.
+    expect(
+        DslColor.parse('divider',
+            slotResolver: (slot) =>
+                slot == 'outlineVariant' ? const Color(0xFF445566) : null),
+        const Color(0xFF445566));
+    expect(
+        DslColor.parse('textOnSurface',
+            slotResolver: (slot) =>
+                slot == 'onSurface' ? const Color(0xFF112233) : null),
+        const Color(0xFF112233));
+  });
+
+  test('the slots the schema declares are the slots this parser reads', () {
+    // Two lists of scheme roles, written a year apart, in two repositories'
+    // worth of file. When they disagree the failure is silent in both
+    // directions: a name only the schema knows loads and paints nothing, and a
+    // name only the parser knows is rejected before the document opens.
+    final repo = Directory.current.path.split('/packages/')[0];
+    final schemaFile = File(
+        '$repo/specs/mcp_ui_dsl/spec/1.4/schema/widgets.schema.json');
+    if (!schemaFile.existsSync()) return; // published checkout, no spec tree
+
+    final color = (jsonDecode(schemaFile.readAsStringSync())
+        as Map<String, dynamic>)[r'$defs']['Color'] as Map<String, dynamic>;
+    final declared = <String>{
+      for (final branch in color['oneOf'] as List)
+        if (branch is Map && branch['enum'] is List)
+          ...(branch['enum'] as List).cast<String>(),
+    };
+
+    // Legacy slot names count as read: they resolve through
+    // `DslColor.legacyAliases` onto a canonical role.
+    final readable =
+        DslColor.schemeSlots.union(DslColor.legacyAliases.keys.toSet());
+    expect(declared.difference(readable), isEmpty,
+        reason: 'the schema accepts these names, so a document carrying one '
+            'loads — and this parser answers null, which paints nothing');
+    expect(readable.difference(declared), isEmpty,
+        reason: 'this parser reads these names, but a document carrying one '
+            'is rejected before it ever reaches the parser');
+    for (final entry in DslColor.legacyAliases.entries) {
+      expect(DslColor.schemeSlots, contains(entry.value),
+          reason: '${entry.key} maps onto ${entry.value}, which is not a slot');
+    }
   });
 }
