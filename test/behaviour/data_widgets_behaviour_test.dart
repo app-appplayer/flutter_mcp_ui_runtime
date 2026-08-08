@@ -438,6 +438,58 @@ void main() {
       {'from': 'b', 'to': 'c'},
     ];
 
+    testWidgets('nodes that arrive after the first frame still draw',
+        (tester) async {
+      // The failure konpi measured on the published build, and the reason the
+      // unit check above passed while the app drew an empty panel: state is
+      // present before the first build in this harness, and in an app it
+      // arrives after it. The node list was copied once in initState, so a
+      // late `nodes` never reached the layout — while `edges` looked fine,
+      // because the painter reads those on every paint.
+      final runtime = MCPUIRuntime();
+      addTearDown(runtime.destroy);
+      await runtime.initialize({
+        'type': 'page',
+        'content': {
+          'type': 'networkGraph',
+          'nodes': '{{late.nodes}}',
+          'edges': '{{late.edges}}',
+          'nodeColor': '#E91E63',
+          'layout': 'tree',
+        },
+        'runtime': {
+          'services': {
+            'state': {
+              'initialState': {'late': <String, dynamic>{}},
+            },
+          },
+        },
+      });
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: isolated(
+              SizedBox(width: 420, height: 320, child: runtime.buildUI()),
+              key: const ValueKey('late-nodes'),
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+
+      runtime.stateManager.set('late', {'nodes': nodes, 'edges': edges});
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      late Painted painted;
+      await tester.runAsync(() async {
+        painted = await paintedOf(tester, find.byKey(const ValueKey('late-nodes')));
+      });
+      expect(painted.count(const Color(0xFFE91E63)), greaterThan(0),
+          reason: 'a topology that arrives from state after the first frame '
+              'must be drawn, the way every other data widget draws late data');
+    });
+
     testWidgets('a bound topology draws what a literal one draws',
         (tester) async {
       final literal = await render(tester, {

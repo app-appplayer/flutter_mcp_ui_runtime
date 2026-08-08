@@ -1,3 +1,35 @@
+## [0.7.4] - 2026-08-08 — a topology that arrives late is still drawn
+
+`networkGraph` copied its node list once, in `initState`, and never again. A
+bound `nodes` resolves from state, and in an app that state arrives after the
+first frame — so the layout kept the empty list it was born with and the panel
+stayed empty for good. `edges` looked fine the whole time because the painter
+reads those on every paint: the two halves of the same widget disagreed about
+whether late data counts.
+
+Now the node list is re-read (and re-laid-out) when the declaration changes,
+compared by what the document declares rather than by object identity — the
+resolver hands back a fresh list every rebuild, and comparing references would
+relayout every frame and throw away a drag.
+
+### How it survived the previous cut
+
+0.7.3 typed `nodes` / `edges` as bindable and shipped a test that passed, and
+the note that went out said the runtime had always drawn a bound topology. Both
+were measured wrong:
+
+- the first probe returned the *same* pixel count for literal and bound. An
+  identical number is a reason to distrust the measurement, and it was read as
+  proof instead;
+- the unit harness puts state in place before the first build. An app puts it
+  there after. That difference is the whole defect, so the harness could not
+  see it.
+
+konpi's five-way control (state visible as text · literal/literal ·
+literal+bound edges · bound nodes+literal edges · both bound) is what
+separated them. The regression here reproduces the ordering — empty state,
+first frame, then the data — and fails without the fix.
+
 ## [0.7.3] - 2026-08-07 — the runtime answers for the spec's own examples
 
 Six binding defects, all of them written down in the specification as its own
