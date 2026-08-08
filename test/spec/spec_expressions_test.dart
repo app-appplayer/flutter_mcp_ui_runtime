@@ -67,6 +67,18 @@ const Map<String, Expectation> checked = {
   'size * 0.25': Expectation({'size': 100}, 25),
   '-1.57 + (value / max) * 6.28':
       Expectation({'value': 50, 'max': 100}, 1.57),
+  // The same sign, one level down. Inside an argument the sign used to be
+  // read as "unary minus applied to the rest", so it swallowed the whole
+  // expression: `-(1.57 + 0.5)`. An author who wraps a gauge angle in
+  // `round(…)` to fix its decimals got the angle back with the wrong sign —
+  // the widget draws confidently and nothing reports it. (konpi, measured on
+  // a built app before this cut went anywhere.)
+  'round(-1.57 + 0.5, 2)': Expectation({}, -1.07),
+  'round(-1.57 - 0.5, 2)': Expectation({}, -2.07),
+  'round(0.5 + -1.57, 2)': Expectation({}, -1.07),
+  'round((-1.57) + 0.5, 2)': Expectation({}, -1.07),
+  'round(-1.5707963 + (pct / 100) * 3.1415926, 4)':
+      Expectation({'pct': 68}, 0.5655),
   '3.14 + (app.progress / 100) * 3.14': Expectation({'progress': 50}, 4.71),
 
   // §3.6.3 — the lambda form of reduce, with the spec's own arguments.

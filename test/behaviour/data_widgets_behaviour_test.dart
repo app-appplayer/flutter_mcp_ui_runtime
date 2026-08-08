@@ -421,6 +421,129 @@ void main() {
     });
   });
 
+  group('networkGraph — the topology may come from state', () {
+    // §10.12 now types `nodes` / `edges` as `array<object> | binding`, the way
+    // every other data widget reads (`heatmap.data`, `dataTable.rows`,
+    // `kanban.columns`). A dashboard the server draws cannot have its topology
+    // written into the document by hand, and a literal-only graph was the one
+    // widget in the family that forced exactly that. Reported by konpi, who
+    // read the property table first and asked rather than filing it as a bug.
+    const nodes = [
+      {'id': 'a', 'label': 'A'},
+      {'id': 'b', 'label': 'B'},
+      {'id': 'c', 'label': 'C'},
+    ];
+    const edges = [
+      {'from': 'a', 'to': 'b'},
+      {'from': 'b', 'to': 'c'},
+    ];
+
+    testWidgets('a bound topology draws what a literal one draws',
+        (tester) async {
+      final literal = await render(tester, {
+        'type': 'networkGraph',
+        'nodes': nodes,
+        'edges': edges,
+        'layout': 'circular',
+      });
+      final bound = await render(
+        tester,
+        {
+          'type': 'networkGraph',
+          'nodes': '{{graph.nodes}}',
+          'edges': '{{graph.edges}}',
+          'layout': 'circular',
+        },
+        initialState: {
+          'graph': {'nodes': nodes, 'edges': edges},
+        },
+      );
+
+      expect(literal.nonBackground(), greaterThan(0),
+          reason: 'the literal form is the control — if it draws nothing the '
+              'comparison below means nothing');
+      expect(bound.nonBackground(), greaterThan(0),
+          reason: 'a bound topology drew an empty panel');
+      expect(difference(literal, bound), lessThan(0.01),
+          reason: 'the same topology, declared two ways, is the same picture');
+    });
+  });
+
+  group('heatmap — the scale, the precision, and what showLabels means', () {
+    // konpi authored a factory report from a heatmap and shipped a screen that
+    // was one flat red block: every cell painted at the top of the scale. The
+    // range defaulted to 0..1 while the data ran 1.5..6.2, and `minValue` /
+    // `maxValue` are optional in the property table — so a document that omits
+    // them is entitled to a scale, not to a wall of one colour.
+    Map<String, dynamic> heat({bool withRange = false, bool labels = false}) => {
+          'type': 'heatmap',
+          'data': [
+            [1.5, 3.0, 6.2],
+            [2.2, 4.1, 5.4],
+          ],
+          'rowLabels': ['P-1', 'P-2'],
+          'columnLabels': ['06', '07', '08'],
+          'colorRange': {'low': '#E8F5E9', 'high': '#B71C1C'},
+          'cellSize': 48,
+          if (labels) 'showLabels': true,
+          if (withRange) 'minValue': 0,
+          if (withRange) 'maxValue': 7,
+        };
+
+    testWidgets('an unspecified range is taken from the data', (tester) async {
+      // Read two cells, not the picture as a whole: counting colours passes on
+      // grid lines and anti-aliased digits even when every cell is the same
+      // block of red. The lowest value and the highest must not be painted the
+      // same colour — that IS the heatmap.
+      Color cellColour(Painted p, int col) {
+        // Cells are laid out left to right at `cellSize` 48 with a 2px gap,
+        // inside the widget's own padding; sample the middle of the first row.
+        final x = 24 + col * 50;
+        return p.at(x.clamp(0, p.width - 1), 24);
+      }
+
+      final auto = await render(tester, heat());
+      final low = cellColour(auto, 0);   // 1.5 — bottom of the data
+      final high = cellColour(auto, 2);  // 6.2 — top of the data
+      final spread = (low.r - high.r).abs() +
+          (low.g - high.g).abs() +
+          (low.b - high.b).abs();
+      expect(spread, greaterThan(0.15),
+          reason: 'with no declared range the scale must still come from the '
+              'data: 1.5 and 6.2 painted the same colour is a flat block, '
+              'which is what a 0..1 default produces');
+    });
+
+    testWidgets('a fractional value is not shown as an integer',
+        (tester) async {
+      await tester.pumpWidget(const SizedBox());
+      final runtime = MCPUIRuntime();
+      live.add(runtime);
+      await runtime.initialize({'type': 'page', 'content': heat()});
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: SizedBox(width: 420, height: 320, child: runtime.buildUI())),
+      ));
+      await tester.pump(const Duration(milliseconds: 200));
+      // 1.5 and 2.2 both printed as "2": a defect rate of 1.8 and one of 2.4
+      // read the same, and the screen is wrong while looking finished.
+      expect(find.text('1.5'), findsOneWidget);
+      expect(find.text('6.2'), findsOneWidget);
+    });
+
+    testWidgets('row and column labels draw when declared', (tester) async {
+      await tester.pumpWidget(const SizedBox());
+      final runtime = MCPUIRuntime();
+      live.add(runtime);
+      await runtime.initialize({'type': 'page', 'content': heat(labels: true)});
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: SizedBox(width: 420, height: 320, child: runtime.buildUI())),
+      ));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text('P-1'), findsOneWidget);
+      expect(find.text('06'), findsOneWidget);
+    });
+  });
+
   group('networkGraph', () {
     testWidgets('nodes and edges are drawn in the declared colours',
         (tester) async {

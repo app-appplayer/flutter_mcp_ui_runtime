@@ -13,15 +13,28 @@
 // no error widget — the renderer's `Unknown widget type` / `Error rendering`
 // surface is a *successful* build as far as the framework is concerned, so
 // asserting on exceptions alone would miss it.
+//
+// And "no error" is not the same as "drew something". A heatmap that clamps
+// every cell to one colour, a chart that plots nothing, a player that reports
+// an unopenable source — all of those build cleanly and leave the page blank,
+// which is exactly the class of defect that kept reaching authors' screens
+// while this matrix stayed green. So the frame is also SCREENSHOTTED and the
+// widget must put pixels on top of the page background. Widgets that legally
+// paint nothing of their own are named in [_paintsNothing], each with the
+// reason — an unexplained entry there is the hole this check exists to close.
 
 import 'dart:convert';
 import 'dart:io';
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
+
+import '../behaviour/painted_probe.dart';
 
 /// Widgets that only mean anything inside a particular parent: `Expanded` and
 /// friends apply flex parent data, `positioned` applies stack parent data.
@@ -148,15 +161,33 @@ Future<String?> _render(
     // `view` / `use` name a definition by uri. Without a loader the runtime
     // has nothing to build and reports an empty definition, which is a
     // property of the harness rather than of the widget.
+    final document = _asPage(type, fragment);
     await runtime.initialize(
-      _asPage(type, fragment),
+      <String, dynamic>{
+        ...document,
+        'runtime': <String, dynamic>{
+          'services': <String, dynamic>{
+            'state': <String, dynamic>{
+              'initialState': _stateFor(document, type),
+            },
+          },
+        },
+      },
       pageLoader: (uri) async => <String, dynamic>{
         'type': 'page',
         'content': <String, dynamic>{'type': 'text', 'content': 'stub'},
       },
     );
+    runtime.engine.capabilities = _capabilities();
     await tester.pumpWidget(
-      MaterialApp(home: Scaffold(body: runtime.buildUI())),
+      MaterialApp(
+        home: Scaffold(
+          // Wrapped so the frame can be read back as pixels: "no error" and
+          // "drew something" are different claims, and only the second is what
+          // an author sees.
+          body: isolated(runtime.buildUI(), key: const ValueKey('matrix')),
+        ),
+      ),
     );
     // Settle rather than pump a fixed slice: a widget that materializes from
     // a post-frame callback reaches its failure after the frame a single 50 ms
@@ -184,12 +215,31 @@ Future<String?> _render(
   FlutterError.onError = previous;
 
   final rendered = _errorWidgetText(tester);
+
+  // Read the frame back before the runtime goes away.
+  int painted = -1;
+  if (errors.isEmpty && rendered == null && !_paintsNothing.containsKey(type)) {
+    // A plain frame first: `pumpAndSettle` above stops at
+    // `sendSemanticsUpdate`, and reading the layer straight after it returned
+    // a blank image for widgets that had unmistakably drawn.
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.runAsync(() async {
+      final shot = await paintedOf(tester, find.byKey(const ValueKey('matrix')));
+      painted = shot.nonBackground();
+    });
+  }
   await runtime.dispose();
 
   if (errors.isNotEmpty) {
     return 'FlutterError: ${errors.first.exceptionAsString()}';
   }
   if (rendered != null) return 'error widget drawn: $rendered';
+  if (painted == 0) {
+    // Built without complaint and left the page empty. That is the shape every
+    // defect an author found on screen had: the widget was there, the property
+    // was read, and nothing was drawn.
+    return 'built cleanly but painted nothing';
+  }
   return null;
 }
 
@@ -208,6 +258,268 @@ String? _errorWidgetText(WidgetTester tester) {
     }
   }
   return null;
+}
+
+/// Widgets that draw nothing by themselves, with why. Everything else must
+/// leave marks on the page.
+const _paintsNothing = <String, String>{
+  'spacer': 'empty flex space is the widget',
+  'sizedBox': 'a box with no child is space',
+  'divider': 'a hairline at default thickness can miss the sample grid',
+  'verticalDivider': 'as divider',
+  'positioned': 'parent data, drawn by its stack child',
+  'expanded': 'parent data',
+  'flexible': 'parent data',
+  'form': 'a container for fields; empty in the minimal document',
+  'gestureDetector': 'invisible by definition — it wraps a child',
+  'inkWell': 'ink is drawn on interaction',
+  'draggable': 'wraps a child; nothing of its own',
+  'dragTarget': 'wraps a child',
+  'visibility': 'its minimal document is the hidden case',
+  'offstage': 'offstage is the point',
+  'opacity': 'the minimal document has no child to fade',
+  'absorbPointer': 'invisible wrapper',
+  'ignorePointer': 'invisible wrapper',
+  'scrollView': 'a viewport around a child',
+  'singleChildScrollView': 'a viewport around a child',
+  'webView': 'a platform view — invisible to a Flutter screenshot',
+  'videoPlayer': 'a platform view',
+  'mapView': 'a platform view',
+  'view': 'renders whatever the loader returns; the stub is a text child',
+  'use': 'as view',
+  // Wrappers: what they draw is their child, and the registry's minimal
+  // document has none.
+  'layoutBuilder': 'builds from constraints; nothing of its own',
+  'mediaQuery': 'supplies data to a subtree',
+  'resizable': 'a handle around a child',
+  'decoration': 'paints around a child',
+  'contextMenu': 'raised by a long-press, not placed',
+  'lightbox': 'an overlay opened by an action',
+  'errorRecovery': 'shows its fallback only after a failure',
+  'dashboard': 'a shell for widget instances the registry ships none of',
+  'scrollBar': 'a scrollbar for a scrollable that has nothing to scroll',
+  'kenBurnsImage': 'a pan/zoom over an image the harness cannot fetch',
+  // Host surfaces whose builder is handed an asset this harness cannot read.
+  // They ARE proven to paint — by the capability probe, against a built app
+  // with a real host: `tool/capability_probe/verify.py` requires pixels for
+  // pdf and lottie on every tier before a release.
+  'pdfViewer': 'host surface over bundle bytes; covered by the capability probe',
+  'lottieAnimation': 'host surface over bundle bytes; capability probe',
+  'map': 'host surface; capability probe',
+};
+
+/// Host surfaces and ports, stubbed so the capability widgets have a
+/// capability to exercise.
+///
+/// §6.13 says a widget with no capability reports the absence and draws
+/// nothing — which is correct, and indistinguishable from a widget that is
+/// simply broken. A matrix run with no capabilities therefore proves nothing
+/// about `mediaPlayer`, `pdfViewer`, `lottieAnimation` or `map`. Here they are
+/// all wired, so "painted nothing" means the widget, not the host.
+RuntimeCapabilities _capabilities() {
+  Widget? surface(BuildContext context, Map<String, dynamic> properties,
+          SurfaceEvents events, SurfaceAssets assets) =>
+      const ColoredBox(color: Color(0xFF2E7D32), child: SizedBox.expand());
+  return RuntimeCapabilities(
+    media: _MatrixMediaPort(),
+    mediaSupportsVideo: true,
+    webViewBuilder: surface,
+    pdfBuilder: surface,
+    mapBuilder: surface,
+    lottieBuilder: surface,
+  );
+}
+
+class _MatrixMediaPort implements MediaPort {
+  @override
+  Future<MediaSession> open({
+    required AssetRef source,
+    required AssetBytesReader readBytes,
+    required bool isVideo,
+    bool wantsWaveform = false,
+    bool loop = false,
+    bool muted = false,
+    double volume = 1.0,
+  }) async =>
+      _MatrixSession();
+
+  @override
+  Widget? videoSurface(MediaSession session) =>
+      const ColoredBox(color: Color(0xFF1565C0), child: SizedBox.expand());
+}
+
+class _MatrixSession implements MediaSession {
+  final _position = StreamController<Duration>.broadcast();
+  final _duration = StreamController<Duration?>.broadcast();
+  final _playing = StreamController<bool>.broadcast();
+  final _ended = StreamController<void>.broadcast();
+  final _errors = StreamController<Object>.broadcast();
+
+  @override
+  Stream<Duration> get position => _position.stream;
+  @override
+  Stream<Duration?> get duration => _duration.stream;
+  @override
+  Stream<bool> get playing => _playing.stream;
+  @override
+  Stream<void> get ended => _ended.stream;
+  @override
+  Stream<Object> get errors => _errors.stream;
+  @override
+  Stream<List<double>>? get waveform => null;
+  @override
+  Future<void> play() async {}
+  @override
+  Future<void> pause() async {}
+  @override
+  Future<void> seek(Duration to) async {}
+  @override
+  Future<void> setVolume(double volume) async {}
+  @override
+  Future<void> setMuted(bool muted) async {}
+  @override
+  Future<void> dispose() async {
+    await _position.close();
+    await _duration.close();
+    await _playing.close();
+    await _ended.close();
+    await _errors.close();
+  }
+}
+
+/// Data shaped for the widgets whose state is not a list of rows.
+///
+/// The generic seed below answers every binding with rows, which is what most
+/// data widgets want. These five want something else — a numeric grid, a
+/// column/row pair, tab entries — and handing them rows renders an empty
+/// widget for the harness's reason rather than the widget's.
+const _shapedState = <String, Map<String, dynamic>>{
+  'heatmap': {
+    'heatmapData': [
+      [1.5, 3.0, 6.2],
+      [2.2, 4.1, 5.4],
+      [0.8, 2.9, 3.3],
+    ],
+  },
+  'dataTable': {
+    'columns': [
+      {'key': 'name', 'label': 'Name'},
+      {'key': 'value', 'label': 'Value'},
+    ],
+    'rows': [
+      {'name': 'A', 'value': 1},
+      {'name': 'B', 'value': 2},
+    ],
+    'users': [
+      {'name': 'A', 'value': 1},
+      {'name': 'B', 'value': 2},
+    ],
+  },
+  'spreadsheet': {
+    // The example reads `{{sheet.rows}}`.
+    'sheet': {
+      'rows': [
+        ['A1', 'B1'],
+        ['A2', 'B2'],
+      ],
+    },
+    'cells': [
+      ['A1', 'B1'],
+      ['A2', 'B2'],
+    ],
+    'data': [
+      ['A1', 'B1'],
+      ['A2', 'B2'],
+    ],
+  },
+  'tabBar': {
+    'tabs': [
+      {'label': 'One', 'key': 'one'},
+      {'label': 'Two', 'key': 'two'},
+    ],
+  },
+  'bottomNavigation': {
+    'items': [
+      {'label': 'Home', 'icon': 'home'},
+      {'label': 'Settings', 'icon': 'settings'},
+    ],
+  },
+};
+
+/// State for whatever the document binds to.
+///
+/// The spec's examples read their data from state — `"{{plan.tasks}}"`,
+/// `"{{books}}"` — and a harness that supplies none renders a data widget with
+/// no data. Drawing nothing then is correct, so without this the pixel check
+/// would report a defect for every list, board and chart in the registry.
+///
+/// The shape is unknowable from the binding alone, so each referenced root
+/// gets a list of rows that also answers as a map: rows carry the key names
+/// these widgets reach for. A widget that still paints nothing with data in
+/// hand is the finding this check exists for.
+Map<String, dynamic> _stateFor(Map<String, dynamic> document, String type) {
+  final shaped = _shapedState[type];
+  final text = jsonEncode(document);
+  final roots = <String>{};
+  for (final match in RegExp(r'\{\{\s*([A-Za-z_]\w*)').allMatches(text)) {
+    final root = match.group(1)!;
+    if (const {'item', 'index', 'event', 'theme', 'i18n', 'isFirst', 'isLast',
+            'isEven', 'isOdd', 'local', 'app', 'page', 'state'}
+        .contains(root)) {
+      continue; // supplied by the runtime's own scopes
+    }
+    roots.add(root);
+  }
+
+  Map<String, dynamic> row(int i) => <String, dynamic>{
+        'id': 'r$i',
+        'key': 'r$i',
+        'name': 'Row $i',
+        'title': 'Row $i',
+        'label': 'Row $i',
+        'text': 'Row $i',
+        'value': 10 + i * 5,
+        'y': 10 + i * 5,
+        'x': i,
+        'progress': 0.25 * (i + 1),
+        'color': '#1E88E5',
+        'status': i.isEven ? 'done' : 'open',
+        'completed': i.isEven,
+        'start': '2026-08-0${i + 1}',
+        'end': '2026-08-0${i + 3}',
+        'from': 'r0',
+        'to': 'r1',
+        'cover': 'https://example.com/cover.png',
+        'src': 'https://example.com/cover.png',
+        'items': <Map<String, dynamic>>[
+          {'id': 'c$i', 'title': 'Card $i', 'label': 'Card $i'},
+        ],
+        'data': <num>[1, 4, 2],
+        'children': <Map<String, dynamic>>[],
+      };
+
+  final rows = [for (var i = 0; i < 3; i++) row(i)];
+  final state = <String, dynamic>{};
+  for (final root in roots) {
+    state[root] = rows;
+  }
+  // Nested reads (`plan.tasks`, `board.columns`) need the parent to be a map
+  // whose every key answers with the same rows.
+  for (final match
+      in RegExp(r'\{\{\s*([A-Za-z_]\w*)\.([A-Za-z_]\w*)').allMatches(text)) {
+    final root = match.group(1)!;
+    if (!state.containsKey(root)) continue;
+    final child = match.group(2)!;
+    final existing = state[root];
+    final map = existing is Map<String, dynamic>
+        ? existing
+        : <String, dynamic>{};
+    map[child] = rows;
+    state[root] = map;
+  }
+  // The shaped fixtures win: they are the widgets whose data is not rows.
+  if (shaped != null) state.addAll(shaped);
+  return state;
 }
 
 Map<String, dynamic> _asPage(String type, Map<String, dynamic> fragment) {

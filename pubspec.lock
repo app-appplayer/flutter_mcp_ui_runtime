@@ -178,10 +178,10 @@ packages:
     dependency: "direct main"
     description:
       name: flutter_mcp_ui_core
-      sha256: "94d012657cfbeefabea7e90c7f9ae6142495e889970ce936731208f8592390c3"
+      sha256: "2546f38b49ae273a04ba09e759bf6e5a363ac0dbc3d2a6f88657712f4b2e0261"
       url: "https://pub.dev"
     source: hosted
-    version: "0.6.1"
+    version: "0.6.2"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:

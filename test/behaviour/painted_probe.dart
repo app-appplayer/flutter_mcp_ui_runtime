@@ -35,6 +35,57 @@ class Painted {
     );
   }
 
+  /// Pixels that differ from the picture's own background.
+  ///
+  /// The background is whatever the frame holds most of, so this asks "did the
+  /// widget put anything on the page" without knowing the theme. A widget that
+  /// builds cleanly and paints nothing — a chart with no series drawn, a
+  /// player whose source will not open — answers 0 here and is invisible to
+  /// every assertion about the widget tree.
+  int nonBackground({int bucket = 8}) {
+    final counts = <int, int>{};
+    for (var y = 0; y < height; y++) {
+      for (var x = 0; x < width; x++) {
+        final c = at(x, y);
+        final key = ((c.r * 255) ~/ bucket) << 16 |
+            ((c.g * 255) ~/ bucket) << 8 |
+            ((c.b * 255) ~/ bucket);
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+    }
+    if (counts.isEmpty) return 0;
+    var background = counts.keys.first;
+    for (final entry in counts.entries) {
+      if (entry.value > counts[background]!) background = entry.key;
+    }
+    var painted = 0;
+    for (final entry in counts.entries) {
+      if (entry.key != background) painted += entry.value;
+    }
+    return painted;
+  }
+
+  /// How many distinct colours the picture holds, quantised so anti-aliasing
+  /// does not inflate the count.
+  ///
+  /// A scale is a spread of colours; a widget that clamps every value to one
+  /// end of its range is a single block. That difference is invisible to a
+  /// tree assertion — the widget builds, the property was read — and visible
+  /// here, which is where it matters.
+  int distinctColours({int bucket = 24, double minAlpha = 0.5}) {
+    final seen = <int>{};
+    for (var y = 0; y < height; y++) {
+      for (var x = 0; x < width; x++) {
+        final c = at(x, y);
+        if (c.a < minAlpha) continue;
+        seen.add(((c.r * 255) ~/ bucket) << 16 |
+            ((c.g * 255) ~/ bucket) << 8 |
+            ((c.b * 255) ~/ bucket));
+      }
+    }
+    return seen.length;
+  }
+
   /// Pixels within [tolerance] of [colour], per channel.
   ///
   /// A tolerance rather than equality: anti-aliasing, opacity and blending all

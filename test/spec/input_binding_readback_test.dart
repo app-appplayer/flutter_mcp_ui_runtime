@@ -205,6 +205,79 @@ void main() {
     }
   });
 
+  group('§2.6.0 precedence — binding beside value', () {
+    // Studio bundles in the field declare BOTH on a slider (`native.mbd`,
+    // `app.mbd`, `serving.mbd`). Before the read-back fix `value` was the only
+    // thing on screen, so making `binding` read has to answer for those
+    // documents: it wins when the path holds something, and the declared
+    // `value` still stands when it does not — §2.6.0's "missing state" clause.
+    // Without that fallback, adopting this cut would have moved every one of
+    // those sliders to zero.
+    Future<double> sliderWith(
+      WidgetTester tester, {
+      required Map<String, dynamic> state,
+      Map<String, dynamic> extra = const {},
+    }) async {
+      final stateManager = StateManager()..initialize(Map.of(state));
+      final engine = BindingEngine();
+      final actionHandler = ActionHandler();
+      final registry = WidgetRegistry();
+      DefaultWidgets.registerAll(registry);
+      final renderer = Renderer(
+        widgetRegistry: registry,
+        bindingEngine: engine,
+        actionHandler: actionHandler,
+        stateManager: stateManager,
+      );
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(builder: (buildContext) {
+            final context = RenderContext(
+              renderer: renderer,
+              stateManager: stateManager,
+              actionHandler: actionHandler,
+              themeManager: ThemeManager(),
+              bindingEngine: engine,
+              buildContext: buildContext,
+            );
+            return renderer.renderWidget(<String, dynamic>{
+              'type': 'slider',
+              'binding': 'level',
+              'value': 70,
+              'min': 0,
+              'max': 100,
+              ...extra,
+            }, context);
+          }),
+        ),
+      ));
+      await tester.pump();
+      return tester.widget<Slider>(find.byType(Slider)).value;
+    }
+
+    testWidgets('the bound path wins when it holds a value', (tester) async {
+      expect(await sliderWith(tester, state: {'level': 30}), 30.0);
+    });
+
+    testWidgets('the declared value stands when the path is unset',
+        (tester) async {
+      expect(await sliderWith(tester, state: {}), 70.0);
+    });
+
+    testWidgets('an explicit value + onChange pair keeps precedence',
+        (tester) async {
+      final shown = await sliderWith(
+        tester,
+        state: {'level': 30},
+        extra: {
+          'onChange': {'type': 'state', 'action': 'set', 'binding': 'level'},
+        },
+      );
+      expect(shown, 70.0,
+          reason: '§2.6.0 lets an author opt out of the shorthand');
+    });
+  });
+
   testWidgets('every registered input widget is on the roster', (tester) async {
     // Registry names that look like input widgets must be covered here, exempt
     // with a reason, or pointed at their own suite. A new input widget that

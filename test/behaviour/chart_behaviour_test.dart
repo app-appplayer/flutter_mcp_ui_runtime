@@ -14,6 +14,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
 
+import 'package:flutter_mcp_ui_runtime/src/widgets/advanced/chart_factory.dart'
+    show chartLabelFor;
+
 import 'painted_probe.dart';
 
 void main() {
@@ -422,6 +425,42 @@ void main() {
         }),
       );
       expect(find.text('Quarterly'), findsOneWidget);
+    });
+  });
+
+  group('the label is the number, not a rounded one', () {
+    // A factory report put a heatmap and a bar chart of the same values on one
+    // screen: the heatmap printed 1.5 and 6.2, the bars printed 2 and 6. On a
+    // chart of rates or yields the first decimal is the reading, so the label
+    // was a wrong number that looked finished. (konpi, measured on a built app.)
+    Map<String, dynamic> bars(List<num> values) => {
+          'type': 'chart',
+          'chartType': 'bar',
+          'showLabels': true,
+          'options': {
+            'animation': {'duration': 0},
+          },
+          'data': [
+            for (var i = 0; i < values.length; i++)
+              {'label': 'ABC'[i], 'value': values[i]},
+          ],
+        };
+
+    testWidgets('fractional values do not draw the same as their rounding',
+        (tester) async {
+      final fractional = await render(tester, bars([1.5, 6.2]));
+      final rounded = await render(tester, bars([2, 6]));
+      // Same bar heights would be a different test; these differ only in the
+      // digits painted above them, so any difference at all is the label.
+      expect(difference(fractional, rounded), greaterThan(0.0),
+          reason: '1.5 must not be drawn as 2');
+    });
+
+    test('the formatter keeps a fraction and leaves integers alone', () {
+      expect(chartLabelFor(1.5), '1.5');
+      expect(chartLabelFor(6.2), '6.2');
+      expect(chartLabelFor(2), '2');
+      expect(chartLabelFor(2.0), '2');
     });
   });
 

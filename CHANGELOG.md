@@ -51,6 +51,77 @@ enumerated the forms.
 
 Reported by konpi, from documents written by following the spec.
 
+### The matrix now asks whether anything was drawn
+
+`widget_render_matrix_test` enumerated every declared widget and passed each
+one that built without an error widget. A heatmap clamping every cell to one
+colour, a chart plotting nothing, a player over a source that will not open —
+all of those build cleanly and leave the page empty, which is the shape of
+every defect an author reported from a screen. The matrix now screenshots the
+frame and requires pixels on top of the page background, with host
+capabilities wired (so `mediaPlayer` is exercised rather than reporting an
+absent host) and state seeded from the bindings each spec example reads.
+
+Turning it on immediately found: `heatmap` (below), `spreadsheet` reading
+nothing, and six widgets that threw a **cast error** when a bound path held an
+unexpected shape — `bottomNavigation`, `dataTable`, `kenBurnsImage`,
+`resizable`, `tabBar`, `visibility` painted a red error box over the page
+instead of ignoring the value. A mistyped binding is an authoring mistake, not
+a reason to take the screen down; all six now read through the tolerant
+helpers.
+
+### heatmap
+
+- **The scale comes from the data when none is declared.** `minValue` /
+  `maxValue` are optional, and defaulted to 0..1 — so a heatmap of anything
+  larger (a defect rate of 1.5..6.2, a temperature, a count) clamped every cell
+  to the top colour: one flat block that looks finished and says nothing.
+- **A fractional value is no longer printed as an integer.** Cells were rounded
+  to whole numbers always, so 1.8 and 2.4 both read `2` — on a heatmap of rates
+  or averages, where the first decimal is the signal, that is a wrong screen.
+- **`showLabels` is documented for what it does.** The registry said "draw the
+  numeric value inside each cell", which is `showValues`; it actually turns on
+  the row and column labels. An author who declared `rowLabels` and saw nothing
+  read the blank axis as their own mistake.
+
+Reported by konpi, measured on a built app before this cut went anywhere.
+
+### A note on what these fixes change for documents already in the field
+
+Four of them make a binding that read `null` read a value. That is the spec's
+answer, and a document cannot have depended on the correct one — but it can
+have been written around the wrong one, and some of those documents belong to
+other people (a marketplace bundle is not ours to re-author). Specifically:
+`page.` / `state.` prefixes now resolve, `filter(list, 'prop')` returns rows
+where it returned none, a function argument that is an operation produces a
+number where it produced an empty string, and `slider` follows its `binding`.
+Where a `binding` sits beside a declared `value`, §2.6.0's precedence decides
+and the declared value still stands while the path is unset — so a document
+that never populates that path looks exactly as it did.
+
+Reported as a live path by mark (Cloud's launcher model stacks renderers) and
+by sbuilder (studio bundles that declare both on a slider, where the `value`
+turned out to be a binding to the same unset path — no visible change there).
+
+### Two documents can be on screen at once
+
+Found by running the two live gates back to back instead of one at a time: the
+second one opened its bundle, was told `ok`, and read the launcher. A gate that
+reports on the wrong screen is worse than no gate.
+
+- **The navigator key is the engine's, not the process's.** Every document that
+  declares routes builds a `MaterialApp`, and its key came from the
+  `NavigationService` singleton — so a second mounted document put the same
+  `GlobalKey` in two places, Flutter truncated the tree at the second, and the
+  first was torn out of its parent. One `Duplicate GlobalKey` line in the log
+  was the only trace. `NavigationService.attach` now points at the front app's
+  navigator, so navigation actions still act on what the user is looking at.
+- **The route observer is the engine's too.** A `RouteObserver` may be attached
+  to one navigator at a time (`observer.navigator == null` is asserted), so the
+  shared instance failed the moment a second document mounted — which is what
+  `onPause` / `onResume` hang from.
+
+
 ## [0.7.2] - 2026-08-07 — the alias is inferred from too
 
 `mediaPlayer` opens `src ?? source` and 0.7.1 inferred the kind from `source`
