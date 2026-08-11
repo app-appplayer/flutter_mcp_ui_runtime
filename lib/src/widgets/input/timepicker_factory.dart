@@ -54,7 +54,10 @@ class TimePickerWidgetFactory extends WidgetFactory {
           onPressed: () async {
             final picked = await showTimePicker(
               context: buildContext,
-              initialTime: initialTime,
+              // The value already chosen is where the picker opens — the
+              // `datePicker` does the same. Opening at the wall clock makes
+              // every correction start from scratch.
+              initialTime: selectedTime ?? initialTime,
               builder: (dialogContext, child) {
                 if (!use24HourFormat) {
                   return child!;

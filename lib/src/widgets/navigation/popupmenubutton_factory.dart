@@ -23,8 +23,8 @@ class PopupMenuButtonWidgetFactory extends WidgetFactory {
     final tooltip = context.resolve<String?>(properties['tooltip']);
     final padding =
         edgeInsetsOf(properties['padding'], context) ?? const EdgeInsets.all(8.0);
-    final splashRadius = parseDimension(properties['splashRadius']);
-    final iconSize = parseDimension(properties['iconSize']);
+    final splashRadius = dimensionOf(properties['splashRadius'], context);
+    final iconSize = dimensionOf(properties['iconSize'], context);
     final offset = _parseOffset(properties['offset']);
     final enabled = boolOf(properties['enabled'], context) ?? true;
     final color = parseColor(context.resolve(properties['color']), context);
@@ -41,7 +41,7 @@ class PopupMenuButtonWidgetFactory extends WidgetFactory {
     // non-spec widget props are introduced.
     final dslShape = _parseShapeBorder(properties['shape']);
     final dslShapeRadius = _radiusOf(dslShape);
-    final dslElevation = parseDimension(properties['elevation']);
+    final dslElevation = dimensionOf(properties['elevation'], context);
     final tokens = MenuTokens.resolve(
       context.themeManager,
       radius: dslShapeRadius,

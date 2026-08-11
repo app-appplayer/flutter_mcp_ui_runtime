@@ -71,14 +71,12 @@ void main() {
 
       // Register tool executors after initialization
       runtime.registerToolExecutor('increment', (args) async {
-        print('TOOL CALLED: increment with args: $args');
         lastArgs = args;
         incrementCalled = true;
         return {'success': true};
       });
 
       runtime.registerToolExecutor('decrement', (args) async {
-        print('TOOL CALLED: decrement with args: $args');
         lastArgs = args;
         decrementCalled = true;
         return {'success': true};
@@ -101,20 +99,18 @@ void main() {
       expect(find.text('Decrement'), findsOneWidget);
 
       // Test increment button
-      print('Tapping increment button...');
       await tester.tap(find.text('Increment'));
       await tester.pumpAndSettle();
-      
-      print('Increment called: $incrementCalled');
       expect(incrementCalled, isTrue, reason: 'Increment tool should have been called');
+      expect(lastArgs, isEmpty,
+          reason: 'the button declares `params: {}` — an executor handed keys '
+              'nobody wrote would mean the runtime is inventing arguments');
 
       // Test decrement button
-      print('Tapping decrement button...');
       await tester.tap(find.text('Decrement'));
       await tester.pumpAndSettle();
-      
-      print('Decrement called: $decrementCalled');
       expect(decrementCalled, isTrue, reason: 'Decrement tool should have been called');
+      expect(lastArgs, isEmpty);
 
       await runtime.destroy();
     });
@@ -155,14 +151,12 @@ void main() {
       // Register tool executors after initialization
       bool runtimeToolCalled = false;
       runtime.registerToolExecutor('test_runtime_tool', (args) {
-        print('RUNTIME TOOL EXECUTED: $args');
         runtimeToolCalled = true;
         return {'success': true};
       });
 
       bool callbackToolCalled = false;
       runtime.registerToolExecutor('test_callback_tool', (args) async {
-        print('CALLBACK TOOL CALLED: test_callback_tool with args: $args');
         callbackToolCalled = true;
         return {'success': true};
       });
@@ -178,19 +172,13 @@ void main() {
       await tester.pumpAndSettle();
 
       // Test runtime registered tool
-      print('Testing runtime registered tool...');
       await tester.tap(find.text('Runtime Tool'));
       await tester.pumpAndSettle();
-      
-      print('Runtime tool called: $runtimeToolCalled');
       expect(runtimeToolCalled, isTrue, reason: 'Runtime registered tool should execute');
 
       // Test callback tool
-      print('Testing callback tool...');
       await tester.tap(find.text('Callback Tool'));
       await tester.pumpAndSettle();
-      
-      print('Callback tool called: $callbackToolCalled');
       expect(callbackToolCalled, isTrue, reason: 'Callback tool should execute');
 
       await runtime.destroy();
@@ -217,7 +205,6 @@ void main() {
       // Register the button_test tool after initialization
       bool buttonPressed = false;
       runtime.registerToolExecutor('button_test', (args) async {
-        print('BUTTON PRESS DETECTED: button_test');
         buttonPressed = true;
         return {'success': true};
       });

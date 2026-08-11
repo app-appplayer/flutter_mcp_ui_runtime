@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/src/actions/action_handler.dart';
 
@@ -43,6 +44,43 @@ void main() {
   });
 
   group('NotificationActionExecutor', () {
+    // A message bound to a number — `{{count}}` over an int — is an ordinary
+    // document ("3 items saved" written the short way). The snack bar takes a
+    // String, so the resolved value fails its cast on the way in. What the
+    // document must not get back is a success: a toast that never appeared
+    // and an action that says it did leaves nothing on screen and nothing in
+    // the result to act on.
+    testWidgets('a message that does not resolve to text is reported',
+        (tester) async {
+      stateManager.set('count', 3);
+
+      late BuildContext surface;
+      await tester.pumpWidget(MaterialApp(
+        home: Builder(builder: (ctx) {
+          surface = ctx;
+          return const Scaffold(body: Text('page'));
+        }),
+      ));
+
+      final result = await actionHandler.execute({
+        'type': 'notification',
+        'message': '{{count}}',
+      }, RenderContext(
+        renderer: context.renderer,
+        stateManager: stateManager,
+        bindingEngine: bindingEngine,
+        actionHandler: actionHandler,
+        themeManager: ThemeManager.instance,
+        buildContext: surface,
+      ));
+
+      expect(result.success, isFalse,
+          reason: 'the toast did not appear; reporting success would leave '
+              'the document believing the user was told');
+      await tester.pumpAndSettle();
+      expect(find.text('3'), findsNothing);
+    });
+
     test('returns error when message is missing', () async {
       final result = await actionHandler.execute({
         'type': 'notification',

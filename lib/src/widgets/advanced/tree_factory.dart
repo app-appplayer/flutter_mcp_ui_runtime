@@ -14,7 +14,7 @@ class TreeWidgetFactory extends WidgetFactory {
     // Extract tree properties. Use nullable resolve so absent `data`
     // returns empty rather than throwing a non-nullable cast.
     final data =
-        (context.resolve<List<dynamic>?>(properties['data'])) ?? [];
+        (listOf(properties['data'], context)) ?? [];
     // Spec §10.11 canonical `initiallyExpanded`; `expandAll` kept as legacy.
     final expandAll = context.resolve<bool>(
         properties['initiallyExpanded'] ?? properties['expandAll'] ?? false);
@@ -49,14 +49,13 @@ class TreeWidgetFactory extends WidgetFactory {
     // in both light and dark modes.
     final lineColor =
         parseColor(context.resolve(properties['lineColor']), context) ??
-            context.themeManager.getColorValue('outlineVariant') ??
-            Colors.grey;
+            context.themeManager.colorOr('outlineVariant', Colors.grey);
     final selectedColor = parseColor(
             context.resolve(properties['selectedColor']), context) ??
         (context.themeManager.getColorValue('primary')?.withValues(alpha: 0.2)) ??
         Colors.blue.shade100;
     final onSurfaceColor =
-        context.themeManager.getColorValue('onSurface') ?? Colors.black87;
+        context.themeManager.colorOr('onSurface', Colors.black87);
 
     // Extract action handlers
     final onSelect = actionOf(properties['onSelect'] ?? properties['select'], context);

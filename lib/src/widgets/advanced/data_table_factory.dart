@@ -8,7 +8,10 @@ class DataTableWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    final columns = properties['columns'] as List<dynamic>? ?? [];
+    // Tolerant read — see `tabBar`. `columns` is declared literal, but a
+    // document that binds it anyway must render an empty table rather than
+    // covering the page area with a cast error.
+    final columns = listOf(properties['columns'], context) ?? const [];
     final rowsBinding = properties['rows'];
     final selectable = properties['selectable'] == true;
     // Spec §10.4 canonical `onRowTap`; `rowClick` kept as legacy alias.

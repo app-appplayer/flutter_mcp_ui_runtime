@@ -1112,4 +1112,118 @@ void main() {
       expect(pages.containsKey('settings'), isTrue);
     });
   });
+
+  group('the legacy inline shapes', () {
+    test('inline state becomes the application initial state', () async {
+      final bundle = McpBundle(
+        manifest: BundleManifest(
+          id: 'com.example.app',
+          name: 'App',
+          version: '1.0.0',
+        ),
+        // ignore: deprecated_member_use
+        ui: UiSection(
+          pages: <String, ScreenDefinition>{
+            'home': ScreenDefinition(
+              id: 'home',
+              name: 'Home',
+              route: '/',
+              root: WidgetNode(type: 'text', props: <String, dynamic>{
+                'content': 'Hello',
+              }),
+            ),
+          },
+          state: <String, StateDefinition>{
+            'count': const StateDefinition(initialValue: 3),
+            'unset': const StateDefinition(),
+          },
+        ),
+      );
+
+      final result = await adapter.toDefinition(bundle);
+
+      expect(result.success, isTrue);
+      expect((result.data!['state'] as Map)['initial'],
+          <String, dynamic>{'count': 3},
+          reason: 'a bundle still carrying the inline form has to keep its '
+              'starting values; a key with no initial value is not a value');
+    });
+
+    test('a bundle with no inline state declares none', () async {
+      final bundle = McpBundle(
+        manifest: BundleManifest(
+          id: 'com.example.app',
+          name: 'App',
+          version: '1.0.0',
+        ),
+        ui: UiSection.fromPagesList(<ScreenDefinition>[
+          ScreenDefinition(
+            id: 'home',
+            name: 'Home',
+            route: '/',
+            root: WidgetNode(type: 'text', props: <String, dynamic>{
+              'content': 'Hello',
+            }),
+          ),
+        ]),
+      );
+
+      final result = await adapter.toDefinition(bundle);
+
+      expect(result.success, isTrue);
+      expect(result.data!.containsKey('state'), isFalse);
+    });
+  });
+
+  group('toAppInfo — a bundled publisher logo', () {
+    test('a bundle:// logo is resolved to something the host can show',
+        () async {
+      storage.assets['bundle://assets/logo.png'] =
+          Uint8List.fromList(<int>[1, 2, 3]);
+
+      final bundle = McpBundle(
+        manifest: BundleManifest(
+          id: 'com.example.app',
+          name: 'App',
+          version: '1.0.0',
+          publisher: PublisherInfo(
+            name: 'Example Ltd',
+            logo: 'bundle://assets/logo.png',
+            url: 'https://example.com',
+            email: 'hello@example.com',
+          ),
+        ),
+      );
+
+      final result = await adapter.toAppInfo(bundle);
+
+      expect(result.success, isTrue);
+      final publisher = result.data!['publisher'] as Map<String, dynamic>;
+      expect(publisher['name'], 'Example Ltd');
+      expect(publisher['logo'], isNot('bundle://assets/logo.png'),
+          reason: '§11.6 — a raw bundle URI on the outbound response is one '
+              'the receiving host cannot resolve');
+      expect(publisher['url'], 'https://example.com');
+      expect(publisher['email'], 'hello@example.com');
+    });
+
+    test('a plain publisher passes through untouched', () async {
+      final bundle = McpBundle(
+        manifest: BundleManifest(
+          id: 'com.example.app',
+          name: 'App',
+          version: '1.0.0',
+          publisher: PublisherInfo(
+            name: 'Example Ltd',
+            logo: 'https://example.com/logo.png',
+          ),
+        ),
+      );
+
+      final result = await adapter.toAppInfo(bundle);
+
+      expect((result.data!['publisher'] as Map)['logo'],
+          'https://example.com/logo.png');
+    });
+  });
 }

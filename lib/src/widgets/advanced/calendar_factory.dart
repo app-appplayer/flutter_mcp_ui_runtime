@@ -12,7 +12,7 @@ class CalendarWidgetFactory extends WidgetFactory {
     // Extract calendar properties
     final view = context.resolve<String>(properties['view'] ?? 'month');
     final selectedDateStr = context.resolve<String?>(properties['selectedDate']);
-    final events = context.resolve<List<dynamic>?>(properties['events'] ?? []) ??
+    final events = listOf(properties['events'] ?? [], context) ??
         [];
     final showHeader = context.resolve<bool>(properties['showHeader'] ?? true);
     final showWeekNumbers =
@@ -27,8 +27,7 @@ class CalendarWidgetFactory extends WidgetFactory {
     // with dark surfaces and non-blue brand palettes.
     final primaryColor =
         parseColor(context.resolve(properties['primaryColor']), context) ??
-            context.themeManager.getColorValue('primary') ??
-            Colors.blue;
+            context.themeManager.colorOr('primary', Colors.blue);
     final todayColor =
         parseColor(context.resolve(properties['todayColor']), context) ??
             (context.themeManager
@@ -37,20 +36,17 @@ class CalendarWidgetFactory extends WidgetFactory {
             Colors.blue.shade100;
     final selectedColor =
         parseColor(context.resolve(properties['selectedColor']), context) ??
-            context.themeManager.getColorValue('primary') ??
-            Colors.blue.shade700;
+            context.themeManager.colorOr('primary', Colors.blue.shade700);
     final eventColor =
         parseColor(context.resolve(properties['eventColor']), context) ??
-            context.themeManager.getColorValue('error') ??
-            Colors.red;
+            context.themeManager.colorOr('error', Colors.red);
     // Default to the theme's surface slot so an unset backgroundColor
     // adapts to dark mode. Previously this was a hardcoded
     // `Colors.white` which made the calendar a bright white block on
     // dark scaffolds.
     final backgroundColor =
         parseColor(context.resolve(properties['backgroundColor']), context) ??
-            context.themeManager.getColorValue('surface') ??
-            Colors.white;
+            context.themeManager.colorOr('surface', Colors.white);
 
     // Extract date range constraints
     final firstDateStr =

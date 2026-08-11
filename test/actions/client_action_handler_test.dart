@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/src/actions/action_handler.dart';
 import 'package:flutter_mcp_ui_runtime/src/actions/action_result.dart';
@@ -9,6 +11,7 @@ import 'package:flutter_mcp_ui_runtime/src/theme/theme_manager.dart';
 import 'package:flutter_mcp_ui_runtime/src/runtime/widget_registry.dart';
 import 'package:flutter_mcp_ui_runtime/src/client_actions/client_action_handler.dart';
 
+import 'package:flutter_mcp_ui_runtime/src/models/ui_definition.dart' show PermissionsConfig;
 import 'package:flutter_mcp_ui_runtime/src/permissions/permission_manager.dart';
 import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart' show StateActionDefinition;
 
@@ -49,17 +52,93 @@ void main() {
     stateManager.dispose();
   });
 
-  group('TC-063: ClientActionHandler — constructor with null PermissionsConfig', () {
-    test('TC-063 Normal: constructor with null config creates handler', () {
-      final handler = ClientActionHandler(null);
-      expect(handler, isNotNull);
-      expect(handler, isA<ClientActionHandler>());
+  group('the gate opens for what a document declared', () {
+    // Every refusal test in this file is only meaningful beside these: a gate
+    // that denies everything passes all of them and is still broken.
+    late Directory tmp;
+
+    setUp(() {
+      tmp = Directory.systemTemp.createTempSync('client_action_allow_');
+      File('${tmp.path}/note.txt').writeAsStringSync('hello');
+    });
+    tearDown(() => tmp.deleteSync(recursive: true));
+
+    test('a declared path can be read, an undeclared one cannot', () async {
+      actionHandler.setPermissionsConfig(PermissionsConfig.fromJson({
+        'file.read': {
+          'allowedPaths': [tmp.path],
+        },
+      }));
+
+      final allowed = await actionHandler.execute({
+        'type': 'client.readFile',
+        'params': {'path': '${tmp.path}/note.txt'},
+      }, context);
+      expect(allowed.success, isTrue,
+          reason: 'the document declared this path, so it has to be readable — '
+              'a gate that refuses everything is not a gate');
+      expect((allowed.data as Map)['content'], 'hello');
+
+      final refused = await actionHandler.execute({
+        'type': 'client.readFile',
+        'params': {'path': '/etc/passwd'},
+      }, context);
+      expect(refused.success, isFalse);
+      expect(refused.errorCode, 'PERMISSION_DENIED');
     });
 
-    test('TC-063 Normal: handler has permission manager', () {
+    test('a declared command is allowed and an undeclared one is not', () async {
+      actionHandler.setPermissionsConfig(PermissionsConfig.fromJson({
+        'system.exec': {
+          'allowedCommands': ['echo'],
+        },
+      }));
+
+      final refused = await actionHandler.execute({
+        'type': 'client.exec',
+        'params': {'command': 'rm -rf /'},
+      }, context);
+      expect(refused.success, isFalse,
+          reason: 'the one command that must never slip through');
+      expect(refused.errorCode, 'PERMISSION_DENIED');
+    });
+
+    test('granting the permission outright also opens the action', () async {
+      actionHandler.permissionManager?.grant('file.read');
+      final result = await actionHandler.execute({
+        'type': 'client.readFile',
+        'params': {'path': '${tmp.path}/note.txt'},
+      }, context);
+      expect(result.success, isTrue);
+    });
+  });
+
+  group('TC-063: ClientActionHandler — constructor with null PermissionsConfig', () {
+    test('TC-063 Normal: a null config grants nothing', () {
+      // Was: `expect(handler, isNotNull)`. That passes for a handler that
+      // grants everything, which is what this class must never do.
       final handler = ClientActionHandler(null);
-      expect(handler.permissionManager, isNotNull);
-      expect(handler.permissionManager, isA<PermissionManager>());
+
+      expect(handler.permissionManager.enabled, isTrue,
+          reason: 'a null config is "nothing declared", not "checks off"');
+      expect(handler.permissionManager.isPathAllowed('/etc/passwd'), isFalse);
+      expect(handler.permissionManager.isCommandAllowed('rm'), isFalse);
+      expect(handler.permissionManager.isDomainAllowed('evil.test'), isFalse);
+    });
+
+    test('TC-063 Normal: a declared config grants exactly what it declares',
+        () {
+      final handler = ClientActionHandler(PermissionsConfig.fromJson({
+        'file.read': {
+          'allowedPaths': ['/workspace'],
+        },
+      }));
+
+      expect(handler.permissionManager.isPathAllowed('/workspace/a.txt'),
+          isTrue);
+      expect(handler.permissionManager.isPathAllowed('/etc/passwd'), isFalse);
+      expect(handler.permissionManager.isCommandAllowed('git'), isFalse,
+          reason: 'declaring file access must not open the shell');
     });
 
     test('TC-063 Boundary: multiple instances are independent', () {
@@ -160,7 +239,12 @@ void main() {
       );
 
       // Returns result (may fail due to actual system call, but permission check skipped)
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
   });
 
@@ -235,7 +319,12 @@ void main() {
         context,
       );
       // In test env, may return error due to no file picker available
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
 
     test('TC-072 Boundary: selectFile without params still routed', () async {
@@ -243,7 +332,12 @@ void main() {
         {'type': 'client.selectFile'},
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
   });
 
@@ -253,7 +347,12 @@ void main() {
         {'type': 'client.readFile', 'params': {'path': '/test/file.txt'}},
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
 
     test('TC-073 Error: readFile without path returns error', () async {
@@ -261,7 +360,12 @@ void main() {
         {'type': 'client.readFile', 'params': {}},
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
       // Should indicate missing path
     });
   });
@@ -275,7 +379,12 @@ void main() {
         },
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
 
     test('TC-074 Error: writeFile without params returns error', () async {
@@ -283,7 +392,12 @@ void main() {
         {'type': 'client.writeFile'},
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
   });
 
@@ -293,7 +407,12 @@ void main() {
         {'type': 'client.listFiles', 'params': {'path': '/test'}},
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
 
     test('TC-075 Error: listFiles without path', () async {
@@ -301,7 +420,12 @@ void main() {
         {'type': 'client.listFiles', 'params': {}},
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
   });
 
@@ -314,7 +438,12 @@ void main() {
         },
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
 
     test('TC-076 Error: httpRequest without url', () async {
@@ -322,7 +451,12 @@ void main() {
         {'type': 'client.httpRequest', 'params': {}},
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
   });
 
@@ -332,7 +466,12 @@ void main() {
         {'type': 'client.getSystemInfo'},
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
 
     test('TC-077 Boundary: getSystemInfo with extra params ignored', () async {
@@ -340,7 +479,12 @@ void main() {
         {'type': 'client.getSystemInfo', 'params': {'extra': 'ignored'}},
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
   });
 
@@ -350,7 +494,12 @@ void main() {
         {'type': 'client.exec', 'params': {'command': 'echo hello'}},
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
 
     test('TC-078 Error: exec without command param', () async {
@@ -358,7 +507,12 @@ void main() {
         {'type': 'client.exec', 'params': {}},
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
   });
 
@@ -368,7 +522,12 @@ void main() {
         {'type': 'client.clipboard', 'params': {'action': 'read'}},
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
 
     test('TC-079 Boundary: clipboard without action defaults to read', () async {
@@ -376,7 +535,12 @@ void main() {
         {'type': 'client.clipboard', 'params': {}},
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
   });
 
@@ -389,7 +553,12 @@ void main() {
         },
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
 
     test('TC-080 Boundary: clipboard write without text', () async {
@@ -397,7 +566,12 @@ void main() {
         {'type': 'client.clipboard', 'params': {'action': 'write'}},
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
   });
 
@@ -410,7 +584,12 @@ void main() {
         },
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
 
     test('TC-081 Boundary: notification without params', () async {
@@ -418,7 +597,12 @@ void main() {
         {'type': 'client.notification'},
         context,
       );
-      expect(result, isA<ActionResult>());
+      // A client action with no permission behind it and no surface to ask on
+      // must be REFUSED. `isA<ActionResult>()` — what this asserted before —
+      // is true of the answer either way, which is how `client.exec` came to
+      // run unchecked on every headless path.
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PERMISSION_DENIED');
     });
   });
 
@@ -470,9 +654,10 @@ void main() {
         value: 42,
       );
       final result = await actionHandler.executeDefinition(definition, context);
-      expect(result, isA<ActionResult>());
       expect(result.success, isTrue);
-      expect(stateManager.get<int>('counter'), equals(42));
+      expect(stateManager.get<int>('counter'), equals(42),
+          reason: 'a state action is not permission-gated — it touches nothing '
+              'outside the document');
     });
 
     test('TC-084 Normal: toggle action via definition', () async {

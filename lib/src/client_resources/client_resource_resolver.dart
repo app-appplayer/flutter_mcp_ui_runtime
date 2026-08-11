@@ -6,13 +6,13 @@ library client_resource_resolver;
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/constants/client_action_types.dart';
 import '../core/client_resource_manager.dart' show ResourceLifecycleState;
+import '../platform/host_platform.dart';
 import '../utils/path_validator.dart';
 
 // ---------------------------------------------------------------------------
@@ -210,7 +210,7 @@ class ClientResourceResolver {
 
   /// Initialize the resolver
   Future<void> init() async {
-    if (!kIsWeb) {
+    if (!HostPlatform.isWeb) {
       _tempDirectory = Directory.systemTemp.path;
     }
     _prefs = await SharedPreferences.getInstance();
@@ -257,7 +257,15 @@ class ClientResourceResolver {
 
     final parsed = ClientResourceSchemes.parse(uri);
     if (parsed == null) {
-      return ResourceResult.error('Failed to parse URI: $uri');
+      // `parse` refuses for exactly two reasons, and they are not the same
+      // problem: a malformed URI is the author's typo, a traversal segment is
+      // the security rule (§8.3.3). Reporting both as "failed to parse" sent
+      // an author looking for a syntax error in a URI that had none.
+      return ResourceResult.error(
+        PathValidator.hasTraversalAttempt(uri)
+            ? 'Path traversal not allowed: $uri'
+            : 'Failed to parse URI: $uri',
+      );
     }
 
     switch (parsed.scheme) {
@@ -289,15 +297,17 @@ class ClientResourceResolver {
   /// chunked reading for large binary files (spec §Binary Resource Handling).
   Future<ResourceResult> _resolveFile(String path,
       {String? encodingHint}) async {
-    if (kIsWeb) {
+    if (HostPlatform.isWeb) {
       return ResourceResult.error('File access not supported on web');
     }
 
     try {
-      // Security: validate path does not contain traversal segments
-      if (PathValidator.hasTraversalAttempt(path)) {
-        return ResourceResult.error('Path traversal not allowed');
-      }
+      // No traversal check here: `ClientResourceSchemes.parse` applied the
+      // same check to the same string before this was called, and refuses the
+      // whole URI when it matches. The check that DOES work here is the
+      // resolved-path containment below, which catches what `..` never
+      // covered — an absolute path, which leaves the workspace with no
+      // traversal segment in it at all.
 
       final normalizedPath = PathValidator.normalize(path);
       final file = File(normalizedPath);
@@ -369,7 +379,7 @@ class ClientResourceResolver {
 
   /// Resolve workspace:// resource
   Future<ResourceResult> _resolveWorkspace(String relativePath) async {
-    if (kIsWeb) {
+    if (HostPlatform.isWeb) {
       return ResourceResult.error('Workspace access not supported on web');
     }
 
@@ -378,11 +388,7 @@ class ClientResourceResolver {
     }
 
     try {
-      // Security: reject traversal attempts before path resolution
-      if (PathValidator.hasTraversalAttempt(relativePath)) {
-        return ResourceResult.error('Path traversal not allowed');
-      }
-
+      // See `_resolveFile`: `parse` already refused any `..` in this string.
       final sanitizedRelative = PathValidator.normalize(relativePath);
       final fullPath = p.join(workingDirectory!, sanitizedRelative);
 
@@ -456,7 +462,7 @@ class ClientResourceResolver {
 
   /// Resolve temp:// resource
   Future<ResourceResult> _resolveTemp(String name) async {
-    if (kIsWeb) {
+    if (HostPlatform.isWeb) {
       return ResourceResult.error('Temp access not supported on web');
     }
 
@@ -568,7 +574,15 @@ class ClientResourceResolver {
 
     final parsed = ClientResourceSchemes.parse(uri);
     if (parsed == null) {
-      return ResourceResult.error('Failed to parse URI: $uri');
+      // `parse` refuses for exactly two reasons, and they are not the same
+      // problem: a malformed URI is the author's typo, a traversal segment is
+      // the security rule (§8.3.3). Reporting both as "failed to parse" sent
+      // an author looking for a syntax error in a URI that had none.
+      return ResourceResult.error(
+        PathValidator.hasTraversalAttempt(uri)
+            ? 'Path traversal not allowed: $uri'
+            : 'Failed to parse URI: $uri',
+      );
     }
 
     switch (parsed.scheme) {
@@ -587,16 +601,12 @@ class ClientResourceResolver {
 
   /// Write to file:// resource
   Future<ResourceResult> _writeFile(String path, String content) async {
-    if (kIsWeb) {
+    if (HostPlatform.isWeb) {
       return ResourceResult.error('File write not supported on web');
     }
 
     try {
-      // Security: reject traversal attempts
-      if (PathValidator.hasTraversalAttempt(path)) {
-        return ResourceResult.error('Path traversal not allowed');
-      }
-
+      // See `_resolveFile`: `parse` already refused any `..` in this string.
       final normalizedPath = PathValidator.normalize(path);
       final file = File(normalizedPath);
       await file.parent.create(recursive: true);
@@ -615,7 +625,7 @@ class ClientResourceResolver {
   /// Write to workspace:// resource
   Future<ResourceResult> _writeWorkspace(
       String relativePath, String content) async {
-    if (kIsWeb) {
+    if (HostPlatform.isWeb) {
       return ResourceResult.error('Workspace write not supported on web');
     }
 
@@ -624,11 +634,7 @@ class ClientResourceResolver {
     }
 
     try {
-      // Security: reject traversal attempts before path resolution
-      if (PathValidator.hasTraversalAttempt(relativePath)) {
-        return ResourceResult.error('Path traversal not allowed');
-      }
-
+      // See `_resolveFile`: `parse` already refused any `..` in this string.
       final sanitizedRelative = PathValidator.normalize(relativePath);
       final fullPath = p.join(workingDirectory!, sanitizedRelative);
 
@@ -656,7 +662,7 @@ class ClientResourceResolver {
 
   /// Write to temp:// resource
   Future<ResourceResult> _writeTemp(String name, String content) async {
-    if (kIsWeb) {
+    if (HostPlatform.isWeb) {
       return ResourceResult.error('Temp write not supported on web');
     }
 

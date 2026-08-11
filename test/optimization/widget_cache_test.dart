@@ -11,6 +11,8 @@ import 'package:flutter_mcp_ui_runtime/src/runtime/widget_registry.dart';
 import 'package:flutter_mcp_ui_runtime/src/widgets/display/text_factory.dart';
 import 'package:flutter_mcp_ui_runtime/src/widgets/layout/container_factory.dart';
 
+import 'package:flutter_mcp_ui_runtime/src/runtime/default_widgets.dart';
+
 void main() {
   group('Widget Cache Tests', () {
     late WidgetCache cache;
@@ -101,7 +103,7 @@ void main() {
       expect(identical(cached1, cached2), isFalse);
     });
 
-    test('should handle cache expiration', () {
+    test('a fresh entry survives a sweep', () {
       const definition = {
         'type': 'Text',
         'text': 'Test',
@@ -111,15 +113,37 @@ void main() {
       const widget = Text('Test');
 
       cache.put(definition, contextData, widget);
-      
-      // Should be cached initially
       expect(cache.get(definition, contextData), isNotNull);
 
-      // Clear expired entries (in real scenario this would happen after 30 minutes)
       cache.clearExpired();
-      
-      // Should still be cached since it's not expired yet
-      expect(cache.get(definition, contextData), isNotNull);
+
+      expect(cache.get(definition, contextData), isNotNull,
+          reason: 'a sweep that takes fresh entries with it turns the cache '
+              'into a cost with no benefit');
+    });
+
+    test('an entry past its age is swept, and a read no longer answers it', () {
+      const definition = {'type': 'Text', 'text': 'Stale'};
+      final contextData = {'state': 'test'};
+      const widget = Text('Stale');
+
+      final previousAge = WidgetCache.maxAge;
+      addTearDown(() => WidgetCache.maxAge = previousAge);
+      // Thirty minutes is the shipped age; the only way to see this path is to
+      // shorten it.
+      WidgetCache.maxAge = Duration.zero;
+
+      cache.put(definition, contextData, widget);
+
+      expect(cache.get(definition, contextData), isNull,
+          reason: 'a read past the age must not answer with the stale widget '
+              '— that is a screen showing data that has already changed');
+
+      cache.put(definition, contextData, widget);
+      cache.clearExpired();
+      expect(cache.getStatistics()['size'], 0,
+          reason: 'and the sweep has to actually remove it, or the cache '
+              'grows for the life of the process');
     });
 
     test('should evict oldest entries when cache is full', () {
@@ -237,18 +261,28 @@ void main() {
     });
 
     test('should clear cache on demand', () {
+      // A renderer clears ITS OWN cache, not the process-wide singleton.
+      // A cached widget carries closures over the RenderContext that built it,
+      // so each renderer keeps its own map (`WidgetCache.isolated`) — sharing
+      // one handed a second document a widget wired to the first document's
+      // state manager.
       const definition = {
         'type': 'Text',
         'text': 'Clear Test',
       };
 
-      const widget = Text('Clear Test');
-      cache.put(definition, null, widget);
-      
-      expect(cache.getStatistics()['size'], equals(1));
+      renderer.renderWidget(definition, context);
+      expect(renderer.getCacheStatistics()['size'], equals(1));
 
       renderer.clearCache();
-      expect(cache.getStatistics()['size'], equals(0));
+      expect(renderer.getCacheStatistics()['size'], equals(0));
+
+      // And the singleton is untouched by a renderer's own clearing.
+      const other = Text('held by the singleton');
+      cache.put(definition, null, other);
+      renderer.clearCache();
+      expect(cache.getStatistics()['size'], equals(1));
+      cache.clear();
     });
 
     test('should control cache enabled state through renderer', () {
@@ -259,6 +293,70 @@ void main() {
 
       renderer.setCacheEnabled(true);
       expect(cache.enabled, isTrue);
+    });
+  });
+
+  group('two documents rendering the same widget', () {
+    // The cache used to be one process-wide map, and a cached widget is not a
+    // pure function of its definition: the closures inside it hold the
+    // RenderContext that built it. So the SECOND document to render an
+    // identical widget was handed the FIRST document's widget, and its
+    // `binding` writes landed in the first document's state — with nothing on
+    // screen to say so. Each renderer now owns its cache.
+    RenderContext contextWithOwnRenderer(StateManager stateManager) {
+      final registry = WidgetRegistry();
+      DefaultWidgets.registerAll(registry);
+      final bindingEngine = BindingEngine();
+      final actionHandler = ActionHandler();
+      return RenderContext(
+        renderer: Renderer(
+          widgetRegistry: registry,
+          bindingEngine: bindingEngine,
+          actionHandler: actionHandler,
+          stateManager: stateManager,
+        ),
+        stateManager: stateManager,
+        bindingEngine: bindingEngine,
+        actionHandler: actionHandler,
+        themeManager: ThemeManager.instance,
+      );
+    }
+
+    testWidgets('each keeps its own state', (tester) async {
+      const definition = {
+        'type': 'combobox',
+        'binding': 'choice',
+        'options': ['Apple', 'Banana'],
+      };
+
+      final firstState = StateManager()..initialize(<String, dynamic>{});
+      final firstContext = contextWithOwnRenderer(firstState);
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: firstContext.renderer.renderWidget(definition, firstContext),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Apple');
+      await tester.pumpAndSettle();
+      expect(firstState.get('choice'), 'Apple');
+
+      final secondState = StateManager()..initialize(<String, dynamic>{});
+      final secondContext = contextWithOwnRenderer(secondState);
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: secondContext.renderer.renderWidget(definition, secondContext),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Banana');
+      await tester.pumpAndSettle();
+
+      expect(secondState.get('choice'), 'Banana',
+          reason: 'the second document has to receive its own input');
+      expect(firstState.get('choice'), 'Apple',
+          reason: 'and the first must not be written to by a document it has '
+              'never heard of');
     });
   });
 }

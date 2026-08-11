@@ -138,4 +138,94 @@ void main() {
     expect(a, <dynamic>['x'], reason: 'stopping one must not stop the other');
     expect(b, <dynamic>['x', 'y']);
   });
+  test('an outbound limit drops what the document sends too fast', () async {
+    await manager.initChannel(
+      'feed',
+      streamWith(flowControl: <String, dynamic>{
+        'outbound': <String, dynamic>{
+          'maxRate': 1,
+          'window': 1000,
+          'onExceeded': 'drop',
+        },
+      }),
+    );
+
+    // The channel is inbound-only, so a send that reaches the transport
+    // throws; a send the limiter drops returns quietly. That difference is
+    // what tells us the limiter ran.
+    Object? first;
+    try {
+      await manager.sendToChannel('feed', 'one');
+    } catch (e) {
+      first = e;
+    }
+    expect(first, isNotNull, reason: 'the first send is within the limit');
+
+    Object? second;
+    try {
+      await manager.sendToChannel('feed', 'two');
+    } catch (e) {
+      second = e;
+    }
+    expect(second, isNull,
+        reason: 'the second is over the limit and must be dropped before it '
+            'reaches the transport at all');
+  });
+
+  test('sending to a channel that was never opened names it', () async {
+    expect(() => manager.sendToChannel('nobody', 'x'),
+        throwsA(isA<StateError>()),
+        reason: 'a send into a channel id nobody declared is a typo in the '
+            'document; swallowing it makes the typo invisible');
+  });
+
+  test('toggling a channel that was never opened names it', () async {
+    expect(() => manager.toggleChannel('nobody'), throwsA(isA<StateError>()));
+  });
+
+  group('the backpressure strategies each behave differently', () {
+    Future<List<dynamic>> burstUnder(String strategy) async {
+      final seen = <dynamic>[];
+      await manager.initChannel(
+        strategy,
+        streamWith(backpressure: <String, dynamic>{
+          'strategy': strategy,
+          'highWaterMark': 2,
+          'windowMs': 1000,
+        }),
+      );
+      manager.getStream(strategy)!.listen(seen.add);
+
+      for (final value in <String>['a', 'b', 'c', 'd']) {
+        source.add(value);
+      }
+      await settle();
+      return seen;
+    }
+
+    test('throttle lets the first of a burst through and holds the rest',
+        () async {
+      final seen = await burstUnder('throttle');
+
+      expect(seen, isNot(hasLength(4)),
+          reason: 'throttling that delivers everything is not throttling — a '
+              'chart under a fast feed would repaint on every tick');
+      expect(seen.first, 'a');
+    });
+
+    test('debounce delivers nothing until the burst stops', () async {
+      final seen = await burstUnder('debounce');
+
+      expect(seen, isEmpty,
+          reason: 'debouncing exists so a document sees the settled value, '
+              'not each keystroke on the way to it');
+    });
+
+    test('`highWaterMark` is read where `bufferSize` is absent', () async {
+      final seen = await burstUnder('buffer');
+
+      expect(seen, <dynamic>['a', 'b', 'c', 'd'],
+          reason: 'buffering keeps the order and the whole burst');
+    });
+  });
 }

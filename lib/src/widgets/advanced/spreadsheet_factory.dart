@@ -20,9 +20,9 @@ class SpreadsheetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    final rows = context.resolve<List<dynamic>?>(properties['data']) ?? const [];
+    final rows = listOf(properties['data'], context) ?? const [];
     final columnDefs =
-        context.resolve<List<dynamic>?>(properties['columns']) ?? const [];
+        listOf(properties['columns'], context) ?? const [];
     final editable = context.resolve<bool?>(properties['editable']) ?? true;
     final formulas = context.resolve<bool?>(properties['formulas']) ?? false;
     final rowHeaders = context.resolve<bool?>(properties['rowHeaders']) ?? true;

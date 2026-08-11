@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 
 import '../../renderer/render_context.dart';
+import '../../utils/icon_resolver.dart';
 import '../widget_factory.dart';
 
 /// Factory for TabBar widgets
@@ -11,13 +12,29 @@ class TabBarWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     // Extract tabs
-    final tabsData = properties['tabs'] as List<dynamic>? ?? [];
+    // Tolerant read: a bound path whose state holds a scalar (a server
+    // response still loading, an author mid-edit) used to throw out of the
+    // cast, and the renderer painted a red box over the whole tab strip.
+    // Measured on a published build. An empty strip is what no data draws
+    // anyway; a stack trace on screen is not.
+    final tabsData = listOf(properties['tabs'], context) ?? const [];
     final tabs = tabsData.map<Tab>((tab) {
       if (tab is Map<String, dynamic>) {
+        // A tab that names neither a label nor an icon is empty, not illegal:
+        // Flutter's `Tab` asserts on all-null, and letting that assertion
+        // through drew a red box over the whole strip. Requiring one of them
+        // in the schema instead would stop the document opening (§1.7.5), so
+        // the empty tab is drawn as an empty tab.
+        final label = (tab['label'] ?? tab['text']) as String?;
+        final hasIcon = tab['icon'] != null;
         return Tab(
           // §17.3.2: canonical 'label', legacy alias 'text'.
-          text: (tab['label'] ?? tab['text']) as String?,
-          icon: tab['icon'] != null ? Icon(_parseIconData(tab['icon'])) : null,
+          text: label ?? (hasIcon ? null : ''),
+          // Through the shared resolver: the local switch this replaced knew
+          // three names and answered `Icons.tab` for everything else, so a
+          // declared icon came out as a plausible WRONG glyph rather than as
+          // the missing-icon cue.
+          icon: hasIcon ? Icon(resolveIconRef(tab['icon'])) : null,
           iconMargin: parseEdgeInsets(tab['iconMargin']) ??
               const EdgeInsets.only(bottom: 10),
           height: tab['height']?.toDouble(),
@@ -31,7 +48,7 @@ class TabBarWidgetFactory extends WidgetFactory {
     final padding = edgeInsetsOf(properties['padding'], context);
     final indicatorColor =
         parseColor(context.resolve(properties['indicatorColor']), context);
-    final indicatorWeight = parseDimension(properties['indicatorWeight']) ?? 2.0;
+    final indicatorWeight = dimensionOf(properties['indicatorWeight'], context) ?? 2.0;
     final indicatorPadding =
         edgeInsetsOf(properties['indicatorPadding'], context) ?? EdgeInsets.zero;
     final indicator = _parseDecoration(properties['indicator'], context);
@@ -137,8 +154,7 @@ class TabBarWidgetFactory extends WidgetFactory {
             width: decoration['width']?.toDouble() ?? 2.0,
             color:
                 parseColor(context.resolve(decoration['color']), context) ??
-                    context.themeManager.getColorValue('primary') ??
-                    Colors.blue,
+                    context.themeManager.colorOr('primary', Colors.blue),
           ),
           insets: parseEdgeInsets(decoration['insets']) ?? EdgeInsets.zero,
         );
@@ -193,17 +209,4 @@ class TabBarWidgetFactory extends WidgetFactory {
     }
   }
 
-  IconData _parseIconData(String iconName) {
-    // Basic icon mapping
-    switch (iconName) {
-      case 'home':
-        return Icons.home;
-      case 'star':
-        return Icons.star;
-      case 'settings':
-        return Icons.settings;
-      default:
-        return Icons.tab;
-    }
-  }
 }

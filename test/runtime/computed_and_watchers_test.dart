@@ -143,4 +143,66 @@ void main() {
       expect(runtime.stateManager.get<int>('hits'), 0);
     });
   });
+  // A `condition` is what stops a watcher from firing on every write, so what
+  // counts as "true" decides whether the side effect happens. The expression
+  // resolves to whatever the state holds — a number, a list, a map — not only
+  // to a boolean, and each shape has to be read the way a document means it.
+  group('a watcher condition', () {
+    Future<void> bootWithCondition(String condition) => boot(<String, dynamic>{
+          'watchers': <dynamic>[
+            <String, dynamic>{
+              'watch': 'count',
+              'condition': condition,
+              'actions': <dynamic>[
+                <String, dynamic>{
+                  'type': 'state',
+                  'action': 'increment',
+                  'binding': 'hits',
+                  'value': 1,
+                },
+              ],
+            },
+          ],
+        });
+
+    Future<int> hitsAfterSetting(String condition, dynamic gate) async {
+      await bootWithCondition(condition);
+      runtime.stateManager.set('gate', gate);
+      runtime.stateManager.set('count', 2);
+      await Future<void>.delayed(Duration.zero);
+      return runtime.stateManager.get<int>('hits') ?? -1;
+    }
+
+    test('a boolean gate decides directly', () async {
+      expect(await hitsAfterSetting('{{gate}}', true), 1);
+      expect(await hitsAfterSetting('{{gate}}', false), 0);
+    });
+
+    test('a number is a count: zero means no', () async {
+      expect(await hitsAfterSetting('{{gate}}', 3), 1,
+          reason: 'a document gating on "how many are selected" writes the '
+              'count, not a comparison');
+      expect(await hitsAfterSetting('{{gate}}', 0), 0);
+    });
+
+    test('a string is empty or it is not', () async {
+      expect(await hitsAfterSetting('{{gate}}', 'ready'), 1);
+      expect(await hitsAfterSetting('{{gate}}', ''), 0,
+          reason: 'an unfilled field is the ordinary way a document says '
+              '"not yet"');
+    });
+
+    test('a list and a map are their own emptiness', () async {
+      expect(await hitsAfterSetting('{{gate}}', <dynamic>['a']), 1);
+      expect(await hitsAfterSetting('{{gate}}', <dynamic>[]), 0);
+      expect(await hitsAfterSetting('{{gate}}', <String, dynamic>{'a': 1}), 1);
+      expect(await hitsAfterSetting('{{gate}}', <String, dynamic>{}), 0);
+    });
+
+    test('a gate that resolves to nothing does not fire', () async {
+      expect(await hitsAfterSetting('{{missing}}', null), 0,
+          reason: 'a condition naming state that does not exist is a typo; '
+              'firing anyway makes the typo invisible');
+    });
+  });
 }

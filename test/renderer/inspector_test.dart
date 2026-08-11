@@ -116,6 +116,54 @@ void main() {
       await runtime.dispose();
     });
 
+    // `Expanded` / `Flexible` are ParentDataWidgets: the Row or Column above
+    // them reads their ParentData directly, so anything wrapped AROUND one
+    // hides it from its parent and the layout collapses. The wrap has to go
+    // inside instead — and it has to happen for both of them, since they are
+    // separate branches doing the same job.
+    testWidgets('a flexible child keeps its place in the parent, wrapped '
+        'inside', (tester) async {
+      await runtime.initialize({
+        'type': 'page',
+        'content': {
+          'type': 'linear',
+          'direction': 'horizontal',
+          'children': [
+            {
+              'type': 'flexible',
+              'flex': 2,
+              'fit': 'loose',
+              'child': {'type': 'text', 'content': 'left'},
+            },
+            {
+              'type': 'expanded',
+              'child': {'type': 'text', 'content': 'right'},
+            },
+          ],
+        },
+      });
+      await tester.pumpWidget(
+        MaterialApp(home: Scaffold(body: runtime.buildUI())),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull,
+          reason: 'a wrapped ParentDataWidget throws "incorrect use of '
+              'ParentDataWidget" — the whole reason these two branches exist');
+
+      final flexible = tester.widget<Flexible>(find.byType(Flexible).first);
+      expect(flexible.flex, 2,
+          reason: 'the declared flex has to survive the rebuild that pushes '
+              'the wrap inside');
+      expect(flexible.fit, FlexFit.loose);
+
+      expect(find.byKey(const ValueKey('wrap:flexible')), findsOneWidget,
+          reason: 'the wrap still happened — inside rather than outside');
+      expect(find.byKey(const ValueKey('wrap:expanded')), findsOneWidget);
+      expect(find.text('left'), findsOneWidget);
+      expect(find.text('right'), findsOneWidget);
+    });
+
     testWidgets('wrapper widgets appear in the rendered tree', (tester) async {
       await runtime.initialize({
         'type': 'page',

@@ -220,20 +220,26 @@ void main() {
       expect(callCount, equals(2));
     });
 
-    test('Normal: fireHookSync → fire-and-forget for hot paths', () {
+    test('Normal: fireHookSync reaches the callback with its data', () {
+      // The old test registered an empty callback and asserted nothing, so a
+      // fireHookSync that dispatched to no one passed. Fire-and-forget means
+      // the CALLER does not wait — not that the callback is optional.
       final manager = PluginHookManager.instance;
+      final seen = <Map<String, dynamic>>[];
 
       manager.registerHook(
         pluginName: 'renderPlugin',
         hookType: PluginHookType.onRender,
-        callback: (context) async {},
+        callback: (context) async => seen.add(context.data),
       );
 
-      // Should not throw
       manager.fireHookSync(
         PluginHookType.onRender,
         data: {'widgetType': 'text', 'phase': 'before'},
       );
+
+      expect(seen.single['widgetType'], 'text');
+      expect(seen.single['phase'], 'before');
     });
 
     test('Normal: unregisterPlugin → removes all hooks for a plugin', () {
@@ -279,10 +285,22 @@ void main() {
       expect(manager.hasHooks(PluginHookType.onRender), isTrue);
     });
 
-    test('Boundary: fire hook with no registered callbacks → no-op', () async {
+    test('Boundary: firing a hook type nobody registered reaches nobody else',
+        () async {
       final manager = PluginHookManager.instance;
+      final other = <String>[];
+      manager.registerHook(
+        pluginName: 'renderOnly',
+        hookType: PluginHookType.onRender,
+        callback: (ctx) async => other.add('called'),
+      );
+
       await manager.fireHook(PluginHookType.onError);
-      // Should not throw
+
+      expect(other, isEmpty,
+          reason: 'a hook fired for one type must not fall through to the '
+              'callbacks of another');
+      expect(manager.hookCount(PluginHookType.onError), 0);
     });
   });
 
@@ -383,7 +401,8 @@ void main() {
         expect(disposeOrder, ['B', 'A']);
       });
 
-      test('Boundary: no plugins loaded is no-op', () async {
+      test('Boundary: unloading with nothing loaded leaves the manager usable',
+          () async {
         final manager = PluginManager.instance;
         final stateManager = StateManager();
         final serviceLocator = ServiceLocator();
@@ -398,6 +417,17 @@ void main() {
         );
 
         await manager.unloadAllPlugins();
+
+        expect(manager.getAllPluginInfos(), isEmpty);
+
+        // And the manager is still usable afterwards — unloading nothing must
+        // not tear down the wiring a host is about to load its first plugin
+        // into.
+        await manager.registerPlugin(_ProbePlugin());
+        await manager.loadPlugin('probe');
+        expect(manager.isPluginLoaded('probe'), isTrue);
+        await manager.unloadAllPlugins();
+        expect(manager.isPluginLoaded('probe'), isFalse);
       });
     });
   });
@@ -431,6 +461,26 @@ void main() {
       await manager.loadPlugin('alpha');
       expect(initCalled[0], isTrue);
       expect(manager.isPluginLoaded('alpha'), isTrue);
+    });
+
+    test('Error: a plugin whose dispose throws does not strand the others',
+        () async {
+      // `throwOnDispose` existed on the test plugin and no test ever set it,
+      // so the branch it guards had never run. A shutdown loop that aborts on
+      // the first exception leaves the plugins behind it loaded, with their
+      // timers and listeners still attached.
+      final manager = createInitializedManager();
+      final disposed = <String>[];
+      await manager.registerPlugin(_TestPlugin('bad', throwOnDispose: true));
+      await manager.registerPlugin(
+          _TestPlugin('good', onDispose: () => disposed.add('good')));
+      await manager.loadPlugin('bad');
+      await manager.loadPlugin('good');
+
+      await manager.unloadAllPlugins();
+
+      expect(disposed, ['good']);
+      expect(manager.isPluginLoaded('good'), isFalse);
     });
 
     test('Normal: disposeAll → isPluginLoaded false', () async {
@@ -623,19 +673,31 @@ void main() {
       expect(received!['widgetType'], equals('CustomButton'));
     });
 
-    test('Error: hook throws → error caught, no propagation', () async {
+    test('Error: a throwing hook is isolated and the next one still runs',
+        () async {
+      // "Should not throw" only said the await returned. What matters is that
+      // one bad plugin does not silence the others registered for the same
+      // hook — which is the whole reason the errors are caught.
       final manager = PluginHookManager.instance;
+      final survived = <String>[];
 
       manager.registerHook(
         pluginName: 'badPlugin',
         hookType: PluginHookType.onWidgetRegister,
         callback: (ctx) async { throw Exception('widget hook error'); },
+        priority: 10,
+      );
+      manager.registerHook(
+        pluginName: 'goodPlugin',
+        hookType: PluginHookType.onWidgetRegister,
+        callback: (ctx) async => survived.add('ran'),
       );
 
-      // Should not throw
       await manager.fireHook(PluginHookType.onWidgetRegister, data: {
         'widgetType': 'test',
       });
+
+      expect(survived, ['ran']);
     });
   });
 
@@ -658,12 +720,17 @@ void main() {
       expect(received!['actionType'], equals('customAction'));
     });
 
-    test('Boundary: no plugins hook onActionRegister → no-op', () async {
+    test('Boundary: onActionRegister with nobody listening changes nothing',
+        () async {
       final manager = PluginHookManager.instance;
       await manager.fireHook(PluginHookType.onActionRegister, data: {
         'actionType': 'test',
       });
-      // No error expected
+      expect(manager.hookCount(PluginHookType.onActionRegister), 0);
+      expect(manager.activeHookTypes,
+          isNot(contains(PluginHookType.onActionRegister)),
+          reason: 'firing a hook must not create an entry for it, or the '
+              'manager would slowly grow a row per event fired');
     });
   });
 
@@ -730,19 +797,27 @@ void main() {
       expect(received!['newValue'], equals('Bob'));
     });
 
-    test('Error: hook throws → error caught', () async {
+    test('Error: a throwing state hook does not stop the others', () async {
       final manager = PluginHookManager.instance;
+      final survived = <String>[];
 
       manager.registerHook(
         pluginName: 'badState',
         hookType: PluginHookType.onStateChange,
         callback: (ctx) async { throw Exception('state error'); },
+        priority: 10,
+      );
+      manager.registerHook(
+        pluginName: 'goodState',
+        hookType: PluginHookType.onStateChange,
+        callback: (ctx) async => survived.add(ctx.data['path'] as String),
       );
 
       await manager.fireHook(PluginHookType.onStateChange, data: {
         'path': 'test', 'oldValue': null, 'newValue': 1,
       });
-      // No throw expected
+
+      expect(survived, ['test']);
     });
   });
 
@@ -766,16 +841,27 @@ void main() {
       expect(received!['props'], equals({'text': 'Hello'}));
     });
 
-    test('Error: hook throws → error caught', () async {
+    test('Error: a throwing render hook does not stop the others', () async {
       final manager = PluginHookManager.instance;
+      final survived = <String>[];
 
       manager.registerHook(
         pluginName: 'badRender',
         hookType: PluginHookType.onRender,
         callback: (ctx) async { throw Exception('render error'); },
+        priority: 10,
+      );
+      manager.registerHook(
+        pluginName: 'goodRender',
+        hookType: PluginHookType.onRender,
+        callback: (ctx) async => survived.add(ctx.data['widgetType'] as String),
       );
 
       await manager.fireHook(PluginHookType.onRender, data: {'widgetType': 'Text'});
+
+      expect(survived, ['Text'],
+          reason: 'a render hook that stops firing after one plugin throws '
+              'would silently disable every plugin behind it');
     });
   });
 
@@ -1044,14 +1130,23 @@ void main() {
       expect(callCount, equals(0));
     });
 
-    test('Boundary: unregister non-existent hook → no-op', () {
+    test('Boundary: unregistering a hook nobody registered leaves the real '
+        'ones in place', () {
       final manager = PluginHookManager.instance;
+      manager.registerHook(
+        pluginName: 'real',
+        hookType: PluginHookType.onRender,
+        callback: (ctx) async {},
+      );
 
-      // Should not throw
       manager.unregisterHook(
         pluginName: 'nonexistent',
         hookType: PluginHookType.onRender,
       );
+
+      expect(manager.hookCount(PluginHookType.onRender), 1,
+          reason: 'a miss that cleared the list would unhook every plugin on '
+              'that type');
     });
   });
 
@@ -1174,10 +1269,19 @@ void main() {
       expect(order, equals(['first', 'second']));
     });
 
-    test('Boundary: no handlers for hook type → no-op', () {
+    test('Boundary: fireHookSync with no handlers reaches no other type', () {
       final manager = PluginHookManager.instance;
-      // Should not throw
+      final other = <String>[];
+      manager.registerHook(
+        pluginName: 'renderOnly',
+        hookType: PluginHookType.onRender,
+        callback: (ctx) async => other.add('called'),
+      );
+
       manager.fireHookSync(PluginHookType.onLifecycle);
+
+      expect(other, isEmpty);
+      expect(manager.hookCount(PluginHookType.onLifecycle), 0);
     });
 
     test('Error: handler throws → error isolated, remaining handlers execute', () async {
@@ -2060,6 +2164,22 @@ class _CustomProtocolPlugin extends MCPPlugin {
           };
         },
       };
+
+  @override
+  Future<void> initialize(PluginContext context) async {}
+
+  @override
+  Future<void> dispose() async {}
+}
+
+/// A minimal plugin used to prove the manager still works after an empty
+/// unload — a no-op that quietly broke the manager would otherwise pass.
+class _ProbePlugin extends MCPPlugin {
+  @override
+  String get name => 'probe';
+
+  @override
+  String get version => '1.0.0';
 
   @override
   Future<void> initialize(PluginContext context) async {}

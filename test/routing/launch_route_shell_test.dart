@@ -51,11 +51,14 @@ void main() {
   }
 
   Future<void> pumpUntilText(WidgetTester tester, String text) async {
-    // The shell materializes its body through a future; settle rather than
-    // pump a fixed slice, because a fixed slice is what hid this class of
-    // defect in the first place.
-    final deadline = DateTime.now().add(const Duration(seconds: 1));
-    while (DateTime.now().isBefore(deadline)) {
+    // The shell materializes its body through a future; pump until the text
+    // is there rather than for a fixed slice, because a fixed slice is what
+    // hid this class of defect in the first place.
+    //
+    // Bounded by FRAMES, not by the wall clock: a real-time deadline inside a
+    // fake-clock test expires because the machine is busy, which is a failure
+    // about the test runner rather than about the shell.
+    for (var i = 0; i < 100; i++) {
       await tester.pump(const Duration(milliseconds: 50));
       if (find.text(text).evaluate().isNotEmpty) return;
     }

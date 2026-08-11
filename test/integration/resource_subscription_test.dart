@@ -125,8 +125,8 @@ void main() {
       expect(find.text('45%'), findsOneWidget);
 
       // Register subscriptions
-      runtime.engine!.registerResourceSubscription('mcp://server/sensors/temperature', 'temperature');
-      runtime.engine!.registerResourceSubscription('mcp://server/sensors/humidity', 'humidity');
+      runtime.engine.registerResourceSubscription('mcp://server/sensors/temperature', 'temperature');
+      runtime.engine.registerResourceSubscription('mcp://server/sensors/humidity', 'humidity');
 
       // Simulate temperature notification — spec §4.5: payload as-is.
       // Wrap scalars in `content.text` so the runtime parses and stores
@@ -218,7 +218,7 @@ void main() {
       expect(find.text('Unknown'), findsOneWidget);
       
       // Register subscription
-      runtime.engine!.registerResourceSubscription('mcp://server/status', 'serverStatus');
+      runtime.engine.registerResourceSubscription('mcp://server/status', 'serverStatus');
       
       // Simulate status update — spec §4.5: payload stored as-is.
       runtime.handleNotification({

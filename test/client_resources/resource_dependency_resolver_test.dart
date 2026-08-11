@@ -244,4 +244,123 @@ void main() {
       });
     });
   });
+
+  group('a source built from a dependency', () {
+    test('the dependency\'s value is substituted into the URI', () async {
+      final result = await depResolver.resolve(<ResourceDeclaration>[
+        const ResourceDeclaration(
+          key: 'config',
+          source: 'client://cache/config',
+        ),
+        const ResourceDeclaration(
+          key: 'theme',
+          source: 'client://cache/{{resources.config.themeName}}',
+          dependsOn: <String>['config'],
+        ),
+      ]);
+
+      expect(result.errors, isEmpty);
+      expect((result.resources['theme'] as Map)['color'], 'black',
+          reason: 'the second resource names the first in its own URI; that '
+              'substitution is the entire reason dependencies exist');
+    });
+
+    test('a path into nothing substitutes empty rather than the expression',
+        () async {
+      final result = await depResolver.resolve(<ResourceDeclaration>[
+        const ResourceDeclaration(
+          key: 'config',
+          source: 'client://cache/config',
+        ),
+        const ResourceDeclaration(
+          key: 'theme',
+          source: 'client://cache/{{resources.config.missing.deeper}}',
+          dependsOn: <String>['config'],
+          optional: true,
+        ),
+      ]);
+
+      expect(result.resources['theme'], isNull);
+      expect(result.errors, isEmpty,
+          reason: 'an optional resource that cannot be built is absent, not '
+              'a failure of the page');
+    });
+
+    test('a transform runs on what was loaded', () async {
+      final result = await depResolver.resolve(<ResourceDeclaration>[
+        const ResourceDeclaration(
+          key: 'config',
+          source: 'client://cache/config',
+          transform: <Map<String, dynamic>>[
+            <String, dynamic>{'type': 'select', 'path': 'themeName'},
+          ],
+        ),
+      ]);
+
+      expect(result.resources['config'], 'dark-theme',
+          reason: 'the pipeline runs between the bytes and the binding; '
+              'skipping it hands the page the raw server shape');
+    });
+  });
+
+  group('failure propagation', () {
+    test('a required dependant fails when its dependency does', () async {
+      final result = await depResolver.resolve(<ResourceDeclaration>[
+        const ResourceDeclaration(
+          key: 'missing',
+          source: 'client://cache/not-there',
+        ),
+        const ResourceDeclaration(
+          key: 'dependant',
+          source: 'client://cache/independent',
+          dependsOn: <String>['missing'],
+        ),
+      ]);
+
+      expect(result.errors['missing'], isNotNull);
+      expect(result.errors['dependant'], contains('missing'),
+          reason: 'naming which dependency failed is what turns a blank '
+              'panel into something an author can fix');
+    });
+
+    test('an optional dependant resolves to null instead', () async {
+      final result = await depResolver.resolve(<ResourceDeclaration>[
+        const ResourceDeclaration(
+          key: 'missing',
+          source: 'client://cache/not-there',
+        ),
+        const ResourceDeclaration(
+          key: 'dependant',
+          source: 'client://cache/independent',
+          dependsOn: <String>['missing'],
+          optional: true,
+        ),
+      ]);
+
+      expect(result.resources.containsKey('dependant'), isTrue);
+      expect(result.resources['dependant'], isNull);
+      expect(result.errors.containsKey('dependant'), isFalse);
+    });
+
+    test('a dependency that was itself optional does not fail the dependant',
+        () async {
+      final result = await depResolver.resolve(<ResourceDeclaration>[
+        const ResourceDeclaration(
+          key: 'missing',
+          source: 'client://cache/not-there',
+          optional: true,
+        ),
+        const ResourceDeclaration(
+          key: 'dependant',
+          source: 'client://cache/independent',
+          dependsOn: <String>['missing'],
+        ),
+      ]);
+
+      expect(result.errors, isEmpty,
+          reason: 'an optional resource is declared as "carry on without '
+              'this"; failing everything behind it says the opposite');
+      expect(result.resources['dependant'], 'standalone');
+    });
+  });
 }

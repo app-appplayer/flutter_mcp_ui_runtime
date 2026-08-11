@@ -6,6 +6,24 @@ import '../capability_absent.dart';
 import '../widget_factory.dart';
 import 'platform/pdf_view.dart';
 
+/// Test seams for the platform split.
+///
+/// `platform/pdf_view.dart` resolves to a stub anywhere but a browser, so off
+/// the web this factory could only ever take its "no renderer here" branch.
+/// What sits below that branch is not browser code: which source forms are
+/// displayable at all, and the open-parameter fragment §10.25 defines — the
+/// page the reader lands on, the zoom, whether the toolbar is there. None of
+/// it was verified on any platform.
+@visibleForTesting
+bool? debugPdfSupported;
+
+@visibleForTesting
+Widget Function({
+  required String source,
+  required double? height,
+  Key? key,
+})? debugBuildPdfView;
+
 /// Factory for `pdfViewer` (spec §10.25).
 ///
 /// `src` is an `AssetRef`, so the same document works from a bundle, a URL, a
@@ -74,7 +92,7 @@ class PdfViewerFactory extends WidgetFactory {
       );
     }
 
-    if (!pdfViewSupported) {
+    if (!(debugPdfSupported ?? pdfViewSupported)) {
       return _Unavailable(
         height: height,
         message: 'PDF viewing is not available on this platform',
@@ -100,7 +118,7 @@ class PdfViewerFactory extends WidgetFactory {
       );
     }
 
-    return buildPdfView(
+    return (debugBuildPdfView ?? buildPdfView)(
       source: _withOpenParameters(
         source,
         page: page,

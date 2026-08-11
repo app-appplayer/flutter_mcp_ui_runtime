@@ -44,7 +44,7 @@ void main() {
 
       expect(runtime.isInitialized, isTrue);
       expect(runtime.engine, isNotNull);
-      expect(runtime.engine!.isInitialized, isTrue);
+      expect(runtime.engine.isInitialized, isTrue);
     });
 
     test('TC-200: Initialize with metadata', () async {
@@ -432,7 +432,7 @@ void main() {
 
     // TC-220: Resolution
     test('TC-220: Simple binding resolution {{count}}', () {
-      final be = runtime.engine!.bindingEngine;
+      final be = runtime.engine.bindingEngine;
 
       expect(be.isBindingExpression('{{count}}'), isTrue);
       expect(be.containsBindingExpression('Value: {{count}}'), isTrue);
@@ -440,13 +440,13 @@ void main() {
     });
 
     test('TC-220: Nested binding {{app.user.name}}', () {
-      final be = runtime.engine!.bindingEngine;
+      final be = runtime.engine.bindingEngine;
 
       expect(be.isBindingExpression('{{app.user.name}}'), isTrue);
     });
 
     test('TC-220: Template string with multiple bindings', () {
-      final be = runtime.engine!.bindingEngine;
+      final be = runtime.engine.bindingEngine;
 
       const template = 'Hello {{app.user.name}}, count is {{count}}';
       expect(be.containsBindingExpression(template), isTrue);
@@ -454,7 +454,7 @@ void main() {
     });
 
     test('TC-220: Extract dependencies from expression', () {
-      final be = runtime.engine!.bindingEngine;
+      final be = runtime.engine.bindingEngine;
 
       final deps =
           be.extractDependencies('{{count}} items for {{app.user.name}}');
@@ -475,7 +475,7 @@ void main() {
     });
 
     test('TC-221: Binding engine detects list binding patterns', () {
-      final be = runtime.engine!.bindingEngine;
+      final be = runtime.engine.bindingEngine;
 
       // Verify that binding expressions for list contexts are recognized
       expect(be.isBindingExpression('{{item.name}}'), isTrue);
@@ -514,12 +514,12 @@ void main() {
 
     // Helper to create a RenderContext for action execution
     RenderContext createContext() {
-      return runtime.engine!.renderer.createRootContext(null);
+      return runtime.engine.renderer.createRootContext(null);
     }
 
     // TC-230: State actions
     test('TC-230: State action - set', () async {
-      final ah = runtime.engine!.actionHandler;
+      final ah = runtime.engine.actionHandler;
       final ctx = createContext();
 
       await ah.execute({
@@ -533,7 +533,7 @@ void main() {
     });
 
     test('TC-230: State action - increment', () async {
-      final ah = runtime.engine!.actionHandler;
+      final ah = runtime.engine.actionHandler;
       final ctx = createContext();
 
       await ah.execute({
@@ -546,7 +546,7 @@ void main() {
     });
 
     test('TC-230: State action - toggle', () async {
-      final ah = runtime.engine!.actionHandler;
+      final ah = runtime.engine.actionHandler;
       final ctx = createContext();
 
       await ah.execute({
@@ -559,7 +559,7 @@ void main() {
     });
 
     test('TC-230: State action - append', () async {
-      final ah = runtime.engine!.actionHandler;
+      final ah = runtime.engine.actionHandler;
       final ctx = createContext();
 
       await ah.execute({
@@ -575,7 +575,7 @@ void main() {
 
     // TC-231: Tool actions (mock tool call)
     test('TC-231: Tool action with registered executor', () async {
-      final ah = runtime.engine!.actionHandler;
+      final ah = runtime.engine.actionHandler;
       final ctx = createContext();
       var toolCalled = false;
       String? calledTool;
@@ -602,7 +602,7 @@ void main() {
 
     // TC-232: Navigation actions
     test('TC-232: Navigation action handler registration', () async {
-      final ah = runtime.engine!.actionHandler;
+      final ah = runtime.engine.actionHandler;
       var navigatedTo = '';
 
       // Register navigation handler
@@ -624,20 +624,20 @@ void main() {
     // TC-233: Resource actions
     test('TC-233: Resource action executor is registered', () async {
       // Resource actions are available - the executor is registered by default
-      final ah = runtime.engine!.actionHandler;
+      final ah = runtime.engine.actionHandler;
       expect(ah, isNotNull);
     });
 
     // TC-234: Dialog actions
     test('TC-234: Dialog action executor is registered', () async {
       // Dialog actions require a BuildContext, so we just verify registration
-      final ah = runtime.engine!.actionHandler;
+      final ah = runtime.engine.actionHandler;
       expect(ah, isNotNull);
     });
 
     // TC-235: Batch actions
     test('TC-235: Batch action executes multiple actions', () async {
-      final ah = runtime.engine!.actionHandler;
+      final ah = runtime.engine.actionHandler;
       final ctx = createContext();
 
       await ah.execute({
@@ -664,7 +664,7 @@ void main() {
 
     // TC-236: Conditional actions
     test('TC-236: Conditional action - true branch', () async {
-      final ah = runtime.engine!.actionHandler;
+      final ah = runtime.engine.actionHandler;
       final ctx = createContext();
 
       // Set a boolean condition directly
@@ -691,7 +691,7 @@ void main() {
     });
 
     test('TC-236: Conditional action - false branch', () async {
-      final ah = runtime.engine!.actionHandler;
+      final ah = runtime.engine.actionHandler;
       final ctx = createContext();
 
       // Counter is 0 by default
@@ -986,8 +986,8 @@ void main() {
         'content': {'type': 'text', 'content': 'Test'},
       });
 
-      final ah = runtime.engine!.actionHandler;
-      final ctx = runtime.engine!.renderer.createRootContext(null);
+      final ah = runtime.engine.actionHandler;
+      final ctx = runtime.engine.renderer.createRootContext(null);
 
       await ah.execute({
         'type': 'parallel',
@@ -1025,8 +1025,8 @@ void main() {
         'content': {'type': 'text', 'content': 'Test'},
       });
 
-      final ah = runtime.engine!.actionHandler;
-      final ctx = runtime.engine!.renderer.createRootContext(null);
+      final ah = runtime.engine.actionHandler;
+      final ctx = runtime.engine.renderer.createRootContext(null);
 
       await ah.execute({
         'type': 'sequence',
@@ -1218,7 +1218,7 @@ void main() {
         'content': {'type': 'text', 'content': 'Test'},
       });
 
-      expect(runtime.engine!.lifecycle, isNotNull);
+      expect(runtime.engine.lifecycle, isNotNull);
     });
   });
 

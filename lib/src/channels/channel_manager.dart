@@ -706,7 +706,13 @@ class BackpressureController {
             latest = data;
             if (!scheduled) {
               scheduled = true;
-              Future.microtask(() {
+              // Deferred to the next event-loop turn, not to a microtask.
+              // Stream events are themselves delivered one per microtask, so a
+              // microtask scheduled here always ran BEFORE the next event
+              // arrived — nothing was ever collapsed and `latest` behaved
+              // exactly like `buffer`. A document asking for "only the current
+              // reading" was handed every reading instead.
+              Timer.run(() {
                 scheduled = false;
                 controller.add(latest);
               });

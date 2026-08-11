@@ -18,7 +18,7 @@ class GanttFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    final rawTasks = context.resolve<List<dynamic>?>(properties['tasks']) ?? const [];
+    final rawTasks = listOf(properties['tasks'], context) ?? const [];
     final viewMode = context.resolve<String?>(properties['viewMode']) ?? 'day';
     final editable = context.resolve<bool?>(properties['editable']) ?? false;
     final showProgress = context.resolve<bool?>(properties['showProgress']) ?? true;
@@ -331,9 +331,22 @@ class _GanttState extends State<_Gantt> {
                                     _dragging[row.task!.id] =
                                         (start: start, end: end)),
                                 onDragEnd: (start, end) {
+                                  // The live range, not the arguments: the
+                                  // bar's callbacks close over the dates from
+                                  // its last BUILD, and the frame after the
+                                  // final drag update has not been built when
+                                  // the gesture ends. Reporting the arguments
+                                  // therefore lost the tail of every drag —
+                                  // and all of a quick one, which reported the
+                                  // task as unmoved.
+                                  final live = _dragging[row.task!.id];
                                   setState(
                                       () => _dragging.remove(row.task!.id));
-                                  widget.onChange(row.task!, start, end);
+                                  widget.onChange(
+                                    row.task!,
+                                    live?.start ?? start,
+                                    live?.end ?? end,
+                                  );
                                 },
                               ),
                             ),

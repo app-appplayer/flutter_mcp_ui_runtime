@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/src/offline/offline_queue.dart';
 import 'package:flutter_mcp_ui_runtime/src/offline/conflict_resolver.dart';
@@ -229,6 +230,26 @@ void main() {
         expect(results.length, 3);
         expect(processed, containsAll(['A', 'B', 'C']));
         expect(queue.hasPending, false);
+      });
+
+      test('a second parallel run while one is in flight is refused', () async {
+        queue.enqueue({'id': 'A'});
+        final gate = Completer<void>();
+
+        final first = queue.processQueueParallel((action) async {
+          await gate.future;
+        });
+        // The first run has the queue; the second must not take the same
+        // action again — a double-send is a duplicate order, not a retry.
+        final second = await queue.processQueueParallel((action) async {});
+
+        expect(second, isEmpty,
+            reason: 'an empty result is how the caller learns nothing was '
+                'processed; processing the same queue twice at once sends '
+                'every pending action twice');
+
+        gate.complete();
+        expect((await first).length, 1);
       });
 
       test('parallel processing re-queues failures', () async {

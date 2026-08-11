@@ -88,16 +88,21 @@ void main() {
       expect(stateManager.get<String>('deep.nested.path'), equals('deep'));
     });
 
-    test('TC-013 Error: Missing binding/path key throws exception', () async {
-      // StateActionExecutor throws Exception when binding is null,
-      // and ActionHandler rethrows exceptions whose message contains 'required'.
-      expect(
-        () => actionHandler.execute(
-          {'type': 'state', 'action': 'set', 'value': 1},
-          context,
-        ),
-        throwsA(isA<Exception>()),
+    test('TC-013 Error: a set with no binding is reported, not thrown',
+        () async {
+      // This used to assert `throwsA(isA<Exception>())`. The exception left
+      // the executor, travelled through `ActionHandler.execute` and out of
+      // whatever tapped the button — so a document with one missing `binding`
+      // took the page down instead of failing one action. §6.13: the runtime
+      // reports what it could not do.
+      final result = await actionHandler.execute(
+        {'type': 'state', 'action': 'set', 'value': 1},
+        context,
       );
+      expect(result.success, isFalse);
+      expect(result.error, contains('binding'),
+          reason: 'the message has to name the missing key, which is the '
+              'entire fix an author needs');
     });
   });
 

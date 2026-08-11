@@ -195,4 +195,62 @@ void main() {
     expect(result.success, isFalse);
     expect(result.error, contains('Dialog configuration'));
   });
+  testWidgets('an action with no handler at all still closes the dialog',
+      (tester) async {
+    await mount(tester);
+    await fire(<String, dynamic>{
+      'type': 'dialog',
+      'action': 'show',
+      'dialog': <String, dynamic>{
+        'type': 'alert',
+        'title': 'Heads up',
+        'actions': <dynamic>[
+          <String, dynamic>{'label': 'OK'},
+        ],
+      },
+    });
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Heads up'), findsNothing,
+        reason: 'a button that does nothing AND does not close leaves the '
+            'user stuck behind a modal with no way out');
+  });
+
+  testWidgets('a snackBar takes its text from `message` too', (tester) async {
+    await mount(tester);
+    await fire(<String, dynamic>{
+      'type': 'dialog',
+      'action': 'show',
+      'dialog': <String, dynamic>{
+        'type': 'snackBar',
+        'message': 'Saved to drafts',
+      },
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Saved to drafts'), findsOneWidget,
+        reason: '`content` is the spec spelling and `message` is what half '
+            'the documents in the field write; an empty bar says nothing');
+  });
+
+  testWidgets('a snackBar reads a binding in its content', (tester) async {
+    await mount(tester);
+    runtime.stateManager.set('answer', 'Ada');
+    await fire(<String, dynamic>{
+      'type': 'dialog',
+      'action': 'show',
+      'dialog': <String, dynamic>{
+        'type': 'snackBar',
+        'content': 'Welcome back, {{answer}}',
+      },
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Welcome back, Ada'), findsOneWidget);
+  });
 }

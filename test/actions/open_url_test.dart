@@ -7,7 +7,6 @@
 /// reported rather than swallowed.
 library open_url_test;
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/src/actions/action_handler.dart';
 import 'package:flutter_mcp_ui_runtime/src/binding/binding_engine.dart';

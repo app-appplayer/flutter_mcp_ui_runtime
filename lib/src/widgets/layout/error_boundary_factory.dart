@@ -54,8 +54,12 @@ class _ErrorBoundaryWidgetState extends State<_ErrorBoundaryWidget> {
       // (spec §2.13.11), so it must not fire again on every rebuild.
       if (widget.fallback != null) {
         try {
+          // Rethrowing form: the renderer's own inline error card would
+          // satisfy this render, so a fallback that itself fails would draw
+          // the card instead of the default surface below — and this catch
+          // would never run.
           return widget.context.renderer
-              .renderWidget(widget.fallback, widget.context);
+              .renderWidgetRethrowingErrors(widget.fallback, widget.context);
         } catch (_) {
           // If fallback also fails, show default error UI
         }
@@ -92,9 +96,15 @@ class _ErrorBoundaryWidgetState extends State<_ErrorBoundaryWidget> {
       );
     }
 
-    // Wrap child rendering in error catching
+    // Wrap child rendering in error catching.
+    //
+    // Rethrowing form, for the same reason as the fallback above: the renderer
+    // answers a failed build with its own inline card, so this catch — and
+    // with it the fallback, the default surface and `onError` — was
+    // unreachable from any document.
     try {
-      return widget.context.renderer.renderWidget(widget.child, widget.context);
+      return widget.context.renderer
+          .renderWidgetRethrowingErrors(widget.child, widget.context);
     } catch (e, st) {
       // Schedule state update on next frame to avoid build-during-build,
       // and dispatch onError once with the spec §2.13.11 canonical

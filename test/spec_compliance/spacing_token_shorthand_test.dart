@@ -26,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart';
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
+import 'package:flutter_mcp_ui_runtime/src/widgets/layout/container_factory.dart';
 
 void main() {
   Map<String, dynamic> pageWith(Map<String, dynamic> boxProps) =>
@@ -122,6 +123,53 @@ void main() {
           reason: 'an unresolved token must be reported exactly once');
       expect(reports.single.message, contains(slot));
       expect(reports.single.message, contains('theme.spacing'));
+    });
+  });
+
+  group('a document that produces tokens from state', () {
+    testWidgets('the reports stop once, with a line saying why',
+        (tester) async {
+      // A binding that yields a different token every frame — a row index, a
+      // computed size — turns "report each distinct value once" into an
+      // unbounded log. The cap exists so a noisy document costs one more line
+      // rather than thousands.
+      ContainerWidgetFactory.resetSpacingWarnings();
+      addTearDown(ContainerWidgetFactory.resetSpacingWarnings);
+
+      final reports = <MCPLogRecord>[];
+      final previous = MCPLogger.onRecord;
+      MCPLogger.onRecord = (r) {
+        if (r.logger == 'BoxSpacing' && r.level == 'WARN') reports.add(r);
+      };
+      try {
+        // One page carrying seventy boxes, each with a different unresolved
+        // token — the shape a list built from state produces in a single
+        // build.
+        final runtime = MCPUIRuntime();
+        await runtime.initialize(<String, dynamic>{
+          'type': 'page',
+          'content': <String, dynamic>{
+            'type': 'linear',
+            'direction': 'vertical',
+            'children': <dynamic>[
+              for (var i = 0; i < 70; i++)
+                <String, dynamic>{'type': 'box', 'padding': 'noSuchToken$i'},
+            ],
+          },
+        });
+        await tester.pumpWidget(
+            MaterialApp(home: Scaffold(body: runtime.buildUI())));
+        await tester.pump();
+        await runtime.destroy();
+      } finally {
+        MCPLogger.onRecord = previous;
+      }
+
+      expect(reports.length, lessThan(70),
+          reason: 'that is the point of the cap');
+      expect(reports.last.message, contains('stopped reporting'),
+          reason: 'and it says so rather than just going quiet — silence '
+              'reads as "the tokens started resolving"');
     });
   });
 

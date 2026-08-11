@@ -119,6 +119,26 @@ void main() {
         expect(result.error, contains('missing'));
       });
 
+      test('fail-fast stops a parallel batch too', () async {
+        final result = await loader.loadBatch(
+          sources: [
+            const BatchResourceSource(
+                key: 'missing', source: 'client://cache/nonexistent'),
+            const BatchResourceSource(
+                key: 'b', source: 'client://cache/source-b'),
+          ],
+          loadStrategy: 'parallel',
+          failurePolicy: 'fail-fast',
+        );
+
+        expect(result.success, isFalse,
+            reason: 'the policy is about the batch, not about the order the '
+                'sources were fetched in — a parallel batch that reports '
+                'success with a required source missing hands the document a '
+                'half-loaded screen');
+        expect(result.error, contains('missing'));
+      });
+
       test('TC-046 Normal: all succeed with fail-fast', () async {
         final result = await loader.loadBatch(
           sources: [

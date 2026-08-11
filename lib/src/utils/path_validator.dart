@@ -24,9 +24,7 @@ class PathSecurityException implements Exception {
 /// 1. Path traversal rejection - rejects paths containing `..` segments
 /// 2. Path normalization - removes redundant slashes and `.` segments
 /// 3. Symlink resolution - validates resolved paths stay within allowed directories
-class PathValidator {
-  PathValidator._();
-
+abstract final class PathValidator {
   /// Validates and normalizes a resource path.
   ///
   /// Throws [PathSecurityException] if a path traversal attempt is detected.

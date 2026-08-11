@@ -269,6 +269,44 @@ void main() {
     });
   });
 
+  // The persistence half of the cache lives in SharedPreferences, which is a
+  // platform channel — absent in a plain test process, and absent on a host
+  // that never wired it. What matters is that its absence is a logged
+  // disappointment rather than an exception out of `clear`: a cache that
+  // cannot persist is still a working in-memory cache, and taking the whole
+  // teardown down with it would strand the runtime mid-dispose.
+  group('when the platform has no preferences store', () {
+    test('clearing everything survives it', () async {
+      final cm = CacheManager(enableDebugMode: true);
+      await cm.cacheApp(CachedApp(
+        id: 'a',
+        domain: 'com.example',
+        version: '1.0.0',
+        definition: const {'type': 'application'},
+        cachedAt: DateTime.now(),
+      ));
+
+      await expectLater(cm.clearAll(), completes,
+          reason: 'the in-memory half must still be cleared; an exception '
+              'here leaves a disposed runtime holding its cache');
+      expect(cm.getCachedApp('com.example', 'a'), isNull);
+    });
+
+    test('clearing one app survives it too', () async {
+      final cm = CacheManager(enableDebugMode: true);
+      await cm.cacheApp(CachedApp(
+        id: 'a',
+        domain: 'com.example',
+        version: '1.0.0',
+        definition: const {'type': 'application'},
+        cachedAt: DateTime.now(),
+      ));
+
+      await expectLater(cm.clearApp('com.example', 'a'), completes);
+      expect(cm.getCachedApp('com.example', 'a'), isNull);
+    });
+  });
+
   group('TC-083: CacheManager — constructor', () {
     test('Normal: creates instance', () {
       final cm = CacheManager();

@@ -354,16 +354,16 @@ void main() {
         'type': 'page',
         'content': {'type': 'text', 'content': 'x'},
       });
-      runtime.engine!
+      runtime.engine
           .registerResourceSubscription('data://sensor', 'sensor');
 
       // Pre-fix: heuristic would have unwrapped `content[binding]` and
       // stored `25.5` at `sensor`. Spec §4.5: store raw content.
-      runtime.engine!.handleResourceNotification('data://sensor', {
+      runtime.engine.handleResourceNotification('data://sensor', {
         'content': {'sensor': 25.5, 'other': 'x'},
       });
 
-      expect(runtime.engine!.stateManager.get<Map>('sensor'),
+      expect(runtime.engine.stateManager.get<Map>('sensor'),
           equals({'sensor': 25.5, 'other': 'x'}));
 
       await runtime.dispose();
@@ -375,13 +375,13 @@ void main() {
         'type': 'page',
         'content': {'type': 'text', 'content': 'x'},
       });
-      runtime.engine!
+      runtime.engine
           .registerResourceSubscription('data://sensor', 'sensor');
 
       final events = <StateChangeEvent>[];
-      final sub = runtime.engine!.stateManager.stream.listen(events.add);
+      final sub = runtime.engine.stateManager.stream.listen(events.add);
 
-      runtime.engine!.handleResourceNotification('data://sensor', {
+      runtime.engine.handleResourceNotification('data://sensor', {
         'content': 'raw-payload',
       });
       await Future<void>.delayed(Duration.zero);
@@ -408,27 +408,27 @@ void main() {
 
       String? readUri;
       String? listUri;
-      runtime.engine!.setResourceHandlers(
+      runtime.engine.setResourceHandlers(
         onResourceRead: (uri, binding) async {
           readUri = uri;
-          runtime.engine!.stateManager
+          runtime.engine.stateManager
               .set(binding, {'single': true}, source: 'subscription');
         },
         onResourceList: (uri, binding) async {
           listUri = uri;
-          runtime.engine!.stateManager
+          runtime.engine.stateManager
               .set(binding, ['a', 'b'], source: 'subscription');
         },
       );
 
-      expect(runtime.engine!.onResourceRead, isNotNull);
-      expect(runtime.engine!.onResourceList, isNotNull);
+      expect(runtime.engine.onResourceRead, isNotNull);
+      expect(runtime.engine.onResourceList, isNotNull);
 
       // Trigger via the action handler to confirm the read callback runs.
       // We need a fresh RenderContext that resolves the engine reference;
       // use the renderer's root context.
-      final ctx = runtime.engine!.renderer.createRootContext(null);
-      await runtime.engine!.actionHandler.execute(
+      final ctx = runtime.engine.renderer.createRootContext(null);
+      await runtime.engine.actionHandler.execute(
         {
           'type': 'resource',
           'action': 'read',
@@ -438,10 +438,10 @@ void main() {
         ctx,
       );
       expect(readUri, equals('ui://thing'));
-      expect(runtime.engine!.stateManager.get('item'),
+      expect(runtime.engine.stateManager.get('item'),
           equals({'single': true}));
 
-      await runtime.engine!.actionHandler.execute(
+      await runtime.engine.actionHandler.execute(
         {
           'type': 'resource',
           'action': 'list',
@@ -451,7 +451,7 @@ void main() {
         ctx,
       );
       expect(listUri, equals('ui://things'));
-      expect(runtime.engine!.stateManager.get<List>('items'),
+      expect(runtime.engine.stateManager.get<List>('items'),
           equals(['a', 'b']));
 
       await runtime.dispose();
@@ -466,17 +466,17 @@ void main() {
       });
 
       String? subUri;
-      runtime.engine!.setResourceHandlers(
+      runtime.engine.setResourceHandlers(
         onResourceSubscribe: (uri, binding) async {
           subUri = uri;
-          runtime.engine!.stateManager.set(
+          runtime.engine.stateManager.set(
               binding, ['first', 'second'],
               source: 'subscription');
         },
       );
 
-      final ctx = runtime.engine!.renderer.createRootContext(null);
-      await runtime.engine!.actionHandler.execute(
+      final ctx = runtime.engine.renderer.createRootContext(null);
+      await runtime.engine.actionHandler.execute(
         {
           'type': 'resource',
           'action': 'read',
@@ -487,7 +487,7 @@ void main() {
       );
       // Legacy fallback unwraps the first item for `read`.
       expect(subUri, equals('ui://thing'));
-      expect(runtime.engine!.stateManager.get('item'), equals('first'));
+      expect(runtime.engine.stateManager.get('item'), equals('first'));
 
       await runtime.dispose();
     });
@@ -506,14 +506,14 @@ void main() {
         'content': {'type': 'text', 'content': 'x'},
       });
 
-      runtime.engine!.setResourceHandlers(
+      runtime.engine.setResourceHandlers(
         onResourceSubscribe: (uri, binding) async {
           throw StateError('connection refused');
         },
       );
 
-      final ctx = runtime.engine!.renderer.createRootContext(null);
-      final result = await runtime.engine!.actionHandler.execute(
+      final ctx = runtime.engine.renderer.createRootContext(null);
+      final result = await runtime.engine.actionHandler.execute(
         {
           'type': 'resource',
           'action': 'subscribe',
@@ -532,10 +532,10 @@ void main() {
       expect(result.success, isFalse);
       expect(result.error, contains('connection refused'));
       expect(
-          runtime.engine!.stateManager.get<String>('subscribeError'),
+          runtime.engine.stateManager.get<String>('subscribeError'),
           contains('connection refused'));
       // Failed subscribe must roll back the registration.
-      expect(runtime.engine!.getBindingForUri('ui://thing'), isNull);
+      expect(runtime.engine.getBindingForUri('ui://thing'), isNull);
 
       await runtime.dispose();
     });
@@ -547,14 +547,14 @@ void main() {
         'content': {'type': 'text', 'content': 'x'},
       });
 
-      runtime.engine!.setResourceHandlers(
+      runtime.engine.setResourceHandlers(
         onResourceSubscribe: (uri, binding) async {
           // no-op success
         },
       );
 
-      final ctx = runtime.engine!.renderer.createRootContext(null);
-      final result = await runtime.engine!.actionHandler.execute(
+      final ctx = runtime.engine.renderer.createRootContext(null);
+      final result = await runtime.engine.actionHandler.execute(
         {
           'type': 'resource',
           'action': 'subscribe',
@@ -571,7 +571,7 @@ void main() {
       );
 
       expect(result.success, isTrue);
-      expect(runtime.engine!.stateManager.get('subscribeError'), isNull);
+      expect(runtime.engine.stateManager.get('subscribeError'), isNull);
 
       await runtime.dispose();
     });

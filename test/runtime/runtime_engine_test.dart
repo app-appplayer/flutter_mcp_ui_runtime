@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart' show TemplateDefinition;
 import 'package:flutter_mcp_ui_runtime/src/runtime/runtime_engine.dart';
+import 'package:flutter_mcp_ui_runtime/src/models/ui_definition.dart' show ChannelConfig;
 import 'package:flutter_mcp_ui_runtime/src/runtime/cache_manager.dart';
 
 void main() {
@@ -310,6 +312,36 @@ void main() {
       });
     });
 
+    group('declared services', () {
+      test('a navigation service declaration is taken without complaint',
+          () async {
+        // The body behind this is a no-op today (the shell owns navigation),
+        // but the declaration is part of §1's `services` block: a document
+        // that writes it must initialise, not fail on an unknown key.
+        await engine.initialize(
+          pageLoader: (uri) async =>
+              <String, dynamic>{'type': 'page', 'content': {'type': 'box'}},
+          definition: {
+          'type': 'application',
+          'title': 'Nav',
+          'initialRoute': '/',
+          'routes': {'/': '/pages/home'},
+          'services': {
+            'navigation': {'type': 'stack'},
+            'state': {
+              'initialState': {'here': true}
+            },
+          },
+        });
+
+        expect(engine.isInitialized, isTrue);
+        expect(engine.stateManager.get<bool>('here'), isTrue,
+            reason: 'the state service beside it still runs — an exception in '
+                'the navigation arm would take the whole services block down '
+                'and the document would open with no state at all');
+      });
+    });
+
     group('Cache Integration Tests', () {
       test('attempts to load from cache when enabled', () async {
         final definition = {
@@ -402,47 +434,131 @@ void main() {
     });
   });
 
-  group('TC-021: RuntimeEngine — v1.1 service access', () {
-    test('Normal: channelManager accessible after initialization', () async {
-      final engine = RuntimeEngine(enableDebugMode: false);
-      final definition = {
+  group('TC-021: RuntimeEngine — the subsystems are wired to THIS document', () {
+    // Was: fourteen tests asserting `engine.<subsystem>, isNotNull`. A field
+    // initialised at construction is never null, so those passed for an engine
+    // whose subsystems were wired to nothing — which is the only failure worth
+    // catching here. Each one now asks the subsystem something only a
+    // correctly wired instance can answer.
+    late RuntimeEngine engine;
+
+    setUp(() async {
+      engine = RuntimeEngine(enableDebugMode: false);
+      await engine.initialize(definition: {
         'type': 'page',
-        'metadata': {'title': 'Test Page'},
-        'content': {'type': 'text', 'content': 'Test'},
-      };
-
-      await engine.initialize(definition: definition);
-      expect(engine.channelManager, isNotNull);
-
-      await engine.destroy();
+        'metadata': {'title': 'Wired'},
+        'runtime': {
+          'services': {
+            'state': {
+              'initialState': {'counter': 7},
+            },
+          },
+        },
+        'theme': {
+          'mode': 'light',
+          'colors': {'primary': '#123456'},
+        },
+        'content': {'type': 'text', 'content': '{{counter}}'},
+      });
     });
 
-    test('Normal: templateRegistry accessible after initialization', () async {
-      final engine = RuntimeEngine(enableDebugMode: false);
-      final definition = {
-        'type': 'page',
-        'metadata': {'title': 'Test Page'},
-        'content': {'type': 'text', 'content': 'Test'},
-      };
+    tearDown(() async => engine.destroy());
 
-      await engine.initialize(definition: definition);
-      expect(engine.templateRegistry, isNotNull);
-
-      await engine.destroy();
+    test('stateManager holds the document\'s own initial state', () {
+      expect(engine.stateManager.get('counter'), 7);
+      engine.stateManager.set('counter', 8);
+      expect(engine.stateManager.get('counter'), 8);
     });
 
-    test('Normal: animationService accessible after initialization', () async {
-      final engine = RuntimeEngine(enableDebugMode: false);
-      final definition = {
-        'type': 'page',
-        'metadata': {'title': 'Test Page'},
-        'content': {'type': 'text', 'content': 'Test'},
-      };
+    test('bindingEngine resolves against that same state', () {
+      final context = engine.renderer.createRootContext(null);
+      expect(context.resolve<dynamic>('{{counter}}'), 7,
+          reason: 'a binding engine wired to a different state manager would '
+              'answer null here and the page would render blank');
+    });
 
-      await engine.initialize(definition: definition);
+    test('widgetRegistry carries the default widget set', () {
+      expect(engine.widgetRegistry.has('text'), isTrue);
+      expect(engine.widgetRegistry.has('linear'), isTrue);
+      expect(engine.widgetRegistry.has('no-such-widget'), isFalse);
+    });
+
+    test('renderer builds a widget from a definition', () {
+      final context = engine.renderer.createRootContext(null);
+      final widget = engine.renderer.renderWidget(
+        {'type': 'text', 'content': 'rendered'},
+        context,
+      );
+      expect(widget, isNotNull);
+      expect(widget.runtimeType.toString(), isNot('SizedBox'),
+          reason: 'an unwired renderer answers with an empty box');
+    });
+
+    test('themeManager carries the document\'s declared theme', () {
+      expect(engine.themeManager.getColorValue('primary'), isNotNull,
+          reason: 'the theme block declares primary; a theme manager that is '
+              'merely non-null would answer nothing');
+    });
+
+    test('actionHandler executes an action against this engine\'s state',
+        () async {
+      final context = engine.renderer.createRootContext(null);
+      await engine.actionHandler.execute(
+        {'type': 'state', 'action': 'set', 'binding': 'counter', 'value': 42},
+        context,
+      );
+      expect(engine.stateManager.get('counter'), 42);
+    });
+
+    test('channelManager can build and dispose a channel', () async {
+      await engine.channelManager.initChannel(
+        'feed',
+        ChannelConfig(type: 'client.poll', params: {'interval': 60000}),
+      );
+      expect(engine.channelManager.hasChannel('feed'), isTrue);
+      await engine.channelManager.disposeChannel('feed');
+      expect(engine.channelManager.hasChannel('feed'), isFalse);
+    });
+
+    test('templateRegistry stores a template and answers with its content', () {
+      engine.templateRegistry.register(const TemplateDefinition(
+        name: 'probe',
+        content: {'type': 'text', 'content': 'from template'},
+      ));
+      expect(engine.templateRegistry.getTemplate('probe'),
+          {'type': 'text', 'content': 'from template'});
+      expect(engine.templateRegistry.has('probe'), isTrue);
+      expect(engine.templateRegistry.getTemplate('absent'), isNull,
+          reason: 'a registry that answers for an unregistered name would let '
+              'a typo render as an empty widget instead of failing');
+    });
+
+    test('cacheManager round-trips a document\'s state', () async {
+      await engine.cacheManager.cacheState('app-key', {'counter': 7});
+      expect(engine.cacheManager.getCachedState('app-key'), {'counter': 7});
+      await engine.cacheManager.clearAll();
+      expect(engine.cacheManager.getCachedState('app-key'), isNull);
+    });
+
+    test('the service registry answers for the services it registered', () {
+      // `isNotNull` on three keys was the old assertion; a registry that
+      // answers for a key it never registered is the failure.
+      expect(engine.services.get('navigation'), isNotNull);
+      expect(engine.services.get('dialogs'), isNotNull);
+      expect(engine.services.get('notifications'), isNotNull);
+      expect(engine.services.get('teleportation'), isNull,
+          reason: 'a registry that answers for everything answers nothing');
+    });
+
+    test('runtimeConfig and parsedUIDefinition describe THIS document', () {
+      expect(engine.parsedUIDefinition, isNotNull);
+      expect(engine.uiDefinition?['metadata']['title'], 'Wired');
+    });
+
+    test('animationService and lifecycle belong to the engine', () {
       expect(engine.animationService, isNotNull);
-
-      await engine.destroy();
+      expect(engine.lifecycle, isNotNull);
+      expect(engine.isInitialized, isTrue);
     });
   });
 

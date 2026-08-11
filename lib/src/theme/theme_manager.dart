@@ -368,6 +368,19 @@ class ThemeManager with ChangeNotifier {
     return _colorFromScheme(scheme, slot);
   }
 
+  /// The colour for [slot], or [fallback] when the theme has none.
+  ///
+  /// The nullable [getColorValue] is the truthful API — a semantic slot
+  /// (`success` / `warning` / `info` and their `on*` counterparts) is not part
+  /// of Flutter's [ColorScheme], so §5.3 leaves it to the bundle and null is
+  /// the right answer. Widgets, though, need a colour to paint with, and every
+  /// one of them wrote the same `?? someDefault` beside the call: seventeen
+  /// copies of one decision, none of which could be exercised because the
+  /// slots they name are standard roles that always resolve.
+  ///
+  /// One copy, here, exercised on both sides.
+  Color colorOr(String slot, Color fallback) => getColorValue(slot) ?? fallback;
+
   /// Raw text-style map for an M3 typography role
   /// (e.g. `bodyLarge` / `titleMedium`).
   Map<String, dynamic>? getTextStyle(String role) =>
@@ -629,11 +642,13 @@ class ThemeManager with ChangeNotifier {
 
   FontWeight? _parseFontWeight(dynamic value) {
     if (value is num) {
-      final w = value.toInt();
-      return FontWeight.values.firstWhere(
-        (fw) => fw.value == ((w ~/ 100) * 100).clamp(100, 900),
-        orElse: () => FontWeight.w400,
-      );
+      // Snap to the step at or below the declared number, then clamp to the
+      // scale. `FontWeight.values` runs w100..w900 in order, so the step is
+      // an index rather than a search — a search would need an `orElse` arm
+      // that can never be taken, which reads as "some weights fall back to
+      // normal" when none do.
+      final step = ((value.toInt() ~/ 100) * 100).clamp(100, 900);
+      return FontWeight.values[(step ~/ 100) - 1];
     }
     if (value is! String) return null;
     switch (value) {

@@ -414,6 +414,65 @@ void main() {
           reason: 'the declared duration did not delay anything');
     });
 
+    testWidgets('a duration bound to state is picked up when it changes',
+        (tester) async {
+      // A document that turns its animation off — a preference, a reduced
+      // motion setting — rebuilds the chart with a new duration. The reveal
+      // controller is created once, so unless the change is adopted the chart
+      // keeps animating at the old speed for the life of the page.
+      final key = ValueKey('reveal-probe-${seq++}');
+      final runtime = MCPUIRuntime();
+      live.add(runtime);
+      await runtime.initialize(<String, dynamic>{
+        'type': 'page',
+        'state': <String, dynamic>{
+          'initial': <String, dynamic>{'dur': 8000},
+        },
+        'content': chart(<String, dynamic>{
+          'data': <dynamic>[
+            <String, dynamic>{'label': 'a', 'value': 3},
+            <String, dynamic>{'label': 'b', 'value': 7},
+          ],
+          'primaryColor': '#FF0000',
+          'options': <String, dynamic>{
+            'animation': <String, dynamic>{'duration': '{{dur}}'},
+          },
+        }),
+      });
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: isolated(
+              SizedBox(width: 400, height: 300, child: runtime.buildUI()),
+              key: key,
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      late Painted slow;
+      await tester.runAsync(() async {
+        slow = await paintedOf(tester, find.byKey(key));
+      });
+
+      runtime.stateManager.set('dur', 0);
+      await tester.pump();
+      await tester.pump();
+
+      late Painted instant;
+      await tester.runAsync(() async {
+        instant = await paintedOf(tester, find.byKey(key));
+      });
+
+      expect(instant.count(const Color(0xFFFF0000)),
+          greaterThan(slow.count(const Color(0xFFFF0000))),
+          reason: 'turning the animation off has to complete the reveal at '
+              'once; keeping the old controller leaves a half-drawn chart '
+              'creeping across the screen');
+    });
+
     testWidgets('the declared title is drawn', (tester) async {
       await render(
         tester,

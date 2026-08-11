@@ -334,6 +334,15 @@ class RuntimeEngine with ChangeNotifier {
       // Initialize with the definition
       await _initializeWithDefinition(finalDefinition, context);
 
+      // The cached state goes on TOP of the definition's initial state: what
+      // the definition declares is where a first run starts, what the cache
+      // holds is where this user actually was.
+      final pending = _pendingCachedState;
+      _pendingCachedState = null;
+      if (pending != null) {
+        pending.forEach(_stateManager.set);
+      }
+
       // Cache the app after successful initialization
       if (useCache) {
         await _cacheApp(finalDefinition);
@@ -1012,12 +1021,6 @@ class RuntimeEngine with ChangeNotifier {
         LifecycleEvent.ready,
         lifecycle.onReady!,
       );
-    } else if (_runtimeConfig?['lifecycle']?['onReady'] != null) {
-      // Fallback to runtime config for legacy format
-      await _lifecycleManager.executeLifecycleHooks(
-        LifecycleEvent.ready,
-        _runtimeConfig!['lifecycle']['onReady'] as List<dynamic>,
-      );
     }
 
     notifyListeners();
@@ -1042,11 +1045,6 @@ class RuntimeEngine with ChangeNotifier {
         LifecycleEvent.pause,
         pauseHooks,
       );
-    } else if (_runtimeConfig?['lifecycle']?['onPause'] != null) {
-      await _lifecycleManager.executeLifecycleHooks(
-        LifecycleEvent.pause,
-        _runtimeConfig!['lifecycle']['onPause'] as List<dynamic>,
-      );
     }
   }
 
@@ -1064,11 +1062,6 @@ class RuntimeEngine with ChangeNotifier {
       await _lifecycleManager.executeLifecycleHooks(
         LifecycleEvent.resume,
         resumeHooks,
-      );
-    } else if (_runtimeConfig?['lifecycle']?['onResume'] != null) {
-      await _lifecycleManager.executeLifecycleHooks(
-        LifecycleEvent.resume,
-        _runtimeConfig!['lifecycle']['onResume'] as List<dynamic>,
       );
     }
   }
@@ -1171,6 +1164,10 @@ class RuntimeEngine with ChangeNotifier {
     );
   }
 
+  /// State recovered from the cache, applied once the definition has been
+  /// initialised (see [initialize]).
+  Map<String, dynamic>? _pendingCachedState;
+
   /// Tries to load app from cache
   Future<Map<String, dynamic>?> _tryLoadFromCache(
       Map<String, dynamic> definition) async {
@@ -1202,9 +1199,14 @@ class RuntimeEngine with ChangeNotifier {
           await _cacheManager.loadPersistedState(appKey);
           final cachedState = _cacheManager.getCachedState(appKey);
           if (cachedState != null) {
-            // Merge cached state into StateManager
-            _stateManager.setState(cachedState);
-            _logger.debug('Loaded cached state into StateManager');
+            // Held, not applied. This used to write the cached state here —
+            // BEFORE the definition was initialised — and initialising a
+            // definition replaces the whole state map, so every cached value
+            // was discarded a moment after being loaded. A host priming the
+            // cache to resume where the user left off got nothing, with a
+            // debug line saying the state had been loaded.
+            _pendingCachedState = cachedState;
+            _logger.debug('Cached state held for after initialization');
           }
 
           return cachedApp.definition;
@@ -1428,6 +1430,14 @@ class RuntimeEngine with ChangeNotifier {
     _connectivityManager = ConnectivityManager();
     _offlineQueue = OfflineQueue();
     _syncManager = SyncManager(_offlineQueue, _connectivityManager);
+    // `{{sync.*}}` (§03 — offline sync status, read-only) is intercepted by
+    // `SyncBindingResolver` BEFORE the binding engine's own path handling, and
+    // that resolver holds its own SyncManager reference. Nothing ever set it,
+    // so every sync binding answered null and the engine-backed fallback
+    // further down was unreachable: an offline badge bound to
+    // `{{sync.pendingCount}}` rendered empty, which reads as "nothing
+    // pending" — the opposite of what it was there to say.
+    _bindingEngine.syncBindingResolver.setSyncManager(_syncManager);
     _pluginManager = PluginManager.instance;
     _animationService = AnimationService();
 

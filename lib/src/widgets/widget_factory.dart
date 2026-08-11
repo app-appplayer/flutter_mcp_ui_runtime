@@ -364,6 +364,12 @@ abstract class WidgetFactory {
   Map<String, dynamic>? actionOf(dynamic raw, RenderContext context) =>
       readAction(raw, context);
 
+  /// A list slot (rows / items / tabs / options / nodes), read tolerantly —
+  /// see [readList] for why a hard cast here paints an error box over a widget
+  /// during ordinary editing.
+  List<dynamic>? listOf(dynamic raw, RenderContext context) =>
+      readList(raw, context);
+
   /// Parse BoxConstraints
   BoxConstraints? parseConstraints(dynamic value) {
     if (value == null) return null;
@@ -514,6 +520,25 @@ String? readString(dynamic raw, RenderContext context) {
   if (v == null) return null;
   if (v is String) return v;
   if (v is num || v is bool) return v.toString();
+  return null;
+}
+
+/// A list slot — rows, items, tabs, options, nodes.
+///
+/// `listOf(..., context)` throws when the resolved value is
+/// anything else, and the renderer answers a throw by painting a red
+/// `Error rendering …` box over the widget. That state is normal rather than
+/// exceptional: a server response still loading, an author mid-edit, a path
+/// that holds a scalar for a moment. Measured on a published build — `tabBar`,
+/// `dataTable` and `bottomNavigation` each covered their own area with an
+/// error box while the rest of the page rendered.
+///
+/// A wrong-shaped list reads as EMPTY, which is what the widget would draw for
+/// no data anyway, and the mistake stays visible as an empty widget instead of
+/// as a stack trace on screen.
+List<dynamic>? readList(dynamic raw, RenderContext context) {
+  final v = context.resolve<dynamic>(raw);
+  if (v is List) return v;
   return null;
 }
 

@@ -93,8 +93,13 @@ class BindingExpression {
       }
     }
 
-    // Remove outer parentheses if they wrap the entire expression
-    if (baseExpr.startsWith('(') && baseExpr.endsWith(')')) {
+    // Remove outer parentheses if they wrap the entire expression.
+    //
+    // Repeated rather than once: `((a + b))` is what a generated document
+    // produces when it parenthesises a sub-expression that was already
+    // parenthesised, and stripping only the outer pair left `(a + b)` as the
+    // *path* of a simple expression, which resolves to null.
+    while (baseExpr.startsWith('(') && baseExpr.endsWith(')')) {
       // Check if these parentheses are balanced and wrap the entire expression
       int depth = 0;
       bool wrapsEntireExpression = true;
@@ -109,9 +114,8 @@ class BindingExpression {
           break;
         }
       }
-      if (wrapsEntireExpression) {
-        baseExpr = baseExpr.substring(1, baseExpr.length - 1).trim();
-      }
+      if (!wrapsEntireExpression) break;
+      baseExpr = baseExpr.substring(1, baseExpr.length - 1).trim();
     }
 
     // Check for ternary operator
@@ -302,6 +306,27 @@ class BindingExpression {
       );
     }
 
+    // A call's RESULT can be the receiver: `filter(items, 'ok').length`.
+    // `rows.length` resolves (the path walk answers it), the same reading of
+    // the same list through a call did not, and the difference is invisible —
+    // it renders as an empty string. Two consumers wrote the "N of M" form and
+    // both read a blank. §3.6.4 makes the method form equivalent to the
+    // function form; this makes the receiver an expression rather than only a
+    // path.
+    final tailMatch =
+        RegExp(r'^(.*\))\.([A-Za-z_]\w*)(?:\((.*)\))?$').firstMatch(baseExpr);
+    if (tailMatch != null && _hasBalancedCall(tailMatch.group(1)!)) {
+      final rawArgs = tailMatch.group(3);
+      return BindingExpression(
+        type: ExpressionType.methodCall,
+        path: '',
+        left: _parse(tailMatch.group(1)!),
+        methodName: tailMatch.group(2),
+        arguments: rawArgs == null ? null : _parseArguments(rawArgs),
+        transform: transform,
+      );
+    }
+
     // Check for function or method calls
     final callMatch = RegExp(r'^([\w\.]+)\((.*)\)$').firstMatch(baseExpr);
     if (callMatch != null) {
@@ -447,6 +472,43 @@ class BindingExpression {
     );
   }
 
+  /// Whether [expr] is itself a complete call — `name(...)` with its
+  /// parentheses balanced — so a trailing `.prop` belongs to its result rather
+  /// than to a path that happens to contain brackets.
+  static bool _hasBalancedCall(String expr) {
+    if (!RegExp(r'^[\w\.]+\(').hasMatch(expr) || !expr.endsWith(')')) {
+      return false;
+    }
+    var depth = 0;
+    String? quote;
+    for (var i = 0; i < expr.length; i++) {
+      final char = expr[i];
+      if (quote != null) {
+        if (char == quote && (i == 0 || expr[i - 1] != '\\')) quote = null;
+        continue;
+      }
+      if (char == '"' || char == "'") {
+        quote = char;
+      } else if (char == '(') {
+        depth++;
+      } else if (char == ')') {
+        depth--;
+        if (depth == 0 && i != expr.length - 1) {
+          // A call that closes before the end is still ONE receiver when what
+          // follows is another link in the chain: `filter(rows, 'done')` here
+          // is followed by `.map('name')`. Rejecting it outright allowed only
+          // a single hop, so `filter(…).map(…).join(…)` fell through to a
+          // path lookup and resolved to null — a blank where a joined list
+          // belonged, with nothing said. Anything OTHER than a `.` after the
+          // close means two terms with an operator between them, which is not
+          // a receiver.
+          if (i + 1 >= expr.length || expr[i + 1] != '.') return false;
+        }
+      }
+    }
+    return depth == 0;
+  }
+
   /// Whether the `+`/`-` at [index] is a SIGN rather than a binary operator:
   /// nothing precedes it, or what precedes it is another operator or an open
   /// paren/comma, which cannot be a left operand.
@@ -561,6 +623,21 @@ class BindingExpression {
       // `reduce`. Only the one-parameter spelling parsed, so the spec's own
       // example fell through to a path lookup and reduce answered with its
       // initial value: a total of 0 that reads like an empty cart.
+      // `(r) => body` — the same lambda, parenthesised. Only the bare `r =>`
+      // spelling parsed, so this fell through to the operator branch and came
+      // back as a value; `filter` then read that value as a property NAME and
+      // answered with an empty list. An author who writes their predicate the
+      // way every other language writes it got no rows and no error.
+      final single =
+          RegExp(r'^\(\s*([a-zA-Z_]\w*)\s*\)$').firstMatch(paramPart);
+      if (single != null && bodyPart.isNotEmpty) {
+        return BindingExpression(
+          type: ExpressionType.lambda,
+          path: '',
+          parameterName: single.group(1),
+          left: _parse(bodyPart),
+        );
+      }
       final pair = RegExp(r'^\(\s*([a-zA-Z_]\w*)\s*,\s*([a-zA-Z_]\w*)\s*\)$')
           .firstMatch(paramPart);
       if (pair != null && bodyPart.isNotEmpty) {

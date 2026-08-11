@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/src/offline/connectivity_manager.dart';
 import 'package:flutter_mcp_ui_runtime/src/offline/offline_queue.dart';
 import 'package:flutter_mcp_ui_runtime/src/offline/sync_manager.dart';
+import 'package:flutter_mcp_ui_runtime/src/state/state_manager.dart';
 
 void main() {
   group('SyncManager Tests', () {
@@ -82,6 +83,32 @@ void main() {
         expect(errorContext, isNotNull);
         expect(errorContext!['failedCount'], greaterThan(0));
         expect(errorContext!['lastError'], isNotNull);
+      });
+    });
+
+    group('a host callback that throws', () {
+      test('is reported as a sync error rather than escaping the sync',
+          () async {
+        connectivity.updateStatus(NetworkStatus.online);
+        queue.enqueue({'id': 'A'});
+
+        Map<String, dynamic>? errorContext;
+        syncManager.onSyncComplete = (_) async {
+          throw StateError('the host blew up while celebrating');
+        };
+        syncManager.onSyncError = (context) async {
+          errorContext = context;
+        };
+
+        await syncManager.sync((action) async => true);
+
+        expect(errorContext, isNotNull,
+            reason: 'the exception came from the host, but the document only '
+                'learns about sync through these callbacks — letting it '
+                'escape leaves the sync in `syncing` forever with nothing '
+                'said');
+        expect(syncManager.status, SyncStatus.error);
+        expect(errorContext!['lastError'], contains('blew up'));
       });
     });
 
@@ -546,6 +573,70 @@ void main() {
       // Action expired (maxRetries=1) so it's removed from queue
       expect(queue.hasPending, false);
     });
+
+    group('optimistic updates', () {
+      test('applying one writes through, and the rollback restores it', () {
+        final stateManager = StateManager()
+          ..initialize(<String, dynamic>{'title': 'before'});
+        syncManager.setStateManager(stateManager);
+
+        final rollback = syncManager.applyOptimistic('title', 'after');
+        expect(stateManager.get('title'), 'after',
+            reason: 'the point of an optimistic update is that the user sees '
+                'it immediately, before the server has agreed');
+
+        rollback();
+        expect(stateManager.get('title'), 'before',
+            reason: 'a rollback that does not restore the previous value '
+                'leaves the screen showing a change the server refused');
+      });
+
+      test('a value that was not there rolls back to nothing', () {
+        final stateManager = StateManager()..initialize(<String, dynamic>{});
+        syncManager.setStateManager(stateManager);
+
+        final rollback = syncManager.applyOptimistic('draft', 'typed');
+        expect(stateManager.get('draft'), 'typed');
+
+        rollback();
+        expect(stateManager.get('draft'), isNull);
+      });
+
+      test('with no state manager it is a no-op rather than a crash', () {
+        final rollback = syncManager.applyOptimistic('title', 'after');
+
+        expect(rollback, returnsNormally);
+        rollback();
+      });
+    });
+
+    group('a broken executor', () {
+      test('the failure is recorded and reported', () async {
+        connectivity.updateStatus(NetworkStatus.online);
+        queue.enqueue(<String, dynamic>{'id': 'A'});
+
+        var errors = 0;
+        syncManager.onSyncError = (_) async {
+          errors++;
+        };
+
+        await syncManager.sync((action) async {
+          // Not a failed action — a broken executor, which is what a host
+          // whose transport is misconfigured actually produces.
+          throw StateError('the transport is gone');
+        });
+
+        expect(syncManager.status, SyncStatus.error);
+        expect(syncManager.lastError, isNotNull,
+            reason: 'the badge a document binds to `{{sync.lastError}}` is '
+                'the only report of this');
+        expect(syncManager.syncedCount, 0);
+        expect(syncManager.failedCount, 1,
+            reason: 'a transport that throws is one failed action, not a '
+                'sync that never happened — the queue still holds it');
+        expect(errors, 1);
+      });
+    });
   });
 
   group('SyncStatus and SyncStrategy enums', () {
@@ -557,6 +648,7 @@ void main() {
         SyncStatus.complete,
       ]));
     });
+
 
     test('SyncStrategy values', () {
       expect(SyncStrategy.values, containsAll([

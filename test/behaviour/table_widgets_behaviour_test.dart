@@ -183,6 +183,97 @@ void main() {
           reason: 'the edit must say what changed and what it was');
     });
 
+    testWidgets('a row missing the sort column sinks, whichever way it sorts',
+        (tester) async {
+      Map<String, dynamic> withGap({required bool ascending}) => table(extra: {
+            'sortColumn': 'qty',
+            'sortAscending': ascending,
+            'rows': [
+              {'name': 'Bolt', 'qty': 12},
+              {'name': 'Missing'},
+              {'name': 'Nut', 'qty': 3},
+            ],
+          });
+
+      await pump(tester, withGap(ascending: true));
+      expect(tester.getCenter(find.text('Missing')).dy,
+          lessThan(tester.getCenter(find.text('Nut')).dy),
+          reason: 'a live feed carries gaps; comparing null against a number '
+              'throws, and catching that would drop the sort entirely');
+
+      await pump(tester, withGap(ascending: false));
+      expect(tester.getCenter(find.text('Missing')).dy,
+          greaterThan(tester.getCenter(find.text('Bolt')).dy),
+          reason: 'the gap goes to the other end when the direction flips, '
+              'the same as every other value');
+    });
+
+    testWidgets('mixed types are compared as text rather than throwing',
+        (tester) async {
+      await pump(
+        tester,
+        table(extra: {
+          'sortColumn': 'qty',
+          'sortAscending': true,
+          'rows': [
+            {'name': 'Bolt', 'qty': 12},
+            {'name': 'Text', 'qty': '3 pallets'},
+          ],
+        }),
+      );
+
+      expect(find.text('Bolt'), findsOneWidget);
+      expect(find.text('Text'), findsOneWidget,
+          reason: 'a column that is a number for most rows and a string for '
+              'one is what a live feed produces; throwing there takes the '
+              'whole table down');
+    });
+
+    testWidgets('a virtual-scrolled table still draws its rows and filters',
+        (tester) async {
+      await pump(
+        tester,
+        table(extra: {
+          'virtualScroll': true,
+          'filterable': true,
+          'rowHeight': 40,
+        }),
+      );
+
+      expect(find.text('Bolt'), findsOneWidget,
+          reason: 'the hand-laid grid is a second renderer for the same data; '
+              'a table that scrolls and shows nothing is the failure it was '
+              'added to avoid');
+      expect(find.byType(TextField), findsWidgets,
+          reason: 'a filter row that is declared and not drawn leaves the '
+              'user with no way to narrow a long table');
+    });
+
+    testWidgets('a row tap in the virtual-scrolled grid reports the row too',
+        (tester) async {
+      final runtime = await pump(
+        tester,
+        table(extra: {
+          'virtualScroll': true,
+          'rowHeight': 40,
+          'onRowTap': {
+            'type': 'state',
+            'action': 'set',
+            'binding': 'picked',
+            'value': '{{event.row.name}}',
+          },
+        }),
+      );
+
+      await tester.tap(find.text('Nut'));
+      await tester.pumpAndSettle();
+
+      expect(runtime.stateManager.get<String>('picked'), 'Nut',
+          reason: 'the same document works on both renderers, so a tap that '
+              'reports on one and not the other is a table that behaves '
+              'differently depending on a performance flag');
+    });
+
     testWidgets('selectable offers a selection control', (tester) async {
       await pump(tester, table(extra: {'selectable': true}));
       expect(find.byType(Checkbox), findsWidgets,
@@ -338,6 +429,55 @@ void main() {
       await tester.tap(find.text('Write spec'));
       await tester.pump(const Duration(milliseconds: 300));
       expect(runtime.stateManager.get<String>('clicked'), 'Write spec');
+    });
+
+    testWidgets('dragging a card to another column moves it and reports the '
+        'move', (tester) async {
+      final runtime = await pump(
+        tester,
+        board(extra: {
+          'draggable': true,
+          'optimistic': true,
+          'onCardMove': {
+            'type': 'state',
+            'action': 'set',
+            'binding': 'moved',
+            'value': '{{event}}',
+          },
+        }),
+        initialState: {'moved': null},
+      );
+
+      final card = find.text('Write spec');
+      final target = find.text('Ship it');
+      expect(card, findsOneWidget);
+
+      final gesture =
+          await tester.startGesture(tester.getCenter(card));
+      await tester.pump(const Duration(milliseconds: 400));
+      // The drop zones are the thin gaps between cards, so the drop lands
+      // just below the card in the destination column rather than on it.
+      await gesture.moveTo(tester.getCenter(target) + const Offset(0, 14));
+      await tester.pump();
+      await gesture.moveTo(tester.getCenter(target) + const Offset(0, 16));
+      await tester.pump();
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      final moved = runtime.stateManager.get<dynamic>('moved');
+      expect(moved, isNotNull,
+          reason: 'the move is the only thing the document can persist; a '
+              'board that rearranges itself and tells nobody loses the change '
+              'on the next load');
+      expect((moved as Map)['to']['column'], 'done',
+          reason: 'the destination is the whole point of the event');
+      expect(moved['from']['column'], 'todo');
+      expect(moved['item']['title'], 'Write spec');
+      expect(moved['type'], 'cardMove');
+
+      // `optimistic` means the board shows the move before the document
+      // confirms it — the card has to be in its new column already.
+      expect(find.text('Write spec'), findsOneWidget);
     });
 
     testWidgets('columnWidth is the width the columns take', (tester) async {

@@ -675,7 +675,19 @@ class MCPUIRuntime {
     if (pm != null) {
       pm.trustLevel = level;
     } else {
-      _pendingTrustLevel = level;
+      // There is nothing to grant to. The runtime registers the client
+      // executors that own the permission manager, so reaching here means a
+      // host replaced every one of them with its own.
+      //
+      // Storing the level would be bookkeeping nobody reads —
+      // `_pendingTrustLevel` is consumed by `initialize`, which has already
+      // run by now — so the grant would be dropped while looking like it had
+      // been kept. §6.13's rule applies to a grant as much as to an action:
+      // apply it, or say it was not applied.
+      _logger.warning(
+          'setTrustLevel($level) found no PermissionManager to apply to — the '
+          'client action executors that own it have been replaced, so the '
+          'grant was NOT applied and client actions keep the level they had.');
     }
   }
 
@@ -915,6 +927,9 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
                   widget.engine.routeObserver,
                 ],
                 routes: shellRoutes,
+                // Parameterised routes (`/users/:id`) are pushed with the
+                // parameter filled in, which matches no key in `routes`.
+                onGenerateRoute: widget.engine.routeManager!.onGenerateRoute,
                 title: appDefinition.title,
                 theme: widget.engine.themeManager.toFlutterTheme(),
                 darkTheme:
@@ -959,6 +974,9 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
                     _withFormFactor(ctx, child ?? const SizedBox.shrink()),
                 initialRoute: widget.engine.routeManager!.initialRoute,
                 routes: widget.engine.routeManager!.generateRoutes(context),
+                // Parameterised routes (`/users/:id`) are pushed with the
+                // parameter filled in, which matches no key in `routes`.
+                onGenerateRoute: widget.engine.routeManager!.onGenerateRoute,
               );
             }
           } else {
@@ -970,27 +988,38 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
             if (hasAppBar || hasBody) {
               // Auto-create scaffold for platform-independent UI definitions
               final renderContext = _createRenderContext();
+              // The `appBar` factory hands back a `Builder` around the bar so
+              // the bar builds from its own context — casting that to `AppBar`
+              // threw on every document that used this shape. What `Scaffold`
+              // needs is a preferred size, so supply one when the rendered
+              // widget does not carry its own.
+              final renderedBar = hasAppBar
+                  ? widget.engine.renderer
+                      .renderWidget(widget.uiDefinition['appBar'], renderContext)
+                  : null;
               return Scaffold(
-                appBar: hasAppBar
-                    ? widget.engine.renderer.renderWidget(
-                        widget.uiDefinition['appBar'], renderContext) as AppBar?
-                    : null,
+                appBar: renderedBar == null
+                    ? null
+                    : (renderedBar is PreferredSizeWidget
+                        ? renderedBar
+                        : PreferredSize(
+                            preferredSize:
+                                const Size.fromHeight(kToolbarHeight),
+                            child: renderedBar,
+                          )),
                 body: hasBody
                     ? widget.engine.renderer.renderWidget(
                         widget.uiDefinition['body'], renderContext)
                     : Container(),
               );
             } else {
-              // Use modern renderer for page content
-              if (widget.engine.parsedUIDefinition?.type ==
-                  UIDefinitionType.page) {
-                return widget.engine.renderer
-                    .renderPage(widget.engine.parsedUIDefinition!.toJson());
-              } else {
-                // Render as widget using modern renderer
-                return widget.engine.renderer
-                    .renderWidget(widget.uiDefinition, _createRenderContext());
-              }
+              // `UIDefinitionType` has two members and the application one is
+              // taken by the branch above, so what is left is a page. The
+              // parsed definition and the raw one are assigned together in
+              // `_initializeV1Format`, so "there is a definition but it did
+              // not parse" is not a state the engine can be in.
+              return widget.engine.renderer
+                  .renderPage(widget.engine.parsedUIDefinition!.toJson());
             }
           }
         } catch (error) {
@@ -1084,7 +1113,6 @@ class _ApplicationShellState extends State<_ApplicationShell> {
     });
     _updateNavigationState(controller.index);
   }
-  final Map<String, PageDefinition> _pageDefinitionCache = {};
 
   /// Builds the host-inserted close button for the shell AppBar's `actions`
   /// slot per spec §2.8.1 / §4.3.2. Returns `null` when `onExit` is not
@@ -1163,12 +1191,35 @@ class _ApplicationShellState extends State<_ApplicationShell> {
     }
   }
 
-  Future<PageDefinition> _loadPageDefinition(String route) async {
-    // Check cache first
-    if (_pageDefinitionCache.containsKey(route)) {
-      return _pageDefinitionCache[route]!;
-    }
+  /// One future per route, for the whole life of the shell.
+  ///
+  /// `build` runs on every state change, and calling the loader from inside it
+  /// started a FRESH future each time. A route that fails — a tab wired to a
+  /// name the route table does not carry — therefore produced a rejected
+  /// future on every rebuild, and every one of them except the one the current
+  /// `FutureBuilder` happened to hold went unhandled. It also re-entered the
+  /// loader on each frame for a page it had already failed to load.
+  Future<PageDefinition> _pageFuture(String route) {
+    final existing = _pageFutures[route];
+    if (existing != null) return existing;
+    final future = _loadPageDefinition(route);
+    // The tab strip creates a future for EVERY tab, and `TabBarView` mounts
+    // only the ones near the current index — so a tab whose route fails had
+    // nobody listening, and the rejection surfaced as an unhandled async
+    // error at the top of the zone rather than as the error page the
+    // `FutureBuilder` draws once that tab is opened. `ignore` marks it
+    // handled without consuming it: the builder still receives the error.
+    future.ignore();
+    _pageFutures[route] = future;
+    return future;
+  }
 
+  final Map<String, Future<PageDefinition>> _pageFutures = {};
+
+  // No cache of its own: `_pageFuture` memoises the FUTURE, so this runs at
+  // most once per route for the life of the shell. A second cache behind that
+  // one could never be read, and read as if there were two caching layers.
+  Future<PageDefinition> _loadPageDefinition(String route) async {
     try {
       // Any `RouteValue` form (spec v1.4 §1.2.1) — a plain resource URI still
       // goes through the host page loader; every other form (inline page,
@@ -1185,9 +1236,6 @@ class _ApplicationShellState extends State<_ApplicationShell> {
           await widget.engine.routeManager!.pageLoader(routeValue as String);
       final uiDef = UIDefinition.fromJson(pageJson as Map<String, dynamic>);
       final pageDefinition = PageDefinition.fromUIDefinition(uiDef);
-
-      // Cache the page definition only
-      _pageDefinitionCache[route] = pageDefinition;
 
       return pageDefinition;
     } catch (e) {
@@ -1234,7 +1282,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
   @override
   void dispose() {
     // Clean up page definition cache when disposing
-    _pageDefinitionCache.clear();
+    _pageFutures.clear();
     super.dispose();
   }
 
@@ -1265,7 +1313,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
           else
             FutureBuilder<PageDefinition>(
               key: ValueKey<String>(navigation.items[i].route),
-              future: _loadPageDefinition(navigation.items[i].route),
+              future: _pageFuture(navigation.items[i].route),
               builder: (context, snapshot) {
                 if (snapshot.hasData) {
                   return AnimatedBuilder(
@@ -1288,34 +1336,13 @@ class _ApplicationShellState extends State<_ApplicationShell> {
 
   @override
   Widget build(BuildContext context) {
-    final navigation = widget.appDefinition.navigationDefinition;
-
-    if (navigation == null) {
-      // No navigation, just show the initial route
-      return FutureBuilder<PageDefinition>(
-        future: _loadPageDefinition(widget.engine.routeManager?.initialRoute ??
-            widget.appDefinition.initialRoute),
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            // Wrap in AnimatedBuilder to listen to StateManager changes
-            return AnimatedBuilder(
-              animation: widget.engine.stateManager,
-              builder: (context, child) {
-                return MCPPageWidget(
-                  pageDefinition: snapshot.data!,
-                  runtimeEngine: widget.engine,
-                );
-              },
-            );
-          } else if (snapshot.hasError) {
-            return _buildErrorPage(snapshot.error);
-          } else {
-            return _buildLoadingPage();
-          }
-        },
-      );
-    }
-
+    // `_ApplicationShell` is built only where `navigationDefinition != null`
+    // (see the application branch of `MCPRuntimeWidget`), and an application
+    // without navigation is drawn by that branch's own `else` — a plain
+    // MaterialApp over the route table. A second implementation of the same
+    // job lived here and could not be reached from anywhere — so this is an
+    // invariant, and it fails loudly if the shell is ever built elsewhere.
+    final navigation = widget.appDefinition.navigationDefinition!;
 
     switch (navigation.type) {
       case 'tabs':
@@ -1374,7 +1401,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
                 for (var i = 0; i < navigation.items.length; i++)
                   FutureBuilder<PageDefinition>(
                     key: ValueKey<String>(navigation.items[i].route),
-                    future: _loadPageDefinition(navigation.items[i].route),
+                    future: _pageFuture(navigation.items[i].route),
                     builder: (context, snapshot) {
                       if (snapshot.hasData) {
                         return AnimatedBuilder(
@@ -1449,6 +1476,23 @@ class _ApplicationShellState extends State<_ApplicationShell> {
       // Legacy aliases — canonical per spec § 1.2.1 is `bottomBar`.
       case 'bottomNavigation':
       case 'bottom':
+        // Material's BottomNavigationBar asserts on fewer than two
+        // destinations, and that assertion took the whole shell down: an
+        // application declaring a bottom bar with ONE item — a legal
+        // document, and the shape a bundle has while it is being written —
+        // rendered a red screen instead of its page. A single destination
+        // needs no switcher, so the bar is omitted and the page still opens.
+        // (The `bottomNavigation` WIDGET was hardened for this in 0.7.5; the
+        // shell was not.)
+        if (navigation.items.length < 2) {
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(widget.appDefinition.title),
+              actions: _shellAppBarActions(),
+            ),
+            body: _shellBody(navigation),
+          );
+        }
         return Scaffold(
           appBar: AppBar(
             title: Text(widget.appDefinition.title),
@@ -1571,12 +1615,81 @@ class MCPUIRuntimeHelper {
     Map<String, dynamic>? initialState,
     Function(String, Map<String, dynamic>)? onToolCall,
   }) {
+    return _HelperRuntimeHost(
+      // Keyed on the document itself: the same map arriving again is a
+      // rebuild and keeps its runtime, and a different document gets a fresh
+      // host — which is a teardown followed by a setup, in that order.
+      // Swapping the runtime inside one host would overlap them, and
+      // `destroy` resets process-wide state (the theme manager, the
+      // navigation service, the binding caches) that the successor has just
+      // set up.
+      key: ObjectKey(definition),
+      definition: definition,
+      initialState: initialState,
+      onToolCall: onToolCall,
+    );
+  }
+}
+
+/// Holds the runtime `MCPUIRuntimeHelper.render` builds.
+///
+/// The future used to be created inside `build`, which meant a whole new
+/// `MCPUIRuntime` was constructed and initialised on **every rebuild** — a
+/// theme change, a rotation, a parent's `setState` — while the previous one
+/// was dropped without being destroyed. And a dropped future that then fails
+/// has nobody listening: the refusal arrives as an uncaught zone error, which
+/// takes down the app rather than drawing the error the builder below is
+/// written to draw.
+class _HelperRuntimeHost extends StatefulWidget {
+  const _HelperRuntimeHost({
+    required Key super.key,
+    required this.definition,
+    this.initialState,
+    this.onToolCall,
+  });
+
+  final Map<String, dynamic> definition;
+  final Map<String, dynamic>? initialState;
+  final Function(String, Map<String, dynamic>)? onToolCall;
+
+  @override
+  State<_HelperRuntimeHost> createState() => _HelperRuntimeHostState();
+}
+
+class _HelperRuntimeHostState extends State<_HelperRuntimeHost> {
+  late Future<MCPUIRuntime> _runtime;
+
+  @override
+  void initState() {
+    super.initState();
+    _runtime = _create();
+  }
+
+  Future<MCPUIRuntime> _create() async {
+    final runtime = MCPUIRuntime();
+    await runtime.initialize(widget.definition, pageLoader: null);
+    return runtime;
+  }
+
+  /// Teardown hangs off the future rather than off a field.
+  ///
+  /// The two cases — the runtime finished before this host went away, and it
+  /// finished after — are the same case once `destroy` is chained onto the
+  /// future itself: whenever it settles, it is destroyed. Written the other
+  /// way (a field, plus a `!mounted` check inside the async method) the second
+  /// case is a branch that only runs when initialisation is slow, which no
+  /// test can arrange from outside — and code no test can reach is code
+  /// nobody can say is correct.
+  @override
+  void dispose() {
+    _runtime.then((runtime) => runtime.destroy(), onError: (_) {}).ignore();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return FutureBuilder<MCPUIRuntime>(
-      future: () async {
-        final runtime = MCPUIRuntime();
-        await runtime.initialize(definition, pageLoader: null);
-        return runtime;
-      }(),
+      future: _runtime,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return ErrorWidget(snapshot.error!);
@@ -1588,8 +1701,8 @@ class MCPUIRuntimeHelper {
 
         return snapshot.data!.buildUI(
           context: context,
-          initialState: initialState,
-          onToolCall: onToolCall,
+          initialState: widget.initialState,
+          onToolCall: widget.onToolCall,
         );
       },
     );

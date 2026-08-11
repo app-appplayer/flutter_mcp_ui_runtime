@@ -31,7 +31,7 @@ class RatingFactory extends WidgetFactory {
     // Spec §2.6.22 canonical `max`; `maxRating` kept as legacy alias.
     final maxRating =
         ((properties['max'] ?? properties['maxRating']) as num? ?? 5).toInt();
-    final iconSize = parseDimension(properties['size']) ?? 24.0;
+    final iconSize = dimensionOf(properties['size'], context) ?? 24.0;
     // Spec canonical `icon` (optional). It was resolved and then dropped —
     // a rating declaring hearts drew stars, and said nothing.
     final iconName = properties['icon'] == null
@@ -44,8 +44,7 @@ class RatingFactory extends WidgetFactory {
     // both light and dark chrome.
     final emptyColor =
         parseColor(context.resolve(properties['emptyColor']), context) ??
-            context.themeManager.getColorValue('outlineVariant') ??
-            Colors.grey;
+            context.themeManager.colorOr('outlineVariant', Colors.grey);
     final allowHalf = boolOf(properties['allowHalf'], context) ?? false;
     final readOnly = boolOf(properties['readOnly'], context) ?? false;
     Widget widget = _RatingWidget(

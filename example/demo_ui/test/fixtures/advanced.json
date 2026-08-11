@@ -311,7 +311,7 @@
           }
         },
         {
-          "type": "table",
+          "type": "dataTable",
           "columns": [
             {
               "key": "name",

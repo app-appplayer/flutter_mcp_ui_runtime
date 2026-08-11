@@ -4,9 +4,11 @@ import 'package:flutter_mcp_ui_runtime/src/actions/action_handler.dart';
 import 'package:flutter_mcp_ui_runtime/src/binding/binding_engine.dart';
 import 'package:flutter_mcp_ui_runtime/src/renderer/render_context.dart';
 import 'package:flutter_mcp_ui_runtime/src/renderer/renderer.dart';
+import 'package:flutter_mcp_ui_runtime/src/routing/page_activity_scope.dart';
 import 'package:flutter_mcp_ui_runtime/src/runtime/default_widgets.dart';
 import 'package:flutter_mcp_ui_runtime/src/runtime/widget_registry.dart';
 import 'package:flutter_mcp_ui_runtime/src/state/state_manager.dart';
+import 'package:flutter_mcp_ui_runtime/src/utils/mcp_logger.dart';
 import 'package:flutter_mcp_ui_runtime/src/theme/theme_manager.dart';
 
 /// Embedded-definition lifecycle, in its own file.
@@ -87,6 +89,60 @@ void embeddedLifecycleTests() {
     // be reporting the wrong thing.
     expect(find.text('seeded=yes ready=fired'), findsOneWidget,
         reason: '`state.initial` seeds the scope and `onReady` then runs in it');
+  });
+
+  testWidgets('a deprecated lifecycle alias in an embedded definition is '
+      'reported', (tester) async {
+    final records = <MCPLogRecord>[];
+    MCPLogger.onRecord = records.add;
+    addTearDown(() => MCPLogger.onRecord = null);
+
+    final handler = ActionHandler();
+    final renderer = Renderer(
+      widgetRegistry: _registryWithDefaults(),
+      bindingEngine: BindingEngine(),
+      actionHandler: handler,
+      stateManager: StateManager(),
+    );
+    // `onInitialize` is the accepted-for-one-release spelling of `onInit`.
+    // An embedded definition is parsed exactly like a document opened on its
+    // own, so the same warning is owed — otherwise the one place an author
+    // cannot see the deprecation is the place they are most likely to copy
+    // an old document into.
+    renderer.definitionResolver = (ref, origin) async => <String, dynamic>{
+          'type': 'page',
+          'content': <String, dynamic>{'type': 'text', 'content': 'embedded'},
+          'onInitialize': <dynamic>[
+            <String, dynamic>{'type': 'state', 'action': 'set', 'path': 'x',
+                'value': 1},
+          ],
+        };
+
+    final ctx = RenderContext(
+      renderer: renderer,
+      stateManager: StateManager(),
+      bindingEngine: BindingEngine(),
+      actionHandler: handler,
+      themeManager: ThemeManager(),
+    );
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: renderer.renderWidget(<String, dynamic>{
+          'type': 'view',
+          'source': 'ui://pages/aliased',
+        }, ctx),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('embedded'), findsOneWidget);
+    expect(
+        records.where((r) =>
+            r.logger == 'ViewFactory' && r.message.contains('embedded definition')),
+        isNotEmpty,
+        reason: 'the alias is accepted, and saying nothing about it is how a '
+            'document keeps a spelling that stops working next release');
   });
 
   testWidgets('an embedded app whose route is a uri keeps the origin',
@@ -241,6 +297,83 @@ void embeddedLifecycleTests() {
     expect(resolves, settled,
         reason: 'a source with identical meaning is not a changed source');
     expect(settled, 2, reason: 'the app and the page it routes to, once each');
+  });
+
+  testWidgets('an embedded definition follows the page it sits on',
+      (tester) async {
+    // A paused page stays mounted, and so does everything inside it. Without
+    // following the page, a tile on an unselected tab keeps its subscriptions
+    // running and never hears the resume its document declares.
+    final fired = <String>[];
+    final handler = ActionHandler()
+      ..registerToolExecutor('note', (params) async {
+        fired.add(params['at'] as String);
+        return <String, dynamic>{'ok': true};
+      });
+    final renderer = Renderer(
+      widgetRegistry: _registryWithDefaults(),
+      bindingEngine: BindingEngine(),
+      actionHandler: handler,
+      stateManager: StateManager(),
+    );
+    renderer.definitionResolver = (ref, origin) async => <String, dynamic>{
+          'type': 'page',
+          'content': <String, dynamic>{'type': 'text', 'text': 'tile'},
+          'onPause': <dynamic>[
+            <String, dynamic>{
+              'type': 'tool',
+              'tool': 'note',
+              'params': <String, dynamic>{'at': 'pause'},
+            },
+          ],
+          'onResume': <dynamic>[
+            <String, dynamic>{
+              'type': 'tool',
+              'tool': 'note',
+              'params': <String, dynamic>{'at': 'resume'},
+            },
+          ],
+        };
+
+    final ctx = RenderContext(
+      renderer: renderer,
+      stateManager: StateManager(),
+      bindingEngine: BindingEngine(),
+      actionHandler: handler,
+      themeManager: ThemeManager(),
+    );
+
+    final active = ValueNotifier<bool>(true);
+    addTearDown(active.dispose);
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: KeyedSubtree(
+          key: const ValueKey<String>('page-activity-case'),
+          child: PageActivityScope(
+            isActive: active,
+            child: renderer.renderWidget(<String, dynamic>{
+              'type': 'view',
+              'source': 'ui://tile',
+            }, ctx),
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('tile'), findsOneWidget);
+
+    active.value = false;
+    await tester.pumpAndSettle();
+    expect(fired, contains('pause'),
+        reason: 'a tile on a tab nobody is looking at keeps its timers and '
+            'subscriptions running until its document is told to stop');
+
+    active.value = true;
+    await tester.pumpAndSettle();
+    expect(fired, contains('resume'),
+        reason: 'and a tile that was never resumed shows the value it held '
+            'when the tab was last open');
   });
 }
 

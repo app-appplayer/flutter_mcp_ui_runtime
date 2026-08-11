@@ -331,11 +331,13 @@ void main() {
 
       // A handler returning `false` declines the route; the executor falls
       // through to the navigator rather than treating a decline as a refusal.
-      // (With no navigator attached in a unit context, that fall-through is
-      // where it ends — see `shell_named_routes_probe_test.dart` for the
-      // rendered path.)
-      expect(result.success, isTrue);
-      expect(result.error, isNull);
+      // There is no navigator in a unit context, so the fall-through ends in a
+      // report — which is the point: a decline plus nowhere to go must not
+      // read as a completed push. (See `shell_named_routes_probe_test.dart`
+      // for the rendered path, where the navigator IS there and the route
+      // opens.)
+      expect(result.success, isFalse);
+      expect(result.error, contains('navigator'));
     });
 
     test('TC-029 Normal: handler returning true produces success result', () async {
@@ -359,8 +361,10 @@ void main() {
       );
 
       // Same contract at the global level: declining hands the route on, it
-      // does not refuse it.
-      expect(result.success, isTrue);
+      // does not refuse it — and with nothing downstream to take it, the
+      // document is told the route did not open.
+      expect(result.success, isFalse);
+      expect(result.error, contains('navigator'));
     });
   });
 }

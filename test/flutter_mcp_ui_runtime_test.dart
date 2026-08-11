@@ -104,7 +104,7 @@ void main() {
 
       expect(runtime.isInitialized, isTrue);
       expect(runtime.engine, isNotNull);
-      expect(runtime.engine!.uiDefinition, isNotNull);
+      expect(runtime.engine.uiDefinition, isNotNull);
     });
   });
 
@@ -373,11 +373,11 @@ void main() {
 
       expect(runtime.isInitialized, isTrue);
       expect(runtime.engine, isNotNull);
-      expect(runtime.engine!.isApplication, isTrue);
-      expect(runtime.engine!.applicationDefinition, isNotNull);
-      expect(runtime.engine!.routeManager, isNotNull);
-      expect(runtime.engine!.applicationDefinition!.title, 'Test MCP App');
-      expect(runtime.engine!.applicationDefinition!.routes['/home'], 'mcp://server/pages/home');
+      expect(runtime.engine.isApplication, isTrue);
+      expect(runtime.engine.applicationDefinition, isNotNull);
+      expect(runtime.engine.routeManager, isNotNull);
+      expect(runtime.engine.applicationDefinition!.title, 'Test MCP App');
+      expect(runtime.engine.applicationDefinition!.routes['/home'], 'mcp://server/pages/home');
     });
 
     test('initializes with page definition (backward compatibility)', () async {
@@ -400,8 +400,8 @@ void main() {
       await runtime.initialize(pageDefinition);
 
       expect(runtime.isInitialized, isTrue);
-      expect(runtime.engine!.isApplication, isFalse);
-      expect(runtime.engine!.parsedUIDefinition!.type, UIDefinitionType.page);
+      expect(runtime.engine.isApplication, isFalse);
+      expect(runtime.engine.parsedUIDefinition!.type, UIDefinitionType.page);
     });
 
     test('throws when pageLoader not provided for application type', () async {

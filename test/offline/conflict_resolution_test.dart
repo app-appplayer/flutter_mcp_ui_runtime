@@ -75,6 +75,32 @@ void main() {
       });
     });
 
+    group('lastWriteWins with nothing to compare', () {
+      test('two writes with no timestamps at all resolve to the server', () {
+        final resolver =
+            ConflictResolver(strategy: ConflictStrategy.lastWriteWins);
+        final result = resolver.resolve('mine', 'theirs');
+
+        expect(result.resolvedValue, 'theirs',
+            reason: 'neither side claims to be newer, so the shared copy '
+                'wins — picking the local one would silently overwrite what '
+                'everyone else can see');
+        expect(result.appliedStrategy, ConflictStrategy.lastWriteWins);
+      });
+
+      test('a client write with a timestamp beats a server write without one',
+          () {
+        final resolver =
+            ConflictResolver(strategy: ConflictStrategy.lastWriteWins);
+        final result = resolver.resolve('mine', 'theirs',
+            clientTimestamp: DateTime.utc(2026));
+
+        expect(result.resolvedValue, 'mine',
+            reason: 'an undated server value is treated as the beginning of '
+                'time, which is the only ordering available');
+      });
+    });
+
     group('TC-023: lastWriteWins strategy', () {
       test('TC-023 Normal: based on timestamp comparison', () {
         final resolver = ConflictResolver(

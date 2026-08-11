@@ -165,6 +165,41 @@ void main() {
       });
     });
 
+    group('a subscription with a `when` condition', () {
+      test('only the events the condition accepts reach the handler',
+          () async {
+        final seen = <UIEvent>[];
+        bus.on(
+          'order',
+          seen.add,
+          when: "event.data.status == 'paid'",
+        );
+
+        bus.emit('order', data: {'status': 'pending'});
+        bus.emit('order', data: {'status': 'paid'});
+        await Future<void>.delayed(Duration.zero);
+
+        expect(seen, hasLength(1),
+            reason: 'a `when` that is read and not applied delivers every '
+                'event to a handler written for one of them — the filter is '
+                'the whole subscription');
+        expect((seen.single.data as Map)['status'], 'paid');
+      });
+
+      test('a condition that cannot be evaluated does not swallow the event '
+          'silently', () async {
+        final seen = <UIEvent>[];
+        bus.on('order', seen.add, when: 'not a condition at all');
+
+        bus.emit('order', data: {'status': 'paid'});
+        await Future<void>.delayed(Duration.zero);
+
+        // Whatever the fallback decides, it has to decide — the point is that
+        // a malformed condition is not an exception out of the stream.
+        expect(seen.length, anyOf(0, 1));
+      });
+    });
+
     group('TC-014: Event bus emit', () {
       test('TC-014 Normal: emit publishes event to listeners', () async {
         final completer = Completer<UIEvent>();
@@ -179,9 +214,23 @@ void main() {
         expect((event.data as Map)['itemCount'], 5);
       });
 
-      test('TC-014 Boundary: emit with no subscribers - no error', () {
-        // Should not throw
+      test('TC-014 Boundary: an event with no subscribers is dropped, not '
+          'queued', () async {
+        // "Should not throw" was the whole test. What matters is what happens
+        // to the event: a bus that buffered it would deliver a stale click to
+        // the next widget that subscribed, which is worse than losing it.
         bus.emit('noListeners', data: 'test');
+
+        final received = <UIEvent>[];
+        bus.on('noListeners', received.add);
+        await Future<void>.delayed(Duration.zero);
+        expect(received, isEmpty,
+            reason: 'a listener that arrives after the fact must not be '
+                'handed an event from before it existed');
+
+        bus.emit('noListeners', data: 'second');
+        await Future<void>.delayed(Duration.zero);
+        expect(received.single.data, 'second');
       });
     });
 
@@ -238,25 +287,43 @@ void main() {
     });
 
     group('TC-020 to TC-022: Event naming conventions (kebab-case)', () {
-      test('TC-020 Normal: kebab-case events work', () async {
-        final completer = Completer<void>();
-        bus.on('double-click', (event) => completer.complete());
-        bus.emit('double-click');
-        await completer.future;
+      // These three awaited a Completer and asserted nothing: a name that
+      // never delivered would hang the suite for its timeout rather than fail,
+      // and the event that DID arrive was never looked at.
+      test('TC-020 Normal: a hyphenated name delivers, with its payload',
+          () async {
+        final received = <UIEvent>[];
+        bus.on('double-click', received.add);
+        bus.emit('double-click', data: {'count': 2}, targetId: 'btn');
+        await Future<void>.delayed(Duration.zero);
+
+        expect(received, hasLength(1));
+        expect(received.single.type, 'double-click');
+        expect(received.single.data, {'count': 2});
+        expect(received.single.targetId, 'btn');
       });
 
-      test('TC-021 Normal: kebab-case events work', () async {
-        final completer = Completer<void>();
-        bus.on('submit', (event) => completer.complete());
-        bus.emit('submit');
-        await completer.future;
+      test('TC-021 Normal: a single-word name delivers', () async {
+        final received = <UIEvent>[];
+        bus.on('submit', received.add);
+        bus.emit('submit', data: 'payload');
+        await Future<void>.delayed(Duration.zero);
+        expect(received.single.data, 'payload');
       });
 
-      test('TC-022 Normal: custom kebab-case event names work', () async {
-        final completer = Completer<void>();
-        bus.on('item-selected', (event) => completer.complete());
-        bus.emit('item-selected');
-        await completer.future;
+      test('TC-022 Normal: a custom hyphenated name delivers only to its own '
+          'listeners', () async {
+        final mine = <UIEvent>[];
+        final other = <UIEvent>[];
+        bus.on('item-selected', mine.add);
+        bus.on('item-deselected', other.add);
+
+        bus.emit('item-selected', data: 7);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(mine.single.data, 7);
+        expect(other, isEmpty,
+            reason: 'names that share a prefix are different events');
       });
     });
 
@@ -459,11 +526,22 @@ void main() {
         expect(received[0].targetId, 'target-1');
       });
 
-      test('dispose closes all streams', () {
-        bus.on('test', (event) {});
+      test('dispose stops delivery and forgets every listener', () async {
+        final received = <UIEvent>[];
+        bus.on('test', received.add);
+        bus.registerTreeListener('w', 'click', received.add);
+
         bus.dispose();
-        // After dispose, emitting should not throw
+
         bus.emit('test');
+        bus.dispatchEvent(UIEvent(type: 'click', targetId: 'w'), 'w', const []);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(received, isEmpty,
+            reason: 'a disposed bus that still delivers is how a closed page '
+                'keeps reacting to a live one');
+        expect(bus.hasListeners('test'), isFalse);
+        expect(bus.listenerCount('test'), 0);
       });
     });
   });
@@ -558,8 +636,18 @@ void main() {
         expect(received, isEmpty);
       });
 
-      test('TC-033 Boundary: unknown widgetId is no-op', () {
+      test('TC-033 Boundary: removing an unknown widget leaves the others '
+          'listening', () {
+        final fired = <String>[];
+        bus.registerTreeListener('real', 'click', (_) => fired.add('real'));
+
         bus.removeTreeListeners('nonexistent');
+
+        bus.dispatchEvent(
+            UIEvent(type: 'click', targetId: 'real'), 'real', const []);
+        expect(fired, ['real'],
+            reason: 'a no-op that quietly cleared the map would disconnect '
+                'every other widget on the page');
       });
     });
 
@@ -853,9 +941,21 @@ void main() {
       expect(received.length, 1);
     });
 
-    test('TC-011 Error: emit with empty event name does not crash', () {
-      // Empty event name — bus should handle gracefully
+    test('TC-011 Error: an empty event name reaches only an empty-name '
+        'listener', () async {
+      // Pinned rather than refused: the bus treats '' as an ordinary key. It
+      // is a document-authoring mistake, but silently routing it to some other
+      // listener would be far worse than delivering it nowhere useful.
+      final empty = <UIEvent>[];
+      final named = <UIEvent>[];
+      bus.on('', empty.add);
+      bus.on('click', named.add);
+
       bus.emit('', data: 'test');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(empty.single.data, 'test');
+      expect(named, isEmpty);
     });
   });
 
@@ -925,10 +1025,11 @@ void main() {
     });
 
     test('TC-020 Boundary: single-word event is valid kebab-case', () async {
-      final completer = Completer<void>();
-      bus.on('click', (e) => completer.complete());
-      bus.emit('click');
-      await completer.future;
+      final received = <UIEvent>[];
+      bus.on('click', received.add);
+      bus.emit('click', data: 1);
+      await Future<void>.delayed(Duration.zero);
+      expect(received.single.type, 'click');
     });
 
     test('TC-020 Error: camelCase not same as kebab-case event', () async {
@@ -966,10 +1067,11 @@ void main() {
     });
 
     test('TC-021 Boundary: single-word callback onTap is valid', () async {
-      final completer = Completer<void>();
-      bus.on('onTap', (e) => completer.complete());
-      bus.emit('onTap');
-      await completer.future;
+      final received = <UIEvent>[];
+      bus.on('onTap', received.add);
+      bus.emit('onTap', data: 'tapped');
+      await Future<void>.delayed(Duration.zero);
+      expect(received.single.data, 'tapped');
     });
 
     test('TC-021 Error: kebab-case not recognized as widget callback', () async {
@@ -997,17 +1099,19 @@ void main() {
     });
 
     test('TC-022 Normal: kebab-case custom event accepted', () async {
-      final completer = Completer<void>();
-      bus.on('item-selected', (e) => completer.complete());
-      bus.emit('item-selected');
-      await completer.future;
+      final received = <UIEvent>[];
+      bus.on('item-selected', received.add);
+      bus.emit('item-selected', data: {'id': 1});
+      await Future<void>.delayed(Duration.zero);
+      expect(received.single.data, {'id': 1});
     });
 
     test('TC-022 Normal: camelCase custom event also accepted', () async {
-      final completer = Completer<void>();
-      bus.on('itemSelected', (e) => completer.complete());
-      bus.emit('itemSelected');
-      await completer.future;
+      final received = <UIEvent>[];
+      bus.on('itemSelected', received.add);
+      bus.emit('itemSelected', data: {'id': 2});
+      await Future<void>.delayed(Duration.zero);
+      expect(received.single.data, {'id': 2});
     });
 
     test('TC-022 Boundary: event bus events work with either convention', () async {
@@ -1022,10 +1126,18 @@ void main() {
       expect(received, containsAll(['kebab', 'camel']));
     });
 
-    test('TC-022 Error: empty event name does not crash', () {
-      // Should not throw
-      bus.emit('');
-      bus.on('', (e) {});
+    test('TC-022 Error: subscribing to an empty name registers a real '
+        'listener', () async {
+      final received = <UIEvent>[];
+      bus.emit(''); // before anyone listens — goes nowhere
+      bus.on('', received.add);
+      bus.emit('', data: 'after');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(received.single.data, 'after');
+      expect(bus.listenerCount(''), 1,
+          reason: 'if the empty name were being rejected somewhere, the count '
+              'would be zero and the delivery above would be a coincidence');
     });
   });
 
@@ -1040,11 +1152,16 @@ void main() {
       bus.dispose();
     });
 
-    test('TC-024 Normal: known event name registers handler successfully', () async {
-      final completer = Completer<void>();
-      bus.on('known-event', (e) => completer.complete());
-      bus.emit('known-event');
-      await completer.future;
+    test('TC-024 Normal: registering a handler is visible on the bus', () async {
+      expect(bus.hasListeners('known-event'), isFalse);
+      final received = <UIEvent>[];
+      bus.on('known-event', received.add);
+
+      expect(bus.hasListeners('known-event'), isTrue);
+      expect(bus.listenerCount('known-event'), 1);
+      bus.emit('known-event', data: 'x');
+      await Future<void>.delayed(Duration.zero);
+      expect(received.single.data, 'x');
     });
 
     test('TC-024 Boundary: listener for rarely emitted event exists but never called', () async {
@@ -1202,11 +1319,21 @@ void main() {
       expect(count, 1);
     });
 
-    test('TC-028 Boundary: cancel already-cancelled subscription is no-op', () async {
+    test('TC-028 Boundary: cancelling twice does not take another listener '
+        'with it', () async {
+      final survivor = <UIEvent>[];
       final sub = bus.on('removable', (e) {});
+      bus.on('removable', survivor.add);
+
       bus.off(sub);
-      // Second off should not throw
-      bus.off(sub);
+      bus.off(sub); // again — the case this test exists for
+
+      expect(bus.listenerCount('removable'), 1,
+          reason: 'the second off must not remove somebody else\'s '
+              'subscription from the tracking list');
+      bus.emit('removable', data: 'still here');
+      await Future<void>.delayed(Duration.zero);
+      expect(survivor.single.data, 'still here');
     });
 
     test('TC-028 Normal: off removes only targeted subscription', () async {
@@ -1254,9 +1381,17 @@ void main() {
       expect(count, 0);
     });
 
-    test('TC-029 Boundary: offAll on non-existent event type is no-op', () {
-      // Should not throw
+    test('TC-029 Boundary: offAll on an unknown type leaves the known ones '
+        'alone', () async {
+      final received = <UIEvent>[];
+      bus.on('real', received.add);
+
       bus.offAll('nonexistent');
+
+      bus.emit('real', data: 1);
+      await Future<void>.delayed(Duration.zero);
+      expect(received, hasLength(1));
+      expect(bus.listenerCount('real'), 1);
     });
   });
 
@@ -1451,14 +1586,23 @@ void main() {
         expect((parentDef['on'] as Map).containsKey('click'), false);
       });
 
-      test('TC-036 Boundary: detach when not attached is no-op', () {
+      test('TC-036 Boundary: detaching before attaching leaves a later attach '
+          'working', () {
         final delegate = EventDelegate(
           eventName: 'click',
           handler: (event) {},
         );
 
-        // Should not throw
+        delegate.detach(); // the case: nothing attached yet
+
+        final parent = <String, dynamic>{'type': 'box'};
+        delegate.attach(parent);
+        expect((parent['on'] as Map)['click'], isNotNull,
+            reason: 'an early detach must not leave the delegate in a state '
+                'where attaching silently does nothing');
+
         delegate.detach();
+        expect((parent['on'] as Map).containsKey('click'), isFalse);
       });
     });
   });

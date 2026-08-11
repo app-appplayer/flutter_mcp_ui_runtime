@@ -1,5 +1,38 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_mcp_ui_runtime/src/actions/action_handler.dart';
+import 'package:flutter_mcp_ui_runtime/src/binding/binding_engine.dart';
+import 'package:flutter_mcp_ui_runtime/src/renderer/render_context.dart';
+import 'package:flutter_mcp_ui_runtime/src/renderer/renderer.dart';
 import 'package:flutter_mcp_ui_runtime/src/runtime/lifecycle_manager.dart';
+import 'package:flutter_mcp_ui_runtime/src/runtime/widget_registry.dart';
+import 'package:flutter_mcp_ui_runtime/src/state/state_manager.dart';
+import 'package:flutter_mcp_ui_runtime/src/theme/theme_manager.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+/// Wires a manager to a real ActionHandler and returns the state it writes to.
+///
+/// Several tests below used to run hooks with no handler attached and assert
+/// only that nothing threw — which is indistinguishable from a manager that
+/// silently drops every hook it is given. With this the hooks land somewhere
+/// observable.
+StateManager wireHooks(LifecycleManager manager) {
+  final stateManager = StateManager()..initialize(<String, dynamic>{});
+  final bindingEngine = BindingEngine();
+  final actionHandler = ActionHandler();
+  final context = RenderContext(
+    renderer: Renderer(
+      widgetRegistry: WidgetRegistry(),
+      bindingEngine: bindingEngine,
+      actionHandler: actionHandler,
+      stateManager: stateManager,
+    ),
+    stateManager: stateManager,
+    bindingEngine: bindingEngine,
+    actionHandler: actionHandler,
+    themeManager: ThemeManager.instance,
+  );
+  manager.setActionHandler(actionHandler, context);
+  return stateManager;
+}
 
 void main() {
   group('TC-028: LifecycleManager — constructor', () {
@@ -53,10 +86,20 @@ void main() {
   });
 
   group('TC-030: LifecycleManager — executeLifecycleHooks', () {
-    test('Boundary: empty hooks list is a no-op', () async {
+    test('Boundary: an empty hooks list still runs the registered listeners',
+        () async {
+      // "No hooks" does not mean "nothing happens": the listeners a host
+      // attached for the same event have to fire either way, and a manager
+      // that returned early on an empty list would skip them.
       final manager = LifecycleManager(enableDebugMode: false);
-      // Should not throw
+      final state = wireHooks(manager);
+      final ran = <String>[];
+      manager.addListener(LifecycleEvent.initialize, () => ran.add('listener'));
+
       await manager.executeLifecycleHooks(LifecycleEvent.initialize, []);
+
+      expect(ran, ['listener']);
+      expect(state.state, isEmpty, reason: 'and no hook was invented');
       manager.dispose();
     });
 
@@ -174,24 +217,40 @@ void main() {
   });
 
   group('TC-033: LifecycleManager — setActionHandler', () {
-    test('Normal: set action handler and render context', () {
+    test('Normal: once a handler is set, hooks reach it', () async {
       final manager = LifecycleManager(enableDebugMode: false);
-      // Should not throw
-      manager.setActionHandler(null, null);
+      final state = wireHooks(manager);
+
+      await manager.executeLifecycleHooks(LifecycleEvent.initialize, [
+        {'type': 'state', 'action': 'set', 'binding': 'ready', 'value': true},
+      ]);
+
+      expect(state.get('ready'), isTrue,
+          reason: 'setActionHandler is the entire point of this class — a '
+              'test that only checked it did not throw could not tell a wired '
+              'manager from an unwired one');
       manager.dispose();
     });
 
-    test('Error: null action handler causes hooks to fail gracefully', () async {
+    test('Error: with no handler wired the hook is dropped and the rest of '
+        'the run continues', () async {
       final manager = LifecycleManager(enableDebugMode: false);
       manager.setActionHandler(null, null);
+      final ran = <String>[];
+      manager.addListener(LifecycleEvent.initialize, () => ran.add('listener'));
 
-      // Execute hook with unknown type which delegates to ActionHandler
-      // With null handler, it should log and continue, not throw
       await manager.executeLifecycleHooks(
         LifecycleEvent.initialize,
-        [{'type': 'custom', 'action': 'doSomething'}],
+        [
+          {'type': 'custom', 'action': 'doSomething'},
+          {'type': 'state', 'action': 'set', 'binding': 'x', 'value': 1},
+        ],
       );
 
+      // The drop is logged rather than thrown (see `_dispatchToActionHandler`)
+      // — a hook that fires before the engine finishes wiring must not take
+      // initialization down with it.
+      expect(ran, ['listener']);
       manager.dispose();
     });
   });
@@ -225,10 +284,19 @@ void main() {
       expect(executed, isEmpty);
     });
 
-    test('Boundary: dispose with no registered listeners is a no-op', () {
+    test('Boundary: dispose clears the listeners, and disposing twice is safe',
+        () async {
       final manager = LifecycleManager(enableDebugMode: false);
-      // Should not throw
+      final ran = <String>[];
+      manager.addListener(LifecycleEvent.initialize, () => ran.add('listener'));
+
       manager.dispose();
+      manager.dispose(); // the "no registered listeners" case, for real
+
+      await manager.triggerEvent(LifecycleEvent.initialize);
+      expect(ran, isEmpty,
+          reason: 'a listener that still fires after dispose keeps a closed '
+              'page reacting to the next one');
     });
   });
 
@@ -393,31 +461,27 @@ void main() {
       expect(executionOrder, ['listener1', 'listener2', 'listener3']);
     });
 
-    test('executes hooks from action definitions', () async {
-      // Test hook execution with mock actions
-      final actions = [
-        {
-          'type': 'state',
-          'action': 'set',
-          'path': 'initialized',
-          'value': true,
-        },
-        {
-          'type': 'service',
-          'service': 'navigation',
-          'action': 'initialize',
-        },
-        {
-          'type': 'notification',
-          'action': 'requestPermission',
-        },
-      ];
+    test('executes hooks from action definitions, and one failure does not '
+        'stop the next', () async {
+      final state = wireHooks(lifecycleManager);
 
-      // Should execute without errors
       await lifecycleManager.executeLifecycleHooks(
         LifecycleEvent.initialize,
-        actions,
+        [
+          // A service hook with nothing behind it: it fails, and the state
+          // hook after it still has to run. That ordering is the whole
+          // contract of the loop in `executeLifecycleHooks`.
+          {'type': 'service', 'service': 'navigation', 'action': 'initialize'},
+          {
+            'type': 'state',
+            'action': 'set',
+            'binding': 'initialized',
+            'value': true,
+          },
+        ],
       );
+
+      expect(state.get('initialized'), isTrue);
     });
 
     test('handles async listeners correctly', () async {
@@ -586,12 +650,13 @@ void main() {
     });
 
     test('executes component-specific lifecycle hooks', () async {
+      final state = wireHooks(lifecycleManager);
       handler.setLifecycleConfig({
         'onMount': [
           {
             'type': 'state',
             'action': 'set',
-            'path': 'mounted',
+            'binding': 'mounted',
             'value': true,
           },
         ],
@@ -599,15 +664,19 @@ void main() {
           {
             'type': 'state',
             'action': 'set',
-            'path': 'mounted',
+            'binding': 'mounted',
             'value': false,
           },
         ],
       });
 
-      // Should execute without errors
       await handler.mount();
+      expect(state.get('mounted'), isTrue,
+          reason: 'onMount is where a component asks for its data — a config '
+              'that is stored and never executed leaves the component empty');
+
       await handler.unmount();
+      expect(state.get('mounted'), isFalse);
     });
   });
 }

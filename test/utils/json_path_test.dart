@@ -456,18 +456,27 @@ void main() {
         );
       });
 
-      test('throws FormatException for invalid array indices', () {
+      test('a non-numeric array index reads as a miss, not an exception', () {
+        // Changed deliberately, and this is the reason: `rows[index]` is the
+        // list-scope form a template writes. The render context resolves it
+        // itself and only falls through to this parser when it could NOT —
+        // a stale index after a row was removed, for instance. Throwing then
+        // took the whole page down over a value that is simply not there any
+        // more, which is the opposite of every other read in the runtime.
+        //
+        // A malformed path is still an authoring mistake; it is now a mistake
+        // that renders as an empty value instead of a blank screen.
         final data = {'test': 'value'};
-        
-        expect(
-          () => JsonPath.get(data, 'items[abc]'),
-          throwsA(isA<FormatException>()),
-        );
+
+        expect(JsonPath.get(data, 'items[abc]'), isNull);
       });
 
-      test('throws FormatException for array index without property', () {
+      test('an array index with no property in front of it still throws', () {
+        // Unchanged: `[0]` names no collection at all, so there is nothing to
+        // miss — it cannot come from a template's list scope, only from a
+        // hand-written path that is simply wrong.
         final data = {'test': 'value'};
-        
+
         expect(
           () => JsonPath.get(data, '[0]'),
           throwsA(isA<FormatException>()),

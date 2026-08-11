@@ -237,6 +237,47 @@ void main() {
               'would surprise a pipeline that reuses it');
     });
 
+    test('rows of mixed types are ordered as text rather than throwing', () {
+      // A field that is a number in some rows and a string in others is
+      // ordinary — a server sending `"12"` for one record and `12` for the
+      // next. Comparing them directly throws, and one bad row used to take
+      // the whole fetch down.
+      final data = <dynamic>[
+        <String, dynamic>{'n': 3},
+        <String, dynamic>{'n': '10'},
+        <String, dynamic>{'n': 2},
+      ];
+
+      final sorted = engine.execute(data, const [
+        TransformStep(type: TransformType.sort, config: {'by': 'n'}),
+      ]) as List;
+
+      expect(sorted.map((e) => e['n']).toList(), <dynamic>['10', 2, 3],
+          reason: 'as TEXT, which is why "10" comes first — an ordering that '
+              'is a little wrong beats a list that does not arrive');
+    });
+
+    test('a row missing the field sorts to one end, both ways', () {
+      final data = <dynamic>[
+        <String, dynamic>{'n': 2},
+        <String, dynamic>{'other': true},
+        <String, dynamic>{'n': 1},
+      ];
+
+      final asc = engine.execute(data, const [
+        TransformStep(type: TransformType.sort, config: {'by': 'n'}),
+      ]) as List;
+      expect(asc.first['n'], isNull,
+          reason: 'a missing field is not an empty string; comparing it as '
+              'one threw next to a number');
+
+      final desc = engine.execute(data, const [
+        TransformStep(
+            type: TransformType.sort, config: {'by': 'n', 'order': 'desc'}),
+      ]) as List;
+      expect(desc.last['n'], isNull);
+    });
+
     test('sort without a field leaves the list alone', () {
       final data = <dynamic>[3, 1, 2];
       expect(

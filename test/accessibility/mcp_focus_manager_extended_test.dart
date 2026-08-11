@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/src/accessibility/focus_manager.dart';
 
@@ -200,5 +201,103 @@ void main() {
         expect(scope, isA<Widget>());
       });
     });
+
+    group('traversal order', () {
+      late FocusNode a;
+      late FocusNode b;
+
+      Future<void> mount(WidgetTester tester) async {
+        await tester.pumpWidget(MaterialApp(
+          home: Column(
+            children: <Widget>[
+              Focus(focusNode: a, child: const Text('a')),
+              Focus(focusNode: b, child: const Text('b')),
+            ],
+          ),
+        ));
+      }
+
+      // No tear-down disposal: `MCPFocusManager.clear()` — which the outer
+      // tear-down calls — disposes the nodes it holds, and a second dispose
+      // is an assertion.
+      setUp(() {
+        a = FocusNode(debugLabel: 'a');
+        b = FocusNode(debugLabel: 'b');
+      });
+
+      testWidgets('next steps forward and wraps at the end', (tester) async {
+        await mount(tester);
+        focusManager.registerFocusNode('a', a);
+        focusManager.registerFocusNode('b', b);
+
+        a.requestFocus();
+        await tester.pump();
+
+        focusManager.focusNext();
+        await tester.pump();
+        expect(b.hasFocus, isTrue);
+
+        focusManager.focusNext();
+        await tester.pump();
+        expect(a.hasFocus, isTrue,
+            reason: 'stopping at the end traps a keyboard user at the bottom '
+                'of the page');
+      });
+
+      testWidgets('previous steps back and wraps at the start',
+          (tester) async {
+        await mount(tester);
+        focusManager.registerFocusNode('a', a);
+        focusManager.registerFocusNode('b', b);
+
+        b.requestFocus();
+        await tester.pump();
+
+        focusManager.focusPrevious();
+        await tester.pump();
+        expect(a.hasFocus, isTrue);
+
+        focusManager.focusPrevious();
+        await tester.pump();
+        expect(b.hasFocus, isTrue);
+      });
+
+      testWidgets('a declared order is where the node is inserted',
+          (tester) async {
+        await mount(tester);
+        focusManager.registerFocusNode('a', a);
+        // Declared first, registered second — the document\'s reading order.
+        focusManager.registerFocusNode('b', b, order: 0);
+
+        b.requestFocus();
+        await tester.pump();
+        focusManager.focusNext();
+        await tester.pump();
+
+        expect(a.hasFocus, isTrue,
+            reason: 'a declared order that is ignored makes the tab sequence '
+                'follow the build order instead of the reading order');
+      });
+
+      testWidgets('a labelled node announces itself on a key event',
+          (tester) async {
+        await mount(tester);
+        focusManager.registerFocusNode('a', a, label: 'Submit');
+
+        a.requestFocus();
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump();
+
+        expect(tester.takeException(), isNull,
+            reason: 'the announcement goes to the implicit view; a host with '
+                'none must be skipped rather than asserted on');
+      });
+    });
+
+    test('the WCAG minimum touch target is what the runtime uses', () {
+      expect(TouchTargetSize.minimumSize, 48.0);
+    });
+
   });
 }

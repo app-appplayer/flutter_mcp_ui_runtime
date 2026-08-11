@@ -246,7 +246,14 @@ class DefaultWidgets {
     registry.register('loadingIndicator', ProgressWidgetFactory());
     registry.register('progressBar', ProgressWidgetFactory());
     registry.register('progress', ProgressWidgetFactory());
-    registry.register('linearProgressIndicator', ProgressWidgetFactory());
+    // The two shape-naming spellings carry their own shape: a widget called
+    // `linearProgressIndicator` that draws a spinner is a name that lies, and
+    // it is also the only way to pick a shape without the `type` property the
+    // widget-type key shadows.
+    registry.register('linearProgressIndicator',
+        ProgressWidgetFactory(defaultIndicatorType: 'linear'));
+    registry.register('circularProgressIndicator',
+        ProgressWidgetFactory());
 
     // Input widgets - Spec v1.0 names
     registry.register(
@@ -422,6 +429,10 @@ class DefaultWidgets {
     registry.register('switch', SwitchWidgetFactory()); // Legacy alias for toggle
     registry.register('textField', TextFieldWidgetFactory()); // Legacy alias for textInput
     registry.register('textfield', TextFieldWidgetFactory());
+    // The kebab spelling is declared by the registry and accepted by the
+    // schema, so a document may carry it; without this registration the
+    // document loaded and the field drew an unknown-type box instead.
+    registry.register('text-form-field', TextFieldWidgetFactory());
     registry.register('dropdown', DropdownWidgetFactory());
     registry.register('listview', ListViewWidgetFactory());
     registry.register('gridview', GridViewWidgetFactory());

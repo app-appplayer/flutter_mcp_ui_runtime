@@ -567,6 +567,52 @@ void remainingOriginAxesTests() {
       expect((r.data as Map<String, dynamic>)['value'], 1);
     });
   });
+  // An embedded APPLICATION with no `initialRoute`: the view has to pick a
+  // route to show, and "the first one declared" is the only answer available.
+  // Rendering nothing instead would make an app that omits the field embed as
+  // a blank tile.
+  testWidgets('an embedded application with no initialRoute shows its first',
+      (tester) async {
+    final handler = ActionHandler();
+    final localRegistry = WidgetRegistry();
+    DefaultWidgets.registerAll(localRegistry);
+    final renderer = Renderer(
+      widgetRegistry: localRegistry,
+      bindingEngine: BindingEngine(),
+      actionHandler: handler,
+      stateManager: StateManager(),
+    );
+    renderer.definitionResolver = (ref, origin) async => <String, dynamic>{
+          'type': 'application',
+          'title': 'No initial route',
+          'routes': <String, dynamic>{
+            '/first': <String, dynamic>{
+              'type': 'page',
+              'content': <String, dynamic>{
+                'type': 'text',
+                'content': 'first route',
+              },
+            },
+          },
+        };
+
+    final ctx = RenderContext(
+      renderer: renderer,
+      stateManager: StateManager(),
+      bindingEngine: BindingEngine(),
+      actionHandler: handler,
+      themeManager: ThemeManager(),
+    );
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: renderer.renderWidget(
+            <String, dynamic>{'type': 'view', 'source': 'ui://apps/noinitial'},
+            ctx),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('first route'), findsOneWidget);
+  });
 }
-
-

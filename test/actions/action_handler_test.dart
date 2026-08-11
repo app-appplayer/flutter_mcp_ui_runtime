@@ -91,6 +91,13 @@ void main() {
       expect(handler2.toolExecutors.containsKey('myTool'), isTrue);
       // They are separate maps
       expect(identical(handler1.toolExecutors, handler2.toolExecutors), isFalse);
+
+      // And a call reaches only the handler it was registered on. The two
+      // flags above were recorded and never read — same map, different
+      // executors would have passed every assertion here.
+      handler1.toolExecutors['myTool']!(<String, dynamic>{});
+      expect(tool1Called, isTrue);
+      expect(tool2Called, isFalse);
     });
 
     test('TC-001 Boundary: Constructor completes without errors', () {
@@ -222,16 +229,17 @@ void main() {
       expect(result.error, contains('Unknown action type'));
     });
 
-    test('TC-002 Error: Executor throws exception for missing required binding', () async {
-      // State action throws when binding is missing.
-      // ActionHandler rethrows exceptions whose message contains 'required'.
-      expect(
-        () => actionHandler.execute(
-          {'type': 'state', 'action': 'set'},
-          context,
-        ),
-        throwsA(isA<Exception>()),
+    test('TC-002 Error: a missing required field comes back as a failed '
+        'result, not an exception', () async {
+      // Previously asserted `throwsA`. An exception out of `execute` reaches
+      // the widget that fired the action, so one malformed action took the
+      // whole page down; the document could not branch on it either.
+      final result = await actionHandler.execute(
+        {'type': 'state', 'action': 'set'},
+        context,
       );
+      expect(result.success, isFalse);
+      expect(result.error, contains('binding'));
     });
   });
 
@@ -463,11 +471,15 @@ void main() {
         {'type': 'navigation', 'action': 'push', 'route': '/test'},
         context,
       );
-      // `false` means "not mine" — the name of this case has always said so.
-      // It used to end navigation with an error instead, which is what made a
-      // page declared in `routes` but absent from a shell's tab strip
-      // unreachable from a button, a scan or a deep link.
-      expect(result.success, isTrue);
+      // `false` means "not mine" — the name of this case has always said so,
+      // and navigation then falls through to the runtime's own Navigator.
+      // There is none in this test, so what the document gets back is the
+      // report that nothing moved rather than a success for a push that never
+      // happened (§6.13).
+      expect(result.success, isFalse);
+      expect(result.error, contains('navigator'),
+          reason: 'a declining host handler plus no navigator means the route '
+              'was not opened, and the document has to be able to tell');
     });
 
     test('TC-007 Boundary: Handler registered then replaced, new handler used', () async {

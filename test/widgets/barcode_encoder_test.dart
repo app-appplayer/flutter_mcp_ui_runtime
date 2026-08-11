@@ -138,6 +138,26 @@ void main() {
     });
   });
 
+  group('a payload the format cannot carry', () {
+    test('an out-of-alphabet character is named, with the format', () {
+      // Codabar carries digits and six symbols; a letter in the middle is the
+      // ordinary mistake, and the message has to say WHICH character so the
+      // author can find it in a long payload.
+      Object? thrown;
+      try {
+        encodeBarcode('12X4', BarcodeFormat.codabar);
+      } catch (e) {
+        thrown = e;
+      }
+
+      expect(thrown, isA<BarcodeFormatException>());
+      expect(thrown.toString(), contains('codabar'));
+      expect(thrown.toString(), contains('X'),
+          reason: 'a refusal that does not name the character leaves the '
+              'author diffing the payload by eye');
+    });
+  });
+
   group('determinism', () {
     test('the same payload encodes identically', () {
       final a = encodeBarcode('4006381333931', BarcodeFormat.ean13);

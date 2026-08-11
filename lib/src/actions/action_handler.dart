@@ -505,17 +505,17 @@ class ToolActionExecutor extends ActionExecutor {
       return ActionResult.error('Error extracting params: $e');
     }
 
-    // Resolve parameter values
+    // Resolve parameter values.
+    //
+    // No guard around this: `resolve` is called without a type argument, so
+    // the one throw inside it (converting null to a non-nullable type) cannot
+    // fire, and every hostile shape a document can express — unknown client,
+    // permission and theme bindings, malformed expressions, a call on a
+    // scalar, deep lists, missing i18n keys — was measured and answers null.
     final resolvedParams = <String, dynamic>{};
-    try {
-      params.forEach((key, value) {
-        resolvedParams[key] = context.resolve(value);
-      });
-      _logger.debug('Resolved params: $resolvedParams');
-    } catch (e) {
-      _logger.error('Error resolving params: $e');
-      return ActionResult.error('Error resolving params: $e');
-    }
+    params.forEach((key, value) {
+      resolvedParams[key] = context.resolve(value);
+    });
 
     // Handle loading state - accepts string binding or map with binding+text+indicator
     final loadingRaw = action['loading'];
@@ -1057,7 +1057,15 @@ class NavigationActionExecutor extends ActionExecutor {
           'NavigationService navigatorKey: ${NavigationService.instance.navigatorKey}');
       MCPLogger('NavigationActionExecutor').debug(
           'NavigationService navigatorKey hashCode: ${NavigationService.instance.navigatorKey.hashCode}');
-      return ActionResult.success(); // Return success to avoid breaking the app
+      // §6.13's rule applied to an action: perform it, or report that it was
+      // not performed. This answered SUCCESS for a navigation that never
+      // happened — the source comment said "to avoid breaking the app" — so a
+      // document could not tell "navigated" from "there was nowhere to go",
+      // and a typo in `action` was indistinguishable from a working route on
+      // any headless host. An ActionResult.error breaks nothing: it is the
+      // channel the document's own `onError` already reads.
+      return ActionResult.error(
+          'navigation.$actionType: no navigator is attached to this host');
     }
 
     try {
@@ -1088,27 +1096,24 @@ class NavigationActionExecutor extends ActionExecutor {
           // launcher handles the transition (e.g. push /app/:id via
           // go_router). Otherwise fall back to the internal Navigator for
           // in-runtime dashboards.
-          final appId = action['appId'] as String?;
-          if (_onOpenAppCallback != null) {
-            MCPLogger('NavigationActionExecutor')
-                .debug('openApp: delegating to host callback');
-            _onOpenAppCallback!(appId, route);
-          } else {
-            final appRoute = route ?? '/';
-            final appParams = Map<String, dynamic>.from(params ?? {});
-            MCPLogger('NavigationActionExecutor')
-                .debug('openApp: transitioning to app route: $appRoute');
-            await navigatorState.pushNamedAndRemoveUntil(
-              appRoute,
-              (route) => false,
-              arguments: appParams,
-            );
-          }
+          // The host callback was already taken at the top of this method,
+          // and nothing between there and here can register one (the fields
+          // are static and the path has no await). So reaching this case
+          // means there is no callback: the in-runtime dashboard transition
+          // is the only thing left to do.
+          final appRoute = route ?? '/';
+          final appParams = Map<String, dynamic>.from(params ?? {});
+          MCPLogger('NavigationActionExecutor')
+              .debug('openApp: transitioning to app route: $appRoute');
+          await navigatorState.pushNamedAndRemoveUntil(
+            appRoute,
+            (route) => false,
+            arguments: appParams,
+          );
           break;
         case 'exitApp':
-          if (_onExitCallback != null) {
-            _onExitCallback!.call();
-          }
+          // Same: an exit callback would have been called and returned above,
+          // so there is nothing to call here.
           break;
         case 'setIndex': // Index-based navigation for tabs/bottom nav
           // setIndex requires a navigation handler (e.g., ApplicationShell)
@@ -1153,7 +1158,11 @@ class StateActionExecutor extends ActionExecutor {
     final binding = action['binding'] as String? ?? action['path'] as String?;
 
     if (binding == null) {
-      throw Exception('Binding or path is required for state action');
+      // Reported, not thrown. The exception used to travel out of
+      // `ActionHandler.execute` into whatever tapped the button, so a document
+      // that forgot `binding` took the page down — the harshest possible
+      // answer to a typo, and not one §6.13 asks for.
+      return ActionResult.error('state.$actionType requires `binding`');
     }
 
     // §8.9.2 — `entry.*` and `identity.*` are read-only. They describe how the
@@ -1465,7 +1474,12 @@ class ResourceActionExecutor extends ActionExecutor {
                   'Resource subscription failed for $uri: $subscribeError');
             }
           } else {
+            // Reported, not logged and forgotten: a document that subscribes on a
+            // host with no handler was told it had succeeded and then waited
+            // for data nobody had asked for.
             _logger.warning('No resource subscribe handler configured');
+            return ActionResult.error(
+                'resource.subscribe: this host has no resource subscribe handler');
           }
           break;
 
@@ -1485,7 +1499,12 @@ class ResourceActionExecutor extends ActionExecutor {
             await context.onResourceUnsubscribe!(uri);
             _logger.debug('onResourceUnsubscribe handler completed');
           } else {
+            // Reported, not logged and forgotten: a document that unsubscribes on a
+            // host with no handler was told it had succeeded and then waited
+            // for data nobody had asked for.
             _logger.warning('No resource unsubscribe handler configured');
+            return ActionResult.error(
+                'resource.unsubscribe: this host has no resource unsubscribe handler');
           }
           break;
 
@@ -1508,7 +1527,12 @@ class ResourceActionExecutor extends ActionExecutor {
               context.setValue(binding, result.first);
             }
           } else {
+            // Reported, not logged and forgotten: a document that reads on a
+            // host with no handler was told it had succeeded and then waited
+            // for data nobody had asked for.
             _logger.warning('No resource read handler configured');
+            return ActionResult.error(
+                'resource.read: this host has no resource read handler');
           }
           break;
 
@@ -1529,7 +1553,12 @@ class ResourceActionExecutor extends ActionExecutor {
               context.setValue(binding, [result]);
             }
           } else {
+            // Reported, not logged and forgotten: a document that lists on a
+            // host with no handler was told it had succeeded and then waited
+            // for data nobody had asked for.
             _logger.warning('No resource list handler configured');
+            return ActionResult.error(
+                'resource.list: this host has no resource list handler');
           }
           break;
 
@@ -1681,6 +1710,19 @@ class DialogActionExecutor extends ActionExecutor {
         : null;
     final dismissible = dialog['dismissible'] as bool? ?? true;
     final actions = dialog['actions'] as List<dynamic>?;
+
+    // One dialog at a time: `DialogService.show` refuses a second one and
+    // answers null, and the alert / simple branches below then report
+    // `success: true` for a dialog that was never drawn. Two taps in quick
+    // succession, or a batch declaring two dialogs, would leave the document
+    // believing the user had been asked. §6.13 — a capability that could not
+    // be performed is reported.
+    if (_dialogService.isShowing && dialogType != 'snackBar') {
+      return ActionResult.error(
+        'dialog.$dialogType: another dialog is already open, so this one was '
+        'not shown',
+      );
+    }
 
     try {
       bool? result;

@@ -135,34 +135,12 @@ class _ViewWidgetState extends State<_ViewWidget> {
   /// A source is plain JSON, so encoding it is both correct and cheap at the
   /// size these are; the alternative is a deep-equals helper that has to know
   /// every shape a source can take.
-  static bool _sameSource(dynamic a, dynamic b) {
-    if (identical(a, b)) return true;
-    if (a is String || b is String) return a == b;
-    try {
-      return jsonEncode(a) == jsonEncode(b);
-    } catch (_) {
-      return false;
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant _ViewWidget old) {
-    super.didUpdateWidget(old);
-    // A changed source means a different origin or resource — remount rather
-    // than reuse, since the previous scope belongs to the previous origin
-    // (§6.11.4).
-    // Compared BY VALUE. A source rebuilt each frame — an embedded application
-    // whose route is a uri produces a fresh `{$ref, from}` map every build — is
-    // a different object with identical meaning, and identity comparison read
-    // that as a changed origin: resolve, render, rebuild, resolve again. On the
-    // bench the tile flickered between its content and its spinner and then
-    // stuck on the spinner.
-    if (!_sameSource(old.source, widget.source)) {
-      _definition = null;
-      _error = null;
-      _resolve();
-    }
-  }
+  // No `didUpdateWidget` re-resolve here. A changed source means a different
+  // origin or resource, and the widget is KEYED by the source (`_sourceKey`),
+  // so a change remounts: fresh state, fresh scope, one resolve. The
+  // in-place branch that used to sit here did the same job a second way and
+  // could never run — two mechanisms for one rule, and only one of them
+  // exercised.
 
   Future<void> _resolve() async {
     final source = widget.source;

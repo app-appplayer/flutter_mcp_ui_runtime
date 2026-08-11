@@ -1,6 +1,6 @@
 name: flutter_mcp_ui_runtime
 description: Runtime for building dynamic Flutter UIs from JSON with lifecycle management, state handling, and MCP protocol support.
-version: 0.7.4
+version: 0.7.5
 homepage: https://app-appplayer.github.io/makemind
 repository: https://github.com/app-appplayer/flutter_mcp_ui_runtime
 issue_tracker: https://github.com/app-appplayer/flutter_mcp_ui_runtime/issues
@@ -11,7 +11,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_mcp_ui_core: ^0.6.3
+  flutter_mcp_ui_core: ^0.6.4
   mcp_bundle: ^0.4.9
   provider: ^6.1.1
   collection: ^1.18.0
@@ -33,6 +33,11 @@ dependencies:
   web: ^1.0.0
 
 dev_dependencies:
+  # Test-only: lets a test state what the device-info plugin answers.
+  device_info_plus_platform_interface: ^7.0.0
+  # Timer-driven utilities (debounce / throttle) are tested with a fake clock:
+  # a test that really sleeps is slow and flaky, and both end in deletion.
+  fake_async: ^1.3.1
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0

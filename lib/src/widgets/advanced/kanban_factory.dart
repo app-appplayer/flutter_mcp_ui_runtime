@@ -20,7 +20,7 @@ class KanbanFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     final columns =
-        context.resolve<List<dynamic>?>(properties['columns']) ?? const [];
+        listOf(properties['columns'], context) ?? const [];
     final itemTemplate = properties['itemTemplate'] as Map<String, dynamic>?;
     final itemKey = context.resolve<String?>(properties['itemKey']) ?? 'id';
     final draggable = context.resolve<bool?>(properties['draggable']) ?? true;

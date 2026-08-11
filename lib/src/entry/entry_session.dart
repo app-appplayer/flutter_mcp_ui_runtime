@@ -12,9 +12,7 @@ import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart'
 /// Reserved state keys the session publishes under. Documents read them
 /// through `entry.*` / `identity.*` bindings and MUST NOT write them — the
 /// state action executor rejects writes to these roots.
-class EntryStateKeys {
-  EntryStateKeys._();
-
+abstract final class EntryStateKeys {
   static const String entry = 'entry';
   static const String identity = 'identity';
 

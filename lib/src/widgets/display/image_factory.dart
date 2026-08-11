@@ -16,8 +16,8 @@ class ImageWidgetFactory extends WidgetFactory {
         properties['source'] ??
         properties['backgroundImage'] ??
         '');
-    final width = parseDimension(properties['width']);
-    final height = parseDimension(properties['height']);
+    final width = dimensionOf(properties['width'], context);
+    final height = dimensionOf(properties['height'], context);
     final fit = _parseBoxFit(readEnum(properties['fit'], context));
     final alignment = _parseAlignment(properties['alignment']);
     final placeholder = stringOf(properties['placeholder'], context);

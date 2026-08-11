@@ -41,7 +41,7 @@ class SplitterFactory extends WidgetFactory {
         ? rawSizes.map((e) => (e as num).toDouble()).toList()
         : List<double>.filled(childDefs.length, 1 / childDefs.length);
 
-    final minSizes = context.resolve<List<dynamic>?>(properties['minSizes'])
+    final minSizes = listOf(properties['minSizes'], context)
             ?.map((e) => (e as num).toDouble())
             .toList() ??
         List<double>.filled(childDefs.length, 0.05);

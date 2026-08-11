@@ -141,9 +141,13 @@ void main() {
       expect(result.error, 'Unknown resource action: invalid');
     });
 
-    test('handles missing resource handlers gracefully', () async {
-      // Don't set any handlers
-      
+    test('a host with no resource handler is reported, not shrugged off',
+        () async {
+      // This used to expect success with a logged warning. A document that
+      // subscribes on a host with no resource support then waits forever for
+      // data that is never coming, with nothing on screen to say so — the
+      // failure looks exactly like a slow server. §6.13: an absent capability
+      // is reported to the document.
       final action = {
         'type': 'resource',
         'action': 'subscribe',
@@ -153,8 +157,10 @@ void main() {
 
       final result = await actionHandler.execute(action, context);
 
-      // Should still succeed, just log a warning
-      expect(result.success, true);
+      expect(result.success, isFalse);
+      expect(result.error, contains('subscribe'),
+          reason: 'naming the operation tells the host which hook it forgot '
+              'to wire');
     });
   });
 

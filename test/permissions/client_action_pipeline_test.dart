@@ -14,7 +14,6 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_mcp_ui_runtime/src/client_actions/client_action_handler.dart';
 import 'package:flutter_mcp_ui_runtime/src/models/ui_definition.dart';
 import 'package:flutter_mcp_ui_runtime/src/permissions/permission_manager.dart';
 import 'package:flutter_mcp_ui_runtime/src/permissions/permission_checker.dart';

@@ -7,7 +7,21 @@ class TableWidgetFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
-    final rows = definition['rows'] as List<dynamic>? ?? [];
+    final declaredRows = definition['rows'] as List<dynamic>? ?? [];
+
+    // `Table` throws when a row carries no children. A document whose row is
+    // empty — `{}`, or the column-keyed shape that belongs to `dataTable` —
+    // used to take the whole widget down with an exception. Requiring `cells`
+    // in the schema instead would stop the document opening (§1.7.5), so the
+    // rows that cannot be laid out are dropped here and the table draws the
+    // ones that can.
+    final rows = <Map<String, dynamic>>[
+      for (final row in declaredRows)
+        if (row is Map<String, dynamic> &&
+            (row['cells'] as List<dynamic>?)?.isNotEmpty == true)
+          row,
+    ];
+    if (rows.isEmpty) return const SizedBox.shrink();
 
     return Table(
       border: _resolveTableBorder(properties['border'], context),
@@ -20,8 +34,7 @@ class TableWidgetFactory extends WidgetFactory {
       textBaseline: _resolveTextBaseline(properties['textBaseline']),
       defaultVerticalAlignment: _resolveTableCellVerticalAlignment(
           readEnum(properties['defaultVerticalAlignment'], context)),
-      children: rows.map((row) {
-        final rowData = row as Map<String, dynamic>;
+      children: rows.map((rowData) {
         final cells = rowData['cells'] as List<dynamic>? ?? [];
 
         return TableRow(
@@ -43,8 +56,7 @@ class TableWidgetFactory extends WidgetFactory {
     if (border is Map<String, dynamic>) {
       return TableBorder.all(
         color: parseColor(border['color'], context) ??
-            context.themeManager.getColorValue('outlineVariant') ??
-            Colors.grey,
+            context.themeManager.colorOr('outlineVariant', Colors.grey),
         width: border['width']?.toDouble() ?? 1.0,
       );
     }
@@ -152,8 +164,7 @@ class TableWidgetFactory extends WidgetFactory {
         border: decoration['border'] != null
             ? Border.all(
                 color: parseColor(decoration['border']['color'], context) ??
-                    context.themeManager.getColorValue('outlineVariant') ??
-                    Colors.grey,
+                    context.themeManager.colorOr('outlineVariant', Colors.grey),
                 width: decoration['border']['width']?.toDouble() ?? 1.0,
               )
             : null,

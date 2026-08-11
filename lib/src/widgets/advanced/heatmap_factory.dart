@@ -10,7 +10,7 @@ class HeatmapWidgetFactory extends WidgetFactory {
 
     // Extract properties. Use nullable resolve for Lists — non-nullable
     // generic `resolve<List<dynamic>>(null)` throws on absent properties.
-    final data = (context.resolve<List<dynamic>?>(properties['data'])) ?? [];
+    final data = (listOf(properties['data'], context)) ?? [];
     final columns = intOf(properties['columns'], context);
     final cellSize = numberOf(properties['cellSize'], context) ?? 40.0;
     final cellGap = numberOf(properties['cellGap'], context) ?? 2.0;
@@ -24,9 +24,9 @@ class HeatmapWidgetFactory extends WidgetFactory {
     final declaredMax = numberOf(properties['maxValue'], context);
     final showLabels = boolOf(properties['showLabels'], context) ?? false;
     final rowLabels =
-        (context.resolve<List<dynamic>?>(properties['rowLabels'])) ?? [];
+        (listOf(properties['rowLabels'], context)) ?? [];
     final columnLabels =
-        (context.resolve<List<dynamic>?>(properties['columnLabels'])) ?? [];
+        (listOf(properties['columnLabels'], context)) ?? [];
     final colorScheme = stringOf(properties['colorScheme'], context) ?? 'blue';
     // Spec §10.10 — all three were read into variables and then discarded
     // behind an `unused_local_variable` ignore: the scale a document declared
@@ -143,9 +143,7 @@ class HeatmapWidgetFactory extends WidgetFactory {
       // legacy fixed `Colors.<scheme>[50]` low end is too bright for
       // dark scaffolds.
       final lowEnd =
-          context.themeManager.getColorValue('surfaceContainer') ??
-              context.themeManager.getColorValue('surface') ??
-              Colors.grey.shade100;
+          context.themeManager.colorOr('surfaceContainer', context.themeManager.getColorValue('surface') ?? Colors.grey.shade100);
       for (int j = 0; j < heatmapData[i].length; j++) {
         final value = heatmapData[i][j];
         final normalizedValue =

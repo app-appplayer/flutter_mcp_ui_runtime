@@ -367,12 +367,20 @@ class _MediaPlayerWidgetState extends State<_MediaPlayerWidget> {
               // Media display area
               _buildMediaDisplay(isAudio),
 
-              // Controls overlay
+              // Controls overlay.
+              //
+              // Faded out is not gone: an `AnimatedOpacity` at 0 still takes
+              // hits, so the transport that had just auto-hidden went on
+              // swallowing taps — and the tap meant to bring it back landed on
+              // the invisible play button instead, pausing the media.
               if (widget.controls)
-                AnimatedOpacity(
-                  opacity: _showControls ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: _buildControlsOverlay(isAudio),
+                IgnorePointer(
+                  ignoring: !_showControls,
+                  child: AnimatedOpacity(
+                    opacity: _showControls ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: _buildControlsOverlay(isAudio),
+                  ),
                 ),
 
               // Status badges

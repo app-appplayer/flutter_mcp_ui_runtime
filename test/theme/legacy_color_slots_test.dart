@@ -11,7 +11,6 @@
 // cycle already made once: validation says the document is fine and the screen
 // shows nothing.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
 

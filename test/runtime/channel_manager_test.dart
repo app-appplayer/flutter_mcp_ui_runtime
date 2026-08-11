@@ -91,14 +91,20 @@ void main() {
       await manager.dispose();
     });
 
-    test('Error: invalid config type → error thrown', () async {
+    test('Error: a channel type nobody implements is refused, and named',
+        () async {
       final manager = ChannelManager();
-      expect(
-        () => manager.initializeChannels({
+      await expectLater(
+        manager.initializeChannels({
           'bad': ChannelConfig(type: 'unknown.type'),
         }),
-        throwsA(isA<ArgumentError>()),
+        throwsA(isA<ArgumentError>().having(
+            (e) => e.toString(), 'message', contains('unknown.type'))),
+        reason: 'the document names the transport, so the error has to name '
+            'it back or an author has nothing to correct',
       );
+      expect(manager.hasChannel('bad'), isFalse,
+          reason: 'a refused channel must not be left half-registered');
       await manager.dispose();
     });
   });
@@ -134,19 +140,31 @@ void main() {
       await manager.dispose();
     });
 
-    test('Boundary: unsubscribe non-existent channel → no-op', () async {
+    test('Boundary: disposing a channel nobody declared leaves the real ones '
+        'running', () async {
       final manager = ChannelManager();
-      // Should not throw
+      await manager.initChannel(
+        'real',
+        ChannelConfig(type: 'client.poll', params: {'interval': 5000}),
+      );
+
       await manager.disposeChannel('nonexistent');
+
+      expect(manager.hasChannel('real'), isTrue,
+          reason: 'a miss that cleared the map would silently stop every feed '
+              'on the page');
       await manager.dispose();
     });
 
-    test('Error: subscribe with invalid config → error', () async {
+    test('Error: initChannel with an unknown type is refused and registers '
+        'nothing', () async {
       final manager = ChannelManager();
-      expect(
-        () => manager.initChannel('bad', ChannelConfig(type: 'invalid')),
+      await expectLater(
+        manager.initChannel('bad', ChannelConfig(type: 'invalid')),
         throwsA(isA<ArgumentError>()),
       );
+      expect(manager.hasChannel('bad'), isFalse);
+      expect(manager.channelIds, isEmpty);
       await manager.dispose();
     });
   });
@@ -207,12 +225,55 @@ void main() {
   });
 
   group('TC-055: ChannelManager — sendToChannel', () {
-    test('Boundary: send to non-existent channel → error', () async {
+    test('Boundary: sending to a channel nobody declared is refused by name',
+        () async {
       final manager = ChannelManager();
-      expect(
-        () => manager.sendToChannel('nonexistent', 'data'),
-        throwsA(isA<StateError>()),
+      await expectLater(
+        manager.sendToChannel('nonexistent', 'data'),
+        throwsA(isA<StateError>().having(
+            (e) => e.toString(), 'message', contains('nonexistent'))),
+        reason: 'silently dropping the message would leave a document waiting '
+            'for a reply to something that was never sent',
       );
+      await manager.dispose();
+    });
+  });
+
+  group('sending on a channel that can carry it', () {
+    test('a websocket channel receives the payload; an inbound-only one says '
+        'it cannot', () async {
+      final manager = ChannelManager();
+      await manager.initializeChannels({
+        'socket': ChannelConfig(type: 'client.websocket', params: {
+          'url': 'ws://127.0.0.1:1',
+          'protocols': <dynamic>['v1'],
+          'headers': <String, dynamic>{'x-token': 'abc'},
+          'autoReconnect': false,
+        }),
+        'ticker':
+            ChannelConfig(type: 'client.poll', params: {'interval': 10000}),
+      });
+
+      expect(manager.hasChannel('socket'), isTrue,
+          reason: 'the websocket config carries protocols and headers, and a '
+              'cast that drops them builds a channel that connects without '
+              'them — which a server refuses for reasons the document cannot '
+              'see');
+
+      // Not connected, so the send fails at the socket rather than silently
+      // succeeding: what matters is that it was ATTEMPTED on the socket.
+      await expectLater(manager.sendToChannel('socket', 'ping'),
+          throwsA(isA<Object>()));
+
+      await expectLater(
+        manager.sendToChannel('ticker', 'ping'),
+        throwsA(isA<UnsupportedError>().having((e) => e.toString(), 'message',
+            allOf(contains('ticker'), contains('inbound')))),
+        reason: 'an inbound-only channel has to say so — `channel.send` that '
+            'reports success on a channel with no way out leaves a control '
+            'that does nothing',
+      );
+
       await manager.dispose();
     });
   });
@@ -534,35 +595,47 @@ void main() {
       await manager.dispose();
     });
 
-    test('Normal: invalid channel type results in error', () async {
+    test('Normal: an unknown channel type is refused with its name', () async {
       final manager = ChannelManager();
 
-      expect(
-        () => manager.initChannel('bad', ChannelConfig(type: 'unknown')),
-        throwsA(isA<ArgumentError>()),
+      await expectLater(
+        manager.initChannel('bad', ChannelConfig(type: 'unknown')),
+        throwsA(isA<ArgumentError>()
+            .having((e) => e.toString(), 'message', contains('unknown'))),
       );
+      expect(manager.channelIds, isEmpty);
 
       await manager.dispose();
     });
 
-    test('Normal: start non-existent channel throws StateError', () async {
+    test('Normal: starting a channel nobody declared is refused by name',
+        () async {
       final manager = ChannelManager();
 
-      expect(
-        () => manager.startChannel('nonexistent'),
-        throwsA(isA<StateError>()),
+      await expectLater(
+        manager.startChannel('nonexistent'),
+        throwsA(isA<StateError>().having(
+            (e) => e.toString(), 'message', contains('nonexistent'))),
       );
+      expect(manager.isActive('nonexistent'), isFalse);
 
       await manager.dispose();
     });
 
-    test('Normal: restart non-existent channel throws StateError', () async {
+    test('Normal: restarting a channel nobody declared is refused, and the '
+        'declared ones keep running', () async {
       final manager = ChannelManager();
+      await manager.initChannel(
+        'real',
+        ChannelConfig(type: 'client.poll', params: {'interval': 5000}),
+      );
+      await manager.startChannel('real');
 
-      expect(
-        () => manager.restartChannel('nonexistent'),
+      await expectLater(
+        manager.restartChannel('nonexistent'),
         throwsA(isA<StateError>()),
       );
+      expect(manager.isActive('real'), isTrue);
 
       await manager.dispose();
     });
@@ -694,6 +767,73 @@ void main() {
       final manager = ChannelManager();
       await manager.dispose();
       expect(manager.channelIds, isEmpty);
+    });
+  });
+
+  group('backpressure declared on a channel', () {
+    Future<ChannelManager> managerWith(Map<String, dynamic> backpressure) async {
+      final manager = ChannelManager();
+      await manager.initChannel(
+        'telemetry',
+        ChannelConfig.fromJson(<String, dynamic>{
+          'type': 'client.poll',
+          'autoStart': false,
+          'params': <String, dynamic>{'interval': 60000},
+          'backpressure': backpressure,
+        }),
+      );
+      return manager;
+    }
+
+    test('every declared overflow strategy is accepted', () async {
+      for (final strategy in const [
+        'buffer',
+        'drop',
+        'latest',
+        'throttle',
+        'debounce',
+        'unheard-of',
+      ]) {
+        final manager = await managerWith(<String, dynamic>{
+          'overflowStrategy': strategy,
+          'bufferSize': 4,
+          'windowMs': 20,
+        });
+
+        expect(manager.hasChannel('telemetry'), isTrue, reason: strategy);
+        await manager.dispose();
+      }
+    });
+
+    test('`highWaterMark` stands in for `bufferSize`', () async {
+      final manager = await managerWith(<String, dynamic>{
+        'strategy': 'buffer',
+        'highWaterMark': 8,
+      });
+
+      expect(manager.hasChannel('telemetry'), isTrue,
+          reason: 'the spec names both; reading only one silently gives the '
+              'channel a buffer a hundred events deep');
+      await manager.dispose();
+    });
+
+    test('a backpressure block with no strategy declares none', () async {
+      final manager = await managerWith(<String, dynamic>{'bufferSize': 4});
+
+      expect(manager.hasChannel('telemetry'), isTrue);
+      await manager.dispose();
+    });
+  });
+
+  group('sending on a channel that is not there', () {
+    test('is refused by name rather than dropped', () async {
+      final manager = ChannelManager();
+      addTearDown(manager.dispose);
+
+      expect(() => manager.sendToChannel('nope', <String, dynamic>{'v': 1}),
+          throwsStateError,
+          reason: 'a send that vanishes leaves the document believing the '
+              'other end heard it');
     });
   });
 }

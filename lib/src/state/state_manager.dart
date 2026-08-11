@@ -118,7 +118,13 @@ class StateManager extends ChangeNotifier {
 
     // Get regular state value
     final result = JsonPath.get(_state, path) as T?;
-    _logger.debug('get path: $path, result: $result, state: $_state');
+    // The path only. `debug` takes a String, so whatever is written here is
+    // built on EVERY read whether or not logging is on — and `$_state` built
+    // the entire state map into a string that was then thrown away. Reads are
+    // the hottest path in the runtime (every binding, every frame), so this
+    // turned "how big is the state" into "how slow is every screen". The
+    // values themselves are already observable on `stateChanges`.
+    _logger.debug('get path: $path');
     return result;
   }
 
@@ -126,7 +132,10 @@ class StateManager extends ChangeNotifier {
   void set(String path, dynamic value, {String? source}) {
     final oldValue = JsonPath.get(_state, path);
     JsonPath.set(_state, path, value);
-    _logger.debug('set path: $path, value: $value, new state: $_state');
+    // Same reason as `get`, plus one more: `$value` calls `toString()` on
+    // whatever a host put in state, and a host object whose `toString` throws
+    // took the write down with it — before any binding was involved.
+    _logger.debug('set path: $path');
 
     // Emit state change event
     _stateChangeController.add(StateChangeEvent(
@@ -137,7 +146,7 @@ class StateManager extends ChangeNotifier {
     ));
 
     // Invalidate affected computed properties
-    _invalidateComputedProperties({path: value.toString()});
+    _invalidateComputedProperties(<String>[path]);
 
     // Notify stream listeners for this specific path
     final controller = _streamControllers[path];
@@ -194,9 +203,7 @@ class StateManager extends ChangeNotifier {
     });
 
     // Invalidate affected computed properties
-    _invalidateComputedProperties(
-      updates.map((k, v) => MapEntry(k, v.toString())),
-    );
+    _invalidateComputedProperties(updates.keys);
 
     notifyListeners();
   }
@@ -339,9 +346,21 @@ class StateManager extends ChangeNotifier {
   }
 
   /// Invalidate computed properties that depend on the changed paths
-  void _invalidateComputedProperties(Map<String, String> changedPaths) {
+  /// Invalidates the computed properties that depend on [changedPaths].
+  ///
+  /// Takes paths, not values. It used to take a map of path to
+  /// `value.toString()` — and `shouldRecompute` reads only the keys, so every
+  /// write serialised whatever was written (a whole list, a whole response)
+  /// into a string that was thrown away on the next line. A document that
+  /// stores a large collection paid that on every single `set`.
+  void _invalidateComputedProperties(Iterable<String> changedPaths) {
+    // A document with no computed properties — most of them — does nothing
+    // here at all.
+    if (_computedProperties.isEmpty) return;
+
+    final paths = <String, String>{for (final path in changedPaths) path: ''};
     for (final property in _computedProperties.values) {
-      if (property.shouldRecompute(changedPaths)) {
+      if (property.shouldRecompute(paths)) {
         property.invalidate();
         _logger.debug('Invalidated computed property: ${property.name}');
       }

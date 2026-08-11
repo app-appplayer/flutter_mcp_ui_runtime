@@ -193,7 +193,11 @@ class PluginManager {
 
       // Register services
       plugin.services?.forEach((type, service) {
-        _serviceLocator.register(service, dependencies: [type]);
+        // By the DECLARED type, not the static one: `register<T>` would take
+        // its key from `Service` here — the type the map's values are
+        // declared as — so every plugin's service landed on the same key and
+        // `get<MyService>()` found none of them.
+        _serviceLocator.registerByType(type, service);
         _logger.debug('Registered service from ${plugin.name}: $type');
       });
 
@@ -269,7 +273,10 @@ class PluginManager {
 
       // Unregister services
       plugin.services?.forEach((type, _) {
-        _serviceLocator.unregister();
+        // Named, for the same reason as the registration: `unregister()` with
+        // no type argument infers `dynamic` and removed nothing, so a service
+        // outlived the plugin that answered through it.
+        _serviceLocator.unregisterByType(type);
         _logger.debug('Unregistered service from ${plugin.name}: $type');
       });
 
@@ -297,9 +304,30 @@ class PluginManager {
 
   /// Unload all plugins
   Future<void> unloadAllPlugins() async {
-    // Unload in reverse order
+    // Unload in reverse order.
+    //
+    // One plugin's failure must not strand the rest. `unloadPlugin` rethrows
+    // as a `PluginException`, and this loop used to let it out — so a single
+    // plugin whose `dispose()` threw stopped the shutdown where it stood, and
+    // every plugin below it in the load order stayed loaded with its widgets,
+    // actions, services and timers still attached. On a host tearing a
+    // document down that is a leak per document.
+    final failures = <String, Object>{};
     for (final pluginName in _loadOrder.reversed.toList()) {
-      await unloadPlugin(pluginName);
+      try {
+        await unloadPlugin(pluginName);
+      } catch (e, stackTrace) {
+        failures[pluginName] = e;
+        _logger.error('Failed to unload plugin: $pluginName', e, stackTrace);
+        // The plugin is not coming back from this; drop it from the load
+        // order so a second call does not stop on the same one forever.
+        _pluginStates[pluginName] = false;
+        _loadOrder.remove(pluginName);
+      }
+    }
+    if (failures.isNotEmpty) {
+      _logger.error(
+          'Unloaded all plugins; ${failures.length} failed: ${failures.keys}');
     }
   }
 

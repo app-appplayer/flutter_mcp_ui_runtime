@@ -18,6 +18,10 @@ void main() {
         expect(watcher.debounceMs, equals(0));
         expect(watcher.isInitialized, isFalse);
         expect(watcher.lastValue, isNull);
+        expect(callbackCalled, isFalse,
+            reason: 'constructing a watcher must not fire its callback — a '
+                'watcher that reacts before it has ever seen a value would '
+                'run every onChange once at startup');
       });
 
       test('should initialize on first trigger', () async {

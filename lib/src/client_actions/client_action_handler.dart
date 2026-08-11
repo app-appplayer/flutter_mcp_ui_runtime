@@ -59,8 +59,15 @@ class ClientActionHandler {
     }
 
     // CA-14: Handle confirmMessage - show confirmation before sensitive actions
+    // `as Map<String, dynamic>?` throws on the map a document actually
+    // carries: JSON decoding and Dart literals both produce `Map<dynamic,
+    // dynamic>` in places, and the cast turned "no params" into an internal
+    // cast error instead of "the path is missing".
+    final rawParams = action['params'];
+    final paramsMap =
+        rawParams is Map ? Map<String, dynamic>.from(rawParams) : null;
     final confirmMessage = action['confirmMessage'] as String? ??
-        (action['params'] as Map<String, dynamic>?)?['confirmMessage'] as String?;
+        paramsMap?['confirmMessage'] as String?;
     final requireConfirmation = action['requireConfirmation'] as bool? ?? false;
 
     if ((confirmMessage != null || requireConfirmation) &&
@@ -122,6 +129,37 @@ class ClientActionHandler {
           errorCode: 'PERMISSION_DENIED',
         );
       }
+    } else if (_permissionManager.enabled) {
+      // No BuildContext means no PROMPT — it does not mean no CHECK. This
+      // whole block used to sit inside the `buildContext != null` branch, so
+      // every headless path (a dashboard tile, an action fired after the page
+      // that raised it was popped, any render with no mounted context) ran
+      // `client.exec`, `client.readFile` and `client.httpRequest` with the
+      // gate skipped entirely. The tests over this path asserted only that an
+      // `ActionResult` came back.
+      //
+      // Fail closed: what can be decided without asking is decided here, and
+      // anything that would need a prompt is refused rather than allowed.
+      final required = ClientPermissions.getRequiredPermission(type);
+      if (required != null && !_permissionManager.isGranted(required)) {
+        final allowedWithoutPrompt = switch (required) {
+          ClientPermissions.fileRead || ClientPermissions.fileWrite =>
+            _permissionManager.isPathAllowed(
+                (action['path'] ?? action['directory'] ?? '') as String? ?? ''),
+          ClientPermissions.http => _permissionManager
+              .isDomainAllowed(Uri.tryParse(action['url'] as String? ?? '')?.host ?? ''),
+          ClientPermissions.shell => _permissionManager
+              .isCommandAllowed((action['command'] as String? ?? '').split(' ').first),
+          _ => false,
+        };
+        if (!allowedWithoutPrompt) {
+          return ActionResult.error(
+            'Permission "$required" is not granted, and there is no surface to '
+            'ask on: a client action cannot be performed unprompted',
+            errorCode: 'PERMISSION_DENIED',
+          );
+        }
+      }
     }
 
     // Route to appropriate executor
@@ -143,7 +181,10 @@ class ClientActionHandler {
       case ClientActionTypes.exec:
         return _shellExecutor.exec(action, context);
       case ClientActionTypes.clipboard:
-        final params = action['params'] as Map<String, dynamic>? ?? {};
+        final rawInner = action['params'];
+        final params = rawInner is Map
+            ? Map<String, dynamic>.from(rawInner)
+            : <String, dynamic>{};
         final clipAction = params['action'] as String? ?? 'read';
         if (clipAction == 'write') {
           return _systemExecutor.clipboardWrite(action, context);
@@ -165,8 +206,11 @@ class ClientActionHandler {
   /// that read `action['params']['url']` both see the same value.
   /// Explicit top-level keys win over nested duplicates.
   Map<String, dynamic> _flattenParams(Map<String, dynamic> action) {
-    final params = action['params'];
-    if (params is! Map<String, dynamic>) return action;
+    final raw = action['params'];
+    if (raw is! Map) return action;
+    // Same reason as above: accept any map shape, then normalise. A document
+    // whose params arrived through JSON is not a different document.
+    final params = Map<String, dynamic>.from(raw);
     final merged = <String, dynamic>{...params, ...action};
     merged['params'] = params;
     return merged;

@@ -151,4 +151,80 @@ void main() {
       expect(r.isValid, isTrue, reason: r.errors.take(2).join('\n'));
     });
   });
+  // Shape A names the constraint by `kind`. Each kind produces its own rule;
+  // a kind that falls through produces none, so a field the document declared
+  // as an email address accepts anything, and nothing says so.
+  group('§7.2.1 Shape A — every declared kind', () {
+    test('each published kind produces a rule that refuses bad input', () {
+      const cases = <String, String>{
+        'email': 'not-an-email',
+        'url': 'not a url',
+        'phone': 'abc',
+        'number': 'twelve',
+        'date': 'someday',
+      };
+
+      cases.forEach((kind, bad) {
+        final rules = ValidationEngine.parseValidation(<String, dynamic>{
+          'kind': kind,
+        });
+        expect(rules, isNotEmpty, reason: '$kind produced no rule at all');
+
+        final verdict = ValidationEngine.validate(bad, rules);
+        expect(verdict.isValid, isFalse,
+            reason: 'a field declared as $kind that accepts "$bad" is a '
+                'validation the document asked for and did not get');
+      });
+    });
+
+    test('`text` and an absent kind carry no constraint of their own', () {
+      for (final validation in <Map<String, dynamic>>[
+        <String, dynamic>{'kind': 'text'},
+        <String, dynamic>{'sanitize': true},
+      ]) {
+        final rules = ValidationEngine.parseValidation(validation);
+        expect(ValidationEngine.validate('anything', rules).isValid, isTrue,
+            reason: 'sanitize is a normalisation hint, not a rejection rule');
+      }
+    });
+
+    test('a kind nobody published applies no constraint rather than guessing',
+        () {
+      final rules = ValidationEngine.parseValidation(<String, dynamic>{
+        'kind': 'iban',
+      });
+
+      expect(ValidationEngine.validate('anything', rules).isValid, isTrue,
+          reason: 'inventing a constraint for an unknown kind would refuse '
+              'input the document never restricted');
+    });
+
+    test('maxLength and pattern come from the same block', () {
+      final rules = ValidationEngine.parseValidation(<String, dynamic>{
+        'kind': 'text',
+        'maxLength': 3,
+        'pattern': r'^[a-z]+$',
+        'message': 'Three lower-case letters',
+      });
+
+      expect(ValidationEngine.validate('abcd', rules).isValid, isFalse);
+      expect(ValidationEngine.validate('AB', rules).isValid, isFalse);
+      expect(ValidationEngine.validate('abc', rules).isValid, isTrue);
+    });
+  });
+
+  group('the integer rule', () {
+    test('a whole number passes and a fractional one does not', () {
+      final rules = ValidationEngine.parseValidation(<Object>[
+        <String, dynamic>{'rule': 'integer', 'message': 'Whole numbers only'},
+      ]);
+
+      expect(ValidationEngine.validate(4, rules).isValid, isTrue);
+      expect(ValidationEngine.validate(4.5, rules).isValid, isFalse,
+          reason: 'a quantity field that accepts 4.5 lets an order through '
+              'that the warehouse cannot pick');
+      expect(ValidationEngine.validate('4', rules).isValid, isTrue);
+      expect(ValidationEngine.validate('4.5', rules).isValid, isFalse);
+    });
+  });
 }

@@ -294,4 +294,59 @@ void main() {
       expect(config.outbound!.maxRate, equals(5));
     });
   });
+
+  // What the limiter does with what it held back.
+  //
+  // `onExceeded: 'queue'` is a promise that nothing is lost — the message is
+  // sent late rather than dropped — and the two places that promise is kept
+  // had never run: the drain stream a caller reads, and the flush when the
+  // source closes. A queue that is filled and never emptied is the same as
+  // `drop`, except the author believes otherwise.
+  group('what happens to queued messages', () {
+    test('the drain stream hands them back once the window allows', () async {
+      final limiter = ChannelRateLimiter(
+          const RateLimitConfig(maxRate: 2, windowMs: 60, onExceeded: 'queue'));
+
+      expect(limiter.tryEmit('a'), isTrue);
+      expect(limiter.tryEmit('b'), isTrue);
+      expect(limiter.tryEmit('c'), isFalse,
+          reason: 'over the rate, so it is held rather than sent');
+      expect(limiter.tryEmit('d'), isFalse);
+
+      final drained = await limiter.queuedMessages.toList();
+
+      expect(drained, ['c', 'd'],
+          reason: 'in order, and all of them — a queue that answers nothing is '
+              'a promise of "sent late" that turns out to mean "dropped"');
+    });
+
+    test('a drop-policy limiter keeps nothing to drain', () async {
+      final limiter = ChannelRateLimiter(
+          const RateLimitConfig(maxRate: 1, windowMs: 60, onExceeded: 'drop'));
+
+      expect(limiter.tryEmit('a'), isTrue);
+      expect(limiter.tryEmit('b'), isFalse);
+
+      expect(await limiter.queuedMessages.toList(), isEmpty);
+    });
+
+    test('closing the source flushes what is still held', () async {
+      final limiter = ChannelRateLimiter(
+          const RateLimitConfig(maxRate: 1, windowMs: 60, onExceeded: 'queue'));
+      final source = StreamController<dynamic>();
+
+      final seen = <dynamic>[];
+      final done = limiter.applyToStream(source.stream).listen(seen.add).asFuture<void>();
+
+      source.add('first');
+      source.add('held');
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      await source.close();
+      await done;
+
+      expect(seen, ['first', 'held'],
+          reason: 'the stream ended with a message still in hand; dropping it '
+              'at close loses the last thing a device said');
+    });
+  });
 }

@@ -9,7 +9,7 @@ class BreadcrumbFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    final items = context.resolve<List<dynamic>?>(properties['items']) ?? const [];
+    final items = listOf(properties['items'], context) ?? const [];
     final separator = context.resolve<String?>(properties['separator']) ?? '/';
     final maxItems = context.resolve<num?>(properties['maxItems'])?.toInt();
     final onClick = actionOf(properties['onClick'], context);

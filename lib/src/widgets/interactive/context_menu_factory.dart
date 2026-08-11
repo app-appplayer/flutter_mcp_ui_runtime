@@ -17,7 +17,7 @@ class ContextMenuFactory extends WidgetFactory {
     final childDef = properties['child'] as Map<String, dynamic>?;
     if (childDef == null) return const SizedBox.shrink();
 
-    final items = context.resolve<List<dynamic>?>(properties['items']) ?? const [];
+    final items = listOf(properties['items'], context) ?? const [];
     final enabled = context.resolve<bool?>(properties['enabled']) ?? true;
     final onSelect = actionOf(properties['onSelect'], context);
 

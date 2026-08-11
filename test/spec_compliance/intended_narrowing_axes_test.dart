@@ -392,12 +392,23 @@ void main() {
           <String, dynamic>{'title': 'One'},
         ],
         bad: 'One');
+    // A row carries cells: an empty one is not a row the runtime can lay out
+    // (`TableRow` requires at least one), so the accepted value here says so.
     narrows('array<object>', <String, dynamic>{'type': 'table'}, 'rows',
         good: <dynamic>[
-          <String, dynamic>{'cells': <dynamic>[]},
+          <String, dynamic>{
+            'cells': <dynamic>[
+              <String, dynamic>{'type': 'text', 'content': 'One'},
+            ],
+          },
         ],
         bad: 'One');
-    narrows('array<object>', <String, dynamic>{'type': 'conditional'}, 'cases',
+    // `conditional` must carry one of `condition` / `switch`; the switch form
+    // is the one that takes `cases`, so that is the document under test.
+    narrows(
+        'array<object>',
+        <String, dynamic>{'type': 'conditional', 'switch': '{{mode}}'},
+        'cases',
         good: <dynamic>[
           <String, dynamic>{
             'value': 'a',

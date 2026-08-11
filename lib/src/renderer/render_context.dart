@@ -6,6 +6,7 @@ import '../capabilities/media_registry.dart';
 import '../capabilities/runtime_capabilities.dart';
 import '../binding/binding_engine.dart';
 import '../actions/action_handler.dart';
+import '../form_factor/form_factor.dart';
 import '../state/state_manager.dart';
 import '../theme/theme_manager.dart';
 import '../i18n/i18n_manager.dart';
@@ -724,12 +725,15 @@ class RenderContext {
     return null;
   }
 
-  String _formFactorKey(BuildContext context) {
-    final width = MediaQuery.maybeSizeOf(context)?.width ?? 0;
-    if (width < 600) return 'compact';
-    if (width < 840) return 'medium';
-    if (width < 1200) return 'expanded';
-    if (width < 1600) return 'large';
-    return 'extraLarge';
-  }
+  /// The form-factor label a responsive map is picked by.
+  ///
+  /// Through [FormFactor.of], which is the same answer the widgets use — so a
+  /// `FormFactorScope` counts here too. Reading `MediaQuery` directly (what
+  /// this used to do) meant the two disagreed: a host that pinned a view mode,
+  /// or a player that flags `embedded`, changed how the widgets laid out while
+  /// every `{compact: …, expanded: …}` value in the document went on being
+  /// picked by the physical window width. `embedded` in particular could never
+  /// be picked at all, because width alone never says it.
+  String _formFactorKey(BuildContext context) =>
+      FormFactor.of(context).name;
 }

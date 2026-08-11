@@ -12,9 +12,15 @@ import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
 class _RecordingChannelManager extends ChannelManager {
   final started = <String>[];
   final stopped = <String>[];
+  final sent = <List<dynamic>>[];
   final Set<String> _channels = {};
 
   void register(String id) => _channels.add(id);
+
+  @override
+  Future<void> sendToChannel(String channelId, dynamic data) async {
+    sent.add([channelId, data]);
+  }
 
   @override
   Future<void> startChannel(String channelId) async {
@@ -109,6 +115,23 @@ void main() {
           }),
           isFalse,
           reason: 'missing action sub-op must be rejected, not silent no-op');
+    });
+
+    testWidgets('`send` carries the payload to the channel', (tester) async {
+      expect(
+          await fire({
+            'type': 'channel',
+            'action': 'send',
+            'channel': 'tempPoll',
+            'data': {'command': 'reset'},
+          }),
+          isTrue);
+
+      expect(manager.sent, [
+        ['tempPoll', {'command': 'reset'}]
+      ], reason: 'the only outbound sub-op — a document that reports success '
+          'without the manager ever being called has a control that does '
+          'nothing and looks like it worked');
     });
   });
 }

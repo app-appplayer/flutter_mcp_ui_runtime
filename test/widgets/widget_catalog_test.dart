@@ -542,13 +542,23 @@ void main() {
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
     });
 
-    // TC-130: loadingIndicator widget (circular progress indicator)
+    // TC-130: loadingIndicator widget — an alias of `progressBar` (§17.3.1).
+    // The undeclared shape is circular; `indicatorType` chooses the other.
     testWidgets('TC-130: loadingIndicator renders circular indicator',
         (tester) async {
       await pumpPage(tester, {
         'type': 'loadingIndicator',
       });
       expect(find.byType(CircularProgressIndicator), findsWidgets);
+    });
+
+    testWidgets('TC-130b: loadingIndicator takes indicatorType linear',
+        (tester) async {
+      await pumpPage(tester, {
+        'type': 'loadingIndicator',
+        'indicatorType': 'linear',
+      });
+      expect(find.byType(LinearProgressIndicator), findsWidgets);
     });
 
     // TC-131: banner widget (debug mode adds an extra Banner, so use findsWidgets)

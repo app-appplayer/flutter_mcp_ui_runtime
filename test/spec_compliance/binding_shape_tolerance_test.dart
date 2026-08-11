@@ -25,6 +25,12 @@ const _rows = [
 
 /// Each case is the smallest document that reproduced the red box, with the
 /// state that made it happen. These are the fragments consumers asked for.
+///
+/// The second group are LIST slots, reported from a published build after the
+/// scalar ones were fixed: a list property bound to a path that holds a scalar
+/// (a response still loading, an author mid-edit) threw out of
+/// `resolve<List<dynamic>?>` and each widget covered its own area with a red
+/// box while the rest of the page rendered.
 final cases = <String, Map<String, dynamic>>{
   'bottomNavigation': {
     'type': 'bottomNavigation',
@@ -66,6 +72,50 @@ final cases = <String, Map<String, dynamic>>{
     'visible': '{{wrong}}',
     'child': {'type': 'text', 'content': 'inside'},
   },
+
+  // List slots. `wrong` holds rows, and these read a scalar out of it — the
+  // shape sbuilder measured on 0.7.4.
+  'tabBar (bound tabs)': {
+    'type': 'tabBar',
+    'tabs': '{{scalar}}',
+  },
+  'bottomNavigation (bound items)': {
+    'type': 'bottomNavigation',
+    'items': '{{scalar}}',
+  },
+  'dataTable (bound columns)': {
+    'type': 'dataTable',
+    'columns': '{{scalar}}',
+    'rows': '{{scalar}}',
+  },
+  'kanban (bound columns)': {
+    'type': 'kanban',
+    'columns': '{{scalar}}',
+    'itemTemplate': {'type': 'text', 'content': 'x'},
+  },
+  'timeline (bound items)': {
+    'type': 'timeline',
+    'items': '{{scalar}}',
+  },
+  'tree (bound data)': {
+    'type': 'tree',
+    'data': '{{scalar}}',
+  },
+  // `resizable.handles` is `array<string>` — the fourth list slot, added after
+  // sbuilder measured all six and corrected three to four.
+  'resizable (bound handles)': {
+    'type': 'resizable',
+    'child': {'type': 'text', 'content': 'inside'},
+    'handles': '{{scalar}}',
+  },
+  'combobox (bound options)': {
+    'type': 'combobox',
+    'options': '{{scalar}}',
+  },
+  // `pagination.currentPage` is declared literal-only, so a bound value is
+  // refused by the SCHEMA before the runtime sees it — a different gate, and
+  // the one sbuilder measured as "the two layers disagree". Not a tolerance
+  // case; left out rather than asserted against the wrong layer.
 };
 
 void main() {
@@ -87,7 +137,7 @@ void main() {
         'runtime': {
           'services': {
             'state': {
-              'initialState': {'wrong': _rows},
+              'initialState': {'wrong': _rows, 'scalar': 'not a list'},
             },
           },
         },

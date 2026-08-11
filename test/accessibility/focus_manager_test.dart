@@ -1,281 +1,402 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_mcp_ui_runtime/src/accessibility/focus_manager.dart';
+// Focus order — who receives the keyboard next.
+//
+// 58% covered, and the uncovered part is the traversal itself: next, previous,
+// the wrap at either end, the groups, the custom policy. A document declaring
+// an order and getting the tree's order instead is invisible to a sighted
+// mouse user and is the whole experience for anyone on a keyboard or a screen
+// reader.
 
-/// TC-001 ~ TC-005: FocusManager tests
-/// Corresponds to: 04_TEST/feat-runtime/14-accessibility.md §2
+import 'package:flutter/material.dart';
+import 'package:flutter_mcp_ui_runtime/src/accessibility/focus_manager.dart';
+import 'package:flutter_test/flutter_test.dart';
+
 void main() {
-  group('MCPFocusManager Tests', () {
-    late MCPFocusManager focusManager;
+  late MCPFocusManager manager;
+
+  setUp(() {
+    manager = MCPFocusManager.instance;
+    manager.clear();
+  });
+
+  tearDown(() => MCPFocusManager.instance.clear());
+
+  /// Mounts three fields whose nodes are registered in the given order.
+  Future<List<FocusNode>> mountThree(
+    WidgetTester tester, {
+    List<String> ids = const ['a', 'b', 'c'],
+    String? groupId,
+  }) async {
+    final nodes = [for (var i = 0; i < ids.length; i++) FocusNode()];
+    for (var i = 0; i < ids.length; i++) {
+      manager.registerFocusNode(ids[i], nodes[i], groupId: groupId);
+    }
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Column(
+          children: [
+            for (var i = 0; i < ids.length; i++)
+              TextField(focusNode: nodes[i], decoration: InputDecoration(labelText: ids[i])),
+          ],
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    return nodes;
+  }
+
+  group('registration', () {
+    testWidgets('a registered node can be looked up and focused',
+        (tester) async {
+      final nodes = await mountThree(tester);
+
+      expect(manager.getFocusNode('b'), same(nodes[1]));
+      manager.focus('b');
+      await tester.pumpAndSettle();
+
+      expect(nodes[1].hasFocus, isTrue);
+    });
+
+    testWidgets('focusing an id nobody registered does nothing', (tester) async {
+      final nodes = await mountThree(tester);
+      manager.focus('a');
+      await tester.pumpAndSettle();
+
+      manager.focus('nonexistent');
+      await tester.pumpAndSettle();
+
+      expect(nodes[0].hasFocus, isTrue,
+          reason: 'a miss must not steal focus from wherever the user was');
+      expect(manager.getFocusNode('nonexistent'), isNull);
+    });
+
+    testWidgets('an explicit order places the node in the traversal',
+        (tester) async {
+      final first = FocusNode();
+      final second = FocusNode();
+      final inserted = FocusNode();
+      manager.registerFocusNode('first', first);
+      manager.registerFocusNode('second', second);
+      manager.registerFocusNode('inserted', inserted, order: 1);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Column(children: [
+            TextField(focusNode: first),
+            TextField(focusNode: second),
+            TextField(focusNode: inserted),
+          ]),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      manager.focus('first');
+      await tester.pumpAndSettle();
+      manager.focusNext();
+      await tester.pumpAndSettle();
+
+      expect(inserted.hasFocus, isTrue,
+          reason: 'the declared order decides who is next, not the order the '
+              'widgets happen to appear in the tree');
+    });
+
+    testWidgets('unregistering removes it from the traversal', (tester) async {
+      final nodes = await mountThree(tester);
+
+      manager.unregisterFocusNode('b');
+      expect(manager.getFocusNode('b'), isNull);
+
+      manager.focus('a');
+      await tester.pumpAndSettle();
+      manager.focusNext();
+      await tester.pumpAndSettle();
+
+      expect(nodes[2].hasFocus, isTrue,
+          reason: 'a removed node still in the order sends the keyboard to a '
+              'field that is no longer there');
+    });
+  });
+
+  group('traversal', () {
+    testWidgets('next walks forward and wraps at the end', (tester) async {
+      final nodes = await mountThree(tester);
+
+      manager.focus('a');
+      await tester.pumpAndSettle();
+      manager.focusNext();
+      await tester.pumpAndSettle();
+      expect(nodes[1].hasFocus, isTrue);
+
+      manager.focusNext();
+      await tester.pumpAndSettle();
+      expect(nodes[2].hasFocus, isTrue);
+
+      manager.focusNext();
+      await tester.pumpAndSettle();
+      expect(nodes[0].hasFocus, isTrue,
+          reason: 'tabbing off the end of a dialog has to come back round, or '
+              'the keyboard user is stranded on the last field');
+    });
+
+    testWidgets('previous walks backward and wraps at the start',
+        (tester) async {
+      final nodes = await mountThree(tester);
+
+      manager.focus('b');
+      await tester.pumpAndSettle();
+      manager.focusPrevious();
+      await tester.pumpAndSettle();
+      expect(nodes[0].hasFocus, isTrue);
+
+      manager.focusPrevious();
+      await tester.pumpAndSettle();
+      expect(nodes[2].hasFocus, isTrue);
+    });
+
+    testWidgets('with the focus outside the registered set, next and previous '
+        'leave it alone', (tester) async {
+      // `primaryFocus` is never truly null in a mounted app — the scope holds
+      // it — so the "nothing focused" branch belongs to a headless caller.
+      // What a page can actually reach is this: the focus sits somewhere the
+      // manager does not own, and neither call may yank it away.
+      final nodes = await mountThree(tester);
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+
+      manager.focusNext();
+      await tester.pumpAndSettle();
+      expect(nodes.any((n) => n.hasFocus), isFalse,
+          reason: 'a scope-level focus is not one of the registered nodes, so '
+              'there is no "current" to step from');
+
+      manager.focus('a');
+      await tester.pumpAndSettle();
+      manager.focusPrevious();
+      await tester.pumpAndSettle();
+      expect(nodes[2].hasFocus, isTrue,
+          reason: 'and from a known node, previous still wraps to the last');
+    });
+
+    testWidgets('with nothing registered, next and previous do nothing',
+        (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: Text('x'))));
+      manager.focusNext();
+      manager.focusPrevious();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a focus held by something the manager does not know is left '
+        'alone', (tester) async {
+      final outsider = FocusNode();
+      addTearDown(outsider.dispose);
+      final nodes = await mountThree(tester);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Column(children: [
+            TextField(focusNode: outsider),
+            for (final node in nodes) TextField(focusNode: node),
+          ]),
+        ),
+      ));
+      outsider.requestFocus();
+      await tester.pumpAndSettle();
+
+      manager.focusNext();
+      await tester.pumpAndSettle();
+
+      expect(outsider.hasFocus, isTrue,
+          reason: 'the manager owns its own order; yanking focus out of a '
+              'field it never registered would fight the framework');
+    });
+  });
+
+  group('groups', () {
+    testWidgets('focusGroup lands on the first member', (tester) async {
+      final nodes = await mountThree(tester, groupId: 'toolbar');
+
+      manager.focusGroup('toolbar');
+      await tester.pumpAndSettle();
+
+      expect(nodes[0].hasFocus, isTrue);
+    });
+
+    testWidgets('a group nobody declared is a no-op', (tester) async {
+      final nodes = await mountThree(tester, groupId: 'toolbar');
+      manager.focus('b');
+      await tester.pumpAndSettle();
+
+      manager.focusGroup('imaginary');
+      await tester.pumpAndSettle();
+
+      expect(nodes[1].hasFocus, isTrue);
+    });
+
+    testWidgets('trapping and releasing a group is recorded', (tester) async {
+      await mountThree(tester, groupId: 'dialog');
+
+      manager.trapFocus('dialog');
+      manager.releaseFocusTrap('dialog');
+      // Both on a group that does not exist, too — neither may throw, because
+      // a dialog closing after its group was cleared hits exactly this.
+      manager.trapFocus('gone');
+      manager.releaseFocusTrap('gone');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('unregistering removes the node from its group too',
+        (tester) async {
+      final nodes = await mountThree(tester, groupId: 'toolbar');
+
+      manager.unregisterFocusNode('a');
+      manager.focusGroup('toolbar');
+      await tester.pumpAndSettle();
+
+      expect(nodes[1].hasFocus, isTrue,
+          reason: 'a group still holding a disposed node would focus nothing '
+              'and swallow the keyboard');
+    });
+  });
+
+  group('FocusGroup', () {
+    test('holds its nodes in the order they were added', () {
+      final group = FocusGroup('g');
+      final a = FocusNode();
+      final b = FocusNode();
+      addTearDown(a.dispose);
+      addTearDown(b.dispose);
+
+      group.addNode('a', a);
+      group.addNode('b', b);
+      expect(group.nodeIds, ['a', 'b']);
+      expect(group.nodes['b'], same(b));
+
+      group.removeNode('a');
+      expect(group.nodeIds, ['b']);
+      expect(group.nodes.containsKey('a'), isFalse);
+      expect(group.trapFocus, isFalse);
+    });
+  });
+
+  group('MCPFocusTraversalPolicy', () {
+    late FocusNode a;
+    late FocusNode b;
+    late FocusNode c;
+    late MCPFocusTraversalPolicy policy;
 
     setUp(() {
-      focusManager = MCPFocusManager.instance;
-      focusManager.clear();
+      a = FocusNode(debugLabel: 'a');
+      b = FocusNode(debugLabel: 'b');
+      c = FocusNode(debugLabel: 'c');
+      policy = MCPFocusTraversalPolicy(
+        traversalOrder: const ['a', 'b', 'c'],
+        focusNodes: {'a': a, 'b': b, 'c': c},
+      );
     });
 
-    // TC-001: FocusManager — requestFocus and clearFocus
-    group('TC-001: registerFocusNode, unregisterFocusNode, getFocusNode', () {
-      test('Normal: registerFocusNode stores node, getFocusNode retrieves it',
-          () {
-        final node1 = FocusNode(debugLabel: 'widget-1');
-        final node2 = FocusNode(debugLabel: 'widget-2');
-        focusManager.registerFocusNode('widget-1', node1);
-        focusManager.registerFocusNode('widget-2', node2);
-
-        expect(focusManager.getFocusNode('widget-1'), equals(node1));
-        expect(focusManager.getFocusNode('widget-2'), equals(node2));
-      });
-
-      test('Normal: unregisterFocusNode removes node', () {
-        final node = FocusNode(debugLabel: 'temp');
-        focusManager.registerFocusNode('temp', node);
-        expect(focusManager.getFocusNode('temp'), isNotNull);
-
-        focusManager.unregisterFocusNode('temp');
-        expect(focusManager.getFocusNode('temp'), isNull);
-      });
-
-      test(
-          'Normal: registering focus on different widget replaces previous registration',
-          () {
-        final node1 = FocusNode(debugLabel: 'widget-1');
-        final node2 = FocusNode(debugLabel: 'widget-1-v2');
-        focusManager.registerFocusNode('widget-1', node1);
-        focusManager.registerFocusNode('widget-1', node2);
-
-        // Overwritten with the new node
-        expect(focusManager.getFocusNode('widget-1'), equals(node2));
-      });
-
-      test('Boundary: getFocusNode on non-existent key returns null', () {
-        expect(focusManager.getFocusNode('nonexistent'), isNull);
-      });
-
-      test('Boundary: unregisterFocusNode with non-existent key is no-op', () {
-        // Should not throw
-        focusManager.unregisterFocusNode('nonexistent');
-        expect(focusManager.getFocusNode('nonexistent'), isNull);
-      });
+    tearDown(() {
+      a.dispose();
+      b.dispose();
+      c.dispose();
     });
 
-    // TC-002: FocusManager — focusOrder
-    group('TC-002: Focus order management', () {
-      test('Normal: nodes registered with order are retrievable', () {
-        final nodeA = FocusNode(debugLabel: 'btn-a');
-        final nodeB = FocusNode(debugLabel: 'btn-b');
-        focusManager.registerFocusNode('btn-b', nodeB, order: 0);
-        focusManager.registerFocusNode('btn-a', nodeA, order: 1);
-
-        expect(focusManager.getFocusNode('btn-a'), nodeA);
-        expect(focusManager.getFocusNode('btn-b'), nodeB);
-      });
-
-      test('Normal: unregisterFocusNode removes from traversal order', () {
-        final nodeA = FocusNode(debugLabel: 'btn-a');
-        final nodeB = FocusNode(debugLabel: 'btn-b');
-        focusManager.registerFocusNode('btn-a', nodeA, order: 0);
-        focusManager.registerFocusNode('btn-b', nodeB, order: 1);
-
-        focusManager.unregisterFocusNode('btn-a');
-        expect(focusManager.getFocusNode('btn-a'), isNull);
-        // btn-b should still exist
-        expect(focusManager.getFocusNode('btn-b'), nodeB);
-      });
-
-      test('Normal: nodes without explicit order are appended', () {
-        final node1 = FocusNode(debugLabel: 'n1');
-        final node2 = FocusNode(debugLabel: 'n2');
-        final node3 = FocusNode(debugLabel: 'n3');
-        focusManager.registerFocusNode('n1', node1);
-        focusManager.registerFocusNode('n2', node2);
-        focusManager.registerFocusNode('n3', node3);
-
-        // All should be registered
-        expect(focusManager.getFocusNode('n1'), node1);
-        expect(focusManager.getFocusNode('n2'), node2);
-        expect(focusManager.getFocusNode('n3'), node3);
-      });
+    test('first and last come from the declared order', () {
+      expect(policy.findFirstFocus(b), same(a));
+      expect(policy.findLastFocus(b), same(c));
     });
 
-    // TC-003: FocusManager — focus traps
-    group('TC-003: Focus traps', () {
-      test('Normal: trapFocus constrains focus to group', () {
-        final node1 = FocusNode(debugLabel: 'btn-ok');
-        final node2 = FocusNode(debugLabel: 'btn-cancel');
-        focusManager.registerFocusNode('btn-ok', node1, groupId: 'dialog');
-        focusManager.registerFocusNode('btn-cancel', node2,
-            groupId: 'dialog');
-
-        focusManager.trapFocus('dialog');
-        // No exception thrown, trap is active
-        expect(true, isTrue);
-      });
-
-      test('Normal: releaseFocusTrap removes constraint', () {
-        final node1 = FocusNode(debugLabel: 'btn-ok');
-        focusManager.registerFocusNode('btn-ok', node1, groupId: 'dialog');
-
-        focusManager.trapFocus('dialog');
-        focusManager.releaseFocusTrap('dialog');
-        // No exception thrown
-        expect(true, isTrue);
-      });
-
-      test('Boundary: nested traps — inner trap active, release restores outer',
-          () {
-        final outerNode = FocusNode(debugLabel: 'outer');
-        final innerNode = FocusNode(debugLabel: 'inner');
-        focusManager.registerFocusNode('outer-btn', outerNode,
-            groupId: 'outer-dialog');
-        focusManager.registerFocusNode('inner-btn', innerNode,
-            groupId: 'inner-dialog');
-
-        focusManager.trapFocus('outer-dialog');
-        focusManager.trapFocus('inner-dialog');
-        // Release inner
-        focusManager.releaseFocusTrap('inner-dialog');
-        // Outer should still be manageable
-        focusManager.releaseFocusTrap('outer-dialog');
-        expect(true, isTrue);
-      });
-
-      test('Error: releaseFocusTrap with unknown scope is no-op', () {
-        // Should not throw
-        focusManager.releaseFocusTrap('nonexistent');
-        expect(true, isTrue);
-      });
-
-      test('Error: trapFocus with unknown group is no-op', () {
-        // Should not throw
-        focusManager.trapFocus('nonexistent');
-        expect(true, isTrue);
-      });
+    test('an empty order falls back to the node it was asked about', () {
+      const empty = MCPFocusTraversalPolicy(
+          traversalOrder: [], focusNodes: <String, FocusNode>{});
+      expect(empty.findFirstFocus(b), same(b));
+      expect(empty.findLastFocus(b), same(b));
     });
 
-    // TC-004: FocusManager — initialFocus and restoreFocus
-    group('TC-004: initialFocus and restoreFocus', () {
-      testWidgets('Normal: FocusRestore widget renders child',
-          (tester) async {
-        await tester.pumpWidget(
-          const MaterialApp(
-            home: Scaffold(
-              body: FocusRestore(
-                focusId: 'restore-scope',
-                child: Text('Content'),
-              ),
-            ),
-          ),
-        );
-
-        expect(find.text('Content'), findsOneWidget);
-      });
-
-      testWidgets(
-          'Normal: FocusRestore saves focus on init and restores on dispose',
-          (tester) async {
-        // Build a widget with FocusRestore, then remove it
-        final key = GlobalKey();
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: FocusRestore(
-                key: key,
-                focusId: 'scope-a',
-                child: const Text('Restorable'),
-              ),
-            ),
-          ),
-        );
-
-        expect(find.text('Restorable'), findsOneWidget);
-
-        // Replace the widget tree to trigger dispose
-        await tester.pumpWidget(
-          const MaterialApp(
-            home: Scaffold(body: Text('Replaced')),
-          ),
-        );
-
-        expect(find.text('Replaced'), findsOneWidget);
-      });
+    test('up and left go to the first, down and right to the last', () {
+      expect(policy.findFirstFocusInDirection(b, TraversalDirection.up),
+          same(a));
+      expect(policy.findFirstFocusInDirection(b, TraversalDirection.left),
+          same(a));
+      expect(policy.findFirstFocusInDirection(b, TraversalDirection.down),
+          same(c));
+      expect(policy.findFirstFocusInDirection(b, TraversalDirection.right),
+          same(c));
     });
 
-    // TC-005: FocusManager — keyboard navigation
-    group('TC-005: Keyboard navigation', () {
-      test(
-          'Normal: MCPFocusTraversalPolicy sortDescendants respects traversal order',
-          () {
-        final node1 = FocusNode(debugLabel: 'a');
-        final node2 = FocusNode(debugLabel: 'b');
-        final node3 = FocusNode(debugLabel: 'c');
+    testWidgets('inDirection moves along the declared order and reports '
+        'whether it moved', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Column(children: [
+            TextField(focusNode: a),
+            TextField(focusNode: b),
+            TextField(focusNode: c),
+          ]),
+        ),
+      ));
+      await tester.pumpAndSettle();
 
-        final policy = MCPFocusTraversalPolicy(
-          traversalOrder: ['b', 'a', 'c'],
-          focusNodes: {'a': node1, 'b': node2, 'c': node3},
-        );
+      expect(policy.inDirection(a, TraversalDirection.down), isTrue);
+      await tester.pumpAndSettle();
+      expect(b.hasFocus, isTrue);
 
-        final sorted = policy.sortDescendants([node1, node2, node3], node1);
-        expect(sorted.toList(), [node2, node1, node3]);
-      });
+      expect(policy.inDirection(b, TraversalDirection.up), isTrue);
+      await tester.pumpAndSettle();
+      expect(a.hasFocus, isTrue);
 
-      test(
-          'Normal: MCPFocusTraversalPolicy findFirstFocus returns first in order',
-          () {
-        final node1 = FocusNode(debugLabel: 'first');
-        final node2 = FocusNode(debugLabel: 'second');
+      expect(policy.inDirection(a, TraversalDirection.up), isFalse,
+          reason: 'false at the boundary is what lets the surrounding scope '
+              'take over instead of the focus sticking');
+      expect(policy.inDirection(c, TraversalDirection.down), isFalse);
+    });
 
-        final policy = MCPFocusTraversalPolicy(
-          traversalOrder: ['first', 'second'],
-          focusNodes: {'first': node1, 'second': node2},
-        );
+    test('a node outside the policy does not move anything', () {
+      final stranger = FocusNode();
+      addTearDown(stranger.dispose);
+      expect(policy.inDirection(stranger, TraversalDirection.down), isFalse);
+    });
 
-        final result = policy.findFirstFocus(node2);
-        expect(result, node1);
-      });
+    test('sortDescendants puts the declared order first', () {
+      final sorted = policy.sortDescendants([c, a, b], a).toList();
+      expect(sorted.take(3), [a, b, c],
+          reason: 'this is what makes Tab follow the document rather than the '
+              'widget tree');
+    });
+  });
 
-      test(
-          'Normal: MCPFocusTraversalPolicy findLastFocus returns last in order',
-          () {
-        final node1 = FocusNode(debugLabel: 'first');
-        final node2 = FocusNode(debugLabel: 'second');
+  group('SkipToContent', () {
+    testWidgets('is announced as a button and calls back when used',
+        (tester) async {
+      var skipped = 0;
 
-        final policy = MCPFocusTraversalPolicy(
-          traversalOrder: ['first', 'second'],
-          focusNodes: {'first': node1, 'second': node2},
-        );
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: SkipToContent(onSkip: () => skipped++)),
+      ));
 
-        final result = policy.findLastFocus(node1);
-        expect(result, node2);
-      });
+      final semantics = tester.widget<Semantics>(find.byWidgetPredicate(
+          (w) => w is Semantics && w.properties.button == true));
+      expect(semantics.properties.label, 'Skip to main content',
+          reason: 'the label IS the control for a screen-reader user — it is '
+              'deliberately invisible on screen');
 
-      test('Boundary: empty traversal order returns current node', () {
-        final currentNode = FocusNode(debugLabel: 'current');
+      await tester.tap(find.byType(SkipToContent));
+      await tester.pumpAndSettle();
+      expect(skipped, 1);
+    });
+  });
 
-        final policy = MCPFocusTraversalPolicy(
-          traversalOrder: [],
-          focusNodes: {},
-        );
+  group('clear', () {
+    testWidgets('forgets every node, order and group', (tester) async {
+      await mountThree(tester, groupId: 'toolbar');
 
-        expect(policy.findFirstFocus(currentNode), currentNode);
-        expect(policy.findLastFocus(currentNode), currentNode);
-      });
+      manager.clear();
 
-      test(
-          'Boundary: sortDescendants includes nodes not in traversal order at end',
-          () {
-        final node1 = FocusNode(debugLabel: 'ordered');
-        final node2 = FocusNode(debugLabel: 'unordered');
-
-        final policy = MCPFocusTraversalPolicy(
-          traversalOrder: ['ordered'],
-          focusNodes: {'ordered': node1},
-        );
-
-        final sorted = policy.sortDescendants([node1, node2], node1);
-        final sortedList = sorted.toList();
-        expect(sortedList.first, node1);
-        expect(sortedList.last, node2);
-      });
+      expect(manager.getFocusNode('a'), isNull);
+      manager.focusNext();
+      manager.focusGroup('toolbar');
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
     });
   });
 }

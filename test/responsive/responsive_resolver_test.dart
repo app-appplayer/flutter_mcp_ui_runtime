@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/src/responsive/breakpoint_system.dart';
 import 'package:flutter_mcp_ui_runtime/src/responsive/responsive_resolver.dart';
@@ -81,6 +82,61 @@ void main() {
     test('Boundary: empty definition returns empty map', () {
       final resolved = resolver.resolveDefinition({}, 500);
       expect(resolved, isEmpty);
+    });
+  });
+
+  // The `BuildContext` doors. Both resolvers offer one — a caller that has a
+  // context and no width — and neither had been called, so the width they
+  // read was nobody's knowledge. Reading the wrong dimension (height, or a
+  // parent's box) picks the wrong breakpoint on every screen.
+  group('resolving from a BuildContext', () {
+    testWidgets('the resolver reads the window width', (tester) async {
+      Map<String, dynamic>? resolved;
+
+      await tester.pumpWidget(MediaQuery(
+        data: const MediaQueryData(size: Size(1000, 400)),
+        child: Builder(builder: (context) {
+          resolved = resolver.resolveDefinition(
+            <String, dynamic>{
+              'columns': <String, dynamic>{'compact': 12, 'expanded': 6},
+            },
+            MediaQuery.of(context).size.width,
+          );
+          final viaContext = resolver.resolveFromContext(
+            <String, dynamic>{
+              'columns': <String, dynamic>{'compact': 12, 'expanded': 6},
+            },
+            context,
+          );
+          expect(viaContext, resolved,
+              reason: 'the convenience door has to answer exactly what the '
+                  'explicit one does, or two call sites disagree about the '
+                  'same screen');
+          return const SizedBox();
+        }),
+      ));
+
+      expect(resolved!['columns'], 6,
+          reason: 'a thousand logical pixels is the expanded class — the '
+              'width is read, not the height');
+    });
+
+    testWidgets('the breakpoint system reads it the same way', (tester) async {
+      final system = BreakpointSystem();
+
+      await tester.pumpWidget(MediaQuery(
+        data: const MediaQueryData(size: Size(500, 900)),
+        child: Builder(builder: (context) {
+          expect(
+              system.resolveFromContext(
+                  <String, dynamic>{'compact': 'phone', 'expanded': 'desktop'},
+                  context),
+              'phone',
+              reason: 'a tall narrow window is compact; picking by height '
+                  'would make every phone a desktop');
+          return const SizedBox();
+        }),
+      ));
     });
   });
 

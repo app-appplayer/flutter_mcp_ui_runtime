@@ -34,8 +34,7 @@ class WebViewWidgetFactory extends WidgetFactory {
     // and dropped here.
     final backgroundColor =
         parseColor(properties['backgroundColor'], context) ??
-            context.themeManager.getColorValue('surface') ??
-            Colors.white;
+            context.themeManager.colorOr('surface', Colors.white);
 
     // Action handlers
     final onPageStarted = actionOf(properties['onPageStarted'], context);
@@ -176,6 +175,18 @@ class _WebViewWidgetState extends State<_WebViewWidget> {
         _errorMessage = 'Either url or html content is required';
       });
       afterFrame(() => _notifyError(_errorMessage!));
+      return;
+    }
+
+    // Inline markup needs no engine to show, and showing it as source is not
+    // a facsimile of a rendered page — it is labelled as source. Reporting the
+    // capability absent here left a document that supplies its own HTML with
+    // a blank box and the preview below unreachable.
+    if (widget.html != null) {
+      apply(() {
+        _isLoading = false;
+        _errorMessage = null;
+      });
       return;
     }
 

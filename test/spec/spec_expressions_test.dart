@@ -81,6 +81,40 @@ const Map<String, Expectation> checked = {
       Expectation({'pct': 68}, 0.5655),
   '3.14 + (app.progress / 100) * 3.14': Expectation({'progress': 50}, 4.71),
 
+  // §3.6.2/§3.6.4 — a predicate written the way every other language writes
+  // it, and a call's result read the way a path is read. Both came back empty
+  // rather than wrong: `(r) => r.ok` was not recognised as a lambda, so the
+  // value it evaluated to was read as a property NAME and the filter answered
+  // with no rows; `filter(...).length` fell to a path lookup and answered
+  // null, while `rows.length` — the same reading of the same list — answered.
+  // Two consumers wrote the "N of M" form and both read a blank.
+  "length(filter(rows, 'ok'))": Expectation({
+    'rows': [
+      {'ok': true},
+      {'ok': false},
+      {'ok': true},
+    ],
+  }, 2),
+  "filter(rows, 'ok').length": Expectation({
+    'rows': [
+      {'ok': true},
+      {'ok': false},
+      {'ok': true},
+    ],
+  }, 2),
+  'filter(rows, (r) => r.ok).length': Expectation({
+    'rows': [
+      {'ok': true},
+      {'ok': false},
+      {'ok': true},
+    ],
+  }, 2),
+  'rows.length': Expectation({
+    'rows': [
+      {'ok': true},
+      {'ok': false},
+    ],
+  }, 2),
   // §3.6.3 — the lambda form of reduce, with the spec's own arguments.
   'reduce(items, (acc, i) => acc + i.price * i.qty, 0)': Expectation({
     'items': [

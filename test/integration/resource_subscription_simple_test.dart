@@ -91,7 +91,7 @@ void main() {
       expect(find.text('CPU: 0%'), findsOneWidget);
 
       // First register the subscription
-      runtime.engine!.registerResourceSubscription('mcp://server/cpu', 'cpu');
+      runtime.engine.registerResourceSubscription('mcp://server/cpu', 'cpu');
 
       // Send notification — spec §4.5: payload stored at binding as-is.
       // The content has no `text` wrapper, so the entire map is stored at

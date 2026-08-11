@@ -162,4 +162,125 @@ void main() {
 
     await runtime.destroy();
   });
+  // What arrives over the wire is not always what §6.4 describes. Each of
+  // these is a notification the runtime cannot act on, and in every case the
+  // metadata already on screen — the title bar, the icon, the version — has to
+  // stay as it is. Replacing it with nothing would blank a live shell.
+  group('an update the runtime cannot read', () {
+    Future<MCPUIRuntime> boot() async {
+      final runtime = MCPUIRuntime();
+      await runtime.initialize({
+        'type': 'application',
+        'title': 'Demo',
+        'version': '1.0.0',
+        'icon': 'https://example.com/v1.png',
+        'initialRoute': '/',
+        'routes': {'/': 'ui://page/home'},
+      }, pageLoader: (_) async => {
+            'type': 'page',
+            'content': {'type': 'text', 'text': 'home'},
+          });
+      return runtime;
+    }
+
+    test('content whose text will not parse leaves the cache alone', () async {
+      final runtime = await boot();
+      var notifyCount = 0;
+      runtime.appMetadata.addListener(() => notifyCount++);
+
+      await runtime.handleNotification({
+        'method': 'notifications/resources/updated',
+        'params': {
+          'uri': 'ui://app/info',
+          'content': {'text': 'not json at all'},
+        },
+      });
+
+      expect(notifyCount, 0);
+      expect(runtime.appMetadata.value?.icon, 'https://example.com/v1.png');
+
+      await runtime.destroy();
+    });
+
+    test('a reader that throws leaves the cache alone', () async {
+      final runtime = await boot();
+
+      await runtime.handleNotification(
+        {
+          'method': 'notifications/resources/updated',
+          'params': {'uri': 'ui://app/info'},
+        },
+        resourceReader: (_) async => throw StateError('resource gone'),
+      );
+
+      expect(runtime.appMetadata.value?.version, '1.0.0',
+          reason: 'a failed read is not new metadata; clearing the shell on '
+              'it would empty the title bar of a running app');
+
+      await runtime.destroy();
+    });
+
+    test('standard mode with no reader wired changes nothing', () async {
+      final runtime = await boot();
+
+      await runtime.handleNotification({
+        'method': 'notifications/resources/updated',
+        'params': {'uri': 'ui://app/info'},
+      });
+
+      expect(runtime.appMetadata.value?.version, '1.0.0');
+
+      await runtime.destroy();
+    });
+
+    test('content given directly, without the text wrapper, is read', () async {
+      final runtime = await boot();
+
+      await runtime.handleNotification({
+        'method': 'notifications/resources/updated',
+        'params': {
+          'uri': 'ui://app/info',
+          'content': {
+            'title': 'Demo',
+            'version': '2.0.0',
+            'icon': 'https://example.com/v9.png',
+          },
+        },
+      });
+
+      expect(runtime.appMetadata.value?.version, '2.0.0',
+          reason: 'a host that inlines the object rather than a JSON string '
+              'is still telling the runtime the same thing');
+
+      await runtime.destroy();
+    });
+
+    test('the same metadata twice does not wake the listeners', () async {
+      final runtime = await boot();
+      var notifyCount = 0;
+      runtime.appMetadata.addListener(() => notifyCount++);
+
+      for (var i = 0; i < 2; i++) {
+        await runtime.handleNotification({
+          'method': 'notifications/resources/updated',
+          'params': {
+            'uri': 'ui://app/info',
+            'content': {
+              'text': jsonEncode({
+                'title': 'Demo',
+                'version': '1.0.9',
+                'icon': 'https://example.com/v1.png',
+              }),
+            },
+          },
+        });
+      }
+
+      expect(notifyCount, 1,
+          reason: 'a shell that rebuilds on every unchanged push flickers for '
+              'no reason');
+
+      await runtime.destroy();
+    });
+  });
 }

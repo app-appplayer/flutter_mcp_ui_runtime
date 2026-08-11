@@ -156,4 +156,37 @@ void main() {
       expect(fontManager.getFontState('AlreadyLoaded'), FontState.loaded);
     });
   });
+
+  group('FontConfig', () {
+    test('reads the declared shape, and survives the round trip', () {
+      final config = FontConfig.fromJson(<String, dynamic>{
+        'family': 'Inter',
+        'source': 'assets/fonts/Inter.ttf',
+        'weight': 600,
+        'style': 'italic',
+      });
+
+      expect(config.family, 'Inter');
+      expect(config.source, 'assets/fonts/Inter.ttf');
+      expect(config.weight, 600);
+      expect(config.style, 'italic');
+
+      expect(config.toJson(), <String, dynamic>{
+        'family': 'Inter',
+        'source': 'assets/fonts/Inter.ttf',
+        'weight': 600,
+        'style': 'italic',
+      });
+    });
+
+    test('the optional fields are left out rather than emitted as null', () {
+      final config =
+          FontConfig.fromJson(<String, dynamic>{'family': 'Inter'});
+
+      expect(config.source, isNull);
+      expect(config.toJson(), <String, dynamic>{'family': 'Inter'},
+          reason: 'a null source would read as "load this from nowhere" '
+              'rather than "this face is already present"');
+    });
+  });
 }

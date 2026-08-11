@@ -121,7 +121,7 @@ void main() {
       expect(find.text('Initial message'), findsOneWidget);
       
       // Update the message
-      runtime.engine!.stateManager.set('message', 'Updated message');
+      runtime.engine.stateManager.set('message', 'Updated message');
       await tester.pump();
       
       // Verify text updated

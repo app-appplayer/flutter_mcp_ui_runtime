@@ -53,11 +53,21 @@ void main() {
         context,
       );
 
-      expect(result.success, isTrue);
+      // No host handler is wired in this harness, and that is now REPORTED
+      // rather than answered as success: the executor cannot subscribe,
+      // read or list without one. (These expectations were written from
+      // the implementation — 'should still return success' — which is how
+      // a defect gets a test that guards it.)
+      expect(result.success, isFalse);
+      expect(result.error, contains('handler'));
     });
 
-    test('TC-039 Boundary: subscribe without resource handler still succeeds', () async {
-      // No onResourceSubscribe handler set, should still return success
+    test('TC-039 Boundary: subscribe without a resource handler is reported',
+        () async {
+      // Was: "should still return success" — written from the implementation
+      // rather than from §4.5, and it described the defect. A host with no
+      // subscribe handler cannot subscribe, and a document told otherwise waits
+      // forever for data nobody asked for.
       final result = await actionHandler.execute(
         {
           'type': 'resource',
@@ -68,7 +78,13 @@ void main() {
         context,
       );
 
-      expect(result.success, isTrue);
+      // No host handler is wired in this harness, and that is now REPORTED
+      // rather than answered as success: the executor cannot subscribe,
+      // read or list without one. (These expectations were written from
+      // the implementation — 'should still return success' — which is how
+      // a defect gets a test that guards it.)
+      expect(result.success, isFalse);
+      expect(result.error, contains('handler'));
     });
 
     test('TC-039 Error: subscribe without binding returns error', () async {
@@ -97,10 +113,17 @@ void main() {
         context,
       );
 
-      expect(result.success, isTrue);
+      // No host handler is wired in this harness, and that is now REPORTED
+      // rather than answered as success: the executor cannot subscribe,
+      // read or list without one. (These expectations were written from
+      // the implementation — 'should still return success' — which is how
+      // a defect gets a test that guards it.)
+      expect(result.success, isFalse);
+      expect(result.error, contains('handler'));
     });
 
-    test('TC-040 Boundary: unsubscribe for non-subscribed uri still succeeds', () async {
+    test('TC-040 Boundary: unsubscribe without a resource handler is reported',
+        () async {
       final result = await actionHandler.execute(
         {
           'type': 'resource',
@@ -110,7 +133,13 @@ void main() {
         context,
       );
 
-      expect(result.success, isTrue);
+      // No host handler is wired in this harness, and that is now REPORTED
+      // rather than answered as success: the executor cannot subscribe,
+      // read or list without one. (These expectations were written from
+      // the implementation — 'should still return success' — which is how
+      // a defect gets a test that guards it.)
+      expect(result.success, isFalse);
+      expect(result.error, contains('handler'));
     });
   });
 
@@ -126,7 +155,13 @@ void main() {
         context,
       );
 
-      expect(result.success, isTrue);
+      // No host handler is wired in this harness, and that is now REPORTED
+      // rather than answered as success: the executor cannot subscribe,
+      // read or list without one. (These expectations were written from
+      // the implementation — 'should still return success' — which is how
+      // a defect gets a test that guards it.)
+      expect(result.success, isFalse);
+      expect(result.error, contains('handler'));
     });
 
     test('TC-041 Boundary: read without explicit binding uses uri as default', () async {
@@ -139,7 +174,13 @@ void main() {
         context,
       );
 
-      expect(result.success, isTrue);
+      // No host handler is wired in this harness, and that is now REPORTED
+      // rather than answered as success: the executor cannot subscribe,
+      // read or list without one. (These expectations were written from
+      // the implementation — 'should still return success' — which is how
+      // a defect gets a test that guards it.)
+      expect(result.success, isFalse);
+      expect(result.error, contains('handler'));
     });
 
     test('TC-041 Boundary: read without resource handler still succeeds', () async {
@@ -154,7 +195,13 @@ void main() {
       );
 
       // No handler configured, but operation still returns success
-      expect(result.success, isTrue);
+      // No host handler is wired in this harness, and that is now REPORTED
+      // rather than answered as success: the executor cannot subscribe,
+      // read or list without one. (These expectations were written from
+      // the implementation — 'should still return success' — which is how
+      // a defect gets a test that guards it.)
+      expect(result.success, isFalse);
+      expect(result.error, contains('handler'));
     });
   });
 
@@ -170,7 +217,13 @@ void main() {
         context,
       );
 
-      expect(result.success, isTrue);
+      // No host handler is wired in this harness, and that is now REPORTED
+      // rather than answered as success: the executor cannot subscribe,
+      // read or list without one. (These expectations were written from
+      // the implementation — 'should still return success' — which is how
+      // a defect gets a test that guards it.)
+      expect(result.success, isFalse);
+      expect(result.error, contains('handler'));
     });
 
     test('TC-042 Boundary: list without explicit binding uses uri as default', () async {
@@ -183,7 +236,13 @@ void main() {
         context,
       );
 
-      expect(result.success, isTrue);
+      // No host handler is wired in this harness, and that is now REPORTED
+      // rather than answered as success: the executor cannot subscribe,
+      // read or list without one. (These expectations were written from
+      // the implementation — 'should still return success' — which is how
+      // a defect gets a test that guards it.)
+      expect(result.success, isFalse);
+      expect(result.error, contains('handler'));
     });
 
     test('TC-042 Boundary: list without resource handler still succeeds', () async {
@@ -197,7 +256,13 @@ void main() {
         context,
       );
 
-      expect(result.success, isTrue);
+      // No host handler is wired in this harness, and that is now REPORTED
+      // rather than answered as success: the executor cannot subscribe,
+      // read or list without one. (These expectations were written from
+      // the implementation — 'should still return success' — which is how
+      // a defect gets a test that guards it.)
+      expect(result.success, isFalse);
+      expect(result.error, contains('handler'));
     });
   });
 

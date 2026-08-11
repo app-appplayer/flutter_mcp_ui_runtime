@@ -91,6 +91,29 @@ void main() {
     expect(logs.where((m) => m.contains('active theme')), hasLength(1));
   });
 
+  test('a legacy alias whose canonical slot the theme lacks is reported by '
+      'both names', () {
+    // `divider` is accepted as an old spelling of `outlineVariant`. When the
+    // theme has neither, the author needs to see WHICH slot was looked for —
+    // being told "divider is missing" sends them to add a slot the runtime
+    // does not read.
+    final logs = _capture(
+        () => DslColor.parse('divider', slotResolver: (_) => null));
+
+    expect(logs.where((m) => m.contains('outlineVariant')), hasLength(1));
+    expect(logs.single, contains('divider'));
+  });
+
+  test('an rgba alpha outside 0-1 is reported rather than clamped', () {
+    // `rgba(0,0,0,255)` is the CSS-with-an-alpha-byte mistake. Clamping it to
+    // opaque would draw the right thing for the wrong reason and leave the
+    // document wrong everywhere else it uses that value.
+    final logs = _capture(() => DslColor.parse('rgba(10, 20, 30, 255)'));
+
+    expect(logs.where((m) => m.contains('0-1')), hasLength(1));
+    expect(DslColor.parse('rgba(10, 20, 30, 255)'), isNull);
+  });
+
   test('reporting is bounded — state can produce values without end', () {
     final logs = _capture(() {
       for (var i = 0; i < 400; i++) {

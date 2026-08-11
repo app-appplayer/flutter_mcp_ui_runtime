@@ -22,6 +22,24 @@
 // widget must put pixels on top of the page background. Widgets that legally
 // paint nothing of their own are named in [_paintsNothing], each with the
 // reason — an unexplained entry there is the hole this check exists to close.
+//
+// The matrix above walks *canonical* names only, and that left a hole of the
+// same shape one level up. A document does not have to carry the canonical
+// name: §17.3.1 registers aliases and §18.2.10 says a runtime MUST accept
+// every one of them. Four layers each hold an opinion of which spellings are
+// legal — the yaml registry's `aliases:`, the §17.3.1 table, the generated
+// JSON Schema (which `MCPUIRuntime.initialize` runs as a *load gate*), and the
+// runtime's factory registrations — and nothing compared them. They had
+// drifted in both directions: names the spec promises that make the whole
+// document fail to load, and names the schema admits that draw an
+// `Unknown widget type` box. Line coverage cannot see either, because
+// `registry.register('decoratedBox', …)` executes at boot whether or not a
+// document with that spelling was ever opened.
+//
+// So the second axis: for every spelling any layer calls legal, load the
+// canonical widget's own document under that spelling and require the result
+// the canonical gets — loads, draws, no error box. A disagreement names the
+// layers that promised it, because which layer is wrong is the whole question.
 
 import 'dart:convert';
 import 'dart:io';
@@ -30,6 +48,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart'
+    show validateMcpUiDslWidget;
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
@@ -40,7 +60,7 @@ import '../behaviour/painted_probe.dart';
 /// friends apply flex parent data, `positioned` applies stack parent data.
 /// Rendering one as a bare page body is not a defect in the widget.
 const _needsFlexParent = <String>{'expanded', 'flexible', 'spacer'};
-const _needsStackParent = <String>{'positioned'};
+const _needsStackParent = <String>{'positioned', 'animatedPositioned'};
 
 /// Widgets the spec places by raising them through an action rather than by
 /// putting them in the tree (§2.11). Drawing one inline is not a supported
@@ -56,6 +76,16 @@ const _dialogSurfaces = <String>{
 /// Widgets whose synthesized minimal document the schema rejected. Reported
 /// rather than dropped: a silent skip would read as coverage.
 final Set<String> _synthesisGaps = <String>{};
+
+/// Widgets whose synthesized minimal document built cleanly and drew nothing.
+/// Not a failure — the synthesizer had no content to put in it — but reported,
+/// because for a widget with no spec example it means nothing in this suite
+/// ever saw the widget paint.
+final Set<String> _unpaintedMinimals = <String>{};
+
+/// Documents that drew nothing because they name a local asset this package
+/// does not ship.
+final Set<String> _unpaintedAssets = <String>{};
 
 void main() {
   late final String repoRoot;
@@ -76,6 +106,28 @@ void main() {
   });
 
   tearDownAll(() {
+    // A widget whose only document is a synthesized one that drew nothing has
+    // no pixels asserted anywhere in this suite. That is a coverage hole in
+    // the registry's examples, and it is louder written down than implied.
+    final unproven = _unpaintedMinimals
+        .where((t) =>
+            _generationSpecs.firstWhere((s) => s.type == t).examples.isEmpty)
+        .toList()
+      ..sort();
+    if (unproven.isNotEmpty) {
+      stderr.writeln(
+        'NOTE: ${unproven.length} widget(s) have no example and their '
+        'synthesized document painted nothing, so no test in this file has '
+        'seen them draw: ${unproven.join(", ")}',
+      );
+    }
+    if (_unpaintedAssets.isNotEmpty) {
+      stderr.writeln(
+        'NOTE: ${_unpaintedAssets.length} document(s) drew nothing because '
+        'they name a local asset this package does not ship: '
+        '${(_unpaintedAssets.toList()..sort()).join(", ")}',
+      );
+    }
     if (_synthesisGaps.isNotEmpty) {
       // ignore: avoid_print
       stderr.writeln(
@@ -121,6 +173,28 @@ void main() {
           _synthesisGaps.add(target.type);
           continue;
         }
+        // Who owes pixels. A spec *example* is written to show the widget
+        // doing something, so a blank frame from one is the widget's failure.
+        // A *synthesized* minimal document is this harness guessing: it holds
+        // `{"type": "box"}`, or `columns: 1` with no children, or an element
+        // placeholder the synthesizer had no rule for. Demanding pixels from
+        // those asks the widget to invent them, and every such demand this
+        // matrix made was answered by the frame of the *previous* document —
+        // the shared element key was leaking pixels between renders, which is
+        // what kept them green. So the minimal document owes a clean load and
+        // a clean build; the examples owe the picture.
+        if (entry.key == 'minimal' && problem.contains('painted nothing')) {
+          _unpaintedMinimals.add(target.type);
+          continue;
+        }
+        // An example that names a local asset cannot draw it here: the test
+        // package ships no asset bundle. Same reasoning as the network rule
+        // above — whether an asset resolves is the host's question.
+        if (problem.contains('painted nothing') &&
+            jsonEncode(entry.value).contains('assets/')) {
+          _unpaintedAssets.add('${target.type}/${entry.key}');
+          continue;
+        }
         failures.add('${entry.key}: $problem');
       }
 
@@ -129,7 +203,240 @@ void main() {
               '${failures.join("\n  - ")}');
     });
   }
+
+  group('accepted spellings', () {
+    // The live registry, read from a booted runtime rather than parsed out of
+    // the source: what a document meets is the map the engine built.
+    late final Set<String> registered;
+
+    setUpAll(() async {
+      final runtime = MCPUIRuntime();
+      await runtime.initialize(<String, dynamic>{
+        'type': 'page',
+        'content': <String, dynamic>{'type': 'text', 'content': 'probe'},
+      });
+      registered = runtime.engine.widgetRegistry.registeredTypes.toSet();
+      await runtime.dispose();
+    });
+
+    test('the four layers name the same spellings', () {
+      final canonical = {for (final s in _generationSpecs) s.type};
+      final promised = {for (final s in _spellingsForGeneration()) s.name};
+      final disagreements = <String>[];
+
+      for (final spelling in _spellingsForGeneration()) {
+        final schemaOk = _schemaAccepts(spelling);
+        final runtimeOk = registered.contains(spelling.name);
+        if (schemaOk && runtimeOk) continue;
+        disagreements.add(
+          '${spelling.name} (alias of ${spelling.canonical}) — promised by '
+          '${(spelling.promisedBy.toList()..sort()).join(" + ")}; '
+          'schema ${schemaOk ? "accepts" : "REJECTS"}, '
+          'runtime ${runtimeOk ? "registers" : "does NOT register"}',
+        );
+      }
+      // A factory registered under a name no layer documents is reachable only
+      // by guessing, and the load gate rejects the guess — so the registration
+      // is unreachable and the document that tries it does not open.
+      for (final name in registered.difference(canonical).difference(promised)) {
+        disagreements.add(
+          '$name — registered by the runtime, named by no spec layer',
+        );
+      }
+
+      expect(disagreements, isEmpty,
+          reason: 'accepted-name surface disagrees across layers:\n  - '
+              '${(disagreements..sort()).join("\n  - ")}');
+    });
+
+    // One test per spelling: the canonical document rendered twice in the same
+    // harness, once under each name. §18.2.10 makes acceptance a MUST, and
+    // "accepted" has to mean *drawn the same* — a name that loads and then
+    // paints an error box, or that quietly draws less than the canonical, is
+    // not accepted in any sense an author can use.
+    //
+    // The canonical run is the control. Comparing the alias to it rather than
+    // to a fixed expectation keeps harness chrome out of the verdict, and
+    // means a canonical the harness cannot build reports itself as a skip
+    // instead of blaming the alias.
+    for (final spelling in _spellingsForGeneration()) {
+      testWidgets('${spelling.name} draws as ${spelling.canonical}',
+          (tester) async {
+        final target = _generationSpecs
+            .firstWhere((s) => s.type == spelling.canonical, orElse: () {
+          throw StateError(
+            '§17.3.1 aliases ${spelling.name} to ${spelling.canonical}, '
+            'which is not a widget in the registry',
+          );
+        });
+        final base = _spellableDoc(target);
+        if (base == null) {
+          markTestSkipped(
+            '${spelling.canonical} has no bare-widget document this harness '
+            'can build; the canonical axis reports it',
+          );
+          return;
+        }
+
+        final control = await _render(tester, spelling.canonical,
+            <String, dynamic>{...base, 'type': spelling.canonical});
+        final controlPainted = _lastPainted;
+        // A control that draws nothing is still a control: the alias is then
+        // required to draw nothing too, and the *load* claim below is checked
+        // either way. Only a control that cannot be rendered at all makes the
+        // comparison meaningless — skipping on "painted nothing" would have
+        // hidden every alias of an empty-by-default widget, which is where two
+        // of the four defects were.
+        final controlUnusable =
+            control != null && !control.contains('painted nothing');
+        if (controlUnusable) {
+          markTestSkipped(
+            '${spelling.canonical} itself does not render here ($control); '
+            'the canonical axis owns that',
+          );
+          return;
+        }
+
+        final promised =
+            (spelling.promisedBy.toList()..sort()).join(' + ');
+        final problem = await _render(tester, spelling.canonical,
+            <String, dynamic>{...base, 'type': spelling.name});
+        final aliasPainted = _lastPainted;
+
+        final aliasLoaded =
+            problem == null || problem.contains('painted nothing');
+        expect(aliasLoaded, isTrue,
+            reason: '`${spelling.name}` is registered as an alias of '
+                '`${spelling.canonical}` by $promised, and a document written '
+                'with it does not work: $problem');
+        expect(aliasPainted > 0, controlPainted > 0,
+            reason: '`${spelling.name}` loads but draws differently from '
+                '`${spelling.canonical}` ($promised): '
+                'canonical painted $controlPainted, alias painted '
+                '$aliasPainted');
+      });
+    }
+  });
 }
+
+/// A spelling a document may legally carry for [canonical], and the layers
+/// that say so.
+class _Spelling {
+  _Spelling(this.name, this.canonical, this.promisedBy);
+  final String name;
+  final String canonical;
+  final Set<String> promisedBy;
+}
+
+/// The document the alias axis re-labels: one this harness can build AND the
+/// schema accepts **under the canonical name**, so that a rejection under the
+/// alias is about the alias.
+///
+/// Both filters earn their place. A page-shaped example has no widget `type`
+/// to replace. And the synthesized minimal shape is schema-illegal for ten
+/// widgets (the canonical axis reports them as synthesis gaps) — using one
+/// would have the alias rejected for the harness's reason and read as drift.
+Map<String, dynamic>? _spellableDoc(_WidgetSpec spec) {
+  bool legal(Map<String, dynamic> doc) =>
+      validateMcpUiDslWidget(doc).isValid;
+
+  final minimal = spec.minimal;
+  if (minimal != null && legal(minimal)) return minimal;
+  for (final example in spec.examples) {
+    if (example['type'] == spec.type && legal(example)) return example;
+  }
+  return null;
+}
+
+/// Whether the generated schema — the same one `initialize` gates on — admits
+/// this spelling on the canonical widget's own document.
+bool _schemaAccepts(_Spelling spelling) {
+  final target = _generationSpecs
+      .where((s) => s.type == spelling.canonical)
+      .cast<_WidgetSpec?>()
+      .firstWhere((s) => true, orElse: () => null);
+  if (target == null) return false;
+  final base = _spellableDoc(target);
+  if (base == null) return true; // nothing to judge with; render axis skips it
+  final result =
+      validateMcpUiDslWidget(<String, dynamic>{...base, 'type': spelling.name});
+  return result.isValid;
+}
+
+final List<_Spelling> _generationSpellings = _loadSpellings();
+
+List<_Spelling> _spellingsForGeneration() => _generationSpellings;
+
+/// Reads the two *declaring* layers: the registry's own `aliases:` and the
+/// §17.3.1 table. The schema and the runtime are read where they live — the
+/// schema by validating, the registry map by booting the engine — so a
+/// mismatch is measured rather than re-derived from the same file twice.
+List<_Spelling> _loadSpellings() {
+  final root = _findRepoRoot();
+  final specDir = p.join(root, 'specs', 'mcp_ui_dsl', 'spec', '1.4');
+  final byName = <String, _Spelling>{};
+
+  void add(String name, String canonical, String layer) {
+    if (name == canonical) return;
+    final existing = byName[name];
+    if (existing == null) {
+      byName[name] = _Spelling(name, canonical, {layer});
+    } else {
+      existing.promisedBy.add(layer);
+    }
+  }
+
+  for (final entity
+      in Directory(p.join(specDir, 'widgets')).listSync(recursive: true)) {
+    if (entity is! File || !entity.path.endsWith('.yaml')) continue;
+    final doc = loadYaml(entity.readAsStringSync());
+    if (doc is! YamlMap) continue;
+    final type = doc['type'] as String?;
+    if (type == null) continue;
+    final aliases = doc['aliases'];
+    if (aliases is YamlList) {
+      for (final alias in aliases) {
+        add(alias.toString(), type, 'registry');
+      }
+    }
+  }
+
+  final naming = File(p.join(specDir, '17_Naming.md')).readAsStringSync();
+  final table = naming
+      .split('### 17.3.1 Widget Type Aliases')
+      .last
+      .split('### 17.3.1a')
+      .first;
+  final backticked = RegExp(r'`([^`]+)`');
+  for (final line in table.split('\n')) {
+    if (!line.startsWith('|') || line.startsWith('|--')) continue;
+    final cells = line.split('|').where((c) => c.trim().isNotEmpty).toList();
+    if (cells.length < 2) continue;
+    final canonical = backticked.firstMatch(cells[0])?.group(1);
+    if (canonical == null || canonical == 'Canonical') continue;
+    // Only the names before any parenthetical: the prose in `(…)` cites
+    // properties and canonical names that are not aliases of this row.
+    final aliasCell = cells[1].split('(').first;
+    for (final match in backticked.allMatches(aliasCell)) {
+      add(match.group(1)!, canonical, '§17.3.1');
+    }
+  }
+
+  final out = byName.values.toList()
+    ..sort((a, b) => a.name.compareTo(b.name));
+  return out;
+}
+
+/// Pixels the last [_render] left on the page, or -1 when the check was
+/// skipped. Read by the alias axis, which compares an alias against its
+/// canonical rather than against an absolute: an empty widget's pixel count is
+/// harness chrome (the same `box` document reads 0 or 432 depending on how the
+/// frame was pumped), so only the *difference* between two runs of the same
+/// harness says anything about the name under test.
+int _lastPainted = -1;
+
+/// Makes every rendered frame its own element subtree; see [_render].
+int _frameSeq = 0;
 
 /// Renders [fragment] as the content of a page and returns a description of
 /// the first problem, or null when the frame is clean.
@@ -150,11 +457,24 @@ Future<String?> _render(
     // There is no network in a unit test, so nothing is lost by ignoring it —
     // whether an image *loads* is not what this matrix asks.
     if (text.contains('HTTP request failed, statusCode: 400')) return;
+    // Same reasoning for the synthesized `assets/sample.png`: this package
+    // ships no asset bundle, so the reference resolves to nothing. Whether an
+    // asset *loads* is the host's question, not the widget's.
+    if (text.contains('Unable to load asset')) return;
     errors.add(details);
   };
 
   await tester.binding.setSurfaceSize(const Size(1280, 800));
   addTearDown(() => tester.binding.setSurfaceSize(null));
+
+  // A fresh key per render. A test that renders more than once — the alias
+  // axis renders the canonical and then the alias — reuses the element tree
+  // when the key is constant, and the second document is then drawn into a
+  // subtree built for the first: measured, an unknown widget type produced no
+  // error box at all and the pixel readback came back blank. The key is the
+  // only thing that forces the framework to build the second document from
+  // scratch, which is the condition the single-render tests already had.
+  final frameKey = ValueKey('matrix-${_frameSeq++}');
 
   final runtime = MCPUIRuntime();
   try {
@@ -185,7 +505,7 @@ Future<String?> _render(
           // Wrapped so the frame can be read back as pixels: "no error" and
           // "drew something" are different claims, and only the second is what
           // an author sees.
-          body: isolated(runtime.buildUI(), key: const ValueKey('matrix')),
+          body: isolated(runtime.buildUI(), key: frameKey),
         ),
       ),
     );
@@ -224,11 +544,12 @@ Future<String?> _render(
     // a blank image for widgets that had unmistakably drawn.
     await tester.pump(const Duration(milliseconds: 16));
     await tester.runAsync(() async {
-      final shot = await paintedOf(tester, find.byKey(const ValueKey('matrix')));
+      final shot = await paintedOf(tester, find.byKey(frameKey));
       painted = shot.nonBackground();
     });
   }
   await runtime.dispose();
+  _lastPainted = painted;
 
   if (errors.isNotEmpty) {
     return 'FlutterError: ${errors.first.exceptionAsString()}';

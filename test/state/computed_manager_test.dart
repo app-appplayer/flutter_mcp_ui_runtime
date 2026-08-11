@@ -53,6 +53,36 @@ void main() {
     });
   });
 
+  // A watcher on a COMPUTED key, rather than on a plain state path. The
+  // watcher reads its value back through the same lookup the manager uses, and
+  // that lookup has two arms — computed first, then state. The computed arm
+  // had never run, so a screen watching a derived total was the one shape
+  // nobody had checked.
+  group('a watcher on a computed key', () {
+    test('receives the derived value, not null', () {
+      manager.registerComputed(
+        'sum',
+        ComputedConfig(
+            expression: '{{a + b}}', dependencies: const ['a', 'b']),
+      );
+
+      final seen = <dynamic>[];
+      manager.registerWatcher(
+        'sum',
+        WatcherConfig(handler: (value, _) => seen.add(value)),
+      );
+
+      state.set('a', 10);
+
+      expect(seen, isNotEmpty,
+          reason: 'the dependency moved, so the derived value did — a watcher '
+              'that never fires is a total that never updates');
+      expect(seen.last, 12,
+          reason: 'and it has to be the DERIVED value; reading the state path '
+              '`sum`, which does not exist, answers null and blanks the label');
+    });
+  });
+
   group('watchers', () {
     test('a watcher fires on change, with the previous value', () {
       final seen = <List<dynamic>>[];

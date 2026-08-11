@@ -228,8 +228,11 @@ void main() {
       stateManager.initialize({});
       final context = renderer.createRootContext(null);
       final child = renderer.renderChild(null, context);
-      // renderChild with null returns SizedBox.shrink or null
-      expect(child == null || child is Widget, isTrue);
+      // `child is Widget` is always true for a Widget-typed return, so the
+      // old assertion could not fail. The answer is null — nothing to place —
+      // which is what a parent needs in order to omit the slot entirely
+      // rather than reserving space for an empty box.
+      expect(child, isNull);
     });
   });
 

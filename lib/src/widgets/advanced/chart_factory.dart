@@ -66,19 +66,16 @@ class ChartWidgetFactory extends WidgetFactory {
     // explicitly.
     final primaryColor =
         parseColor(context.resolve(properties['primaryColor']), context) ??
-            context.themeManager.getColorValue('primary') ??
-            Colors.blue;
+            context.themeManager.colorOr('primary', Colors.blue);
     final colors = _parseColors(properties['colors'], context);
     final gridColor =
         parseColor(context.resolve(properties['gridColor']), context) ??
-            context.themeManager.getColorValue('outlineVariant') ??
-            Colors.grey.shade300;
+            context.themeManager.colorOr('outlineVariant', Colors.grey.shade300);
     final backgroundColor =
         parseColor(context.resolve(properties['backgroundColor']), context);
     final labelColor =
         parseColor(context.resolve(properties['labelColor']), context) ??
-            context.themeManager.getColorValue('onSurface') ??
-            Colors.black87;
+            context.themeManager.colorOr('onSurface', Colors.black87);
 
     // Determine if multi-dataset or single data
     final bool isMultiDataset = rawData is Map && rawData.containsKey('datasets');
@@ -107,11 +104,8 @@ class ChartWidgetFactory extends WidgetFactory {
     // into the scaffold tone, so prefer `surfaceContainer` for visible
     // separation. Falls back through surface → white for legacy themes.
     final effectiveBackground = backgroundColor ??
-        context.themeManager.getColorValue('surfaceContainer') ??
-        context.themeManager.getColorValue('surface') ??
-        Colors.white;
-    final effectiveBorder = context.themeManager.getColorValue('outlineVariant') ??
-        Colors.grey.shade200;
+        context.themeManager.colorOr('surfaceContainer', context.themeManager.getColorValue('surface') ?? Colors.white);
+    final effectiveBorder = context.themeManager.colorOr('outlineVariant', Colors.grey.shade200);
 
     if (chartData.isEmpty && datasets.isEmpty) {
       return applyCommonWrappers(
@@ -976,7 +970,12 @@ class _ChartPainter extends CustomPainter {
       // Draw each dataset polygon
       for (int dsIdx = 0; dsIdx < datasets.length; dsIdx++) {
         final ds = datasets[dsIdx];
-        final color = ds.color ?? colors[dsIdx % colors.length];
+        // `borderColor` first, like every other series type: §10 makes it the
+        // LINE colour, and a radar polygon is a line. Reading only
+        // `backgroundColor` here meant a document that coloured its series
+        // the documented way got the palette default on this one chart type.
+        final color =
+            ds.borderColor ?? ds.color ?? colors[dsIdx % colors.length];
         _drawRadarPolygon(
             canvas, center, radius, ds.data, globalMax, angleStep, color, ds.fill);
       }

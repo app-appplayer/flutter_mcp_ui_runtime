@@ -23,9 +23,7 @@ import 'mcp_logger.dart';
 /// Anything else resolves to null *and says so*. Silence is the failure this
 /// exists to stop: an unresolvable name paints nothing, and a screen that
 /// paints nothing looks like a design decision.
-class DslColor {
-  const DslColor._();
-
+abstract final class DslColor {
   /// Canonical M3 scheme slots (§5.3.1) — 28 roles, the three semantic pairs
   /// this spec adds, and the four legacy spellings §5.3.1 keeps.
   static const Set<String> schemeSlots = <String>{

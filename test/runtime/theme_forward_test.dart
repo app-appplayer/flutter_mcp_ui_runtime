@@ -8,7 +8,6 @@
 /// MCPRuntimeWidget AnimatedBuilder → MaterialApp rebuild).
 library;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart' show ThemeDefinition;
 import 'package:flutter_mcp_ui_runtime/flutter_mcp_ui_runtime.dart';
 import 'package:flutter_test/flutter_test.dart';

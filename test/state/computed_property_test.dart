@@ -153,6 +153,25 @@ void main() {
     });
 
     group('Edge Cases', () {
+      test('an expression that cannot be evaluated answers null rather than '
+          'throwing', () {
+        // A path that holds a Map where the expression does arithmetic. The
+        // computed value belongs to a screen, and an exception out of here
+        // takes the whole rebuild with it — a total that cannot be computed
+        // has to read as "no value", which the binding renders as empty.
+        final computed = ComputedProperty.fromExpression(
+          'total',
+          '{{a * b}}',
+        );
+
+        final value = computed.computeAndCache(<String, dynamic>{
+          'a': <String, dynamic>{'not': 'a number'},
+          'b': <String, dynamic>{'nor': 'this'},
+        });
+
+        expect(value, isNull);
+      });
+
       test('should handle complex expressions through fromExpression', () {
         // Test string concatenation
         final computed1 = ComputedProperty.fromExpression(

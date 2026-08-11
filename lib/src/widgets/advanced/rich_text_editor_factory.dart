@@ -28,7 +28,7 @@ class RichTextEditorFactory extends WidgetFactory {
         context.resolve<num?>(properties['minHeight'])?.toDouble() ?? 160.0;
     final maxLength = context.resolve<num?>(properties['maxLength'])?.toInt();
     final enabled = context.resolve<bool?>(properties['enabled']) ?? true;
-    final toolbar = (context.resolve<List<dynamic>?>(properties['toolbar']) ??
+    final toolbar = (listOf(properties['toolbar'], context) ??
             const ['bold', 'italic', 'link', 'bulletList', 'heading'])
         .map((e) => e.toString())
         .toSet();

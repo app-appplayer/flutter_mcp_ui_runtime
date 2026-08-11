@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../widgets/lifecycle_host.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart' as core show WidgetDefinition, PageDefinition;
+import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart' as core
+    show WidgetDefinition, PageDefinition, WidgetSpecRegistry;
 
 import '../runtime/widget_registry.dart';
 import '../binding/binding_engine.dart';
@@ -31,7 +32,9 @@ class Renderer {
   final BindingEngine bindingEngine;
   final ActionHandler actionHandler;
   final StateManager stateManager;
-  final WidgetCache _widgetCache = WidgetCache.instance;
+  /// This renderer's own widget cache — see `WidgetCache.isolated`. A shared
+  /// one leaks the closures of whichever document built the entry first.
+  final WidgetCache _widgetCache = WidgetCache.isolated();
   final MCPLogger _logger = MCPLogger('Renderer');
   dynamic engine;
   bool Function(String action, String route, Map<String, dynamic> params)?
@@ -185,6 +188,35 @@ class Renderer {
   /// is paired with the source [definition] via the inspector before being
   /// returned. The null-check is the only added cost on the production path
   /// and folds into a single predicted branch.
+  /// Depth of the render pass inside an `errorRecovery` subtree.
+  ///
+  /// The renderer normally converts a failed build into an inline error card,
+  /// which is right for a screen with nothing else to fall back on — but it
+  /// also meant `errorRecovery` never saw a failure. Its `handlers`, its
+  /// `fallback` and its `onError` were unreachable: the card had already been
+  /// returned by the time control came back to the widget.
+  ///
+  /// A counter rather than a parameter, because the failure is usually not in
+  /// the immediate child but somewhere below it, and nested `renderWidget`
+  /// calls run on this same instance. Builds are synchronous, so there is no
+  /// interleaving to guard against.
+  int _rethrowDepth = 0;
+
+  /// Renders [definition] letting a build failure escape to the caller.
+  ///
+  /// Only `errorRecovery` should use this: it exists to handle the failure
+  /// itself, and an escaping exception with nobody above to catch it reaches
+  /// the framework instead.
+  Widget renderWidgetRethrowingErrors(
+      Map<String, dynamic> definition, RenderContext context) {
+    _rethrowDepth++;
+    try {
+      return renderWidget(definition, context);
+    } finally {
+      _rethrowDepth--;
+    }
+  }
+
   Widget renderWidget(Map<String, dynamic> definition, RenderContext context) {
     // Instance-level lifecycle (§6.8.2): a widget's own `lifecycle: {}` block.
     // Nothing read it before, so a widget could declare hooks and have them
@@ -231,6 +263,63 @@ class Renderer {
     return wrap(built, definition);
   }
 
+  /// Slots the runtime itself reads on any widget, so a child sitting in one
+  /// of them is not lost.
+  static const _universalSlots = <String>{
+    'child', 'children', 'content', 'body', 'properties', 'lifecycle',
+  };
+
+  /// Already-reported (type, key) pairs — a page that repeats the mistake says
+  /// it once. Per renderer, not per process: a host that opens a second
+  /// document (a studio tab, a launcher opening another app) must hear about
+  /// that document's own dropped children.
+  final Set<String> _reportedUnreadSlots = <String>{};
+
+  /// A child declared into a slot its widget never reads draws nothing and
+  /// says nothing.
+  ///
+  /// `{"type": "box", "content": {...}}` is the shape that cost a colleague a
+  /// day: `box` reads `child`, so the node was never mounted — no widget, no
+  /// error, no pixels, and every downstream reading ("the surface is never
+  /// called", "the capability must be missing") was consistent with it. The
+  /// widget cannot render what it does not know about, but it can say that
+  /// something was declared and dropped, which is the §6.13 rule applied to a
+  /// slot rather than to a capability.
+  ///
+  /// Reported, never rendered: drawing an error box here would change screens
+  /// that carry harmless extra keys. Once per (type, key).
+  void _warnAboutUnreadChildSlots(
+      String type, Map<String, dynamic> definition) {
+    final spec = core.WidgetSpecRegistry.getSpec(type);
+    if (spec == null) return; // unknown to the registry: nothing to compare
+    for (final entry in definition.entries) {
+      final key = entry.key;
+      if (key == 'type') continue;
+      if (spec.parameters.containsKey(key)) continue;
+      if (_universalSlots.contains(key) && spec.parameters.containsKey(key)) {
+        continue;
+      }
+      if (!_looksLikeWidget(entry.value)) continue;
+      // `child`/`children` on a widget whose spec declares neither is the same
+      // mistake in the other direction, and is reported the same way.
+      if (!_reportedUnreadSlots.add('$type|$key')) continue;
+      _logger.warning(
+        '`$type` declares no `$key`, and the widget placed there was dropped: '
+        'nothing was mounted, and nothing else will report it. '
+        '${spec.parameters.containsKey('child') ? 'This widget takes `child`.' : spec.parameters.containsKey('children') ? 'This widget takes `children`.' : ''}',
+      );
+    }
+  }
+
+  /// Whether [value] is a widget declaration, or a list containing one.
+  static bool _looksLikeWidget(Object? value) {
+    if (value is Map && value['type'] is String) return true;
+    if (value is List) {
+      return value.any((e) => e is Map && e['type'] is String);
+    }
+    return false;
+  }
+
   Widget _renderWidgetCore(
       Map<String, dynamic> definition, RenderContext context) {
     final type = definition['type'] as String?;
@@ -242,6 +331,8 @@ class Renderer {
     if (type == null) {
       return _errorWidget('Widget type is required', definition);
     }
+
+    _warnAboutUnreadChildSlots(type, definition);
 
     // Check visible property - return empty widget if explicitly hidden
     // Skip for 'visibility' type which handles visible property itself
@@ -307,6 +398,11 @@ class Renderer {
         PluginHookType.onError,
         data: {'source': 'renderer', 'widgetType': type, 'error': e.toString()},
       );
+
+      // Inside an `errorRecovery` subtree the document asked to handle this
+      // itself; the inline card would hide the failure from the widget whose
+      // whole job is to answer it.
+      if (_rethrowDepth > 0) rethrow;
 
       return _errorWidget('Error rendering $type: $e', definition);
     }

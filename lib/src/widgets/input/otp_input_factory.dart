@@ -170,7 +170,14 @@ class _OtpFieldState extends State<_OtpField> {
                 enabled: widget.enabled,
                 obscureText: widget.masked,
                 textAlign: TextAlign.center,
-                maxLength: 1,
+                // No `maxLength`: the limiting formatter truncates a pasted
+                // or autofilled code to one character BEFORE `onChanged`
+                // runs, so the whole code landed in the first cell and the
+                // rest were never filled — the one behaviour a composed row
+                // of text inputs cannot have, lost to the field that was
+                // meant to keep the cell to one digit. `_distribute` does
+                // that instead: whatever arrives is spread one character per
+                // cell.
                 keyboardType: widget.numeric
                     ? TextInputType.number
                     : TextInputType.text,

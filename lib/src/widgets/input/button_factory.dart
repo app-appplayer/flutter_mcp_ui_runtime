@@ -265,8 +265,7 @@ class ButtonWidgetFactory extends WidgetFactory {
                 ? BorderSide(
                     color: borderColor != null
                         ? parseColor(borderColor, context)!
-                        : (context.themeManager.getColorValue('outlineVariant') ??
-                            Colors.grey),
+                        : (context.themeManager.colorOr('outlineVariant', Colors.grey)),
                     width: borderWidth?.toDouble() ?? 1.0,
                   )
                 : null,

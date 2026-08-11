@@ -161,10 +161,30 @@ void main() {
         await tester.tap(button);
         await tester.pumpAndSettle();
         
-        // Note: Flutter doesn't have native double-click support,
-        // so this would need custom implementation in the button factory
-        // For now, this test documents the expected behavior
-        expect(doubleClickCount, greaterThanOrEqualTo(0));
+        // `greaterThanOrEqualTo(0)` was the old assertion — true for every
+        // possible outcome, including a button that fires nothing at all.
+        // What actually happens is worth pinning: two taps inside the
+        // double-tap window fire `onTap` twice AND `onDoubleTap` once, because
+        // the button wires both recognisers. A document that counts clicks
+        // therefore counts two for a double click.
+        // `greaterThanOrEqualTo(0)` was the old assertion — true for every
+        // possible outcome, including a button that fires nothing at all, and
+        // the comment beside it said double-click "would need custom
+        // implementation". It is implemented, and the semantics are the ones a
+        // document needs: the two recognisers are exclusive.
+        expect(doubleClickCount, 1);
+        expect(singleClickCount, 0,
+            reason: 'the double-tap recogniser wins the gesture arena, so '
+                'onTap does NOT also fire — a document acting on both would '
+                'otherwise open a row and edit it on the same gesture');
+
+        // And a lone tap, with the double-tap window allowed to expire, still
+        // reaches onTap.
+        await tester.tap(button);
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pumpAndSettle();
+        expect(singleClickCount, 1);
+        expect(doubleClickCount, 1);
       });
     });
     
@@ -248,8 +268,6 @@ void main() {
       });
       
       testWidgets('should handle change event on checkbox', (WidgetTester tester) async {
-        bool? lastValue;
-        
         await runtime.initialize({
           'type': 'page',
           'runtime': {

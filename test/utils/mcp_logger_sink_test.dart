@@ -57,6 +57,32 @@ void main() {
     expect(seen.single.stackTrace, same(trace));
   });
 
+  test('a record prints as level, logger and message', () {
+    final records = <MCPLogRecord>[];
+    MCPLogger.onRecord = records.add;
+    addTearDown(() => MCPLogger.onRecord = null);
+
+    MCPLogger('Renderer').warning('a slot was declared and dropped');
+
+    expect(records.single.toString(),
+        '[WARN] [Renderer] a slot was declared and dropped',
+        reason: 'a host that forwards records to its own console prints them '
+            'with this — a record whose text loses the logger name cannot be '
+            'traced back to what said it');
+  });
+
+  test('a logger named after a type carries that name', () {
+    final records = <MCPLogRecord>[];
+    MCPLogger.onRecord = records.add;
+    addTearDown(() => MCPLogger.onRecord = null);
+
+    MCPLogger.forClass(StateError).info('hello');
+
+    expect(records.single.logger, contains('StateError'),
+        reason: 'the type-named factory exists so a class does not have to '
+            'repeat its own name as a string and get it wrong');
+  });
+
   test('a sink that throws does not take the runtime down', () {
     // A host's logging is not allowed to become the runtime's failure mode.
     MCPLogger.onRecord = (_) => throw StateError('sink is broken');

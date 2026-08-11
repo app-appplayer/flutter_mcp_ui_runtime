@@ -1,3 +1,1019 @@
+## [0.7.5] - 2026-08-11
+
+### Every accepted spelling is now drawn, not just every canonical one
+
+The conformance matrix walked canonical widget names only. Four layers each
+held an opinion of which spellings a document may carry — the registry's
+`aliases:`, `17_Naming.md` §17.3.1, the generated JSON Schema (which
+`initialize` runs as a **load gate**), and this package's factory
+registrations — and nothing compared them. They had drifted in both
+directions, and line coverage could not see it: `registry.register('decoratedBox', …)`
+runs at boot whether or not any document with that spelling was ever opened.
+
+- `decoratedBox` — registered here, registered as an alias of `box` by the
+  spec, and **rejected by the schema**, so a document using the spelling the
+  spec promises did not open at all. §18.2.10 says a runtime MUST accept every
+  registered alias.
+- `circularProgressIndicator` — added in 0.7.4 and named by §2.5.14, but the
+  registry never learned it, so the same load gate refused it. The 2026-08-10
+  `progressBar` change had landed in the runtime and the prose and nowhere
+  else; its other half, `indicatorType` defaulting to `circular`, is now
+  declared too.
+- `constrainedBox` — registered here and named by nothing. Declared as a `box`
+  alias rather than dropped: widening costs nothing and the registration was
+  already shipping.
+- `text-form-field` — declared by the registry and accepted by the schema, and
+  **not registered here**, so the document loaded and the field drew an
+  unknown-type box. Registered.
+
+The matrix gained the axis that finds these: every spelling any layer calls
+legal is rendered as its canonical's own document, with the canonical render
+as the control. Two harness defects surfaced while building it — a constant
+frame key was letting pixels leak between renders in one test (an unknown
+widget type produced no error box at all), and the paint assertion was being
+demanded of synthesized documents that have nothing to draw.
+
+### `scrollView.slivers` draws as slivers
+
+**Acceptance was never the problem.** The schema has carried `scrollView.slivers`
+and the five `Sliver` shapes since 1.4, and a sliver document loads on 0.7.4 as
+well as on this release — measured on both. What it did not do was *lay out* as
+slivers: this package had no sliver support, so the entries were placed as
+ordinary children and `sliverAppBar` reached the widget registry, found no
+factory, and drew an unknown-type box in the middle of the page.
+
+(Worth stating plainly because the other changes here are load-gate changes.
+Reading this one as "documents that were rejected now load" sends a consumer
+looking for a validation failure that never happened.)
+
+Sliver mode now builds a `CustomScrollView` — `sliverAppBar` (collapsing,
+pinned/floating/snap/stretch, `flexibleSpace` or a `background` wrapped for
+it), `sliverPersistentHeader` (held between its declared extents),
+`sliverList`, `sliverGrid`, `sliverFixedExtentList`, the latter three taking
+the same `children` / `items` + `itemTemplate` pair the list widgets take. A
+shape the spec does not define is reported in place rather than skipped.
+
+### `sliverAppBar` can name the surface the reader is left with
+
+A collapsing bar shows two surfaces in turn: the hero (`background` /
+`flexibleSpace`) while expanded, and the bar itself once the hero has faded
+out. A `title` colour chosen to read against the hero stops reading at exactly
+the moment the bar collapses — and the document had no way to say otherwise.
+Measured on a real screen: white on navy while open, the same white on the
+theme surface once collapsed.
+
+`backgroundColor` and `foregroundColor` are declared on `sliverAppBar` and read
+by the factory. Declaring `backgroundColor` before this did nothing and said
+nothing — the registry did not accept the key on the route that reaches the
+screen, and the factory never read it.
+
+### Sliver mode stopped differing from linear mode in silence
+
+Reported from a real screen, all three found by measuring rather than reading:
+
+- **A `scrollView` with `slivers` drew nothing in an unbounded parent** — the
+  same widget with `children`, in the same slot, drew. No error, no log. Linear
+  mode had carried an unbounded-parent fallback all along; sliver mode did not,
+  and the difference reached the author as a blank area. Sliver mode now takes
+  the same fallback.
+- **`items` accepted only a binding string** on `sliverList` / `sliverGrid` /
+  `sliverFixedExtentList`, while `list` and `grid` take an array or a binding.
+  The ordinary inline form was refused **at load** in slivers and nowhere else.
+  Widened to the same contract the list widgets use; the factory already read
+  both.
+- **`TableRow.cells` carried a `minItems: 1`** — left behind when the narrowing
+  that file describes was reverted — so `rows: [{"cells": []}]` was refused at
+  load while `rows: [{}]` opened. The description one line below said the
+  refusal must not happen. Removed.
+
+### Shapes that cannot be drawn still open
+
+Three documents passed the load gate and were then refused on screen: a
+`conditional` with neither `condition` nor `switch`, a `tabBar` whose tab named
+no label and no icon, a `table` whose row carried no cells. Declaring the
+missing key required in the schema is the obvious repair and the wrong one —
+validation runs when a document loads, so a narrowed schema does not deprecate
+a field, it stops the whole document opening and takes a page of good widgets
+with it (spec §1.7.5).
+
+So the runtime absorbs them instead:
+
+- a conditional with nothing to test is not true — it shows its `else` /
+  `default` branch, or nothing, and never `then`;
+- a tab naming neither label nor icon draws as an empty tab instead of tripping
+  Flutter's assertion;
+- a table drops the rows it cannot lay out and draws the rest.
+
+### Also
+
+- `HostPlatform` and the `client.platform` family, `signature`'s `data:` URI
+  contract and the `progressBar` shape rules are now what the spec says they
+  are — the three prose sections were written on 2026-08-10 against this
+  behaviour and are part of this cut.
+- Coverage 99.35% (8,750 → 8,816 tests). The tail of that push is in the
+  entries above: most of these defects were found by rewriting a test that
+  asserted nothing into one that reads the result.
+
+### Silences, every one of them measured by someone else
+
+### A list slot reads empty rather than painting a stack trace
+
+Measured on the published 0.7.4 by sbuilder, in the shape that happens during
+ordinary editing: a list property bound to a path whose state holds a scalar —
+a response still loading, a value half-typed. `resolve<List<dynamic>?>` threw,
+and the renderer answers a throw by painting a red
+`Error rendering …: 'String' is not a subtype of 'List<dynamic>?'` box over the
+widget's own area.
+
+Four widgets did that (`tabBar`, `dataTable`, `bottomNavigation`,
+`resizable.handles`); two others (`kenBurnsImage`, `visibility`) already
+degraded quietly, which is the behaviour the other four now share. The scalar
+slots were fixed in 0.7.3 — the list slots were the same defect one type over,
+and they were found because a consumer kept measuring after the first report
+was closed.
+
+- `readList` / `listOf` joins the tolerant readers (`readBool`, `readNumber`,
+  `readDimension`, `readActions`), and the 25 factories that read a list slot
+  now go through it. A wrong-shaped value reads as EMPTY — what the widget
+  draws for no data anyway — so the mistake stays visible as an empty widget
+  rather than as an exception on screen.
+- `bottomNavigation` draws nothing at all below two items: Flutter asserts on a
+  shorter list, so tolerating the shape without that would have traded a cast
+  error for an assertion.
+
+### Collection properties on a state path
+
+`rows.isEmpty` / `.isNotEmpty` / `.first` / `.last`.
+`rows.length` answered from the start and the others answered null, so a
+document that hid an empty section with `{{rows.isEmpty}}` never hid it, with
+nothing said. (The parenthesised method spellings always worked, which is what
+made the property spellings look supported.)
+
+
+Every item here rendered as *nothing* — or as a stack trace where a widget
+belonged — rather than as an error a document could act on. That is the shape
+that costs a day: the screen looks finished, or broken in a way that reads like
+the runtime is broken, and no channel says which.
+
+One more, found while covering `client.*` with tests: `client.theme` reported
+the OS preference while every other `client.theme.*` path read the host theme,
+so an app running dark on a light OS answered `mode: light` beside dark colours
+and a document choosing an asset by mode chose the wrong one.
+
+### A predicate written the ordinary way
+
+`filter(rows, (r) => r.ok)` answered with an empty list. Only the bare
+`r => …` spelling parsed as a lambda; the parenthesised one fell through to the
+operator branch, came back as a value, and `filter` read that value as a
+property NAME — so the shorthand added in 0.7.3 turned a null into an empty
+list. Both were wrong. `(r) => …` now parses, the way `(acc, i) => …` already
+did.
+
+### A chain of more than one call resolved to nothing
+
+`filter(rows, 'done').map('name')` read correctly; adding one more link —
+`.join(', ')`, or `.length` — did not. The receiver test insisted the whole
+receiver be a *single* balanced call, so a receiver that was itself a chain was
+rejected, the expression fell through to a path lookup, and the whole thing
+resolved to null: a blank where a joined list or a count belonged.
+
+The test now accepts a close-paren followed by `.` as the chain continuing,
+which is the only thing it can be. Anything else after the close is still two
+terms with an operator between them, and is still refused.
+
+### A call's result can be read like a path
+
+`rows.length` answered 3 and `filter(rows, 'ok').length` answered nothing —
+the same reading of the same list, one through a path and one through a call.
+§3.6.4 makes the method form equivalent to the function form, so the receiver
+is now an expression rather than only a path. Two consumers wrote the "N of M"
+form and both read a blank; the first attributed it to their own chain, which
+is what a silent answer earns.
+
+### A child in a slot its parent never reads
+
+`{"type": "box", "content": {...}}` — `box` reads `child`, so the node was
+never mounted: no widget, no error, no pixels. Every downstream reading was
+consistent with it ("the surface is never called" → "the capability must be
+absent" → "the shared byte path is broken"), and a colleague walked that whole
+chain before finding the slot name. The runtime cannot render what it does not
+know about, but it can say that something was declared and dropped — §6.13's
+rule applied to a slot rather than to a capability.
+
+Reported through the log, never drawn: an error box here would change screens
+that carry harmless extra keys. Once per (widget, key) per renderer — a host
+that opens a second document still hears about that document's own.
+
+### The error boundary could not recover, and six more
+
+None of these came from a consumer — they came from replacing tests that
+asserted nothing with tests that read the result. Each one is the same shape as
+the rest of this release: the runtime returned success for something it had not
+done.
+
+`ErrorBoundary` / `ErrorRecovery` were the worst of it. They were 49% covered
+and the uncovered half was every path that runs when a document actually
+fails, so six defects sat in the widget whose entire job is to be correct on
+the worst day:
+
+- **The retry strategy could never retry.** `ErrorRecovery` wraps an
+  `ErrorBoundary`, and the boundary holds the error it caught. Clearing the
+  recovery's own error rebuilt the same boundary element, which went straight
+  back to its error surface — so retry, reset, ignore and the dialog's OK were
+  all no-ops on screen. The boundary is now keyed per recovery attempt, so the
+  child is genuinely built again.
+- **One failure was handled twice.** A failed build arrives through
+  `ErrorWidget.builder` AND through `FlutterError.onError`. The host's
+  `onError` fired twice per failure, two dialogs stacked, and the error route
+  was pushed twice.
+- **`setState` was called during build.** That is where a build failure
+  arrives; marking the element dirty mid-build trips an assertion in debug and,
+  in release, lands on a frame the framework has already walked past — so a
+  failed build could leave the old content on screen with no error shown at
+  all. The state is recorded synchronously and repainted after the frame.
+- **`dialog` and `navigate` never ran.** `showDialog` / `Navigator.push` from
+  inside build is illegal, so both strategies asserted instead of acting. They
+  now run after the frame that raised the error.
+- **The boundary took the host's error channel and did not give it back.** It
+  replaced `FlutterError.onError` and then called `FlutterError.presentError`
+  rather than the handler it displaced — so a host's crash reporter received
+  nothing while any boundary was mounted. `ErrorWidget.builder` had the same
+  shape of bug across a rekey: the replacement saved the outgoing boundary's
+  override as "the original", leaving the global pointing at a defunct State.
+  Both are now restored properly, the builder through a stack that survives
+  nesting and out-of-order disposal.
+
+### The app cache was write-only, and what it did load was thrown away
+
+Two faults, one behind the other.
+
+- The cache LOOKUP reads `domain`/`id`/`version` from the top level of an
+  application — the v1.0 shape every bundle uses. The cache WRITE read them
+  only from an `mcpRuntime` block, and filed everything else under
+  `unknown:unknown`. The reader never looked there, so nothing written was
+  ever found.
+- Behind that, the cached *state* was applied before the definition was
+  initialised, and initialising a definition replaces the whole state map. So
+  every cached value was discarded a moment after being loaded, with a debug
+  line saying it had been loaded.
+
+A host priming the cache to resume where the user left off got a fresh start
+and no way to tell. The write now files an application under the identity it
+declares, and the cached state is applied *after* initialisation: the
+definition's `initialState` is where a first run begins, the cache is where
+this user actually was.
+
+### A cached widget belonged to whoever built it first
+
+Found by writing the input-widget tests: the widget cache was one process-wide
+map, and a cached widget is **not** a pure function of its definition — the
+closures inside it hold the `RenderContext` that built it, its state manager
+and its action handler. Two documents that render the same widget definition
+therefore shared one widget, and the second document's `binding` writes landed
+in the FIRST document's state. Nothing on screen said so: the field accepted
+the text and the second document simply never saw it.
+
+`MCPUIRuntime.destroy` already cleared the singleton to stop closures leaking
+into the *next* session — the comment there names the hazard. Two runtimes
+alive at once, which is a dashboard tile beside an open app, had no such
+protection.
+
+Each renderer now owns its cache (`WidgetCache.isolated`); the enable/disable
+switch stays global, because that is a host policy rather than a property of a
+document. `WidgetCache.instance` is unchanged for hosts reading statistics.
+
+### `{{sync.*}}` never resolved
+
+§3 lists `sync.` as a read-only namespace for offline sync status, and the
+runtime carries a `SyncBindingResolver` that answers every path in it. Nothing
+ever handed that resolver a `SyncManager` — `setSyncManager` is called nowhere
+in the package — so it took the "not configured" branch every time and answered
+null. Because the resolver intercepts `{{sync.…}}` *before* the binding
+engine's own path handling, the engine-backed fallback further down was
+unreachable dead code.
+
+A badge bound to `{{sync.pendingCount}}` therefore rendered empty, which reads
+as "nothing pending" — the opposite of what it is there to say. The engine now
+wires the resolver when it builds the sync manager.
+
+### `{{sync.status}}` in a sentence still said nothing
+
+The same binding takes two different paths depending on whether text sits
+beside it: alone it goes through `SyncBindingResolver`, interpolated it goes
+through the binding engine's own `sync.` handling. The second one read the
+status as `syncManager.status.name` — and `.name` is an *extension* getter on
+`Enum`, which does not resolve on a dynamic receiver. The engine is held as
+`dynamic` there to break an import cycle, so that call threw
+`NoSuchMethodError` on every read, the surrounding catch swallowed it, and
+`'Sync: {{sync.status}}'` rendered as `Sync: ` while the badge beside it read
+`idle`.
+
+`lastSyncTime` had the mirror-image gap: the interpolated path answered it, the
+resolver knew only `lastSyncAt`. Both spellings now answer from both paths, and
+the status name is read without depending on static extension resolution.
+
+### Every state read built the whole state into a string, and threw it away
+
+`debug` takes a `String`, so its argument is built at the call site whether or
+not logging is on. Three of those arguments interpolated the ENTIRE state map —
+one on every `get`, one on every `set`, one on every simple binding — and a
+fourth called `toString()` on every value written, to fill a map whose values
+are never read.
+
+Reads are the hottest path there is: every binding, every frame. So the size of
+a document's data became the speed of its screens, and quadratically: a list in
+state was re-serialised once per binding that touched anything. Measured on an
+accumulator `reduce`, which reads once per row — 5,000 rows did not finish
+inside a **ten-second** budget before; the same 5,000 rows take about **30ms**
+now, and the cost is linear in the list again.
+
+Two smaller things fell out with it: a host object whose `toString` throws no
+longer takes a state write down with it (`set` is not in the business of
+printing what it stores), and a document with no computed properties does no
+invalidation work at all.
+
+Found by asking whether an unreachable `catch` could be driven from a test.
+
+### A trust level granted after startup was kept where nobody reads it
+
+`setTrustLevel` applies the level to the permission manager, and when there is
+none — a host that supplied its own implementations for every client action,
+which `registerExecutor` is public in order to allow — it stored the level in
+the field that `initialize` consumes. `initialize` has already run by then, so
+the field is never read again: the host believed it had granted `full`, and the
+runtime went on refusing at whatever level it had. It now says the grant was
+not applied instead of filing it somewhere nothing looks.
+
+### A pinned view mode changed the layout but not the numbers
+
+The widgets read their form factor through `FormFactor.of(context)`, which
+honours a `FormFactorScope` — that scope is how a host pins a view mode, and
+how a derivative player flags `embedded`. The picker for responsive VALUES
+(`{compact: 8, expanded: 24}`) read `MediaQuery` width directly instead, so
+the two disagreed: a window pinned to `expanded` laid out wide and took its
+spacing, columns and sizes from `compact`. And `embedded` could not be picked
+at all — width alone never says it — so every `embedded:` variant in every
+document was dead text.
+
+Both now come from the same answer.
+
+### A live region bound to a changing id kept announcing the old one
+
+`LiveRegion` subscribed in `initState` and never again, so a `regionId` that
+changes — one status line serving several forms, the ordinary way to write it —
+left the widget listening to the region it was created with: the new id was
+never registered, `announce` on it warned "live region not found", and the
+screen reader kept being handed the previous region's last announcement. The
+old region also stayed registered for the life of the process, because only
+`dispose` removes one.
+
+The third widget in this release with the same shape, and the second found by
+writing a test rather than by a report.
+
+### A terminal went quiet the moment it mattered
+
+`terminal` copied its `lines` once in `initState` and never read them again, so
+a console bound to state — a build log, a device session, anything filled by a
+tool response or a channel, which is to say filled AFTER the widget is on
+screen — showed whatever happened to be there at mount and nothing after it.
+The same shape as `networkGraph`'s late nodes in 0.7.4, and the third time this
+class of defect has been found: state that arrives after the first frame.
+
+Bound lines are now read on every change, trimmed to `maxLines` as before. A
+rebuild carrying the same lines is left alone, so a command the user just typed
+keeps its echo until the document's own state catches up.
+
+Found while asking whether an unreachable `addLine` was dead code. It was not
+dead — it was the imperative half of an output path that had no working half.
+
+### `MCPUIRuntimeHelper.render` built a new runtime on every rebuild
+
+The future was created inside `build`, so a theme change, a rotation or a
+parent's `setState` constructed and initialised a whole new `MCPUIRuntime`
+while the previous one was dropped without ever being destroyed — each keeping
+its channels, its state and its subscriptions for the life of the process. And
+a dropped future that then fails has nobody listening: the refusal arrived as
+an uncaught zone error rather than as the error screen the builder beside it is
+written to draw, so a document the runtime could not parse took the app down
+instead of showing what was wrong with it.
+
+The runtime is now created once per document and destroyed when its host goes
+away, including when the host is torn down while `initialize` is still in
+flight. A different document gets a fresh host — a teardown followed by a
+setup, in that order — because `destroy` resets process-wide state (the theme
+manager, the navigation service, the binding caches) that an overlapping
+successor has just set up.
+
+### And elsewhere
+
+- **`numberField`'s stepper could not read its own field.** It parsed the
+  displayed text with `num.tryParse`, which answers null for anything carrying
+  a thousand separator or a `format` wrapper — so stepping a formatted `1,000`
+  landed on `1`. The value is now recovered from the text before stepping.
+- **`numberField`'s `onChange` could not see `{{event.value}}`.** The
+  substitution was hand-rolled and only reached keys inside `params`, so the
+  ordinary spelling — a `state` action whose `value` is `{{event.value}}` —
+  received the literal string. It now publishes the event through a child
+  context like every other input widget, and the `params` substitution is kept
+  for documents already written against it.
+- **`combobox`: arrow-up from a fresh field skipped the last option.** The
+  modular wrap ran from "nothing highlighted" (`-1`) to the second-to-last
+  match instead of the last.
+- **`inkWell` built only the first of its `children`.** The slot is declared
+  in the schema and every entry after the first was accepted and dropped —
+  no error, nothing on screen. They are now stacked, the way `renderPage`
+  stacks a list of children.
+- **`simpleDialog.onSelect` could not see what was picked.** The chosen value
+  was written into the action map as `selectedValue` and never published as
+  `event`, so the ordinary spelling — `value: "{{event.value}}"` — resolved to
+  nothing: the document learned that a choice had been made but not which one.
+  (`selectedValue` still arrives, for documents written against it.)
+- **A one-item bottom bar took the whole application down.** Material's
+  `BottomNavigationBar` asserts on fewer than two destinations, and the
+  application shell handed it whatever the document declared — so an
+  `application` with a single navigation item rendered a red screen instead of
+  its page. That is a legal document, and it is the shape a bundle has while
+  it is still being written. A single destination needs no switcher, so the bar
+  is now omitted and the page opens. (The `bottomNavigation` WIDGET was
+  hardened for this earlier in this release; the shell was not.)
+- **`textInput`'s reveal toggle and phone prefix reached almost nobody.**
+  There are two field builders in the factory — one for a debounced field, one
+  for every other field — and `showToggle` (§2.6.5) plus `defaultCountry`
+  (1.4) were implemented only in the first. A password field asking for a
+  reveal control got none, and a phone field naming a country got no dialling
+  prefix, on the path almost every document takes.
+- **Two notifications raised in the same millisecond collapsed into one.**
+  `showInfo` / `showSuccess` / `showError` / `showWarning` derive their id from
+  `DateTime.now().millisecondsSinceEpoch`, so an error and the warning
+  explaining it — or a batch reporting each item — shared an id and the manager
+  kept only the last. A sequence number now distinguishes them.
+- **A one-off background service could never retry.** It cleared its own
+  running flag before the tool returned, and every retry checks that flag — so
+  `retryOnError` on a one-off was accepted and silently dropped.
+- **`AccessibleFormField` never announced that an error was fixed.** The clear
+  branch tested the error state *after* `setState` had already replaced it, so
+  it was null exactly when the branch needed it not to be. A screen-reader
+  user heard about every mistake and never about the correction.
+- **One plugin failing to unload stranded the rest.** `unloadAllPlugins` let
+  a `PluginException` out of its loop, so a plugin whose `dispose()` threw
+  stopped the shutdown where it stood and every plugin below it in the load
+  order stayed loaded — widgets, actions, services and timers still attached.
+  On a host tearing documents down that is a leak per document. Each failure
+  is now logged and the loop continues.
+- **`client.exec` could answer with empty output.** `stdout` and `stderr` were
+  collected on stream subscriptions that were never awaited, and `exitCode`
+  resolves while the last chunk is still in the pipe. A command whose whole
+  output is one short line hit this routinely, and the document was handed
+  `stdout: ""` for a command that printed. Both streams are now drained before
+  the result is built.
+- **A second dialog reported success without opening.** `DialogService.show`
+  declines while another dialog is up and answers `null`; the `alert` and
+  `simple` branches set their result to `true` regardless. Two taps in quick
+  succession, or a batch declaring two dialogs, told the document the user had
+  been asked. The executor now checks first and reports (§6.13).
+- **`cacheFirst` served an expired entry forever.** The strategy tested
+  `isUsable`, which is true for `stale` as well as `ready`, so a resource past
+  its `ttlSeconds` was returned from cache on every subsequent read and the
+  fetcher was never asked again. A document declaring a 60-second ttl could
+  show an hour-old value for the life of the process. Only a fresh entry
+  short-circuits now; a stale one goes back to the source, and
+  `fallback.useLastKnown` still hands the old value back if that fails.
+  (Serving stale data on purpose remains `staleWhileRevalidate`.)
+- **"Remember this decision" did nothing for `client.exec`.** The shell prompt
+  raised its dialog with no scope, so the decision was stored under a null
+  scope while `PermissionManager` looks one up by the executable name. The
+  stored grant was never found and the user was asked again on every run — the
+  checkbox they had ticked did nothing. The prompt now carries the executable
+  as its scope, matching the lookup. (`file.*` and `http` already passed their
+  path and host.)
+- **`channel` backpressure `latest` kept everything.** The collapse was
+  scheduled on a microtask, which always runs between two stream events, so
+  the strategy behaved exactly like `buffer` — a document asking for "only the
+  current reading" got every reading. It now defers to the next event-loop
+  turn, which is where a burst actually collapses.
+
+### `errorRecovery` could not recover
+
+The widget exists to catch a child that will not build and put something
+usable in its place — a `fallback`, a type-specific `handler`, an `onError`
+report to the document's own server. None of it could ever run. The renderer
+answers a failed build by returning its inline error card, so by the time
+control came back to `errorRecovery` there was no exception left to catch: the
+child had already been replaced, and every branch below the `try` was
+unreachable. A document could declare all three and get the runtime's red box.
+
+- The renderer gained a rethrowing entry point, and `errorRecovery` uses it —
+  a depth counter rather than a parameter, because the failure is usually not
+  in the immediate child but somewhere below it, and the nested render calls
+  run on the same renderer.
+- `onError` is now deferred to after the frame. It runs inside `build()`, and
+  almost every useful `onError` writes state — which marks a listening
+  ancestor dirty mid-build and throws. Reporting the failure must not itself
+  be a second failure.
+
+### A tab whose route failed reported it at the top of the app, not on the tab
+
+The shell called the page loader from inside `build`, which runs again on
+every state change — so a route that fails produced a fresh rejected future on
+every frame, and `TabBarView` mounts only the tabs near the current index, so
+most of those futures had nobody listening. The failure surfaced as an
+unhandled async error (a red frame in a test run, a `FlutterError` in the
+field) instead of as the error page the `FutureBuilder` draws when that tab is
+actually opened.
+
+Each route now has ONE future for the life of the shell, marked handled so an
+unopened tab's failure waits for the tab rather than escaping. As a
+side-effect the loader is no longer re-entered on every frame for a page it
+has already loaded.
+
+### A route with a parameter could not be opened
+
+`/users/:id` is declared as a pattern and pushed with the parameter filled in.
+Flutter's `routes:` table is keyed by exact string, so `/users/42` matched
+nothing: the substitution in `_buildRouteWithParams` and the extraction in
+`parseRoute` both existed with no path between them, and every parameterised
+page in a document was unreachable. `RouteManager.onGenerateRoute` resolves a
+pushed name against the declared patterns, and the four shells that build a
+`MaterialApp` now wire it beside `routes`.
+
+### A page heard `onPause` twice, or never
+
+`onPause` / `onResume` were fired from two places: the page widget, which
+subscribes to the navigator through `RouteAware`, and `RouteManager`, from its
+own page stack. The launch route is never pushed, so it was never on that
+stack — the first page's hooks came only from the widget. Every page after it
+got both. A hook that runs twice runs its teardown twice, which is how a
+subscription is released out from under its second subscriber. `RouteManager`
+now only moves the Navigator; the widget that can see the route change owns
+the report. (The same double-fire was already recorded, and fixed, for the
+replace branch.)
+
+### And elsewhere, in the same pass
+
+- **A `list` bound to a value that is not a list painted a stack trace.** The
+  same defect as the list slots at the top of this release, one layer down:
+  `items` was cast rather than read, so a binding that had not resolved yet —
+  or an object where the document expected a collection — replaced the list
+  with a red box. It now reads as empty, which is what the `emptyMessage`
+  branch is for.
+- **…and that `emptyMessage` could not draw either.** It coloured itself from
+  `Theme.of(context.buildContext!)`, asserting a field that is nullable, so
+  the empty-list branch threw wherever the render context had no build
+  context. The theme is now read through a `Builder`, at the list's own place
+  in the tree.
+- **A `tooltip` with a `richMessage` did not build at all.** `Tooltip` asserts
+  that at most one of `message` / `richMessage` is given, and the factory
+  passed an empty string for the first — which is still given. Declaring the
+  rich form replaced the whole tooltip, and its child, with an error box.
+- **A `chip`'s avatar icon was always a ✕.** The factory resolved it through a
+  local switch that knew three names and answered `Icons.close` for everything
+  else, while the delete icon in the same file already went through the shared
+  resolver. `avatar: {"icon": "home"}` drew a close glyph.
+- **A `simpleDialog` option's icon was dropped unless it was one of 25.** Same
+  shape, other direction: the local switch answered null for any other name,
+  so a declared icon rendered nothing and said nothing. Both now use the
+  shared resolver, which draws the missing-icon cue for a name it does not
+  know.
+- **`dateRangePicker` opened its dialog from a context it should not have
+  asserted.** `context.buildContext!` is nullable and belongs to the render
+  context, not to the widget — where it was set at all, it could point at a
+  different subtree than the one the user tapped, which is the Navigator the
+  dialog would have been pushed onto. The picker now opens from its own build
+  context.
+
+### `reduce`'s accumulator form never accumulated
+
+`items.reduce((acc, item) => acc + item.price, 0)` — the spelling §3.6.3 and
+the spec's own example use — answered its seed, unchanged, for every list. The
+loop passed each ITEM as the lambda's first parameter, so `acc` inside the body
+resolved to the item, `acc + item.price` was not a number, and nothing was
+added. `_evaluateLambdaBody` could already bind both parameter names; nothing
+ever called it that way. A total that silently equals its seed reads as "no
+data", which is the one interpretation that stops an author looking at the
+expression.
+
+The single-parameter form (`(item) => item.price`, mapped then summed) is
+unchanged, and a non-numeric seed — a string, a list — now survives the
+accumulator form.
+
+### A property on an object answered null; the same property on a list answered
+
+`{{rows.isEmpty}}` on a list reads a boolean. `{{form.isEmpty}}` on an object
+read NOTHING — and so did `.length` and `.isNotEmpty`. The Map cases were
+written, but they sat below a branch that matches any Map and indexes it by
+key, so they could never run: an object has no key called `isEmpty`, the index
+answered null, and a section hidden on "no data" stayed visible with nothing
+said. This is the collection-property defect fixed at the top of this release,
+one type over. A real key still wins over the property.
+
+### And elsewhere, again
+
+- **`mode: "horizontal"` on `menu` took the page down.** The entries are
+  `ListTile`s and a Row gives its children unbounded width, which is the one
+  thing a `ListTile` asserts on. A declared, spec'd mode (§2.8.9) was a layout
+  assertion, not a menu. Each entry is now sized to its own content.
+- **A literal `selectedKey` could never match.** §2.8.9 declares
+  `string | binding`, and a bare string is indistinguishable from a state
+  path — so the path was read, found nothing, and the branch written for the
+  literal was unreachable. The path is still read first; the literal is what is
+  left.
+- **`format.number(v, "decimal")` printed 1,234.50 for 1,234.5.** `0` after
+  the decimal point is a required digit and `#` an optional one — the whole
+  difference between a price and a quantity — and the formatter counted
+  characters, so `#,##0.##` behaved as `#,##0.00`.
+- **A markdown heading deeper than six levels kept one of its hashes.** The
+  level was clamped to six and then used to slice the marker off, so
+  `####### deep` rendered as "# deep".
+- **`ServiceLocator.get(optional: true)` threw instead of answering null.**
+  `null as T` is a cast error for every non-nullable T, which is every type a
+  caller writes — so the degrade path a widget uses to survive a service its
+  host did not wire raised `type 'Null' is not a subtype of T`. An optional
+  lookup now answers null when the type argument can hold it, and otherwise
+  says, in the exception, what to write instead.
+
+### A tab's icon came out as the wrong glyph
+
+`tabBar` resolved a tab's `icon` through a local switch that knew three names
+and answered `Icons.tab` for everything else — so a declared icon drew a
+plausible WRONG glyph rather than the missing-icon cue, which is the harder of
+the two to notice. It now goes through the shared resolver, like the chip
+avatar and the simpleDialog option earlier in this release. That is four
+copies of the same private icon table found in one pass — `chip`'s avatar,
+`simpleDialog`'s option, `tabBar`'s tab and `textFormField`'s prefix — and the
+shared resolver is the only one that carries the whole vocabulary. (The one in
+`segmentedControl` stays: it answers null for an unknown name and the control
+falls back to the segment's LABEL, which is more use than a missing-icon
+glyph.)
+
+### A signature could not be submitted
+
+§10.19 says the binding holds "base64 PNG or SVG path", and its own
+`onSignatureEnd` example writes `{{event.value}}`. Neither existed.
+
+- The binding received an internal stroke dump — `{strokes, strokeCount,
+  timestamp}` — which no document can render and no server stores as a
+  signature.
+- The event carried no `value` at all, so the spec's own example wrote NULL:
+  the user signed and the form submitted nothing.
+- `toImage`, which produces exactly the PNG the spec describes, was written
+  and called from nowhere.
+
+A finished stroke now encodes the pad and hands the document a
+`data:image/png;base64,…` string, on the binding and on `event.value`.
+Clearing puts the binding back to null. The stroke coordinates stay reachable
+as `event.strokes` for a document that wants the vector rather than the
+picture.
+
+**Behaviour change**: a document that was reading `strokeCount` or `strokes`
+off the *binding* must read them off the event instead. The binding now holds
+the picture.
+
+### A dragged Gantt bar reported where it started
+
+`gantt` with `editable: true` moves a bar under the finger and reports the new
+dates through `onTaskChange` — and it reported the dates from the bar's last
+BUILD, not from the last drag update. The frame after the final update has not
+been built when the gesture ends, so the tail of every drag was lost, and a
+quick drag reported the task as unmoved: the server was told nothing had
+changed, and the next refresh put the bar back.
+
+### A plugin's services were registered under the wrong name, and never removed
+
+`MCPPlugin.services` is a `Map<Type, Service>`, and the manager registered each
+entry with `register<T>(service)` — which takes its key from the STATIC type of
+its argument. That type is `Service`, so every plugin's services landed on one
+key: the first plugin's service answered every lookup, the second overwrote it,
+and `get<MyService>()` found neither. Unloading called `unregister()` with no
+type argument at all, which infers `dynamic` and removed nothing, so a service
+outlived the plugin that answered through it.
+
+`ServiceLocator` gained `registerByType` / `unregisterByType` for the case
+where the type travels as data, and the plugin manager uses them.
+
+### One row without the sort field took the whole resource down
+
+A `client://` resource can declare a `sort` step. The comparator substituted an
+empty STRING for a missing field and handed it to `Comparable.compare` beside a
+number, which throws — so a single row missing the field threw out of the
+comparator and took the list, and the fetch around it, with it. A missing field
+now sorts to one end, and mixed types compare as text.
+
+### A poll channel's and a system monitor's first event reached nobody
+
+`SystemMonitorChannel.start` created its broadcast controller and then emitted
+the first reading synchronously — before any consumer could listen, because
+`stream` answers `Stream.empty()` until `start` has run. Every consumer does
+`await start(); stream.listen(...)`, and a broadcast controller drops what it
+emits with no listeners, so that reading was thrown away every time. A
+dashboard bound to the channel sat empty for a full interval and then filled
+in, which reads as a slow backend rather than as a dropped sample.
+
+`PollChannel` had the same shape and the same fault: a document refreshing on
+a thirty-second poll waited the whole interval for its first update, which
+reads as a slow server rather than as a dropped event.
+
+Both now emit the first event on the next turn of the event loop, and `stop`
+cancels it along with the interval timer.
+
+### A `deep` watcher fired on every write
+
+`state.watchers` with `deep: true` exists to fire only when the CONTENTS of a
+map or list change. It fired on every write of an identical collection: the
+baseline it compares against is a clone, cloning re-types (`{'a': 1}` is a
+`Map<String, int>`, its clone a `Map<String, dynamic>`), and the comparison
+rejected on `runtimeType` before it looked at a single key. A document
+watching a fetched object deeply ran its actions once per poll.
+
+### `errorBoundary` could not catch either
+
+The same defect as `errorRecovery`, in its sibling: the renderer answers a
+failed build with its own inline card, so the boundary's `catch` never ran —
+its `fallback`, its default surface and its `onError` were all unreachable
+from any document. Both now render their child through the rethrowing form.
+(The fallback path too: a fallback that itself failed used to draw the
+renderer's card rather than the boundary's default surface.)
+
+### Every directed graph rendered as an undirected one
+
+Three faults on the same edge, each of which alone would have hidden the
+others.
+
+- `directed` was read only per edge. §10.13's own example declares it on the
+  graph — "topology-oriented defaults (hierarchical layout, directed edges)" —
+  so the documented form drew plain lines. A graph-level `directed` is now the
+  default for every edge, and an edge may still say otherwise.
+- The arrowhead's direction vector was divided by the *square* of the edge
+  length, so its size was `10/|d|` rather than `10`: sub-pixel for any edge
+  longer than ten logical pixels, which is every real edge.
+- The arrowhead's tip sat at the target node's centre, and nodes are painted
+  after the edges — so what did get drawn was covered by the very node it
+  pointed at. The tip now sits on the node's rim.
+
+The result was a dependency graph that shows what is connected but never which
+way anything points, with nothing said. Verified by counting the pixels in the
+edge colour: a directed edge now paints more than a plain one.
+
+### A radar series ignored `borderColor`
+
+Every other series type takes `borderColor` as the line colour, which is what
+§10 says it is. The radar polygon read only `backgroundColor`, so a document
+that coloured its series the documented way got the palette default on that
+one chart type — with a legend beside it in the colour it asked for.
+
+### `timeField` opened its picker from a context it should not have asserted
+
+`context.buildContext!` is the render context's stored context, and it is
+nullable: asserting it made the tap throw wherever it was unset, and where it
+was set it could belong to a different subtree than the one the user tapped —
+which is the Navigator the dialog would have been pushed onto. Same fix as
+`dateRangePicker` earlier in this release: the picker opens from the widget's
+own build context. `dateField` had it too — all three date/time pickers
+asserted the same nullable field.
+
+### A refused `client://` URI said the wrong thing
+
+`ClientResourceSchemes.parse` returns null for two unrelated reasons — a
+malformed URI, and a path traversal segment (§8.3.3) — and the resolver
+reported both as "Failed to parse URI". An author who wrote
+`client://file/data/../secrets` was told their URI would not parse, which it
+would; what happened is that the runtime refused to follow it. The two are now
+distinguished, in the same words the per-scheme checks already use.
+
+### A faded-out transport still took the tap
+
+`mediaPlayer` hides its controls after a few seconds of playback by animating
+them to zero opacity — and an `AnimatedOpacity` at zero still hit-tests. So the
+tap meant to bring the transport back landed on the invisible play button
+underneath and paused the media instead. The overlay is now ignored for hits
+while it is hidden.
+
+### The time picker opened at the wall clock, not at the time already chosen
+
+`datePicker` opens on the date the binding holds; `timePicker` opened on
+`TimeOfDay.now()` regardless. Correcting 09:30 to 09:35 meant spinning the dial
+back from whatever the current time happened to be, every time.
+
+### A navigation rail replaced the selected destination's icon with a house
+
+`selectedIcon` is optional, and an absent one means "the same icon" — Material
+resolves it that way from a null. The factory substituted `Icons.home` instead,
+so the one destination the user is looking at showed something the document
+never declared.
+
+### A navigation rail could not report which destination was chosen
+
+The index was substituted into an `index` KEY of the action map, which no
+action reads. The standard spelling — `state.set` with
+`value: "{{event.index}}"` — therefore wrote null. The handler now publishes
+`event.index` into a child context, so the placeholder resolves wherever the
+action puts it.
+
+### The bar form of `progressBar` skipped the common wrappers
+
+`visible`, `tooltip` and `click` (§2.2) apply to every widget, and the linear
+branch applied none of them; it also never read `minHeight`, so a declared bar
+thickness left every bar at the 4dp default. Both shapes are now built by the
+per-shape factories that already existed in the file and had never been wired
+to anything.
+
+### The progress shape can now be named by the widget type
+
+§2.5.14 gives `progressBar` a `type` property with `linear` and `circular` in
+it, and that property is unreachable: the widget type and the property share
+the key, and `extractProperties` strips it. `indicatorType` was the only way
+to say it. The widget types now carry the shape as well —
+`linearProgressIndicator` defaults to linear and `circularProgressIndicator`
+(new) to circular, with `indicatorType` still overriding either. Before this,
+`linearProgressIndicator` drew a spinner: a name that stated the shape and
+then drew the other one. `progressBar` / `progress` / `loadingIndicator` are
+unchanged.
+
+### A doubly-parenthesised expression resolved to nothing
+
+`((a + b))` — what a generator produces when it parenthesises something that
+was already parenthesised — had only its outer pair stripped, leaving
+`(a + b)` to be read as a state PATH. The path does not exist, so the binding
+answered null and the label went blank. The strip now repeats while the
+remaining pair still wraps the whole expression.
+
+### `flow` showed one enormous child and nothing else
+
+The delegate never overrode `getConstraintsForChild`, so every child inherited
+the flow's own constraints — TIGHT whenever the flow sits in a sized box,
+which is the ordinary case. Each child was forced to the full size of the
+flow, so the first one filled it and every other one was placed off the bottom
+edge. A tag list rendered as a single enormous tag, with nothing to say why.
+
+Children size themselves now; the flow only places them, which is what a flow
+layout is.
+
+### `mediaQuery` breakpoints were not responsive at all
+
+The widget matched against `xs` / `sm` / `md` / `lg` / `xl`, and the
+breakpoint system answers with the §14.1.1 classes — `compact`, `medium`,
+`expanded`, `large`, `extraLarge`. Nothing ever matched, so the exact-match
+branch never ran and the fallback loop returned whichever key came first in
+that obsolete list, at every window width: a phone layout on a desktop, or the
+reverse, depending only on declaration order. The classes are now the spec's,
+the old spellings are accepted as aliases so shipped documents keep choosing
+the same layout, and a `default` key is honoured per §14.2.1.
+
+### A `listTile` icon name outside four words drew an arrow
+
+The tile carried its own icon table with `arrow_forward`, `arrow_back`,
+`check` and `close` in it, and answered a forward chevron for anything else —
+so `leading: "home"` drew an arrow. Same shape as the four tables already
+folded into the shared resolver this release, one widget over: a plausible
+wrong icon, which is harder to notice than a missing one.
+
+### `expanded` / `flexible` with any wrapper asserted instead of laying out
+
+Both are `ParentDataWidget`s: the surrounding `Row`/`Column` reads them by
+looking at its own direct child. The factories applied the common wrappers
+(`visible`, `tooltip`, `click`) *around* the widget, which hid it from the row
+— so a document that declared `flex` and `tooltip` on the same node got a
+Flutter parent-data assertion, a red rectangle, rather than a layout.
+
+The wrappers now go inside, which is where the renderer already puts its own.
+
+### Every `drawer` threw before it drew anything
+
+The default header read the colour scheme through `context.buildContext!` —
+outside any `if`, so it ran for every drawer, including the ones that supply
+their own children and never reach the default. A render context with no
+stored build context made that a null assertion, and the drawer became an
+error card. The theme now comes from the drawer's own build context, and the
+default header is built only when there is nothing else to show.
+
+### A `radio` declared with only a `binding` would not select
+
+The change callback was installed only when `onChange` was also declared, and
+the label's tap handler read the legacy `bindTo` alone. So the shortest
+correct form — a radio, a value, a binding — rendered and did nothing, and a
+labelled radio ignored taps on its label. Both paths now go through the one
+handler, which writes the binding first and dispatches `onChange` after.
+
+### Forty-six dimension slots dropped a bound value
+
+§3 says every value may be written as a literal, as `{value, unit}`, or as a
+binding. `parseDimension` reads the first two and answers null for the third,
+so any slot using it silently reverted to its default the moment a document
+bound it — and a size that changes is *only* ever bound. `animatedContainer`
+was the sharpest case: its `width`/`height` came back null, so the box had
+nothing to animate between, which is the one thing the widget exists to do.
+
+The tolerant reader (`dimensionOf`) already existed — a note above it records
+nine such slots being fixed "so the next slot inherits it instead of repeating
+the defect". Forty-six had not. They now all read through it: same answers for
+a number and for `{value, unit}`, and a binding resolves.
+
+### One stray keystroke emptied a `numberField`
+
+`FilteringTextInputFormatter.allow` takes a pattern matching allowed
+*characters*. This passed it anchored whole-string patterns (`^-?\d*$`), and a
+string that does not match in full produces no matches at all — so the filter
+kept **nothing**. A letter, or the thousand separator the field itself
+displays, wiped the digits the user had already typed and took the binding to
+null with them.
+
+`thousandSeparator` was unusable for the same reason: the field renders
+`1,234,567` and `onChanged` strips the separator before parsing, but the
+formatter deleted the whole text the moment one was typed. The two halves of
+the widget contradicted each other.
+
+The filter is now a character class, and it includes the declared separator.
+
+### The runtime asked the operating system directly, in three places
+
+`client.platform`, `client.getSystemInfo` and the system-monitor channel each
+ran their own ladder of `Platform.isAndroid` / `isIOS` / `isMacOS` / … and each
+carried its own `kIsWeb` guard in front of it. Three independent readings of
+one fact, which can disagree; a guard that has to be remembered at every new
+call site; and no way for the embedder — which is the layer that actually knows
+— to say otherwise.
+
+The `client://` resolver's own web guards went the same way, so a document on
+a browser now gets a named refusal from every filesystem scheme — and the
+cache, which is not a filesystem, keeps working.
+
+`dart:io` is now read in one file, which the web build never compiles, and
+everything above reads `HostPlatform`. A host that knows better than the
+process does (a kiosk shell, a remote session) states it with
+`HostPlatform.override`, and the derived answers (`category`, `isWeb`) come
+from the same value rather than being read again.
+
+### The platform-split widgets could not be tested at all
+
+`voiceInput` and `pdfViewer` reach the browser through a conditional import
+that resolves to a no-op stub everywhere else. Off the web their factories
+could only ever take the "not available here" branch — so everything below it
+went unverified on *every* platform, not just off the web: the transcript
+reaching its binding, the live-capture indicator, the maximum-duration
+cut-off, and the whole §10.25 open-parameter fragment that decides which page
+a PDF opens on.
+
+Neither of those is browser code. Both factories now read their platform
+entry points through a `@visibleForTesting` seam, so the logic that is not
+browser-specific is exercised on any platform. Production still reads the
+platform; nothing about the browser path changed.
+
+### A debounced field lost its debounce as soon as it was wrapped
+
+The debounced path built the field, then took the result apart and rebuilt a
+`TextField` around its own handler and controller. That recognised exactly two
+shapes — a bare `TextField`, or a `Focus` around one. A document that also
+declared `visible`, `tooltip` or `click` got a wrapper back, the rebuild did
+not recognise it, and the built field was returned untouched: no debounce, and
+driven by a different controller than the one holding the debounced value.
+
+The builder now takes the controller and the change handler as arguments, so
+the debouncer owns both and everything the document wrapped around the field
+comes back intact.
+
+### A phone field showed its dialling code twice
+
+`defaultCountry` set `prefixText` — which is what draws the code — and *also*
+seeded the controller with the same string. So the code appeared twice
+(`+82+82…` the moment anything was typed), and the seeding wrote into the
+field without writing to the binding, so what was on screen and what the
+document held disagreed from the first frame. Only the debounced path ever
+showed it, because that path threw the seeded controller away.
+
+The prefix is decoration now, and only decoration.
+
+### A pasted one-time code landed entirely in the first cell
+
+`otpInput` exists because a row of text inputs cannot distribute a pasted or
+autofilled code across its cells — and the field carried `maxLength: 1`, whose
+formatter truncates the arriving string to one character before `onChanged`
+runs. So the distribution code never saw more than one digit, and the widget
+behaved exactly like the composed version it replaces. The cells are kept to
+one character by the distribution itself, which is what it was written to do.
+
+### A page given as `{appBar, body}` could not draw its bar
+
+`Scaffold` needs a preferred size and the `headerBar` factory hands back a
+`Builder` around the bar — so the cast to `AppBar` threw, and the whole page
+became an error surface. The rendered bar is now given a preferred size when
+it does not carry its own.
+
+### A `webView` given inline HTML showed nothing at all
+
+The engine-absent path reported "no web view capability" for every case,
+including the one that needs no engine: markup the document supplied itself.
+The preview that shows it — labelled as source, with a badge when scripts are
+off — sat in the file unreachable, and the document got a blank box plus an
+`onError` for content it had already provided. Inline HTML now renders; a URL
+with no engine still reports the absence, unchanged.
+
+### `dialog` could not reach its own `alert` and `simple` forms
+
+The widget type and the dialog's kind are both spelled `type`, and
+`extractProperties` strips that key before the factory sees it — so the
+property was always absent and every `dialog` was the custom form. `dialogType`
+is the reachable spelling, matching `mediaType` on `mediaPlayer` and
+`indicatorType` on `progressBar`. Additive: nothing that renders today changes.
+
 ## [0.7.4] - 2026-08-08 — a topology that arrives late is still drawn
 
 `networkGraph` copied its node list once, in `initState`, and never again. A

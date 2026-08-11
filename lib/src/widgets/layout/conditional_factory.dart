@@ -18,7 +18,19 @@ class ConditionalFactory extends WidgetFactory {
     // if/then/else mode
     final condition = definition['condition'];
     if (condition == null) {
-      throw Exception('Conditional widget requires a condition or switch property');
+      // Neither form declared. This used to throw, which drew an error card in
+      // the middle of the page; tightening the schema instead would have been
+      // worse, because validation runs at load and a rejected document does
+      // not open at all (§1.7.5). A conditional that states no condition is
+      // simply not true: the `else` / `default` branch is what it selects, and
+      // with no branch to select it occupies no space.
+      final fallback = definition['orElse'] ??
+          definition['else'] ??
+          definition['default'];
+      if (fallback is Map<String, dynamic>) {
+        return context.buildWidget(fallback);
+      }
+      return const SizedBox.shrink();
     }
 
     // Resolve the condition (handle bindings)

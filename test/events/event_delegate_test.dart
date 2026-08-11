@@ -1,6 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_mcp_ui_runtime/src/actions/action_handler.dart';
+import 'package:flutter_mcp_ui_runtime/src/binding/binding_engine.dart';
 import 'package:flutter_mcp_ui_runtime/src/events/event_system.dart';
 import 'package:flutter_mcp_ui_runtime/src/events/event_delegate.dart';
+import 'package:flutter_mcp_ui_runtime/src/renderer/render_context.dart';
+import 'package:flutter_mcp_ui_runtime/src/renderer/renderer.dart';
+import 'package:flutter_mcp_ui_runtime/src/runtime/widget_registry.dart';
+import 'package:flutter_mcp_ui_runtime/src/state/state_manager.dart';
+import 'package:flutter_mcp_ui_runtime/src/theme/theme_manager.dart';
 
 void main() {
   group('EventDelegate Tests', () {
@@ -395,6 +402,102 @@ void main() {
         handler(UIEvent(type: 'click', targetId: 'button-2'));
         expect(called, false);
       });
+    });
+  });
+
+  group('a condition evaluated through the binding engine', () {
+    late StateManager stateManager;
+    late BindingEngine bindingEngine;
+    late RenderContext context;
+    late EventDelegate delegate;
+
+    setUp(() {
+      stateManager = StateManager()..initialize(<String, dynamic>{});
+      bindingEngine = BindingEngine();
+      final actionHandler = ActionHandler();
+      context = RenderContext(
+        renderer: Renderer(
+          widgetRegistry: WidgetRegistry(),
+          bindingEngine: bindingEngine,
+          actionHandler: actionHandler,
+          stateManager: stateManager,
+        ),
+        stateManager: stateManager,
+        bindingEngine: bindingEngine,
+        actionHandler: actionHandler,
+        themeManager: ThemeManager.instance,
+      );
+      delegate = EventDelegate(
+        bindingEngine: bindingEngine,
+        renderContext: context,
+      );
+    });
+
+    test('the full expression language is available, not just equality', () {
+      final event = UIEvent(type: 'click', targetId: 'item-42');
+
+      expect(
+          delegate.shouldHandle(event, "event.targetId.startsWith('item-')"),
+          isTrue,
+          reason: 'this is the whole point of delegation — one parent handler '
+              'matching a family of children, which equality cannot express');
+      expect(
+          delegate.shouldHandle(event, "event.targetId.startsWith('row-')"),
+          isFalse);
+    });
+
+    test('the event payload is reachable under `event.data`', () {
+      final event = UIEvent(
+        type: 'click',
+        targetId: 'item-1',
+        data: <String, dynamic>{'id': 7, 'enabled': true},
+      );
+
+      expect(delegate.shouldHandle(event, 'event.data.enabled'), isTrue);
+      expect(delegate.shouldHandle(event, 'event.data.id == 7'), isTrue);
+      expect(delegate.shouldHandle(event, 'event.data.id == 8'), isFalse);
+    });
+
+    test('a scalar payload is still reachable', () {
+      final event = UIEvent(type: 'click', targetId: 'item-1', data: 'hello');
+
+      expect(delegate.shouldHandle(event, "event.data == 'hello'"), isTrue);
+    });
+
+    test('the phase and type are part of what a condition can read', () {
+      final event = UIEvent(
+        type: 'submit',
+        targetId: 'form-1',
+        phase: EventPhase.bubble,
+      );
+
+      expect(delegate.shouldHandle(event, "event.type == 'submit'"), isTrue);
+      expect(
+          delegate.shouldHandle(event, "event.phase == 'bubble'"), isTrue);
+    });
+
+    test('a condition already in binding syntax is used as written', () {
+      stateManager.set('editing', true);
+      final event = UIEvent(type: 'click', targetId: 'item-1');
+
+      expect(delegate.shouldHandle(event, '{{editing}}'), isTrue,
+          reason: 'a condition may read page state as well as the event; '
+              'wrapping it twice would make it a literal string');
+    });
+
+    test('a condition that resolves to a non-empty string counts as true', () {
+      final event = UIEvent(type: 'click', targetId: 'item-1');
+
+      expect(delegate.shouldHandle(event, 'event.targetId'), isTrue);
+      expect(delegate.shouldHandle(event, 'event.data'), isFalse,
+          reason: 'an absent payload is not a match');
+    });
+
+    test('an unparseable condition falls back rather than throwing', () {
+      final event = UIEvent(type: 'click', targetId: 'btn-1');
+
+      expect(() => delegate.shouldHandle(event, 'type == "click"'),
+          returnsNormally);
     });
   });
 }

@@ -66,6 +66,55 @@ void main() {
       expect(result['size'], equals('lg'));
     });
 
+    test('a nested override merges into the branch rather than replacing it',
+        () {
+      registry.registerScoped(
+        'panel',
+        {
+          'content': {
+            'type': 'box',
+            'style': {
+              'padding': 8,
+              'color': '#FFFFFF',
+            },
+            'child': {'type': 'text', 'content': 'Hi'},
+          }
+        },
+      );
+
+      final result = engine.resolveByName('panel', overrides: {
+        'style': {'color': '#000000'},
+      });
+
+      final style = result['style'] as Map<String, dynamic>;
+      expect(style['color'], '#000000');
+      expect(style['padding'], 8,
+          reason: 'an override that names one key of a nested map must not '
+              'take the rest of that map with it — a document overriding a '
+              'colour would lose the padding, and the screen would look '
+              'nothing like the template it started from');
+      expect(result['child'], isNotNull);
+    });
+
+    test('a non-map override replaces whatever was there', () {
+      registry.registerScoped(
+        'panel',
+        {
+          'content': {
+            'type': 'box',
+            'style': {'padding': 8},
+          }
+        },
+      );
+
+      final result =
+          engine.resolveByName('panel', overrides: {'style': 'compact'});
+
+      expect(result['style'], 'compact',
+          reason: 'merging only applies where both sides are maps; anything '
+              'else is the document saying "use this instead"');
+    });
+
     test('Boundary: no overrides → template defaults used as-is', () {
       registry.registerScoped(
         'btn',

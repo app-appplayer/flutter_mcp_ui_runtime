@@ -540,11 +540,15 @@ void main() {
     
     group('Navigation Actions', () {
       testWidgets('should handle navigation actions with custom handler', (WidgetTester tester) async {
+        // This used to declare three variables for the handler's arguments,
+        // never register a handler, and then re-read the definition map it had
+        // just passed in — asserting that a Dart literal still contained what
+        // was written in it. The handler is registered and the buttons are
+        // tapped now, so what is checked is the runtime's routing.
         String? navAction;
         String? navRoute;
         Map<String, dynamic>? navParams;
-        
-        // Create a custom navigation handler using buildUI
+
         await runtime.initialize({
           'type': 'page',
           'content': {
@@ -572,25 +576,37 @@ void main() {
             ],
           },
         });
-        
-        // We can't directly test navigation without a proper Navigator setup
-        // So we'll just verify the action structure is correct
-        final definition = runtime.getUIDefinition();
-        final content = definition?['content'] as Map<String, dynamic>;
-        final children = content['children'] as List<dynamic>;
-        final pushButton = children[0] as Map<String, dynamic>;
-        final pushClick = pushButton['onTap'] as Map<String, dynamic>;
-        
-        expect(pushClick['type'], 'navigation');
-        expect(pushClick['action'], 'push');
-        expect(pushClick['route'], '/details');
-        expect(pushClick['params'], {'id': '123'});
-        
-        final popButton = children[1] as Map<String, dynamic>;
-        final popClick = popButton['onTap'] as Map<String, dynamic>;
-        
-        expect(popClick['type'], 'navigation');
-        expect(popClick['action'], 'pop');
+
+        runtime.registerNavigationHandler((action, route, params) {
+          navAction = action;
+          navRoute = route;
+          navParams = params;
+          return true;
+        });
+
+        await tester.pumpWidget(
+          MaterialApp(home: Scaffold(body: runtime.buildUI())),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Push'));
+        await tester.pumpAndSettle();
+
+        expect(navAction, 'push');
+        expect(navRoute, '/details');
+        expect(navParams, {'id': '123'},
+            reason: 'the params are how the destination knows its subject; a '
+                'handler that receives the route without them opens an empty '
+                'screen');
+
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Pop'));
+        await tester.pumpAndSettle();
+
+        expect(navAction, 'pop');
+        expect(navRoute, '',
+            reason: 'a pop names no route, and the handler is handed an empty '
+                'string rather than the previous one — which would send a '
+                'shell to the wrong tab');
       });
     });
     

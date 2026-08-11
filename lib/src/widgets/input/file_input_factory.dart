@@ -33,7 +33,7 @@ class FileInputFactory extends WidgetFactory {
     final maxBytes = context.resolve<num?>(properties['maxBytes'])?.toInt();
     final maxFiles = context.resolve<num?>(properties['maxFiles'])?.toInt();
     final accept =
-        (context.resolve<List<dynamic>?>(properties['accept']) ?? const [])
+        (listOf(properties['accept'], context) ?? const [])
             .map((e) => e.toString())
             .toList();
     final onChange = actionOf(properties['onChange'], context);

@@ -83,9 +83,7 @@ enum ViewMode {
 /// 4. `MediaQuery` auto
 ///
 /// `auto` at any step skips that step.
-class ViewModeResolver {
-  const ViewModeResolver._();
-
+abstract final class ViewModeResolver {
   static FormFactor resolve({
     ViewMode? perApp,
     ViewMode? global,

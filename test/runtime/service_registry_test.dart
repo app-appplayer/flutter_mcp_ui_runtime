@@ -162,9 +162,18 @@ void main() {
         expect(service.disposeCalled, isTrue);
       });
       
-      test('should handle unregistering non-existent service', () async {
-        // Should not throw
+      test('unregistering a name nobody registered leaves the others alone',
+          () async {
+        // "Should not throw" was the entire test. The failure worth catching
+        // is a removal that takes something else with it.
+        final service = TestService();
+        registry.register('test', service);
+
         await registry.unregister('non-existent');
+
+        expect(registry.isRegistered('test'), isTrue);
+        expect(service.disposeCalled, isFalse,
+            reason: 'a miss must not dispose a service that was never named');
       });
     });
     
@@ -254,10 +263,17 @@ void main() {
         testRegistry.registerDependency('service1', 'service2');
         testRegistry.registerDependency('service2', 'service1');
         
-        expect(
-          () => testRegistry.initializeAll({}),
-          throwsStateError,
+        await expectLater(
+          testRegistry.initializeAll({}),
+          throwsA(isA<StateError>().having((e) => e.toString(), 'message',
+              contains('ircular'))),
+          reason: 'the message has to say the dependencies form a cycle, or a '
+              'host sees only "failed to initialize" and starts guessing',
         );
+        expect(service1.initializeCalled, isFalse);
+        expect(service2.initializeCalled, isFalse,
+            reason: 'a cycle detected halfway through would leave part of the '
+                'registry live and part not');
         // Don't dispose testRegistry since it has circular dependencies
       });
       
@@ -269,10 +285,13 @@ void main() {
         testRegistry.register('service', service);
         testRegistry.registerDependency('service', 'missing');
         
-        expect(
-          () => testRegistry.initializeAll({}),
-          throwsStateError,
+        await expectLater(
+          testRegistry.initializeAll({}),
+          throwsA(isA<StateError>()
+              .having((e) => e.toString(), 'message', contains('missing'))),
+          reason: 'naming the dependency that is absent is the whole message',
         );
+        expect(service.initializeCalled, isFalse);
         // Don't dispose testRegistry since it has missing dependencies
       });
     });
@@ -319,14 +338,18 @@ void main() {
         expect(service.lastConfig, equals({'initial': true}));
       });
       
-      test('should handle initialization failures', () async {
+      test('a service that fails to initialize stops the run and stays down',
+          () async {
         final failingService = FailingService();
+        final other = TestService();
         registry.register('failing', failingService);
-        
-        expect(
-          () => registry.initializeAll({}),
-          throwsException,
-        );
+        registry.register('other', other);
+
+        await expectLater(registry.initializeAll({}), throwsException);
+
+        expect(failingService.isInitialized, isFalse,
+            reason: 'a service whose onInitialize threw must not report '
+                'itself as ready; everything downstream trusts that flag');
       });
     });
     
@@ -344,27 +367,32 @@ void main() {
         expect(result, equals('Success'));
       });
       
-      test('should throw if service not found for operation', () async {
-        expect(
-          () => registry.withService<String>(
-            'non-existent',
-            (service) async => 'Success',
-          ),
-          throwsStateError,
+      test('an operation on a name nobody registered is refused by name',
+          () async {
+        await expectLater(
+          registry.withService<String>(
+              'non-existent', (service) async => 'Success'),
+          throwsA(isA<StateError>().having(
+              (e) => e.toString(), 'message', contains('non-existent'))),
         );
       });
-      
-      test('should throw if service not initialized for operation', () async {
+
+      test('an operation on a registered-but-not-initialized service is '
+          'refused, and the body never runs', () async {
         final service = TestService();
         registry.register('test', service);
-        
-        expect(
-          () => registry.withService<String>(
-            'test',
-            (service) async => 'Success',
-          ),
+        var ran = false;
+
+        await expectLater(
+          registry.withService<String>('test', (service) async {
+            ran = true;
+            return 'Success';
+          }),
           throwsStateError,
         );
+        expect(ran, isFalse,
+            reason: 'running the body against a service that has not been '
+                'initialized is exactly what the guard exists to prevent');
       });
     });
     
@@ -432,14 +460,25 @@ void main() {
         expect(disposeOrder, equals(['service3', 'service2', 'service1']));
       });
       
-      test('should handle disposal errors gracefully', () async {
-        final service = FailingDisposeService();
-        
-        registry.register('test', service);
-        await service.initialize({});
-        
-        // Should not throw
+      test('one service failing to dispose does not strand the others',
+          () async {
+        // "Should not throw" said nothing about the rest of the registry. A
+        // disposal loop that aborted on the first exception would leave live
+        // timers, sockets and listeners behind it.
+        final failing = FailingDisposeService();
+        final after = TestService();
+
+        registry.register('failing', failing);
+        registry.register('after', after);
+        await failing.initialize({});
+        await after.initialize({});
+
         await registry.dispose();
+
+        expect(after.disposeCalled, isTrue,
+            reason: 'the service registered after the failing one still has '
+                'to be shut down');
+        expect(registry.isRegistered('after'), isFalse);
       });
     });
   });

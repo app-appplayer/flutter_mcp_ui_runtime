@@ -23,7 +23,7 @@ class _TestAsyncValidator extends AsyncValidator {
 
 /// Test helper: StatefulWidget that uses FormValidationMixin
 class _TestFormWidget extends StatefulWidget {
-  const _TestFormWidget({super.key});
+  const _TestFormWidget();
 
   @override
   State<_TestFormWidget> createState() => _TestFormWidgetState();

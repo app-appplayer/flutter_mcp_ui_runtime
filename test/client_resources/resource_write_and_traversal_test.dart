@@ -77,6 +77,33 @@ void main() {
       expect(result.success, isFalse);
     });
 
+    // `..` is not the only way out. An ABSOLUTE path carries no `..` at all,
+    // so it passes every traversal check — and `p.join(workspace, '/etc/x')`
+    // answers `/etc/x`, discarding the workspace entirely. The containment
+    // check after the join is the only thing standing between a document and
+    // the rest of the disk, and it was the one line here nothing had run.
+    test('an absolute path does not escape the workspace on write', () async {
+      final outside = File('${workspace.parent.path}/mcp_abs_escape_probe.txt');
+      if (outside.existsSync()) outside.deleteSync();
+
+      final result = await resolver.write(
+          'client://workspace/${outside.path}', 'x');
+
+      expect(result.success, isFalse);
+      expect(result.error, contains('traversal'));
+      expect(outside.existsSync(), isFalse,
+          reason: 'a path with no `..` in it still leaves the workspace once '
+              'it is absolute; only the resolved-path check catches that');
+      if (outside.existsSync()) outside.deleteSync();
+    });
+
+    test('an absolute path does not escape the workspace on read', () async {
+      final result =
+          await resolver.resolve('client://workspace//etc/hosts');
+      expect(result.success, isFalse);
+      expect(result.error, contains('traversal'));
+    });
+
     test('a deep traversal buried mid-path is refused too', () async {
       final result = await resolver
           .write('client://workspace/notes/../../escape.txt', 'x');

@@ -18,7 +18,7 @@ class AccordionFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     final panels =
-        context.resolve<List<dynamic>?>(properties['panels']) ?? const [];
+        listOf(properties['panels'], context) ?? const [];
     final allowMultiple =
         context.resolve<bool?>(properties['allowMultiple']) ?? false;
     final bordered = context.resolve<bool?>(properties['bordered']) ?? true;

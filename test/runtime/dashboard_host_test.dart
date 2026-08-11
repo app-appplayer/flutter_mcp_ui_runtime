@@ -185,4 +185,125 @@ void main() {
     expect(exited, 1);
     await runtime.destroy();
   });
+
+  testWidgets('fresh host callbacks replace the ones captured earlier',
+      (tester) async {
+    final runtime = MCPUIRuntime();
+    var firstExit = 0;
+    var secondExit = 0;
+    final opened = <String?>[];
+
+    await runtime.initialize(
+      dashboard(),
+      pageLoader: (uri) async => <String, dynamic>{
+        'type': 'page',
+        'content': <String, dynamic>{'type': 'text', 'content': 'home'},
+      },
+    );
+
+    Future<void> mount(VoidCallback onExit,
+        void Function(String?, String?)? onOpenApp) async {
+      await tester.pumpWidget(MaterialApp(
+        home: runtime.buildDashboard(onExit: onExit, onOpenApp: onOpenApp)!,
+      ));
+      await tester.pump();
+    }
+
+    await mount(() => firstExit++, (appId, route) => opened.add(appId));
+    // A rebuild with new closures — what a host does after a round trip
+    // through its own router.
+    await mount(() => secondExit++, (appId, route) => opened.add('second'));
+
+    await runtime.engine.actionHandler.execute(
+      <String, dynamic>{'type': 'navigation', 'action': 'exitApp'},
+      runtime.engine.renderer.createRootContext(null),
+    );
+
+    expect(secondExit, 1);
+    expect(firstExit, 0,
+        reason: 'the stale closure captured at the first mount points at a '
+            'BuildContext the host may already have unmounted');
+
+    await runtime.engine.actionHandler.execute(
+      <String, dynamic>{
+        'type': 'navigation',
+        'action': 'openApp',
+        'appId': 'jobs',
+      },
+      runtime.engine.renderer.createRootContext(null),
+    );
+
+    expect(opened, ['second']);
+
+    await runtime.destroy();
+  });
+
+  testWidgets('a host that stops supplying onOpenApp is unregistered',
+      (tester) async {
+    final runtime = MCPUIRuntime();
+    final opened = <String?>[];
+
+    await runtime.initialize(
+      dashboard(),
+      pageLoader: (uri) async => <String, dynamic>{
+        'type': 'page',
+        'content': <String, dynamic>{'type': 'text', 'content': 'home'},
+      },
+    );
+
+    await tester.pumpWidget(MaterialApp(
+      home: runtime
+          .buildDashboard(onOpenApp: (appId, route) => opened.add(appId))!,
+    ));
+    await tester.pump();
+
+    await tester.pumpWidget(MaterialApp(
+      home: runtime.buildDashboard()!,
+    ));
+    await tester.pump();
+
+    await runtime.engine.actionHandler.execute(
+      <String, dynamic>{
+        'type': 'navigation',
+        'action': 'openApp',
+        'appId': 'jobs',
+      },
+      runtime.engine.renderer.createRootContext(null),
+    );
+
+    expect(opened, isEmpty,
+        reason: 'a callback left registered after the host withdrew it calls '
+            'into a widget that is gone');
+
+    await runtime.destroy();
+  });
+
+  testWidgets('a platform brightness change is passed to the theme',
+      (tester) async {
+    final runtime = MCPUIRuntime();
+    await runtime.initialize(
+      dashboard(),
+      pageLoader: (uri) async => <String, dynamic>{
+        'type': 'page',
+        'content': <String, dynamic>{'type': 'text', 'content': 'home'},
+      },
+    );
+
+    await tester.pumpWidget(MaterialApp(home: runtime.buildDashboard()!));
+    await tester.pump();
+
+    var notified = 0;
+    runtime.engine.themeManager.addListener(() => notified++);
+
+    tester.binding.platformDispatcher.platformBrightnessTestValue =
+        Brightness.dark;
+    await tester.pump();
+
+    expect(notified, greaterThan(0),
+        reason: '`mode: system` follows the OS; a change nobody forwards '
+            'leaves a light document on a dark desktop');
+
+    tester.binding.platformDispatcher.clearPlatformBrightnessTestValue();
+    await runtime.destroy();
+  });
 }

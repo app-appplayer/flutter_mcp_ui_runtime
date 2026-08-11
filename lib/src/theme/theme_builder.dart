@@ -9,9 +9,7 @@ import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart';
 /// - DensityDefinition → [VisualDensity]
 /// - ShapeDefinition → component shape themes
 /// - ElevationDefinition → tonal surface tint
-class McpUiThemeBuilder {
-  McpUiThemeBuilder._();
-
+abstract final class McpUiThemeBuilder {
   /// Build [ThemeData] from a [ThemeDefinition] for the specified brightness.
   static ThemeData build(ThemeDefinition def, {required bool isDark}) {
     final brightness = isDark ? Brightness.dark : Brightness.light;

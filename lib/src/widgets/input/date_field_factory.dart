@@ -49,54 +49,61 @@ class DateFieldFactory extends WidgetFactory {
 
     final controller = TextEditingController(text: currentValue ?? '');
 
-    Widget dateField = GestureDetector(
-      onTap: enabled
-          ? () async {
-              // Parse current date
-              DateTime? initialDate;
-              if (currentValue != null && currentValue.isNotEmpty) {
-                try {
-                  initialDate = DateTime.parse(currentValue);
-                } catch (e) {
-                  // Invalid date
+    // The picker opens from the widget's OWN build context, not the render
+    // context's stored one: that field is nullable, so asserting it made the
+    // tap throw wherever it was unset, and where it was set it could belong to
+    // a different subtree than the one the user tapped — which is the
+    // Navigator the dialog would have been pushed onto. Same fix as
+    // `dateRangePicker` and `timeField`.
+    Widget dateField = Builder(
+      builder: (buildContext) => GestureDetector(
+        onTap: enabled
+            ? () async {
+                // Parse current date
+                DateTime? initialDate;
+                if (currentValue != null && currentValue.isNotEmpty) {
+                  try {
+                    initialDate = DateTime.parse(currentValue);
+                  } catch (e) {
+                    // Invalid date
+                  }
+                }
+                initialDate ??= DateTime.now();
+
+                // Ensure initial date is within range
+                if (initialDate.isBefore(firstDate!)) {
+                  initialDate = firstDate;
+                } else if (initialDate.isAfter(lastDate!)) {
+                  initialDate = lastDate;
+                }
+
+                final pickedDate = await showDatePicker(
+                  context: buildContext,
+                  initialDate: initialDate,
+                  firstDate: firstDate,
+                  lastDate: lastDate!,
+                  initialEntryMode: modeStr == 'input'
+                      ? DatePickerEntryMode.input
+                      : DatePickerEntryMode.calendar,
+                  locale: localeStr != null ? Locale(localeStr) : null,
+                );
+
+                if (pickedDate != null && binding != null) {
+                  final formattedDate = _applyDateFormat(formatStr, pickedDate);
+                  context.setValue(binding, formattedDate);
+                  controller.text = formattedDate;
                 }
               }
-              initialDate ??= DateTime.now();
-
-              // Ensure initial date is within range
-              if (initialDate.isBefore(firstDate!)) {
-                initialDate = firstDate;
-              } else if (initialDate.isAfter(lastDate!)) {
-                initialDate = lastDate;
-              }
-
-              final pickedDate = await showDatePicker(
-                context: context.buildContext!,
-                initialDate: initialDate,
-                firstDate: firstDate,
-                lastDate: lastDate!,
-                initialEntryMode: modeStr == 'input'
-                    ? DatePickerEntryMode.input
-                    : DatePickerEntryMode.calendar,
-                locale:
-                    localeStr != null ? Locale(localeStr) : null,
-              );
-
-              if (pickedDate != null && binding != null) {
-                final formattedDate = _applyDateFormat(formatStr, pickedDate);
-                context.setValue(binding, formattedDate);
-                controller.text = formattedDate;
-              }
-            }
-          : null,
-      child: AbsorbPointer(
-        child: TextField(
-          controller: controller,
-          enabled: enabled,
-          decoration: InputDecoration(
-            labelText: label,
-            errorText: errorText,
-            suffixIcon: const Icon(Icons.calendar_today),
+            : null,
+        child: AbsorbPointer(
+          child: TextField(
+            controller: controller,
+            enabled: enabled,
+            decoration: InputDecoration(
+              labelText: label,
+              errorText: errorText,
+              suffixIcon: const Icon(Icons.calendar_today),
+            ),
           ),
         ),
       ),

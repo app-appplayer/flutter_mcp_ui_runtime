@@ -4,6 +4,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_mcp_ui_runtime/src/actions/action_handler.dart';
+import 'package:flutter_mcp_ui_runtime/src/binding/binding_engine.dart';
+import 'package:flutter_mcp_ui_runtime/src/renderer/render_context.dart';
+import 'package:flutter_mcp_ui_runtime/src/renderer/renderer.dart';
+import 'package:flutter_mcp_ui_runtime/src/runtime/widget_registry.dart';
+import 'package:flutter_mcp_ui_runtime/src/state/state_manager.dart';
+import 'package:flutter_mcp_ui_runtime/src/theme/theme_manager.dart';
 import 'package:flutter_mcp_ui_runtime/src/widgets/virtualized/virtualized_list.dart';
 
 void main() {
@@ -133,6 +140,62 @@ void main() {
         },
       )));
       expect(built.length, lessThan(200));
+    });
+  });
+
+  // The extension is exported from the package barrel, so it is API a host or
+  // an embedder can call even though nothing inside the package does. That is
+  // the reason it is tested rather than deleted: "no caller in this repo" and
+  // "no caller anywhere" are different statements, and only one of them is
+  // something this repo can check.
+  group('VirtualizationExtension (public API)', () {
+    late RenderContext context;
+
+    setUp(() {
+      final stateManager = StateManager()..initialize(<String, dynamic>{});
+      final bindingEngine = BindingEngine();
+      final actionHandler = ActionHandler();
+      context = RenderContext(
+        renderer: Renderer(
+          widgetRegistry: WidgetRegistry(),
+          bindingEngine: bindingEngine,
+          actionHandler: actionHandler,
+          stateManager: stateManager,
+        ),
+        stateManager: stateManager,
+        bindingEngine: bindingEngine,
+        actionHandler: actionHandler,
+        themeManager: ThemeManager.instance,
+      );
+    });
+
+    test('the decision is on the count, and the threshold can be moved', () {
+      expect(context.shouldVirtualize(101), isTrue);
+      expect(context.shouldVirtualize(100), isFalse,
+          reason: 'the default is "more than 100", not "100 or more" — an '
+              'off-by-one here changes which code path every 100-row list '
+              'takes');
+      expect(context.shouldVirtualize(11, threshold: 10), isTrue);
+      expect(context.shouldVirtualize(10, threshold: 10), isFalse);
+    });
+
+    testWidgets('the list it builds carries the caller\'s settings through',
+        (tester) async {
+      final built = <int>[];
+      await tester.pumpWidget(host(context.createVirtualizedList(
+        items: items(400),
+        virtualizeThreshold: 10,
+        itemHeight: 50,
+        itemBuilder: (buildContext, item, index) {
+          built.add(index);
+          return SizedBox(height: 50, child: Text(item as String));
+        },
+      )));
+
+      expect(find.text('item-0'), findsOneWidget);
+      expect(built.length, lessThan(400),
+          reason: 'a threshold that did not reach the widget would build all '
+              'four hundred, which is the cost the extension exists to avoid');
     });
   });
 }
