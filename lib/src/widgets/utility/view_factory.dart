@@ -135,12 +135,10 @@ class _ViewWidgetState extends State<_ViewWidget> {
   /// A source is plain JSON, so encoding it is both correct and cheap at the
   /// size these are; the alternative is a deep-equals helper that has to know
   /// every shape a source can take.
-  // No `didUpdateWidget` re-resolve here. A changed source means a different
-  // origin or resource, and the widget is KEYED by the source (`_sourceKey`),
-  // so a change remounts: fresh state, fresh scope, one resolve. The
-  // in-place branch that used to sit here did the same job a second way and
-  // could never run — two mechanisms for one rule, and only one of them
-  // exercised.
+  // No `didUpdateWidget` re-resolve: the widget is keyed by the source
+  // (`_sourceKey`), so a changed source remounts — fresh state, fresh scope,
+  // one resolve. An in-place branch would be a second mechanism for the same
+  // rule and could never run.
 
   Future<void> _resolve() async {
     final source = widget.source;
@@ -293,7 +291,7 @@ class _ViewWidgetState extends State<_ViewWidget> {
     // An embedded application definition renders its initial route; an embedded
     // page or widget renders directly.
     final content = def['type'] == 'application'
-        ? _initialRouteContent(def)
+        ? _embeddedApplicationContent(def)
         : (def['type'] == 'page' || def['type'] == 'screen')
             ? def['content']
             : def;
@@ -408,6 +406,22 @@ class _ViewWidgetState extends State<_ViewWidget> {
   /// Pulls the page an embedded ApplicationDefinition opens on. An inline route
   /// value renders directly; a uri route value needs another resolver round,
   /// which is deferred to the resolver by handing it back as a nested `view`.
+  /// What an embedded application shows.
+  ///
+  /// `dashboard.content` first: §11.9 makes `dashboard` the application's
+  /// account of itself *when embedded*, which is exactly this position, and
+  /// §2.13.1 embeds `ui://app` on that basis. Only `routes` was read here, so
+  /// an application that presented itself through `dashboard` — the shape the
+  /// spec asks for — rendered as Unavailable.
+  dynamic _embeddedApplicationContent(Map<String, dynamic> app) {
+    final dashboard = app['dashboard'];
+    if (dashboard is Map) {
+      final content = dashboard['content'];
+      if (content != null) return content;
+    }
+    return _initialRouteContent(app);
+  }
+
   dynamic _initialRouteContent(Map<String, dynamic> app) {
     final routes = app['routes'];
     if (routes is! Map || routes.isEmpty) return null;

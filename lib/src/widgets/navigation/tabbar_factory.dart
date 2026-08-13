@@ -20,11 +20,9 @@ class TabBarWidgetFactory extends WidgetFactory {
     final tabsData = listOf(properties['tabs'], context) ?? const [];
     final tabs = tabsData.map<Tab>((tab) {
       if (tab is Map<String, dynamic>) {
-        // A tab that names neither a label nor an icon is empty, not illegal:
-        // Flutter's `Tab` asserts on all-null, and letting that assertion
-        // through drew a red box over the whole strip. Requiring one of them
-        // in the schema instead would stop the document opening (§1.7.5), so
-        // the empty tab is drawn as an empty tab.
+        // A tab naming neither a label nor an icon is empty, not illegal.
+        // Flutter's `Tab` asserts on all-null, so give it an empty label
+        // rather than refusing the document (§1.7.5).
         final label = (tab['label'] ?? tab['text']) as String?;
         final hasIcon = tab['icon'] != null;
         return Tab(

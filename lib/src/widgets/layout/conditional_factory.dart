@@ -18,12 +18,10 @@ class ConditionalFactory extends WidgetFactory {
     // if/then/else mode
     final condition = definition['condition'];
     if (condition == null) {
-      // Neither form declared. This used to throw, which drew an error card in
-      // the middle of the page; tightening the schema instead would have been
-      // worse, because validation runs at load and a rejected document does
-      // not open at all (§1.7.5). A conditional that states no condition is
-      // simply not true: the `else` / `default` branch is what it selects, and
-      // with no branch to select it occupies no space.
+      // Neither form declared. A conditional that states no condition is not
+      // true: it selects `else` / `default`, and with no branch to select it
+      // occupies no space. Not refused in the schema — validation runs at load
+      // and a rejected document does not open at all (§1.7.5).
       final fallback = definition['orElse'] ??
           definition['else'] ??
           definition['default'];

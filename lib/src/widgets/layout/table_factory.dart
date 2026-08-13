@@ -9,12 +9,9 @@ class TableWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
     final declaredRows = definition['rows'] as List<dynamic>? ?? [];
 
-    // `Table` throws when a row carries no children. A document whose row is
-    // empty — `{}`, or the column-keyed shape that belongs to `dataTable` —
-    // used to take the whole widget down with an exception. Requiring `cells`
-    // in the schema instead would stop the document opening (§1.7.5), so the
-    // rows that cannot be laid out are dropped here and the table draws the
-    // ones that can.
+    // `Table` throws when a row carries no children. Rows that cannot be laid
+    // out — `{}`, or the column-keyed shape that belongs to `dataTable` — are
+    // dropped here rather than refused in the schema (§1.7.5).
     final rows = <Map<String, dynamic>>[
       for (final row in declaredRows)
         if (row is Map<String, dynamic> &&

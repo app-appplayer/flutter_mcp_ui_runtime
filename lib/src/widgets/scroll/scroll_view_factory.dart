@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widget_factory.dart';
 import '../../renderer/render_context.dart';
+import '../../utils/mcp_logger.dart';
 
 /// Factory for creating SingleChildScrollView widgets
 class ScrollViewFactory extends WidgetFactory {
@@ -43,10 +44,8 @@ class ScrollViewFactory extends WidgetFactory {
       );
     }
 
-    // The registry declares `child` and `children`; this factory read only
-    // the first, so a document written with `children` — the shape §2 uses
-    // for every other multi-child widget, and the shape this widget's own
-    // example uses — scrolled an empty viewport.
+    // Linear mode takes `child` or `children`; `children` are wrapped in an
+    // implicit row/column along the scroll direction.
     Widget? child;
     final childDef = properties['child'] as Map<String, dynamic>?;
     final childrenDef = properties['children'] as List<dynamic>?;
@@ -99,8 +98,7 @@ class ScrollViewFactory extends WidgetFactory {
   /// Builds the `slivers` form of §2.9.1 into a [CustomScrollView].
   ///
   /// A sliver shape the spec does not define is reported in place rather than
-  /// dropped: a viewport that silently skips one entry looks like a layout
-  /// bug in the entries around it.
+  /// dropped.
   Widget _buildSliverMode(
     List<dynamic> defs,
     RenderContext context, {
@@ -131,12 +129,8 @@ class ScrollViewFactory extends WidgetFactory {
       ],
     );
 
-    // The same unbounded-parent fallback linear mode has had all along. Without
-    // it the two modes of one widget behaved differently in the same slot: a
-    // `scrollView` with `children` inside a vertical `linear` drew, and the
-    // same `scrollView` with `slivers` drew nothing at all — no error, no log.
-    // Measured on a real screen. An author cannot tell a silent layout
-    // constraint from a broken document.
+    // Both modes take the same unbounded-parent fallback: a `CustomScrollView`
+    // in an unbounded slot lays out nothing, silently.
     return _boundedOrFallback(viewport, scrollDirection);
   }
 
@@ -190,8 +184,7 @@ class ScrollViewFactory extends WidgetFactory {
           delegate: _sliverChildren(def, context),
         );
       default:
-        // Worded with the renderer's own marker so the surfaces that watch for
-        // a failed widget see this one too.
+        // Worded with the renderer's marker so failure-watching surfaces see it.
         return SliverToBoxAdapter(
           child: context.renderer.renderWidget(
             <String, dynamic>{
@@ -226,9 +219,7 @@ class ScrollViewFactory extends WidgetFactory {
 
     return SliverAppBar(
       // The bar's own surface, which is what remains once the hero has faded
-      // out. A `title` colour chosen against the hero stops reading at exactly
-      // the moment the bar collapses, and until these were declared the author
-      // had no way to say otherwise — and no signal that saying it was dropped.
+      // out; a `title` colour chosen against the hero does not read against it.
       backgroundColor:
           parseColor(context.resolve(def['backgroundColor']), context),
       foregroundColor:
@@ -282,6 +273,28 @@ class ScrollViewFactory extends WidgetFactory {
     final template = def['itemTemplate'] as Map<String, dynamic>?;
     final resolved = context.resolve(def['items']);
     final items = resolved is List ? resolved : const <dynamic>[];
+
+    // `items` holding widget nodes is drawn the way `children` is; without a
+    // template there is nothing else it could mean. Widening, not narrowing
+    // (§1.7.5).
+    if (template == null && items.isNotEmpty) {
+      final widgets = <Widget>[
+        for (final item in items)
+          if (item is Map<String, dynamic> && item['type'] is String)
+            context.renderer.renderWidget(item, context),
+      ];
+      if (widgets.length == items.length) {
+        return SliverChildListDelegate(widgets);
+      }
+      // Data rows with no template to render them through: nothing can be
+      // drawn, so say so rather than leaving the section blank.
+      MCPLogger('ScrollViewFactory').error(
+        'sliver `items` has ${items.length} entr'
+        '${items.length == 1 ? 'y' : 'ies'} and no `itemTemplate`, and they '
+        'are not widget nodes — nothing was rendered for this section',
+      );
+      return SliverChildListDelegate(const <Widget>[]);
+    }
     if (template == null || items.isEmpty) {
       return SliverChildListDelegate(const <Widget>[]);
     }

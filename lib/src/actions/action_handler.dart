@@ -24,6 +24,28 @@ import '../entry/entry_session.dart';
 import 'action_result.dart';
 
 /// Handles action execution
+/// A callback slot as one action.
+///
+/// `onSuccess` / `onError` take one action or a list of them; a list is a
+/// `sequence` (§4.6). This mirrors `readActions` / `readAction` in
+/// `widget_factory.dart`, which every widget-side action slot already uses —
+/// the callbacks were the one position still casting straight to a map, so a
+/// list form ran nothing and reported nothing.
+Map<String, dynamic>? _callbackOf(dynamic raw) {
+  if (raw is Map<String, dynamic>) return raw;
+  if (raw is Map) return Map<String, dynamic>.from(raw);
+  if (raw is List) {
+    final actions = raw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+    if (actions.isEmpty) return null;
+    if (actions.length == 1) return actions.first;
+    return <String, dynamic>{'type': 'sequence', 'actions': actions};
+  }
+  return null;
+}
+
 class ActionHandler {
   final Map<String, ActionExecutor> _executors = {};
   final Map<String, Function> _toolExecutors = {};
@@ -248,7 +270,13 @@ class ActionHandler {
       //   - Non-Map (list, scalar, null) → full response exposed as `event.value`;
       //     other `event.*` keys resolve to null.
       if (result.success) {
-        final onSuccess = action['onSuccess'] as Map<String, dynamic>?;
+        // Through the shared slot reader: a callback takes one action or a
+        // list of them, and a list is a `sequence` (§4.6). Casting straight to
+        // `Map<String, dynamic>?` dropped the list form — the tool ran, the
+        // callback did not, and nothing said so. Every other action slot in the
+        // document (lifecycle hooks, watchers, widget slots) already reads
+        // through this helper.
+        final onSuccess = _callbackOf(action['onSuccess']);
         if (onSuccess != null) {
           // Wrap non-Map responses so `{{event.value}}` resolves per spec.
           final eventData = result.data is Map<String, dynamic>
@@ -262,7 +290,7 @@ class ActionHandler {
           await execute(onSuccess, successContext);
         }
       } else {
-        final onError = action['onError'] as Map<String, dynamic>?;
+        final onError = _callbackOf(action['onError']);
         if (onError != null) {
           final errorContext = context.createChildContext(
             variables: {
@@ -1349,7 +1377,7 @@ class ResourceActionExecutor extends ActionExecutor {
     } catch (e) {
       _logger.error('Subscribe to "$uri" on origin $origin failed: $e');
       final onSubscriptionError =
-          action['onSubscriptionError'] as Map<String, dynamic>?;
+          _callbackOf(action['onSubscriptionError']);
       if (onSubscriptionError != null) {
         await context.actionHandler.execute(
           onSubscriptionError,
@@ -1456,7 +1484,7 @@ class ResourceActionExecutor extends ActionExecutor {
                 context.engine.unregisterResourceSubscription(uri);
               }
               final onSubscriptionError =
-                  action['onSubscriptionError'] as Map<String, dynamic>?;
+                  _callbackOf(action['onSubscriptionError']);
               if (onSubscriptionError != null) {
                 final errorContext = context.createChildContext(
                   variables: {

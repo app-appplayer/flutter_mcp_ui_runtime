@@ -360,9 +360,6 @@ class Renderer {
     // Use exact case for case-sensitive matching (MCP UI DSL v1.0)
     final factory = widgetRegistry.get(type);
     if (factory == null) {
-      if (kDebugMode) {
-        _logger.warning('Widget factory not found for type: $type');
-      }
       return _errorWidget('Unknown widget type: $type', definition);
     }
 
@@ -752,7 +749,22 @@ class Renderer {
     }
   }
 
+  /// Reports a widget that could not be built, and paints the reason only in
+  /// a debug build (§18.2.1). A release build collapses the slot: developer
+  /// text does not belong on an end user's screen. Reporting is
+  /// unconditional — a logged error and the plugin `onError` hook.
   Widget _errorWidget(String message, Map<String, dynamic> definition) {
+    final type = definition['type'];
+    _logger.error('$message${type == null ? '' : ' (type: $type)'}');
+    PluginHookManager.instance.fireHookSync(
+      PluginHookType.onError,
+      data: {
+        'source': 'renderer',
+        'message': message,
+        if (type != null) 'widgetType': type,
+      },
+    );
+    if (!kDebugMode) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(

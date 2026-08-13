@@ -99,8 +99,8 @@ class JsonPath {
           current = current.isEmpty;
         } else if (current is String && part.key == 'isNotEmpty') {
           current = current.isNotEmpty;
-        // (The Map cases that used to sit here were unreachable behind the
-        // branch above, and now live in it.)
+        // Map keys are resolved by the branch above; a `current is Map` case
+        // added here would sit behind it and never run.
         } else {
           return null;
         }

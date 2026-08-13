@@ -1,3 +1,22 @@
+## [0.7.6] - 2026-08-12
+
+### Fixed
+- `onSuccess` / `onError` take one action or a list of them, as every other
+  action slot does; a list runs in order (`sequence`, §4.6). A list used to be
+  dropped without running and without an error, so the tool succeeded and the
+  state it was meant to write stayed at its initial value.
+- An embedded `application` renders `dashboard.content` (§11.9) before falling
+  back to its initial route. Only `routes` was read, so an application that
+  presented itself the way §2.13.1 embeds it showed "Unavailable".
+
+### Changed
+- A widget that cannot be built is reported (log + plugin `onError` hook, with
+  the widget type) and drawn only in a debug build. Release builds collapse the
+  slot instead of painting the message. Spec §18.2.1.
+- `sliverList` / `sliverGrid` / `sliverFixedExtentList`: `items` holding widget
+  nodes renders them, as `children` does. Items that are not widget nodes and
+  have no `itemTemplate` render nothing and log why.
+
 ## [0.7.5] - 2026-08-11
 
 ### Every accepted spelling is now drawn, not just every canonical one
@@ -118,7 +137,7 @@ So the runtime absorbs them instead:
 
 ### A list slot reads empty rather than painting a stack trace
 
-Measured on the published 0.7.4 by sbuilder, in the shape that happens during
+Measured on the published 0.7.4, in the shape that happens during
 ordinary editing: a list property bound to a path whose state holds a scalar —
 a response still loading, a value half-typed. `resolve<List<dynamic>?>` threw,
 and the renderer answers a throw by painting a red
@@ -1041,7 +1060,7 @@ were measured wrong:
   there after. That difference is the whole defect, so the harness could not
   see it.
 
-konpi's five-way control (state visible as text · literal/literal ·
+A five-way control (state visible as text · literal/literal ·
 literal+bound edges · bound nodes+literal edges · both bound) is what
 separated them. The regression here reproduces the ordering — empty state,
 first frame, then the data — and fails without the fix.
@@ -1097,7 +1116,7 @@ enumerated the forms.
   minimum while the value beside it was right. The read-back matrix now covers
   the input widgets; `slider` was the one that failed it.
 
-Reported by konpi, from documents written by following the spec.
+From documents written by following the spec.
 
 ### The matrix now asks whether anything was drawn
 
@@ -1132,7 +1151,7 @@ helpers.
   the row and column labels. An author who declared `rowLabels` and saw nothing
   read the blank axis as their own mistake.
 
-Reported by konpi, measured on a built app before this cut went anywhere.
+Measured on a built app before this cut went anywhere.
 
 ### A note on what these fixes change for documents already in the field
 
@@ -1148,7 +1167,7 @@ and the declared value still stands while the path is unset — so a document
 that never populates that path looks exactly as it did.
 
 Reported as a live path by mark (Cloud's launcher model stacks renderers) and
-by sbuilder (studio bundles that declare both on a slider, where the `value`
+(bundles that declare both on a slider, where the `value`
 turned out to be a binding to the same unset path — no visible change there).
 
 ### Two documents can be on screen at once
@@ -1176,7 +1195,7 @@ reports on the wrong screen is worse than no gate.
 alone, so a document written with the legacy spelling pointed at an `.mp3`,
 inferred nothing, and fell back to video — the host was asked for the video
 capability and an audio-only one reported it absent. Both now read the same
-value. Reported by sbuilder against the published cut.
+value. Reported against the published cut.
 
 ## [0.7.1] - 2026-08-07 — the spec states the standard, the runtime keeps reading the legacy
 
@@ -1449,7 +1468,7 @@ listener attaches once.
 **A launch route is honoured wherever there is a shell.** The shell picked its
 tab from `appDefinition.initialRoute` and never consulted `RouteManager`, so
 three stations opening the same application at `/kiosk`, `/pos` and `/kds` all
-drew the first tab (reported by konpi, 2026-08-03; present since 0.1.0). It
+drew the first tab (reported 2026-08-03; present since 0.1.0). It
 reads `RouteManager.initialRoute` now, which is the requested route when the
 document declares it and the document's own otherwise. A launch route that
 names a declared page with no tab of its own — the usual shape of a scanned
