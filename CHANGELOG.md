@@ -1,3 +1,91 @@
+## [0.7.7] - 2026-08-27
+
+### Fixed
+- `PluginHookType`, `PluginHookCallback`, `PluginHookContext` and
+  `PluginHookManager` are exported. The barrel exported `plugin_system.dart`,
+  which only *imports* the hook library, and an import is not a re-export — so
+  a host could not name the type it was being asked to handle. Since 0.7.6 the
+  `onError` hook is the only signal a release build gives for a widget that
+  could not be built, which made this the absence of that contract rather than
+  a smaller version of it.
+
+### Added
+- `MCPPlugin.hooks` — a plugin declares the hooks it listens on the way it
+  declares `widgets` and `actions`. Registration happens when the plugin loads
+  and is undone when it unloads, so nothing has to touch the manager singleton
+  to keep the lifetimes right. A host with no plugin of its own can still
+  register on `PluginHookManager` directly.
+
+### Added — `location` (UI DSL §4.25, Location Profile)
+
+- `LocationPort`, `LocationPrecision`, `LocationFix`, `LocationFailure`, and
+  `RuntimeCapabilities.location`. Single-shot only: §4.25 defines one question
+  and one answer, and a document that could follow someone is a different power
+  from one that can ask where they are.
+- `LocationActionExecutor` enforces the ceiling on the way back as well as on
+  the way out — a port that answered finer than it was asked does not reach the
+  document. The runtime is the last place that can tell.
+- A refusal is routed to `onError` as `LOCATION_DENIED` and never re-asked; an
+  absent port, a port that threw, and no fix answer `LOCATION_UNAVAILABLE`. A
+  silent no-op is non-conformant (§18.12.3).
+- Refused at trust level `untrusted` before the port is reached (§7.3.6).
+
+
+### `payment` — asking the host to take money (DSL §4.24, §7.3.5, §18.11)
+
+`{"type": "payment", "itemId": …}` dispatches through `PaymentPort`, wired on
+`RuntimeCapabilities` beside sound and media — per runtime, because which
+origin served the document is what decides who gets paid. The runtime hands
+over what the document declared and nothing else: resolving the receiving
+party, assembling the payment address, choosing the surface, rendering a
+provider choice, minting the return address with its per-request token and
+matching what comes back are the host's, because a runtime that assembled the
+address would let a rendered document choose where money goes.
+
+`seller` is **optional**. A document served by a device does not name who is
+paid — that follows from which device it is, and the host establishes it by
+verifying the device's identity. `PaymentRequest.seller` is null there, and a
+host that cannot resolve the party answers `unavailable`; falling back to a
+default party is a payment to the wrong person.
+
+`amount` is carried only for items the payment surface prices as
+customer-entered — a tip, a donation, a counter total. The runtime checks that
+it is a positive number and passes it on; whether this item takes one is the
+surface's answer. Out-of-range values are refused there rather than clamped.
+
+Outcomes map onto the §4.17 envelope: `success` carries `{status: "success"}`
+to `onSuccess`; cancel, an unrecognised outcome and a port that throws reach
+`onError` as `PAYMENT_CANCELLED` / `PAYMENT_UNKNOWN`; a host that cannot open
+the surface, and a runtime with no port at all, answer `PAYMENT_UNAVAILABLE`.
+Nothing but `success` reaches `onSuccess`, and a port that throws is reported
+as unknown rather than failed — a host that broke *after* opening cannot say
+the payment did not happen.
+
+**Coming back is not paying.** `success` means the person returned from the
+payment surface. Anything of value released on `onSuccess` has to be confirmed
+server-side by whoever releases it (§4.24.2).
+
+Refused before the port is reached at trust level `untrusted` (§7.3.5) — the
+document names the seller. A document with no permissions block is not treated
+as untrusted; unknown trust would otherwise refuse every ordinary document.
+
+`RuntimeCapability.payment` joins the declared set, so a host can be asked what
+it supports rather than discovering it from a failed payment.
+
+### The failure hook has a public door
+
+`PluginHookType`, `PluginHookCallback` and `PluginHookManager` are exported
+from the library. `plugin_system.dart` imported the hook types without
+re-exporting them, so the type a host had to name to subscribe was not
+reachable from the public entry point — and 0.7.6 made that hook the only
+signal a release build gives for a widget it could not build.
+
+`MCPPlugin.hooks` declares them the way `widgets` and `actions` are declared:
+registered when the plugin loads, undone when it unloads, and registered
+before the widget and action registrations so a plugin hears the events those
+themselves fire. A host with no plugin can still register on
+`PluginHookManager` directly.
+
 ## [0.7.6] - 2026-08-12
 
 ### Fixed

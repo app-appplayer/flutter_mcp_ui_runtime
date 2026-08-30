@@ -46,6 +46,15 @@ abstract class MCPPlugin {
   /// Services provided by this plugin
   Map<Type, Service>? get services => null;
 
+  /// Hooks this plugin listens on.
+  ///
+  /// Declared the way [widgets] and [actions] are, so a plugin that wants to
+  /// hear about failures says so instead of reaching for the manager: the
+  /// registration happens when the plugin loads and is undone when it
+  /// unloads. A host that has no plugin can still register directly on
+  /// [PluginHookManager].
+  Map<PluginHookType, PluginHookCallback>? get hooks => null;
+
   /// Initialize the plugin
   Future<void> initialize(PluginContext context);
 
@@ -169,6 +178,18 @@ class PluginManager {
       await hookManager.fireHook(PluginHookType.onLifecycle, data: {
         'pluginName': plugin.name,
         'event': 'initialized',
+      });
+
+      // Register hooks. Before the widgets and actions below, because those
+      // registrations fire hooks themselves — a plugin listening for
+      // `onWidgetRegister` should hear its own.
+      plugin.hooks?.forEach((hookType, callback) {
+        hookManager.registerHook(
+          pluginName: plugin.name,
+          hookType: hookType,
+          callback: callback,
+        );
+        _logger.debug('Registered hook from ${plugin.name}: ${hookType.name}');
       });
 
       // Register widgets

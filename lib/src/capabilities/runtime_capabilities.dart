@@ -37,6 +37,121 @@ enum RuntimeCapability {
 
   /// `lottieAnimation`.
   lottie,
+
+  /// `payment` (§4.24, Payment Profile).
+  payment,
+
+  /// `location` (§4.25, Location Profile).
+  location,
+}
+
+/// What a host reports back for a payment (§4.24.1).
+///
+/// [success] means the person came back from the payment surface. It is not
+/// proof of payment — §4.24.4 forbids treating it as one — and a host that
+/// failed after presenting the surface reports [unknown] rather than a
+/// failure, because it cannot say the money did not move.
+enum PaymentOutcome { success, cancel, unknown, unavailable }
+
+/// One payment requested by `{"type": "payment"}` (§4.24).
+///
+/// Carries what the document declared and nothing else. The payment address,
+/// the surface, the provider choice and the return address are all the host's
+/// (§7.3.5): a runtime that assembled them would be letting a rendered
+/// document choose where money goes.
+class PaymentRequest {
+  const PaymentRequest({required this.itemId, this.seller, this.amount});
+
+  /// The item as the payment surface knows it — a preselection, not a
+  /// definition.
+  final String itemId;
+
+  /// The receiving party where the document named one, and **null where it did
+  /// not**. Null is a statement, not a gap: a document served by a device does
+  /// not name who is paid, and the host resolves that party by verifying the
+  /// device's identity (§4.24.2). A host that cannot resolve it answers
+  /// [PaymentOutcome.unavailable] — never a default party.
+  final String? seller;
+
+  /// Set only where the document supplied one, already checked to be a
+  /// positive number. Whether this item takes a customer-entered price is the
+  /// payment surface's answer, not the runtime's (§4.24.3); for every other
+  /// item the surface derives the price and ignores this.
+  final num? amount;
+}
+
+/// Takes payment for one item. Presenting the surface — a browser, a custom
+/// tab, or a payment front end the host renders itself — is the host's choice
+/// (§4.24.1), as is minting and matching the per-request return token.
+abstract class PaymentPort {
+  Future<PaymentOutcome> checkout(PaymentRequest request);
+}
+
+/// How precise an answer a document needs (§4.25.2).
+///
+/// A ceiling, not a preference: the host MAY answer coarser and MUST NOT
+/// answer finer. Without that, a document collects precision by asking
+/// quietly, and the ask is the only place anyone can weigh it.
+enum LocationPrecision {
+  /// Enough to say which area. The default, because most questions are.
+  coarse,
+
+  /// Enough to say which building. Asked for when the answer is the point —
+  /// where an incident happened, which pump, which door.
+  fine;
+
+  static LocationPrecision fromWire(String? value) =>
+      value == 'fine' ? LocationPrecision.fine : LocationPrecision.coarse;
+}
+
+/// Why a position could not be given.
+enum LocationFailure {
+  /// The person said no — now, or previously and the platform remembers.
+  /// A normal outcome, not a fault to hide (§4.25.1).
+  denied,
+
+  /// No port, the platform has it switched off, or no fix could be obtained.
+  unavailable,
+}
+
+/// Where the device was, once.
+class LocationFix {
+  const LocationFix({
+    required this.latitude,
+    required this.longitude,
+    required this.accuracyMeters,
+    required this.precision,
+    required this.at,
+  });
+
+  final double latitude;
+  final double longitude;
+
+  /// How close this is, as the platform reported it. A host MUST NOT state an
+  /// accuracy it did not measure — a confident number nobody checked is worse
+  /// than an honest wide one.
+  final double accuracyMeters;
+
+  /// What actually arrived, which may be coarser than what was asked.
+  final LocationPrecision precision;
+
+  /// When the fix was taken. Carried because a position without a time cannot
+  /// be told from a stale one.
+  final DateTime at;
+}
+
+/// Answers where this device is, once (§4.25).
+///
+/// The host owns the prompt: whether the person is asked, in what words, and
+/// how the platform records the answer. There is no continuous form — a
+/// document that could follow someone is a different power from one that can
+/// ask where they are.
+abstract class LocationPort {
+  /// Answers a [LocationFix], or a [LocationFailure] saying why not.
+  ///
+  /// [precision] is the most this may answer with. Answering coarser is
+  /// allowed and expected; answering finer is not.
+  Future<Object> locate(LocationPrecision precision);
 }
 
 /// Reads the bytes behind an asset the host cannot open by URI — a sound
@@ -191,6 +306,8 @@ class RuntimeCapabilities {
     this.pdfBuilder,
     this.mapBuilder,
     this.lottieBuilder,
+    this.payment,
+    this.location,
     this.mediaSupportsVideo = false,
   });
 
@@ -205,6 +322,14 @@ class RuntimeCapabilities {
   final SurfaceBuilder? mapBuilder;
   final SurfaceBuilder? lottieBuilder;
 
+  /// Takes payment (§4.24). A tier that wires none still renders documents;
+  /// every `payment` action reports `PAYMENT_UNAVAILABLE` through `onError`.
+  final PaymentPort? payment;
+
+  /// Answers where this device is (§4.25, Location Profile). Absent means the
+  /// runtime does not claim the Profile, and `location` fails visibly.
+  final LocationPort? location;
+
   /// Whether [media] decodes video as well as audio. Separate because the
   /// common embedded case is audio-only, and a video widget must be able to
   /// tell that apart from "no media at all".
@@ -218,6 +343,8 @@ class RuntimeCapabilities {
         if (pdfBuilder != null) RuntimeCapability.pdf,
         if (mapBuilder != null) RuntimeCapability.map,
         if (lottieBuilder != null) RuntimeCapability.lottie,
+        if (payment != null) RuntimeCapability.payment,
+        if (location != null) RuntimeCapability.location,
       };
 
   bool supports(RuntimeCapability capability) =>

@@ -110,6 +110,12 @@ export 'src/core/service_locator.dart';
 
 // Plugin system exports
 export 'src/plugins/plugin_system.dart';
+// The hook types are part of the plugin contract, not an internal detail:
+// `MCPPlugin.hooks` is declared in them, and a failed widget is reported
+// through `onError` rather than drawn (§18.2.1). `plugin_system.dart` only
+// imports this library, and an import is not a re-export — without this line
+// a host cannot write down the type it is being asked to handle.
+export 'src/plugins/plugin_hooks.dart';
 
 // Error boundary exports
 export 'src/core/error_boundary.dart';

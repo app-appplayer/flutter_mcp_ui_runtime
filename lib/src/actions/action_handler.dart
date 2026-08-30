@@ -20,6 +20,7 @@ import '../plugins/plugin_hooks.dart';
 import '../channels/channel_manager.dart';
 import '../models/ui_definition.dart' show PermissionsConfig;
 import '../permissions/permission_manager.dart';
+import '../permissions/trust_level.dart';
 import '../entry/entry_session.dart';
 import 'action_result.dart';
 
@@ -150,6 +151,14 @@ class ActionHandler {
     _executors['identity'] = identityExecutor;
     _executors[ActionTypes.identityPromote] = identityExecutor;
     _executors[ActionTypes.identityRelease] = identityExecutor;
+
+    // v1.4.2 payment (spec §4.24, Payment Profile). Registered unconditionally
+    // so that a host without a payment port answers `PAYMENT_UNAVAILABLE`
+    // through `onError` (§18.11.3) instead of the generic unknown-type error —
+    // the document learns the runtime cannot take payment, which is a
+    // different fact from the action being misspelled.
+    _executors[ActionTypes.payment] = PaymentActionExecutor();
+    _executors[ActionTypes.location] = LocationActionExecutor();
   }
 
   /// Register a tool executor function
@@ -251,6 +260,10 @@ class ActionHandler {
       } else if (executor is BatchActionExecutor) {
         executor._actionHandler = this;
       } else if (executor is ConditionalActionExecutor) {
+        executor._actionHandler = this;
+      } else if (executor is LocationActionExecutor) {
+        executor._actionHandler = this;
+      } else if (executor is PaymentActionExecutor) {
         executor._actionHandler = this;
       }
 
@@ -2652,5 +2665,207 @@ class EventActionExecutor extends ActionExecutor {
     }
 
     return ActionResult.error('Unknown event action: $eventAction');
+  }
+}
+
+/// Executes `{"type": "payment"}` (spec §4.24, Payment Profile).
+///
+/// Everything this class does is bookkeeping around a host call: resolve the
+/// two declared fields, refuse where §7.3.5 says to refuse, hand them over,
+/// and map the outcome onto the §4.17 envelope. It never builds a URL, never
+/// opens anything, and never decides that a payment happened.
+/// `{"type": "location"}` — where this device is, once (§4.25).
+///
+/// Single-shot by construction. There is no continuous form to implement,
+/// because §4.25 does not define one: a document that could follow someone is
+/// a different power from one that can ask where they are.
+class LocationActionExecutor extends ActionExecutor {
+  static final _logger = MCPLogger('LocationActionExecutor');
+
+  ActionHandler? _actionHandler;
+
+  @override
+  Future<ActionResult> execute(
+    Map<String, dynamic> action,
+    RenderContext context,
+  ) async {
+    final sub = action['action'] as String? ?? 'current';
+    if (sub != 'current') {
+      return ActionResult.error('Unknown location action: $sub');
+    }
+
+    // §7.3.6 — an untrusted document renders and nothing more. Reading where
+    // the person is is not rendering.
+    final pm = _actionHandler?.permissionManager;
+    if (pm != null && pm.trustLevel == TrustLevel.untrusted) {
+      return ActionResult.error(
+        'location is not available at trust level "untrusted" (spec §7.3.6)',
+        errorCode: 'LOCATION_UNAVAILABLE',
+      );
+    }
+
+    // Unknown spellings resolve to `coarse` rather than failing: the ceiling
+    // is a safety property, and the safe reading of a value nobody recognises
+    // is the narrower one.
+    final precision = LocationPrecision.fromWire(
+      context.resolve<String?>(action['precision']),
+    );
+
+    final port = context.capabilities.location;
+    if (port == null) {
+      // Reported, never a silent no-op (§4.25.1, §18.12.3).
+      return ActionResult.error(
+        const CapabilityUnavailable(RuntimeCapability.location,
+                detail: 'this runtime does not claim the Location Profile')
+            .toString(),
+        errorCode: 'LOCATION_UNAVAILABLE',
+      );
+    }
+
+    Object answer;
+    try {
+      answer = await port.locate(precision);
+    } catch (e) {
+      // Nothing was learned, so nothing is claimed.
+      _logger.error('Location port threw: $e');
+      answer = LocationFailure.unavailable;
+    }
+
+    if (answer is LocationFix) {
+      // The ceiling is enforced here as well as in the host: a port that
+      // answered finer than it was asked must not have that reach the
+      // document, and the runtime is the last place that can tell.
+      if (precision == LocationPrecision.coarse &&
+          answer.precision == LocationPrecision.fine) {
+        _logger.error('Location port answered finer than asked; refusing');
+        return ActionResult.error(
+          'the host answered with finer precision than the document asked for',
+          errorCode: 'LOCATION_UNAVAILABLE',
+        );
+      }
+      return ActionResult.success(data: {
+        'latitude': answer.latitude,
+        'longitude': answer.longitude,
+        'accuracyMeters': answer.accuracyMeters,
+        'precision': answer.precision.name,
+        'at': answer.at.toUtc().toIso8601String(),
+      });
+    }
+
+    if (answer == LocationFailure.denied) {
+      // A refusal is an answer. The runtime does not re-ask (§4.25.1).
+      return ActionResult.error(
+        'the person declined to share their location',
+        errorCode: 'LOCATION_DENIED',
+      );
+    }
+    return ActionResult.error(
+      'a position could not be obtained',
+      errorCode: 'LOCATION_UNAVAILABLE',
+    );
+  }
+}
+
+class PaymentActionExecutor extends ActionExecutor {
+  static final _logger = MCPLogger('PaymentActionExecutor');
+
+  ActionHandler? _actionHandler;
+
+  @override
+  Future<ActionResult> execute(
+    Map<String, dynamic> action,
+    RenderContext context,
+  ) async {
+    final sub = action['action'] as String? ?? 'checkout';
+    if (sub != 'checkout') {
+      return ActionResult.error('Unknown payment action: $sub');
+    }
+
+    // §7.3.5 — an untrusted document renders and nothing more. It names the
+    // seller, so letting it through is letting it collect for a stranger.
+    // Checked only where the level is known: a document with no permissions
+    // block has no PermissionManager, and defaulting that to untrusted would
+    // refuse every ordinary document.
+    final pm = _actionHandler?.permissionManager;
+    if (pm != null && pm.trustLevel == TrustLevel.untrusted) {
+      return ActionResult.error(
+        'payment is not available at trust level "untrusted" (spec §7.3.5)',
+        errorCode: 'PAYMENT_UNAVAILABLE',
+      );
+    }
+
+    final itemId = context.resolve<String?>(action['itemId']);
+    if (itemId == null || itemId.isEmpty) {
+      return ActionResult.error('payment requires an itemId');
+    }
+
+    // Absent is a declaration, not a gap (§4.24.2): a document served by a
+    // device does not name who is paid, and the host resolves that party by
+    // verifying the device. An empty string is the same statement as absent —
+    // a binding that resolved to nothing must not become a party named "".
+    final sellerValue = context.resolve<String?>(action['seller']);
+    final seller =
+        (sellerValue == null || sellerValue.isEmpty) ? null : sellerValue;
+
+    // §4.24.3 — carried only where the item is customer-priced, which the
+    // surface knows and the runtime does not. What the runtime can refuse is a
+    // value that is not a price at all.
+    final amountValue = context.resolve<Object?>(action['amount']);
+    num? amount;
+    if (amountValue != null) {
+      amount = amountValue is num ? amountValue : num.tryParse('$amountValue');
+      if (amount == null) {
+        return ActionResult.error('payment amount is not a number: $amountValue');
+      }
+      if (amount <= 0) {
+        return ActionResult.error('payment amount must be greater than zero');
+      }
+    }
+
+    final port = context.capabilities.payment;
+    if (port == null) {
+      // Reported, never a silent no-op (§4.24.1). A payment button that does
+      // nothing is indistinguishable from a broken document.
+      return ActionResult.error(
+        const CapabilityUnavailable(RuntimeCapability.payment,
+                detail: 'this runtime does not claim the Payment Profile')
+            .toString(),
+        errorCode: 'PAYMENT_UNAVAILABLE',
+      );
+    }
+
+    PaymentOutcome outcome;
+    try {
+      outcome = await port.checkout(
+        PaymentRequest(itemId: itemId, seller: seller, amount: amount),
+      );
+    } catch (e) {
+      // The host may have presented the surface before failing, so this cannot
+      // claim the payment did not happen. `unknown` is the honest answer.
+      _logger.error('Payment port threw: $e');
+      outcome = PaymentOutcome.unknown;
+    }
+
+    switch (outcome) {
+      case PaymentOutcome.success:
+        // Returning from the surface, not a settlement (§4.24.4). Whatever
+        // `onSuccess` releases is confirmed server-side by whoever releases it.
+        return ActionResult.success(data: {'status': 'success'});
+      case PaymentOutcome.cancel:
+        return ActionResult.error(
+          'Payment cancelled',
+          errorCode: 'PAYMENT_CANCELLED',
+        );
+      case PaymentOutcome.unavailable:
+        return ActionResult.error(
+          'Host could not present the payment surface',
+          errorCode: 'PAYMENT_UNAVAILABLE',
+        );
+      case PaymentOutcome.unknown:
+        return ActionResult.error(
+          'Payment outcome unknown',
+          errorCode: 'PAYMENT_UNKNOWN',
+        );
+    }
   }
 }
