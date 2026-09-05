@@ -1,3 +1,67 @@
+## [0.7.8] - 2026-09-04
+
+### Changed
+- Floors `mcp_bundle` at `^0.4.10`.
+
+### Fixed
+- `dataTable`: `editable: true` renders editable cells on the default render
+  path. Only `virtualScroll` and `resizableColumns` selected the grid whose
+  cells are fields, so a table marked editable on its own drew a Material
+  `DataTable` of plain text and `onCellEdit` never fired. The grid now also
+  carries what the Material path had: a sortable column's header tap
+  dispatches `onSort` (toggling direction on the current sort column, as
+  `DataTable` does) and `columns[].align` is honoured. An editable or
+  resizable table that is not `virtualScroll` lays out every row instead of
+  clipping to a fixed viewport with its own scroll.
+- `dataTable`: an editable cell is keyed by its row's identity, not its
+  position, and follows its value when the row under it changes. Cells were
+  keyed by index with `initialValue`, which is read once — so after a
+  header tap re-sorted the data, the fields kept the text they were built
+  with while `onCellEdit` named the row now at that position: the number
+  typed sat visually in one line and was reported for another. Measured
+  on the unpublished 0.7.8, before it went out.
+- `dataTable`: a sort compares two numbers as numbers whatever their
+  subtype. The comparator took the numeric path only when both values had
+  the same runtime type, so an `int` and a `double` in one column fell to
+  string comparison and `617.5` sorted after `2160`. Measured on the
+  unpublished 0.7.8.
+- `gantt`: the time header places a label where the thing it names is. A
+  unit of a day or longer names a span, so its label is centred in the
+  cell between two ticks — over the bar it dates; a shorter unit names a
+  point, so its label sits beside the tick and reads the hour (with the
+  date where the day turns). Every label sat beside its tick and read
+  `m/d`, so a day view made the reader map a label to the cell after it
+  and an hour view printed the same date at every tick. A label that
+  would overlap the previous one is dropped rather than drawn over it, and
+  the last cell boundary gets its tick.
+- `kanban`: an optimistic move stays on screen while the bound `columns`
+  data is unchanged, and is replaced only when the data changes. The board
+  compared incoming data by identity, and the factory parses `columns`
+  into a fresh list on every build — so the state write `onCardMove` makes
+  was itself the rebuild that put the card back. Compared by content now.
+- `kanban`: a drop is accepted anywhere in a column — on a card (its upper
+  half inserts before it, its lower half after) and in the space below the
+  last card (appends), not only in the gaps between cards, which left a
+  column with cards in it mostly not a drop target.
+- `gantt`: `showDependencies` draws dependency arrows — from the end of each
+  task a row depends on to the start of the row's task, with a bar's drag
+  preview moving its arrows. `dependsOn` was parsed and the flag passed down,
+  and the only painter was the axis. The arrow layer ignores pointers so a
+  bar under an arrow still drags.
+- `gantt`: the progress fill is the bar's colour over the completed fraction
+  and the remainder is its lighter tint. It was inverted — the done part was
+  the light one — so a 30 % task read as 70 % complete.
+- `tree`: an expandable node is a drag source and a drop target. Only leaves
+  were wrapped, so with `draggable: true` a group could not be dragged and
+  nothing could be dropped *into* one — `event.position: "inside"` on a
+  group, the reparenting §10.11 names, was unreachable. The drop edge is now
+  measured against the target row rather than the whole tree, the feedback
+  rides on the pointer so the reported offset is the pointer, and a node is
+  refused as a drop target for itself or anything in its own subtree.
+- `calendar`: `onChange` `event.value` is an ISO date (`2026-09-18`), as the
+  spec says and as `events[].date` is written, not a timestamp with a
+  midnight tail. `event.date` is unchanged.
+
 ## [0.7.7] - 2026-08-27
 
 ### Fixed

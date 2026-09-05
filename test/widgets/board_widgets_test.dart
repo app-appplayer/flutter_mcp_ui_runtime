@@ -68,26 +68,30 @@ void main() {
       expect(find.byType(Draggable<Object>), findsNothing,
           reason: 'payload type is private, so match by presence below');
       expect(
-        find.byWidgetPredicate((w) => w.runtimeType.toString().startsWith('Draggable')),
+        find.byWidgetPredicate(
+            (w) => w.runtimeType.toString().startsWith('Draggable')),
         findsNWidgets(2),
       );
 
       await pump(tester, board(draggable: false));
       expect(
-        find.byWidgetPredicate((w) => w.runtimeType.toString().startsWith('Draggable')),
+        find.byWidgetPredicate(
+            (w) => w.runtimeType.toString().startsWith('Draggable')),
         findsNothing,
       );
     });
 
-    testWidgets('drop targets are the gaps, one more than the card count',
-        (tester) async {
-      // The whole reason this is a widget: a drop must land *between* cards so
-      // the destination index means something.
+    testWidgets('every place in a column is a drop target', (tester) async {
+      // A drop must land *between* cards so the destination index means
+      // something — and it must land anywhere a finger releases: the gaps,
+      // the cards themselves (a half decides the side), and the space below
+      // the last card.
       await pump(tester, board());
       final targets = find.byWidgetPredicate(
           (w) => w.runtimeType.toString().startsWith('DragTarget'));
-      // 3 gaps in the two-card column, 1 in the empty column.
-      expect(targets, findsNWidgets(4));
+      // 3 gaps + 2 cards + the body in the two-card column; 1 gap + the body
+      // in the empty column.
+      expect(targets, findsNWidgets(8));
     });
   });
 

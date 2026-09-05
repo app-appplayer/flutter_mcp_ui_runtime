@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 
 import '../../renderer/render_context.dart';
@@ -19,12 +20,12 @@ class KanbanFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    final columns =
-        listOf(properties['columns'], context) ?? const [];
+    final columns = listOf(properties['columns'], context) ?? const [];
     final itemTemplate = properties['itemTemplate'] as Map<String, dynamic>?;
     final itemKey = context.resolve<String?>(properties['itemKey']) ?? 'id';
     final draggable = context.resolve<bool?>(properties['draggable']) ?? true;
-    final optimistic = context.resolve<bool?>(properties['optimistic']) ?? false;
+    final optimistic =
+        context.resolve<bool?>(properties['optimistic']) ?? false;
     final columnWidth =
         context.resolve<num?>(properties['columnWidth'])?.toDouble() ?? 280.0;
     final onCardMove = actionOf(properties['onCardMove'], context);
@@ -117,12 +118,19 @@ class _Board extends StatefulWidget {
 class _BoardState extends State<_Board> {
   late List<Map<String, dynamic>> _columns = _copy(widget.columns);
 
+  static const _same = DeepCollectionEquality();
+
   @override
   void didUpdateWidget(_Board old) {
     super.didUpdateWidget(old);
-    // Without optimistic moves the incoming data is the truth; with them the
-    // local arrangement stands until the next rebuild replaces it.
-    if (old.columns != widget.columns) _columns = _copy(widget.columns);
+    // The incoming data is the truth whenever it *changed*. Compared by
+    // content: the factory parses `columns` into a fresh list on every
+    // build, so an identity test saw new data on each rebuild — and the
+    // state write that `onCardMove` makes is a rebuild, which put the card
+    // back the frame after an optimistic move accepted it.
+    if (!_same.equals(old.columns, widget.columns)) {
+      _columns = _copy(widget.columns);
+    }
   }
 
   static List<Map<String, dynamic>> _copy(List<Map<String, dynamic>> src) => [
@@ -147,7 +155,8 @@ class _BoardState extends State<_Board> {
   void _drop(_DragPayload payload, int toColumn, int toIndex) {
     final fromColumn = payload.column;
     final fromIndex = payload.index;
-    if (fromColumn == toColumn && (toIndex == fromIndex || toIndex == fromIndex + 1)) {
+    if (fromColumn == toColumn &&
+        (toIndex == fromIndex || toIndex == fromIndex + 1)) {
       return; // dropped where it already is
     }
     // Refused at the gesture rather than after the fact.
@@ -157,9 +166,11 @@ class _BoardState extends State<_Board> {
     if (widget.optimistic) {
       setState(() {
         _itemsOf(fromColumn).removeAt(fromIndex);
-        final adjusted =
-            fromColumn == toColumn && fromIndex < toIndex ? toIndex - 1 : toIndex;
-        _itemsOf(toColumn).insert(adjusted.clamp(0, _itemsOf(toColumn).length), item);
+        final adjusted = fromColumn == toColumn && fromIndex < toIndex
+            ? toIndex - 1
+            : toIndex;
+        _itemsOf(toColumn)
+            .insert(adjusted.clamp(0, _itemsOf(toColumn).length), item);
       });
     }
     widget.onMove(
@@ -193,6 +204,10 @@ class _BoardState extends State<_Board> {
                   title: _columns[c]['title']?.toString() ?? '',
                   count: _itemsOf(c).length,
                   limit: (_columns[c]['limit'] as num?)?.toInt(),
+                  // The space below the last card appends.
+                  onDropEnd: widget.draggable
+                      ? (p) => _drop(p, c, _itemsOf(c).length)
+                      : null,
                   children: [
                     // A gap before every card and one after the last: the drop
                     // targets are the spaces, which is what makes the
@@ -207,6 +222,12 @@ class _BoardState extends State<_Board> {
                           payload: _DragPayload(_itemsOf(c)[i], c, i),
                           draggable: widget.draggable,
                           onTap: () => widget.onClick(_itemsOf(c)[i]),
+                          // A card body is a drop target too: its upper
+                          // half means before it, its lower half after.
+                          // With only the gaps accepting, a column with
+                          // cards in it was mostly not a drop target.
+                          onDropBefore: (p) => _drop(p, c, i),
+                          onDropAfter: (p) => _drop(p, c, i + 1),
                           child: widget.buildCard(_itemsOf(c)[i]),
                         ),
                     ],
@@ -234,12 +255,14 @@ class _Column extends StatelessWidget {
     required this.count,
     required this.children,
     this.limit,
+    this.onDropEnd,
   });
 
   final String title;
   final int count;
   final int? limit;
   final List<Widget> children;
+  final void Function(_DragPayload)? onDropEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -264,16 +287,30 @@ class _Column extends StatelessWidget {
           // eighty cards is normal, and losing the title to reach the last
           // one is not.
           Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: children,
+            child: _dropEnd(
+              SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: children,
+                ),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  /// The column body as a drop target for what falls outside every gap and
+  /// card — the empty space below the last one. Gaps and cards are deeper
+  /// in the tree, so a drop on them reaches them first.
+  Widget _dropEnd(Widget body) {
+    final onDropEnd = this.onDropEnd;
+    if (onDropEnd == null) return body;
+    return DragTarget<_DragPayload>(
+      onAcceptWithDetails: (d) => onDropEnd(d.data),
+      builder: (_, __, ___) => body,
     );
   }
 }
@@ -324,26 +361,51 @@ class _Card extends StatelessWidget {
     required this.payload,
     required this.draggable,
     required this.onTap,
+    required this.onDropBefore,
+    required this.onDropAfter,
     required this.child,
   });
 
   final _DragPayload payload;
   final bool draggable;
   final VoidCallback onTap;
+  final void Function(_DragPayload) onDropBefore;
+  final void Function(_DragPayload) onDropAfter;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final card = GestureDetector(onTap: onTap, child: child);
     if (!draggable) return card;
+    BuildContext? cardContext;
+    final target = DragTarget<_DragPayload>(
+      onWillAcceptWithDetails: (d) => d.data.item != payload.item,
+      onAcceptWithDetails: (d) {
+        // Which half of the card the pointer released on decides the side.
+        final box = cardContext?.findRenderObject() as RenderBox?;
+        var after = false;
+        if (box != null && box.hasSize) {
+          final local = box.globalToLocal(d.offset);
+          after = local.dy > box.size.height / 2;
+        }
+        (after ? onDropAfter : onDropBefore)(d.data);
+      },
+      builder: (ctx, _, __) {
+        cardContext = ctx;
+        return card;
+      },
+    );
     return Draggable<_DragPayload>(
       data: payload,
+      // The feedback's origin rides on the pointer, so the offset a drop
+      // reports is the pointer — which is what the half test reads.
+      dragAnchorStrategy: pointerDragAnchorStrategy,
       feedback: Material(
         elevation: 6,
         child: SizedBox(width: 260, child: child),
       ),
-      childWhenDragging: Opacity(opacity: 0.3, child: card),
-      child: card,
+      childWhenDragging: Opacity(opacity: 0.3, child: target),
+      child: target,
     );
   }
 }
