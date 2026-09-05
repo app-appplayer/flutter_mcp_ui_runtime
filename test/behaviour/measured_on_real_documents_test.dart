@@ -425,6 +425,57 @@ void main() {
     });
   });
 
+  group('kanban height', () {
+    // The board cannot size to its content (each column scrolls), so it needs
+    // a height from somewhere. §2.15 keeps it in the bounded-parent table;
+    // what changed is that the author can now say the height in place, the
+    // way `tree` and `dataTable` allow, instead of wrapping the board.
+    Map<String, dynamic> board({double? height}) => {
+          'type': 'kanban',
+          if (height != null) 'height': height,
+          'columns': [
+            {
+              'key': 'todo',
+              'title': 'To do',
+              'items': [
+                {'id': 'a', 'title': 'Order glass'},
+              ],
+            },
+          ],
+          'itemTemplate': {'type': 'text', 'content': '{{item.title}}'},
+        };
+
+    testWidgets('a board with a height lays out inside a vertical linear',
+        (tester) async {
+      await pump(tester, {
+        'type': 'linear',
+        'direction': 'vertical',
+        'children': [
+          {'type': 'text', 'content': 'above'},
+          board(height: 240),
+          {'type': 'text', 'content': 'below'},
+        ],
+      });
+      expect(tester.takeException(), isNull);
+      expect(find.text('Order glass'), findsOneWidget);
+      final above = tester.getRect(find.text('above'));
+      final below = tester.getRect(find.text('below'));
+      expect(below.top - above.bottom, closeTo(240, 2),
+          reason: 'the board took the height the document gave it');
+    });
+
+    testWidgets('a bounded parent is filled when no height is given',
+        (tester) async {
+      await pump(tester, {
+        'type': 'container',
+        'height': 300,
+        'child': board(),
+      });
+      expect(tester.takeException(), isNull);
+      expect(find.text('Order glass'), findsOneWidget);
+    });
+  });
+
   group('gantt axis labels', () {
     Finder axis() => find.byWidgetPredicate((w) =>
         w is CustomPaint && w.painter.runtimeType.toString() == '_AxisPainter');

@@ -28,6 +28,7 @@ class KanbanFactory extends WidgetFactory {
         context.resolve<bool?>(properties['optimistic']) ?? false;
     final columnWidth =
         context.resolve<num?>(properties['columnWidth'])?.toDouble() ?? 280.0;
+    final height = dimensionOf(properties['height'], context);
     final onCardMove = actionOf(properties['onCardMove'], context);
     final onCardClick = actionOf(properties['onCardClick'], context);
 
@@ -41,6 +42,7 @@ class KanbanFactory extends WidgetFactory {
     return _Board(
       columns: parsed,
       columnWidth: columnWidth,
+      height: height,
       draggable: draggable,
       optimistic: optimistic,
       itemKey: itemKey,
@@ -95,6 +97,7 @@ class _Board extends StatefulWidget {
     required this.columns,
     required this.columnWidth,
     required this.draggable,
+    this.height,
     required this.optimistic,
     required this.itemKey,
     required this.buildCard,
@@ -105,6 +108,10 @@ class _Board extends StatefulWidget {
   final List<Map<String, dynamic>> columns;
   final double columnWidth;
   final bool draggable;
+
+  /// Fixed height, when the document says. Otherwise the board fills its
+  /// parent, which must be bounded (§2.15).
+  final double? height;
   final bool optimistic;
   final String itemKey;
   final _CardBuilder buildCard;
@@ -190,54 +197,64 @@ class _BoardState extends State<_Board> {
     // moment a board carried more than a screenful — which is every board
     // past its first week. `IntrinsicHeight` is gone with it: it sized the
     // row to the tallest column, which is unbounded by construction.
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: double.infinity,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (var c = 0; c < _columns.length; c++)
-              SizedBox(
-                width: widget.columnWidth,
-                child: _Column(
-                  title: _columns[c]['title']?.toString() ?? '',
-                  count: _itemsOf(c).length,
-                  limit: (_columns[c]['limit'] as num?)?.toInt(),
-                  // The space below the last card appends.
-                  onDropEnd: widget.draggable
-                      ? (p) => _drop(p, c, _itemsOf(c).length)
-                      : null,
-                  children: [
-                    // A gap before every card and one after the last: the drop
-                    // targets are the spaces, which is what makes the
-                    // destination index meaningful.
-                    for (var i = 0; i <= _itemsOf(c).length; i++) ...[
-                      _Gap(
-                        onAccept: (p) => _drop(p, c, i),
-                        accepts: widget.draggable,
-                      ),
-                      if (i < _itemsOf(c).length)
-                        _Card(
-                          payload: _DragPayload(_itemsOf(c)[i], c, i),
-                          draggable: widget.draggable,
-                          onTap: () => widget.onClick(_itemsOf(c)[i]),
-                          // A card body is a drop target too: its upper
-                          // half means before it, its lower half after.
-                          // With only the gaps accepting, a column with
-                          // cards in it was mostly not a drop target.
-                          onDropBefore: (p) => _drop(p, c, i),
-                          onDropAfter: (p) => _drop(p, c, i + 1),
-                          child: widget.buildCard(_itemsOf(c)[i]),
+    // The board needs a height to give its columns, and it cannot size to
+    // its content — each column scrolls. A `height` prop is the document's
+    // say; without one the board fills its parent, which therefore has to
+    // be bounded (§2.15). No default is invented: a made-up height would be
+    // a layout that looks deliberate and is not. Before the prop existed
+    // the only fix was wrapping the board, while `tree` and `dataTable`
+    // took a `height` in place.
+    return LayoutBuilder(builder: (context, constraints) {
+      final resolved = widget.height ?? double.infinity;
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          height: resolved,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var c = 0; c < _columns.length; c++)
+                SizedBox(
+                  width: widget.columnWidth,
+                  child: _Column(
+                    title: _columns[c]['title']?.toString() ?? '',
+                    count: _itemsOf(c).length,
+                    limit: (_columns[c]['limit'] as num?)?.toInt(),
+                    // The space below the last card appends.
+                    onDropEnd: widget.draggable
+                        ? (p) => _drop(p, c, _itemsOf(c).length)
+                        : null,
+                    children: [
+                      // A gap before every card and one after the last: the drop
+                      // targets are the spaces, which is what makes the
+                      // destination index meaningful.
+                      for (var i = 0; i <= _itemsOf(c).length; i++) ...[
+                        _Gap(
+                          onAccept: (p) => _drop(p, c, i),
+                          accepts: widget.draggable,
                         ),
+                        if (i < _itemsOf(c).length)
+                          _Card(
+                            payload: _DragPayload(_itemsOf(c)[i], c, i),
+                            draggable: widget.draggable,
+                            onTap: () => widget.onClick(_itemsOf(c)[i]),
+                            // A card body is a drop target too: its upper
+                            // half means before it, its lower half after.
+                            // With only the gaps accepting, a column with
+                            // cards in it was mostly not a drop target.
+                            onDropBefore: (p) => _drop(p, c, i),
+                            onDropAfter: (p) => _drop(p, c, i + 1),
+                            child: widget.buildCard(_itemsOf(c)[i]),
+                          ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 }
 

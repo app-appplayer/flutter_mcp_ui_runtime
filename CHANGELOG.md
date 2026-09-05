@@ -1,3 +1,14 @@
+## [0.7.10] - 2026-09-05
+
+### Added
+- `kanban.height` — the board's height, said in place. The board cannot
+  size to its content (each column scrolls), so it fills its parent and the
+  parent has to be bounded (§2.15); until now the only way to bound it was
+  to wrap the board, while `tree` and `dataTable` took a `height` of their
+  own. No default is invented when neither is given: a made-up height
+  would be a layout that looks deliberate and is not. Measured by sbuilder
+  in the App Builder preview.
+
 ## [0.7.9] - 2026-09-05
 
 ### Added
