@@ -348,6 +348,7 @@ class MCPUIRuntime {
     Function(String, Map<String, dynamic>)? onToolCall,
     Function(String, String)? onResourceSubscribe,
     Function(String)? onResourceUnsubscribe,
+    Function(String, String)? onResourceRead,
     VoidCallback? onExit,
     ValueListenable<Brightness>? hostBrightness,
   }) {
@@ -367,6 +368,7 @@ class MCPUIRuntime {
       onToolCall: onToolCall,
       onResourceSubscribe: onResourceSubscribe,
       onResourceUnsubscribe: onResourceUnsubscribe,
+      onResourceRead: onResourceRead,
       onExit: onExit,
       hostBrightness: hostBrightness,
     );
@@ -389,6 +391,7 @@ class MCPUIRuntime {
     Function(String, Map<String, dynamic>)? onToolCall,
     Function(String, String)? onResourceSubscribe,
     Function(String)? onResourceUnsubscribe,
+    Function(String, String)? onResourceRead,
     VoidCallback? onExit,
     void Function(String? appId, String? route)? onOpenApp,
     ValueListenable<Brightness>? hostBrightness,
@@ -405,6 +408,7 @@ class MCPUIRuntime {
       onToolCall: onToolCall,
       onResourceSubscribe: onResourceSubscribe,
       onResourceUnsubscribe: onResourceUnsubscribe,
+      onResourceRead: onResourceRead,
       onExit: onExit,
       onOpenApp: onOpenApp,
       hostBrightness: hostBrightness,
@@ -434,8 +438,8 @@ class MCPUIRuntime {
 
     if (method == 'notifications/resources/updated' && params != null) {
       // Handle resource update notification
-      await _engine
-          .handleMCPNotification(params, resourceReader: resourceReader);
+      await _engine.handleMCPNotification(params,
+          resourceReader: resourceReader);
     } else {
       _logger.debug('Ignoring notification with method: $method');
     }
@@ -503,7 +507,8 @@ class MCPUIRuntime {
   /// A host that does not call this does NOT claim the Composition Profile:
   /// `view` then fails closed and renders its `fallback` (§18.7.3).
   void registerDefinitionResolver(
-    Future<Map<String, dynamic>> Function(String ref, Map<String, dynamic> origin)
+    Future<Map<String, dynamic>> Function(
+            String ref, Map<String, dynamic> origin)
         resolve,
   ) {
     if (!_isInitialized) {
@@ -521,8 +526,8 @@ class MCPUIRuntime {
   /// call from the embedded subtree takes the app's own path and lands on a
   /// session that has no client for it.
   void registerOriginToolCaller(
-    Future<dynamic> Function(
-            Map<String, dynamic> origin, String tool, Map<String, dynamic> params)
+    Future<dynamic> Function(Map<String, dynamic> origin, String tool,
+            Map<String, dynamic> params)
         call,
   ) {
     if (!_isInitialized) {
@@ -562,7 +567,8 @@ class MCPUIRuntime {
   }
 
   /// Registered `client.mcpStream` source openers, keyed by uri scheme.
-  final Map<String, Stream<dynamic> Function(String uri, Map<String, dynamic> params)>
+  final Map<String,
+          Stream<dynamic> Function(String uri, Map<String, dynamic> params)>
       _streamSources = {};
 
   /// Register a stream source for `client.mcpStream` channels.
@@ -745,6 +751,7 @@ class MCPRuntimeWidget extends StatefulWidget {
     this.onToolCall,
     this.onResourceSubscribe,
     this.onResourceUnsubscribe,
+    this.onResourceRead,
     this.onExit,
     this.hostBrightness,
   });
@@ -755,6 +762,7 @@ class MCPRuntimeWidget extends StatefulWidget {
   final Function(String, Map<String, dynamic>)? onToolCall;
   final Function(String, String)? onResourceSubscribe;
   final Function(String)? onResourceUnsubscribe;
+  final Function(String, String)? onResourceRead;
 
   /// Host callback invoked when exitApp navigation action is triggered
   /// or when the app title is tapped.
@@ -789,6 +797,7 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
     widget.engine.setResourceHandlers(
       onResourceSubscribe: widget.onResourceSubscribe,
       onResourceUnsubscribe: widget.onResourceUnsubscribe,
+      onResourceRead: widget.onResourceRead,
     );
 
     // Wire host brightness injection (spec §5.2 — embedder-driven
@@ -944,6 +953,7 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
                   onToolCall: widget.onToolCall,
                   onResourceSubscribe: widget.onResourceSubscribe,
                   onResourceUnsubscribe: widget.onResourceUnsubscribe,
+                  onResourceRead: widget.onResourceRead,
                 ),
               );
             } else {
@@ -994,8 +1004,8 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
               // needs is a preferred size, so supply one when the rendered
               // widget does not carry its own.
               final renderedBar = hasAppBar
-                  ? widget.engine.renderer
-                      .renderWidget(widget.uiDefinition['appBar'], renderContext)
+                  ? widget.engine.renderer.renderWidget(
+                      widget.uiDefinition['appBar'], renderContext)
                   : null;
               return Scaffold(
                 appBar: renderedBar == null
@@ -1077,6 +1087,7 @@ class _ApplicationShell extends StatefulWidget {
   final Function(String, Map<String, dynamic>)? onToolCall;
   final Function(String, String)? onResourceSubscribe;
   final Function(String)? onResourceUnsubscribe;
+  final Function(String, String)? onResourceRead;
 
   const _ApplicationShell({
     required this.engine,
@@ -1084,6 +1095,7 @@ class _ApplicationShell extends StatefulWidget {
     this.onToolCall,
     this.onResourceSubscribe,
     this.onResourceUnsubscribe,
+    this.onResourceRead,
   });
 
   @override
@@ -1150,17 +1162,19 @@ class _ApplicationShellState extends State<_ApplicationShell> {
         // scanned or deep-linked target. Open it over the shell once the
         // first frame exists, so back returns to the tab the document names.
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          final navigator = NavigationService.instance.navigatorKey.currentState;
+          final navigator =
+              NavigationService.instance.navigatorKey.currentState;
           navigator?.pushNamed(initialRoute);
         });
       }
     }
 
     // Check if there's a saved navigation state in StateManager
-    final savedIndex = widget.engine.stateManager.get<int>('runtime.navigation.currentIndex');
-    if (savedIndex != null && 
+    final savedIndex =
+        widget.engine.stateManager.get<int>('runtime.navigation.currentIndex');
+    if (savedIndex != null &&
         widget.appDefinition.navigationDefinition != null &&
-        savedIndex >= 0 && 
+        savedIndex >= 0 &&
         savedIndex < widget.appDefinition.navigationDefinition!.items.length) {
       _currentIndex = savedIndex;
     }
@@ -1184,10 +1198,12 @@ class _ApplicationShellState extends State<_ApplicationShell> {
         index < widget.appDefinition.navigationDefinition!.items.length) {
       // Save current index
       widget.engine.stateManager.set('runtime.navigation.currentIndex', index);
-      
+
       // Save current route
-      final currentRoute = widget.appDefinition.navigationDefinition!.items[index].route;
-      widget.engine.stateManager.set('runtime.navigation.currentRoute', currentRoute);
+      final currentRoute =
+          widget.appDefinition.navigationDefinition!.items[index].route;
+      widget.engine.stateManager
+          .set('runtime.navigation.currentRoute', currentRoute);
     }
   }
 
@@ -1375,7 +1391,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
                   }
                 });
               }
-              
+
               return Scaffold(
                 appBar: AppBar(
                   title: Text(widget.appDefinition.title),
@@ -1391,35 +1407,35 @@ class _ApplicationShellState extends State<_ApplicationShell> {
                         .toList(),
                   ),
                 ),
-            // TabBarView rather than the shared IndexedStack body, because
-            // swiping between tabs is the point of this shape. Its children
-            // keep themselves alive (`MCPPageWidget` is an
-            // AutomaticKeepAliveClient), so a swipe away and back is the same
-            // instance here too.
-            body: TabBarView(
-              children: <Widget>[
-                for (var i = 0; i < navigation.items.length; i++)
-                  FutureBuilder<PageDefinition>(
-                    key: ValueKey<String>(navigation.items[i].route),
-                    future: _pageFuture(navigation.items[i].route),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData) {
-                        return AnimatedBuilder(
-                          animation: widget.engine.stateManager,
-                          builder: (context, child) => MCPPageWidget(
-                            pageDefinition: snapshot.data!,
-                            runtimeEngine: widget.engine,
-                            isActive: i == _currentIndex,
-                          ),
-                        );
-                      } else if (snapshot.hasError) {
-                        return _buildErrorPage(snapshot.error);
-                      }
-                      return _buildLoadingPage();
-                    },
-                  ),
-              ],
-            ),
+                // TabBarView rather than the shared IndexedStack body, because
+                // swiping between tabs is the point of this shape. Its children
+                // keep themselves alive (`MCPPageWidget` is an
+                // AutomaticKeepAliveClient), so a swipe away and back is the same
+                // instance here too.
+                body: TabBarView(
+                  children: <Widget>[
+                    for (var i = 0; i < navigation.items.length; i++)
+                      FutureBuilder<PageDefinition>(
+                        key: ValueKey<String>(navigation.items[i].route),
+                        future: _pageFuture(navigation.items[i].route),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData) {
+                            return AnimatedBuilder(
+                              animation: widget.engine.stateManager,
+                              builder: (context, child) => MCPPageWidget(
+                                pageDefinition: snapshot.data!,
+                                runtimeEngine: widget.engine,
+                                isActive: i == _currentIndex,
+                              ),
+                            );
+                          } else if (snapshot.hasError) {
+                            return _buildErrorPage(snapshot.error);
+                          }
+                          return _buildLoadingPage();
+                        },
+                      ),
+                  ],
+                ),
               );
             },
           ),
@@ -1439,9 +1455,8 @@ class _ApplicationShellState extends State<_ApplicationShell> {
         // Column of InkWell tiles instead of `NavigationRail` so
         // each tile's full bounds (icon + label + padding) is one
         // single tap target.
-        final railSelected = _currentIndex
-            .clamp(0, navigation.items.length - 1)
-            .toInt();
+        final railSelected =
+            _currentIndex.clamp(0, navigation.items.length - 1).toInt();
         void selectRail(int index) {
           setState(() => _currentIndex = index);
           _updateNavigationState(index);
@@ -1720,6 +1735,7 @@ class _DashboardHost extends StatefulWidget {
     this.onToolCall,
     this.onResourceSubscribe,
     this.onResourceUnsubscribe,
+    this.onResourceRead,
     this.onExit,
     this.onOpenApp,
     this.hostBrightness,
@@ -1730,6 +1746,7 @@ class _DashboardHost extends StatefulWidget {
   final Function(String, Map<String, dynamic>)? onToolCall;
   final Function(String, String)? onResourceSubscribe;
   final Function(String)? onResourceUnsubscribe;
+  final Function(String, String)? onResourceRead;
   final VoidCallback? onExit;
   final void Function(String? appId, String? route)? onOpenApp;
   final ValueListenable<Brightness>? hostBrightness;
@@ -1754,6 +1771,7 @@ class _DashboardHostState extends State<_DashboardHost>
     widget.engine.setResourceHandlers(
       onResourceSubscribe: widget.onResourceSubscribe,
       onResourceUnsubscribe: widget.onResourceUnsubscribe,
+      onResourceRead: widget.onResourceRead,
     );
     if (widget.onExit != null) {
       NavigationActionExecutor.setOnExitCallback(widget.onExit!);
@@ -1812,8 +1830,7 @@ class _DashboardHostState extends State<_DashboardHost>
         NavigationActionExecutor.clearOnOpenAppCallback();
       }
     }
-    if (!identical(widget.onExit, oldWidget.onExit) &&
-        widget.onExit != null) {
+    if (!identical(widget.onExit, oldWidget.onExit) && widget.onExit != null) {
       NavigationActionExecutor.setOnExitCallback(widget.onExit!);
     }
   }
@@ -1847,8 +1864,7 @@ class _DashboardHostState extends State<_DashboardHost>
     return AnimatedBuilder(
       animation: widget.engine,
       builder: (context, _) {
-        final renderContext =
-            widget.engine.renderer.createRootContext(context);
+        final renderContext = widget.engine.renderer.createRootContext(context);
         final tree = widget.engine.renderer
             .renderWidget(widget.dashboard.content, renderContext);
         final onTap = widget.dashboard.onTap;
@@ -1858,7 +1874,8 @@ class _DashboardHostState extends State<_DashboardHost>
         // subtree; interactive descendants still consume their own taps.
         return GestureDetector(
           behavior: HitTestBehavior.translucent,
-          onTap: () => widget.engine.actionHandler.execute(onTap, renderContext),
+          onTap: () =>
+              widget.engine.actionHandler.execute(onTap, renderContext),
           child: tree,
         );
       },

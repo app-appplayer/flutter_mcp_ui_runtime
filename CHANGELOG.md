@@ -1,3 +1,14 @@
+## [0.7.9] - 2026-09-05
+
+### Added
+- `buildUI` and `buildDashboard` take an `onResourceRead` handler, and the
+  shell widgets carry it to the engine beside subscribe and unsubscribe.
+  The engine had the slot; nothing reached it — the widget layer re-set
+  every handler from its own fields on build, so a read handler set on the
+  engine directly was wiped to null, and every host's `resource read` fell
+  to the legacy fallback that borrows the subscribe handler. The fallback
+  stays for hosts that register no read handler.
+
 ## [0.7.8] - 2026-09-04
 
 ### Changed
