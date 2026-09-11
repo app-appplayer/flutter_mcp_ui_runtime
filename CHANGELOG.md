@@ -1,3 +1,26 @@
+## [0.7.11] - 2026-09-11
+
+### Changed
+- The plugin `onError` hook carries one set of keys from every sender:
+  `source`, `message` (the human-readable reason, always present), and
+  `widgetType` from the renderer or `actionType` from the action handler —
+  always present, `null` when the definition named no type. Before, the
+  reason arrived as `error` from two senders and as `message` from the
+  third, and `widgetType` was omitted when the type was missing, so a host
+  had to know each sender to read one report.
+
+### Deprecated
+- `error` in the `onError` payload. It still carries the same value as
+  `message` in this release and will be removed in a later one; read
+  `message`.
+
+### Fixed
+- A widget whose factory throws is reported to `onError` once. The render
+  path reported the exception and then reported it again while building the
+  replacement, so every such failure reached the hook twice. Inside an
+  `errorRecovery` subtree, where the exception escapes to the recovering
+  widget, it is still reported once.
+
 ## [0.7.10] - 2026-09-05
 
 ### Added

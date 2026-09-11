@@ -390,18 +390,19 @@ class Renderer {
         _logger.error('Error rendering widget $type', e, stackTrace);
       }
 
-      // Fire plugin onError hook
-      PluginHookManager.instance.fireHookSync(
-        PluginHookType.onError,
-        data: {'source': 'renderer', 'widgetType': type, 'error': e.toString()},
-      );
+      final message = 'Error rendering $type: $e';
 
       // Inside an `errorRecovery` subtree the document asked to handle this
       // itself; the inline card would hide the failure from the widget whose
-      // whole job is to answer it.
-      if (_rethrowDepth > 0) rethrow;
+      // whole job is to answer it. The failure is still reported.
+      if (_rethrowDepth > 0) {
+        _reportFailure(message, type);
+        rethrow;
+      }
 
-      return _errorWidget('Error rendering $type: $e', definition);
+      // `_errorWidget` reports; reporting here as well would deliver one
+      // failure to the hook twice.
+      return _errorWidget(message, definition);
     }
   }
 
@@ -756,14 +757,7 @@ class Renderer {
   Widget _errorWidget(String message, Map<String, dynamic> definition) {
     final type = definition['type'];
     _logger.error('$message${type == null ? '' : ' (type: $type)'}');
-    PluginHookManager.instance.fireHookSync(
-      PluginHookType.onError,
-      data: {
-        'source': 'renderer',
-        'message': message,
-        if (type != null) 'widgetType': type,
-      },
-    );
+    _reportFailure(message, type);
     if (!kDebugMode) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.all(8),
@@ -788,6 +782,20 @@ class Renderer {
             ),
         ],
       ),
+    );
+  }
+
+  /// The one place the renderer fires `onError`, so every renderer report
+  /// carries the same keys (see [PluginHookType.onError]).
+  void _reportFailure(String message, Object? widgetType) {
+    PluginHookManager.instance.fireHookSync(
+      PluginHookType.onError,
+      data: {
+        'source': 'renderer',
+        'message': message,
+        'widgetType': widgetType,
+        'error': message,
+      },
     );
   }
 }

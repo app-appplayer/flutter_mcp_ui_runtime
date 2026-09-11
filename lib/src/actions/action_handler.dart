@@ -325,10 +325,16 @@ class ActionHandler {
           (e is Exception && e.toString().contains('required'))) {
         rethrow;
       }
-      // Fire plugin onError hook
+      // Fire plugin onError hook (keys: see PluginHookType.onError)
+      final message = e.toString();
       PluginHookManager.instance.fireHookSync(
         PluginHookType.onError,
-        data: {'source': 'actionHandler', 'actionType': type, 'error': e.toString()},
+        data: {
+          'source': 'actionHandler',
+          'message': message,
+          'actionType': type,
+          'error': message,
+        },
       );
 
       // Catch and wrap other errors (network, tool execution, etc.)
