@@ -1,3 +1,36 @@
+## [0.7.12] - 2026-09-11
+
+### Added
+- `file:` is an asset form (`AssetForm.file`). It is what a host produces when
+  it resolves `bundle://` before the runtime sees the document (§6.12.7
+  placement 1, "a local path"), and the runtime filed it under `unknown`, so
+  every image in an installed bundle took its fallback while the sound beside
+  it played — the sound player took the path, the image resolver did not.
+  Builds with a filesystem declare and draw it (`FileImage`); the web build
+  does not declare it and takes the declared fallback (§6.12.4). Hosts
+  switching exhaustively over `AssetForm` gain a case.
+- `PaymentOutcome.deliveryFailed` → `onError` with `PAYMENT_DELIVERY_FAILED`
+  (§4.24.1). The payment surface completed but what it bought did not reach
+  the party that has to act on it — a device that never received the
+  authority (platform spec 21 §6.1 step 7). A host that reported this as
+  `PAYMENT_UNKNOWN` would send the person to pay again.
+
+### Fixed
+- A widget that cannot be built is logged once, on every path, in every
+  build mode — the same rule 0.7.11 applied to the `onError` hook. A debug
+  build logged a throwing factory twice (once at the catch site, once while
+  building the replacement), and inside an `errorRecovery` subtree the
+  escaping failure reached the hook but not the log in a release build, so
+  a host that installed only `MCPLogger.onRecord` did not see it. The log
+  record now also carries the exception and its stack trace where there is
+  one.
+- `resource` actions resolve bindings in `uri`. `{{…}}` in `uri` was sent to
+  the host verbatim (`state://rider/{{rider}}`), so a page could not subscribe
+  to a resource named by its own identifier, while the same expression in a
+  tool's `params` resolved. `subscribe`, `unsubscribe`, `read` and `list` now
+  see the resolved address, and the subscription is registered under it —
+  the uri a `notifications/resources/updated` will carry.
+
 ## [0.7.11] - 2026-09-11
 
 ### Changed

@@ -386,23 +386,20 @@ class Renderer {
 
       return widget;
     } catch (e, stackTrace) {
-      if (kDebugMode) {
-        _logger.error('Error rendering widget $type', e, stackTrace);
-      }
-
       final message = 'Error rendering $type: $e';
 
       // Inside an `errorRecovery` subtree the document asked to handle this
       // itself; the inline card would hide the failure from the widget whose
       // whole job is to answer it. The failure is still reported.
       if (_rethrowDepth > 0) {
-        _reportFailure(message, type);
+        _reportFailure(message, type, error: e, stackTrace: stackTrace);
         rethrow;
       }
 
       // `_errorWidget` reports; reporting here as well would deliver one
-      // failure to the hook twice.
-      return _errorWidget(message, definition);
+      // failure twice.
+      return _errorWidget(message, definition,
+          error: e, stackTrace: stackTrace);
     }
   }
 
@@ -754,10 +751,14 @@ class Renderer {
   /// a debug build (§18.2.1). A release build collapses the slot: developer
   /// text does not belong on an end user's screen. Reporting is
   /// unconditional — a logged error and the plugin `onError` hook.
-  Widget _errorWidget(String message, Map<String, dynamic> definition) {
+  Widget _errorWidget(
+    String message,
+    Map<String, dynamic> definition, {
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
     final type = definition['type'];
-    _logger.error('$message${type == null ? '' : ' (type: $type)'}');
-    _reportFailure(message, type);
+    _reportFailure(message, type, error: error, stackTrace: stackTrace);
     if (!kDebugMode) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.all(8),
@@ -785,9 +786,21 @@ class Renderer {
     );
   }
 
-  /// The one place the renderer fires `onError`, so every renderer report
-  /// carries the same keys (see [PluginHookType.onError]).
-  void _reportFailure(String message, Object? widgetType) {
+  /// The one place the renderer reports a failure: one log record and one
+  /// `onError` hook per failure, in every build mode and on every path, so
+  /// every renderer report carries the same keys (see [PluginHookType.onError])
+  /// and a host that installed only a log sink sees what the hook sees.
+  void _reportFailure(
+    String message,
+    Object? widgetType, {
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    _logger.error(
+      '$message${widgetType == null ? '' : ' (type: $widgetType)'}',
+      error,
+      stackTrace,
+    );
     PluginHookManager.instance.fireHookSync(
       PluginHookType.onError,
       data: {

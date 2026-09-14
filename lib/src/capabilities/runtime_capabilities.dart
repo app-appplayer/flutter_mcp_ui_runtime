@@ -51,7 +51,18 @@ enum RuntimeCapability {
 /// proof of payment — §4.24.4 forbids treating it as one — and a host that
 /// failed after presenting the surface reports [unknown] rather than a
 /// failure, because it cannot say the money did not move.
-enum PaymentOutcome { success, cancel, unknown, unavailable }
+enum PaymentOutcome {
+  success,
+  cancel,
+  unknown,
+  unavailable,
+
+  /// The payment completed, but what was paid for did not reach the party
+  /// that has to act on it — a device that never received the authority the
+  /// order bought (platform spec 21 §6.1 step 7). Distinct from every other
+  /// failure because a different party has to put it right: the money moved.
+  deliveryFailed,
+}
 
 /// One payment requested by `{"type": "payment"}` (§4.24).
 ///

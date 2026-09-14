@@ -181,6 +181,18 @@ void main() {
           reason: 'the host may have opened the surface before failing');
     });
 
+    test('a completed payment the device never received is '
+        'PAYMENT_DELIVERY_FAILED, not unknown', () async {
+      portReturning(PaymentOutcome.deliveryFailed);
+
+      final result = await actions.execute(payment(), context);
+
+      expect(result.success, isFalse);
+      expect(result.errorCode, 'PAYMENT_DELIVERY_FAILED',
+          reason: 'the money moved; unknown would send the person to re-pay');
+      expect(state.get('started'), isFalse);
+    });
+
     test('a host that could not open reports PAYMENT_UNAVAILABLE', () async {
       portReturning(PaymentOutcome.unavailable);
 

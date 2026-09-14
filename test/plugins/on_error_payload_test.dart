@@ -1,6 +1,8 @@
 // The `onError` hook is a contract a host reads, not a list of senders it has
 // to know. Every report — whichever part of the runtime makes it — carries the
-// same keys, and one failure is reported once.
+// same keys, and one failure is reported once — to the hook and to the log,
+// on every path, in every build mode. A host that installed only a log sink
+// must see what a hook subscriber sees.
 //
 // Each case goes through the runtime's own failure path rather than firing the
 // hook directly: what has to arrive is the report the runtime makes.
@@ -15,6 +17,7 @@ import 'package:flutter_mcp_ui_runtime/src/renderer/renderer.dart';
 import 'package:flutter_mcp_ui_runtime/src/runtime/widget_registry.dart';
 import 'package:flutter_mcp_ui_runtime/src/state/state_manager.dart';
 import 'package:flutter_mcp_ui_runtime/src/theme/theme_manager.dart';
+import 'package:flutter_mcp_ui_runtime/src/utils/mcp_logger.dart';
 import 'package:flutter_mcp_ui_runtime/src/widgets/widget_factory.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -40,6 +43,7 @@ const _actionKeys = {'source', 'message', 'actionType', 'error'};
 
 void main() {
   late List<Map<String, dynamic>> reports;
+  late List<MCPLogRecord> errorLogs;
   late Renderer renderer;
   late ActionHandler actionHandler;
   late RenderContext context;
@@ -47,6 +51,10 @@ void main() {
   setUp(() {
     PluginHookManager.instance.clear();
     reports = <Map<String, dynamic>>[];
+    errorLogs = <MCPLogRecord>[];
+    MCPLogger.onRecord = (r) {
+      if (r.level == 'ERROR') errorLogs.add(r);
+    };
     PluginHookManager.instance.registerHook(
       pluginName: 'host',
       hookType: PluginHookType.onError,
@@ -73,7 +81,10 @@ void main() {
     );
   });
 
-  tearDown(() => PluginHookManager.instance.clear());
+  tearDown(() {
+    PluginHookManager.instance.clear();
+    MCPLogger.onRecord = null;
+  });
 
   group('renderer', () {
     test('an unknown type is one report with every key', () {
@@ -86,6 +97,8 @@ void main() {
       expect(r['message'], 'Unknown widget type: nope');
       expect(r['widgetType'], 'nope');
       expect(r['error'], r['message']);
+      expect(errorLogs, hasLength(1));
+      expect(errorLogs.single.message, contains('Unknown widget type: nope'));
     });
 
     test('a missing type still carries widgetType, as null', () {
@@ -95,6 +108,7 @@ void main() {
       expect(reports.single.keys.toSet(), _rendererKeys);
       expect(reports.single['widgetType'], isNull);
       expect(reports.single['message'], 'Widget type is required');
+      expect(errorLogs, hasLength(1));
     });
 
     test('a factory that throws is reported once, not twice', () {
@@ -106,6 +120,11 @@ void main() {
       expect(r['widgetType'], 'broken');
       expect(r['message'], contains('factory broke'));
       expect(r['error'], r['message']);
+      // Logged once too, and with the exception and its stack, which the
+      // message alone does not carry.
+      expect(errorLogs, hasLength(1));
+      expect(errorLogs.single.error, isA<StateError>());
+      expect(errorLogs.single.stackTrace, isNotNull);
     });
 
     test('inside errorRecovery the failure escapes and is still reported', () {
@@ -120,6 +139,10 @@ void main() {
       expect(reports, hasLength(1));
       expect(reports.single.keys.toSet(), _rendererKeys);
       expect(reports.single['message'], contains('factory broke'));
+      // The log sees the escaping failure as well: a host with only a sink is
+      // not blind to what `errorRecovery` handles.
+      expect(errorLogs, hasLength(1));
+      expect(errorLogs.single.error, isA<StateError>());
     });
   });
 

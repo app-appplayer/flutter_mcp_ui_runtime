@@ -30,6 +30,7 @@ void main() {
           AssetForm.flutterAsset);
       expect(AssetRef.parse('bundle://menu/a.jpg')!.form, AssetForm.bundle);
       expect(AssetRef.parse('client://file/a.png')!.form, AssetForm.client);
+      expect(AssetRef.parse('file:///tmp/a.png')!.form, AssetForm.file);
     });
 
     test('an unknown scheme parses rather than failing', () {
@@ -100,10 +101,13 @@ void main() {
 
   group('AssetResolver.supportedForms — declared, not assumed (§18.2.12)', () {
     test('builtin publishes exactly the no-injection forms', () {
+      // `file` is in the set on a build with a filesystem (this one) and
+      // absent on the web build — declared from what the build can reach.
       expect(AssetResolver.builtin.supportedForms, {
         AssetForm.data,
         AssetForm.flutterAsset,
         AssetForm.network,
+        AssetForm.file,
       });
     });
 

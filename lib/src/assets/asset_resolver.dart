@@ -20,6 +20,8 @@ import 'package:flutter/services.dart' show rootBundle;
 
 import 'asset_ref.dart';
 import 'asset_ref_image.dart';
+import 'file_asset_io.dart'
+    if (dart.library.js_interop) 'file_asset_web.dart' as file_asset;
 
 /// Reads a path inside the ambient origin's bundle.
 typedef BundleAssetReader = Future<Uint8List?> Function(String path);
@@ -71,6 +73,7 @@ class AssetResolver {
         AssetForm.data,
         AssetForm.flutterAsset,
         AssetForm.network,
+        if (file_asset.fileAssetsAvailable) AssetForm.file,
         if (bundleReader != null) AssetForm.bundle,
         if (clientReader != null) AssetForm.client,
         if (originReader != null) AssetForm.origin,
@@ -153,6 +156,13 @@ class AssetResolver {
         return AssetImage(ref.uri);
       case AssetForm.data:
         return _dataImage(ref.uri);
+      case AssetForm.file:
+        // What a host hands over after resolving `bundle://` itself
+        // (§6.12.7 placement 1). No filesystem, no picture — the declared
+        // fallback, never a placeholder naming the limitation.
+        return file_asset.fileAssetsAvailable
+            ? file_asset.fileImageFor(ref.uri)
+            : null;
       case AssetForm.bundle:
       case AssetForm.client:
       case AssetForm.origin:
@@ -207,6 +217,7 @@ class AssetResolver {
             fit: fit,
             alignment: alignment,
             colorFilter: colorFilter);
+      case AssetForm.file:
       case AssetForm.bundle:
       case AssetForm.client:
       case AssetForm.origin:
@@ -245,6 +256,10 @@ class AssetResolver {
         } catch (_) {
           return null;
         }
+      case AssetForm.file:
+        return file_asset.fileAssetsAvailable
+            ? file_asset.readFileAsset(ref.uri)
+            : null;
       case AssetForm.bundle:
         return bundleReader == null ? null : bundleReader!(ref.bundlePath);
       case AssetForm.client:

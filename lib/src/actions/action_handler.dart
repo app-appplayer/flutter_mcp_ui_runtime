@@ -1443,7 +1443,10 @@ class ResourceActionExecutor extends ActionExecutor {
 
     // Otherwise, handle subscription-style resource actions
     final actionType = action['action'] as String?;
-    final uri = action['uri'] as String?;
+    // `uri` is a string field like any other (§3.1): a page that subscribes to
+    // its own identifier writes `state://rider/{{rider}}`, and the runtime must
+    // subscribe to the resolved address, not the template.
+    final uri = context.resolve<String?>(action['uri']);
 
     _logger.debug(
         'ResourceActionExecutor called with action: $actionType, uri: $uri');
@@ -2871,6 +2874,14 @@ class PaymentActionExecutor extends ActionExecutor {
         return ActionResult.error(
           'Payment outcome unknown',
           errorCode: 'PAYMENT_UNKNOWN',
+        );
+      case PaymentOutcome.deliveryFailed:
+        // Not a payment failure: the surface completed. The authority the
+        // order bought did not reach the device, and saying "unknown" here
+        // would send the person to re-pay.
+        return ActionResult.error(
+          'Payment completed but the device did not receive it',
+          errorCode: 'PAYMENT_DELIVERY_FAILED',
         );
     }
   }

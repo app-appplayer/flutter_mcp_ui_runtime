@@ -33,6 +33,12 @@ enum AssetForm {
   origin,
 
   /// A scheme this runtime does not resolve.
+  /// A local file, `file:///…` — the form a host produces when it resolves
+  /// `bundle://` before the runtime sees the document (§6.12.7, placement 1:
+  /// "a `data:` URI or a local path"). Resolved where the build has a
+  /// filesystem; unresolvable on the web (§6.12.4).
+  file,
+
   unknown,
 }
 
@@ -85,6 +91,7 @@ class AssetRef {
     if (src.startsWith('bundle://')) return AssetForm.bundle;
     if (src.startsWith('client://')) return AssetForm.client;
     if (src.startsWith('assets/')) return AssetForm.flutterAsset;
+    if (src.startsWith('file:')) return AssetForm.file;
     return AssetForm.unknown;
   }
 
