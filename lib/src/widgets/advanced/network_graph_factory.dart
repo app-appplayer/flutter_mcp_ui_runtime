@@ -38,7 +38,7 @@ class NetworkGraphWidgetFactory extends WidgetFactory {
     final onNodeTap = actionOf(properties['onNodeTap'], context);
     final onEdgeTap = actionOf(properties['onEdgeTap'], context);
 
-    // §10.13's own example declares `directed` on the GRAPH, not on each
+    // The documented example declares `directed` on the GRAPH, not on each
     // edge — "topology-oriented defaults (hierarchical layout, directed
     // edges)". Only the per-edge spelling was read, so the documented form
     // drew every edge as a plain line: a dependency graph that shows what is
@@ -89,7 +89,7 @@ class NetworkGraphWidgetFactory extends WidgetFactory {
   List<_GraphEdge> _parseEdges(List<dynamic> edges, bool directedByDefault) {
     return edges.whereType<Map>().map((e) {
       return _GraphEdge(
-        // Spec §10.13 spells an edge `{from, to}`. This read `source`/`target`
+        // An edge is spelled `{from, to}`. This read `source`/`target`
         // and nothing else, so a graph written the documented way drew its
         // nodes and not one edge between them — with no error to say so.
         // The older spelling is still accepted.

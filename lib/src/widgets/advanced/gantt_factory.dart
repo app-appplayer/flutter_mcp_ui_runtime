@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../renderer/render_context.dart';
 import '../widget_factory.dart';
 
-/// Factory for `gantt` (spec §10.31).
+/// Factory for `gantt`.
 ///
 /// What makes this a widget rather than a composition is the **axis**. Bars are
 /// positioned by time, not by index, so row and header must share one scale and
@@ -44,7 +44,7 @@ class GanttFactory extends WidgetFactory {
         start: start,
         end: end,
         progress: (raw['progress'] as num?)?.toDouble(),
-        // §10 declares `color?` and `group?` on a task. Both were dropped:
+        // A task declares `color?` and `group?`. Both were dropped:
         // every bar came out in the scheme primary, and a chart of two teams
         // showed one undivided list.
         color: parseColor(raw['color'], context),

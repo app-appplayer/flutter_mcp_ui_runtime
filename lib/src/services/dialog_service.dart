@@ -17,7 +17,7 @@ class DialogService extends RuntimeService {
   /// [show] refuses a second dialog and answers `null`, which is the same
   /// answer a dismissed dialog gives. Callers that need to tell those apart —
   /// the `dialog` action does, because it has to report to the document
-  /// whether the dialog was shown at all (spec §6.13) — read this first.
+  /// whether the dialog was shown at all — read this first.
   bool get isShowing => _isShowingDialog;
 
   // Use the same navigator key as NavigationActionExecutor

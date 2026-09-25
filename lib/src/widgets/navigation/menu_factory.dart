@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../renderer/render_context.dart';
 import '../widget_factory.dart';
 
-/// Factory for `menu` (spec §2.8.9).
+/// Factory for `menu`.
 ///
 /// Standing navigation, unlike `popupMenuButton` which is a trigger opening a
 /// transient list. `navigationRail` covers the icon-rail form with a flat item
@@ -21,7 +21,7 @@ class MenuFactory extends WidgetFactory {
     final openBinding = stringOf(properties['openKeys'], context);
     final onSelect = actionOf(properties['onSelect'], context);
 
-    // `selectedKey` is `string | binding` (§2.8.9). A bare string is
+    // `selectedKey` is `string | binding`. A bare string is
     // indistinguishable from a state path, so the path is read first and the
     // literal is the fallback — otherwise a document naming the active item
     // directly could never mark one, and the branch below it was unreachable.

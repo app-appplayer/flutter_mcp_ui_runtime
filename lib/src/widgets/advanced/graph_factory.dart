@@ -13,7 +13,7 @@ class GraphWidgetFactory extends WidgetFactory {
     final data =
         listOf(properties['data'], context) ??
             [];
-    // Spec §10.12 canonical `chartType`; `type` kept as legacy alias but
+    // Canonical `chartType`; `type` kept as legacy alias but
     // collides with the widget-type discriminator, so `chartType` is the
     // preferred form.
     final type =
@@ -48,7 +48,7 @@ class GraphWidgetFactory extends WidgetFactory {
         values.add(item.toDouble());
         labels.add('');
       } else if (item is Map) {
-        // `{x, y}` is the first form §10.12 names and this read only
+        // `{x, y}` is the first documented form and this read only
         // `{label, value}`, so a graph written the documented way plotted a
         // flat line of zeros. Both forms are read now.
         final value = item['value'] ?? item['y'];

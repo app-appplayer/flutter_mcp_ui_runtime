@@ -21,14 +21,14 @@ class RatingFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Spec §2.6.0: binding shorthand — read from state path when no
+    // Binding shorthand — read from state path when no
     // explicit `value` is provided.
     final binding = stringOf(properties['binding'], context);
     final dynamic rawValue = properties['value'] != null
         ? context.resolve(properties['value'])
         : (binding != null ? context.getState(binding) : null);
     final value = (rawValue as num?)?.toDouble() ?? 0.0;
-    // Spec §2.6.22 canonical `max`; `maxRating` kept as legacy alias.
+    // Canonical `max`; `maxRating` kept as legacy alias.
     final maxRating =
         ((properties['max'] ?? properties['maxRating']) as num? ?? 5).toInt();
     final iconSize = dimensionOf(properties['size'], context) ?? 24.0;

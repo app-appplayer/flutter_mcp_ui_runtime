@@ -1,7 +1,7 @@
 /// Path security validation for client resource URIs.
 ///
 /// Provides path traversal detection, normalization, and symlink validation
-/// as specified in the design doc (§Path Resolution Rules).
+/// before any file is read.
 library path_validator;
 
 import 'dart:io';

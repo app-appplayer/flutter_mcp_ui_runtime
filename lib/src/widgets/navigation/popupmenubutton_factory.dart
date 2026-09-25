@@ -35,7 +35,7 @@ class PopupMenuButtonWidgetFactory extends WidgetFactory {
     // Resolve compact menu tokens. Spec-bound popupMenuButton props are
     // `{type, icon, items, onSelect}`; visual fine-tuning happens
     // through `theme.component.menu.*` (free-form component tokens,
-    // spec §5.12) and the runtime's compact defaults. The DSL `shape`
+    // no fixed schema) and the runtime's compact defaults. The DSL `shape`
     // / `elevation` reads below are pre-existing factory inputs (kept
     // for back-compat with bundles that already use them) — no new
     // non-spec widget props are introduced.

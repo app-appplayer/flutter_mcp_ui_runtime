@@ -14,7 +14,7 @@ class TextWidgetFactory extends WidgetFactory {
     final properties = extractProperties(definition);
 
     // Extract and resolve text value.
-    // Canonical key is `text` per spec 17_Naming §17.3.2; `content` and `value`
+    // Canonical key is `text`; `content` and `value`
     // are legacy aliases accepted for backward compatibility.
     final textValue = properties[core.PropertyKeys.text] ??
         properties[core.PropertyKeys.content] ??
@@ -68,7 +68,7 @@ class TextWidgetFactory extends WidgetFactory {
     // canonical text colour) breaks the ambient dependency: the colour
     // now follows the ThemeManager's effective mode directly, which is
     // host-override-pinned (see [_resolveEffectiveMode] / [flutterThemeMode]).
-    // Spec §5.4.2 deliberately omits a `color` field on typography
+    // The DSL deliberately omits a `color` field on typography
     // roles (Material 3 typography / colour separation), so this is a
     // resolved fallback applied at render time — author-supplied
     // `style.color` still wins via `merge` above.
@@ -91,7 +91,7 @@ class TextWidgetFactory extends WidgetFactory {
         ? BoxDecorationResolver.resolveGradient(shaderSpec, context, this)
         : null;
 
-    // Spec § DropCap — render the first character enlarged with the
+    // DropCap — render the first character enlarged with the
     // surrounding text indented for `lines` lines and continuing
     // full-width below. Mutually exclusive with `maxLines`.
     final dropCapSpec = properties['dropCap'];
@@ -161,7 +161,7 @@ class TextWidgetFactory extends WidgetFactory {
   ///
   /// Accepts the canonical M3 names (`displayLarge` … `labelSmall`) and
   /// returns `null` for unknown values so the caller can fall back to
-  /// the inline `style` block. Spec §5.4 + 1.3 widget table § 5.1.
+  /// the inline `style` block.
   TextStyle? _resolveVariantStyle(String? variant, RenderContext context) {
     if (variant == null || variant.isEmpty) return null;
     return context.themeManager.getTextStyleValue(variant);

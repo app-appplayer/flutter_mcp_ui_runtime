@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../renderer/render_context.dart';
 import '../widget_factory.dart';
 
-/// Factory for `breadcrumb` (spec §2.8.11).
+/// Factory for `breadcrumb`.
 class BreadcrumbFactory extends WidgetFactory {
   @override
   Widget build(Map<String, dynamic> definition, RenderContext context) {

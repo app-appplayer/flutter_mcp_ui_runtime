@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../renderer/render_context.dart';
 import '../widget_factory.dart';
 
-/// Factory for `contextMenu` (spec §2.8.10).
+/// Factory for `contextMenu`.
 ///
 /// Cannot be composed: the raising gesture is platform-specific — and on touch
 /// competes with scroll and text selection — and the menu must appear **at the

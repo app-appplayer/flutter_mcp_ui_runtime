@@ -26,7 +26,7 @@ SpeechSession? Function({
   required void Function() onEnd,
 })? debugStartSpeech;
 
-/// Factory for `voiceInput` (spec §2.6.29, Client Profile).
+/// Factory for `voiceInput`.
 ///
 /// Client Profile rather than Core, and the line is worth restating: picking a
 /// file is one act of choosing and the choosing is the consent, while a

@@ -21,7 +21,7 @@ class DrawerWidgetFactory extends WidgetFactory {
     final shape = _parseShapeBorder(properties['shape']);
     final semanticLabel = context.resolve<String?>(properties['semanticLabel']);
 
-    // Spec §2.8.5: when used standalone, render `header` + `items` (each with
+    // When used standalone, render `header` + `items` (each with
     // icon/label/route) and fire `onSelect` when an item is tapped.
     final items = (properties['items'] as List<dynamic>?) ??
         (definition['items'] as List<dynamic>?);
@@ -44,7 +44,7 @@ class DrawerWidgetFactory extends WidgetFactory {
       for (final raw in items) {
         if (raw is! Map<String, dynamic>) continue;
         final iconName = raw['icon'] as String?;
-        // §17.3.2: canonical 'label', legacy alias 'title'.
+        // Canonical 'label', legacy alias 'title'.
         final label = (raw['label'] ?? raw['title'])?.toString() ?? '';
         final route = raw['route'] as String?;
         listChildren.add(ListTile(

@@ -126,7 +126,7 @@ class NotificationManager {
     if (notification != null) {
       // See `showNotification`. The guard that used to be here also SWALLOWED
       // whatever it caught, so a dismissal that failed reported success — the
-      // shape §6.13 exists to stop.
+      // shape the perform-or-report rule exists to stop.
       await _dismissSystemNotification(notificationId);
 
       _notifyListeners(NotificationEvent.dismissed, notification);

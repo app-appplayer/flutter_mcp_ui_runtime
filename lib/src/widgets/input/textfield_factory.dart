@@ -290,7 +290,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
       );
     }
 
-    // `showToggle` (§2.6.5) and `defaultCountry` (1.4) are computed here as
+    // `showToggle` and `defaultCountry` (1.4) are computed here as
     // well as in `_buildTextField`. There are two builders in this file — this
     // one runs for an ordinary field, the other for a debounced one — and both
     // slots were implemented only in the other. A document declaring either

@@ -123,7 +123,7 @@ class MCPUIRuntime {
   /// Gets the state manager (accessible before initialize, returns uninitialized manager)
   StateManager get stateManager => _engine.stateManager;
 
-  /// Entry and identity this runtime was opened under (MCP UI DSL 8.9).
+  /// Entry and identity this runtime was opened under.
   ///
   /// A host wires promotion through [EntrySession.registerPromotion] and can
   /// replace the principal at any time with [EntrySession.adoptIdentity] —
@@ -133,7 +133,7 @@ class MCPUIRuntime {
   /// Gets the theme manager (accessible before initialize, returns uninitialized manager)
   ThemeManager get themeManager => _engine.themeManager;
 
-  /// Observable application metadata (spec §11). `value` is null before
+  /// Observable application metadata. `value` is null before
   /// `initialize` completes or when the DSL is a standalone page.
   /// Listeners fire when the cache is replaced — for example after a
   /// `ui://app/info` resource-update notification.
@@ -153,8 +153,8 @@ class MCPUIRuntime {
   ///
   /// [validateSchema] runs the generated widget-registry JSON Schema over
   /// the DSL before wiring up services. **On by default** — the schema is
-  /// now complete enough (see `specs/mcp_ui_dsl/schema/widgets.schema.json`
-  /// and `widgets_schema.g.dart`) that every spec-conformant DSL passes,
+  /// now complete enough (see the generated schema
+  /// in `widgets_schema.g.dart`) that every spec-conformant DSL passes,
   /// and violations throw [StateError] with precise JSON paths. Pass
   /// `validateSchema: false` to opt out — primarily for negative-path tests
   /// that deliberately feed invalid DSL to exercise fallback behaviour.
@@ -168,7 +168,7 @@ class MCPUIRuntime {
   /// Initialize the runtime.
   ///
   /// [entry] and [identity] carry how this definition was reached and who is
-  /// looking at it (MCP UI DSL 8.9). Both are optional: a definition opened
+  /// looking at it. Both are optional: a definition opened
   /// from a launcher tile has no entry, and a runtime with neither resolves
   /// every `entry.*` / `identity.*` binding to null.
   ///
@@ -177,14 +177,14 @@ class MCPUIRuntime {
   /// page it asked for.
   ///
   /// [launchRoute] is the same request without the arrival: an in-app open
-  /// that names a page (DSL §4.3.1 `navigation.openApp`) sets it and leaves
-  /// `entry.*` absent, because §8.9.1 reserves that tree for definitions
+  /// that names a page (`navigation.openApp`) sets it and leaves
+  /// `entry.*` absent, because that tree is reserved for definitions
   /// reached from outside. A document deciding "was I scanned?" would
   /// otherwise read a navigation as a scan.
   ///
   /// [onToolCall] is the same callback [buildUI] takes, registered *before*
-  /// the definition's `onInit` runs. §1.5.3 shows a definition-level
-  /// `onInit` calling a tool, and §1.5.2 puts `onInit` ahead of the first
+  /// the definition's `onInit` runs. A definition-level
+  /// `onInit` may call a tool, and `onInit` runs ahead of the first
   /// render — so a host that only passes the callback to `buildUI` has no
   /// executor at the moment the hook fires, and an application-level
   /// `onInit` tool call reaches nothing. Passing it here closes that window.
@@ -374,16 +374,16 @@ class MCPUIRuntime {
     );
   }
 
-  /// Spec §11.9 dashboard rendering entry point.
+  /// Dashboard rendering entry point.
   ///
   /// Returns a widget that hosts the `dashboard.content` tree when the
   /// initialised DSL declares a `dashboard` block; returns `null` when no
   /// dashboard view is provided (embedders should fall back to a card
-  /// built from [appMetadata]'s icon / title per §11.9.1).
+  /// built from [appMetadata]'s icon / title).
   ///
   /// `content` is rendered with the same binding / action / theme context
-  /// as full render mode — templates (§9), app state, channel payloads
-  /// and resource bindings all resolve normally (§11.9.4). When the DSL
+  /// as full render mode — templates, app state, channel payloads
+  /// and resource bindings all resolve normally. When the DSL
   /// specifies `refreshInterval`, the widget periodically invalidates
   /// bindings to force re-evaluation.
   Widget? buildDashboard({
@@ -415,8 +415,8 @@ class MCPUIRuntime {
     );
   }
 
-  /// Returns true when the initialised DSL provides a `dashboard` block
-  /// (§11.9). Host embedders use this to decide between rendering
+  /// Returns true when the initialised DSL provides a `dashboard` block.
+  /// Host embedders use this to decide between rendering
   /// [buildDashboard] and the icon-only fallback tile.
   bool get hasDashboard => _engine.applicationDefinition?.dashboard != null;
 
@@ -493,19 +493,19 @@ class MCPUIRuntime {
 
   /// Register the resolver `view` uses to fetch a definition from an origin.
   ///
-  /// This is the seam that makes the Composition Profile (spec v1.4 §18.7)
+  /// This is the seam that makes the Composition Profile
   /// available. The runtime stays origin-agnostic: it never learns how a
   /// connection is opened, only how to ask for a definition once one exists —
-  /// establishing outbound connections is a host capability (§6.11.1).
+  /// establishing outbound connections is a host capability.
   ///
   /// [resolve] receives the resource uri and the `Origin` map (`{}` when the
   /// source named no origin, meaning the host's own). It MUST throw when the
   /// origin is unknown or the read fails; returning the host's own definition
   /// as a fallback would render one server's UI under another's identity, which
-  /// §7.10.1 rule 6 forbids.
+  /// no embedding may do.
   ///
   /// A host that does not call this does NOT claim the Composition Profile:
-  /// `view` then fails closed and renders its `fallback` (§18.7.3).
+  /// `view` then fails closed and renders its `fallback`.
   void registerDefinitionResolver(
     Future<Map<String, dynamic>> Function(
             String ref, Map<String, dynamic> origin)
@@ -688,7 +688,7 @@ class MCPUIRuntime {
       // Storing the level would be bookkeeping nobody reads —
       // `_pendingTrustLevel` is consumed by `initialize`, which has already
       // run by now — so the grant would be dropped while looking like it had
-      // been kept. §6.13's rule applies to a grant as much as to an action:
+      // been kept. The rule for an action applies to a grant as well:
       // apply it, or say it was not applied.
       _logger.warning(
           'setTrustLevel($level) found no PermissionManager to apply to — the '
@@ -800,7 +800,7 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
       onResourceRead: widget.onResourceRead,
     );
 
-    // Wire host brightness injection (spec §5.2 — embedder-driven
+    // Wire host brightness injection (embedder-driven
     // system mode resolution).
     if (widget.hostBrightness != null) {
       widget.hostBrightness!.addListener(_applyHostBrightness);
@@ -870,7 +870,7 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
   @override
   void didChangePlatformBrightness() {
     super.didChangePlatformBrightness();
-    // Spec §5.2 — in `system` mode the runtime MUST switch scheme without
+    // In `system` mode the runtime MUST switch scheme without
     // requiring a shell re-render. Forward the platform event so the
     // ThemeManager re-resolves and notifies its listeners.
     widget.engine.themeManager.notifyBrightnessChanged();
@@ -1127,7 +1127,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
   }
 
   /// Builds the host-inserted close button for the shell AppBar's `actions`
-  /// slot per spec §2.8.1 / §4.3.2. Returns `null` when `onExit` is not
+  /// slot. Returns `null` when `onExit` is not
   /// registered. Shell AppBar is always on the root route, so the route-level
   /// check is implicit here.
   List<Widget>? _shellAppBarActions() {
@@ -1237,7 +1237,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
   // one could never be read, and read as if there were two caching layers.
   Future<PageDefinition> _loadPageDefinition(String route) async {
     try {
-      // Any `RouteValue` form (spec v1.4 §1.2.1) — a plain resource URI still
+      // Any `RouteValue` form — a plain resource URI still
       // goes through the host page loader; every other form (inline page,
       // transition wrapper, qualified `$ref` to another origin, binding) is
       // normalised locally by the shared helper, so this path and
@@ -1314,7 +1314,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
   /// route, which destroys and rebuilds the page on every switch — `onInit` →
   /// `onMount` → `onReady` again, tools called again, images fetched and
   /// decoded again. That is not what a Flutter app does with a tab bar, and
-  /// it is not what §6.8.3 describes for a navigation that keeps its pages:
+  /// it is not how a navigation that keeps its pages behaves:
   /// leaving one is `onPause`, coming back is `onResume`, and the instance in
   /// between is the same one.
   Widget _shellBody(NavigationDefinition navigation) {
@@ -1442,7 +1442,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
         );
 
       case 'rail':
-        // Spec § 1.2.1 NavigationConfig.type: rail — vertical rail
+        // NavigationConfig.type: rail — vertical rail
         // beside the body. Author's declared type, not adaptive.
         //
         // Hit-area parity: Material's NavigationRail wraps each
@@ -1488,7 +1488,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
         );
 
       case 'bottomBar':
-      // Legacy aliases — canonical per spec § 1.2.1 is `bottomBar`.
+      // Legacy aliases — canonical is `bottomBar`.
       case 'bottomNavigation':
       case 'bottom':
         // Material's BottomNavigationBar asserts on fewer than two
@@ -1536,9 +1536,9 @@ class _ApplicationShellState extends State<_ApplicationShell> {
       default:
         // Drawer navigation — render exactly what the bundle declares.
         // Adaptive form-factor switching (rail / permanent drawer) is
-        // intentionally NOT performed here: per spec § 1.2 the author's
+        // intentionally NOT performed here: the author's
         // declared `navigation.type` is authoritative, and per-form-factor
-        // variants are author-driven via ResponsiveValue (spec § 14.2).
+        // variants are author-driven via ResponsiveValue.
         return Scaffold(
           appBar: AppBar(
             title: Text(widget.appDefinition.title),
@@ -1724,7 +1724,7 @@ class _HelperRuntimeHostState extends State<_HelperRuntimeHost> {
   }
 }
 
-/// Widget that hosts `dashboard.content` rendering for spec §11.9.
+/// Widget that hosts `dashboard.content` rendering.
 /// Wires the same tool / resource / brightness injection points as
 /// [MCPRuntimeWidget] but renders only the dashboard subtree, and drives
 /// a periodic rebuild when `dashboard.refreshInterval` is set.
@@ -1835,7 +1835,7 @@ class _DashboardHostState extends State<_DashboardHost>
     }
   }
 
-  /// Spec §11.9.3: when `refreshInterval` is present, bindings referenced
+  /// When `refreshInterval` is present, bindings referenced
   /// by `dashboard.content` must be re-evaluated at that cadence. The
   /// simplest implementation is a tick that forces a rebuild of the
   /// subtree — bindings are pure functions of state at render time.
@@ -1869,7 +1869,7 @@ class _DashboardHostState extends State<_DashboardHost>
             .renderWidget(widget.dashboard.content, renderContext);
         final onTap = widget.dashboard.onTap;
         if (onTap == null) return tree;
-        // Spec §11.9.3: `onTap` is invoked when the dashboard card is
+        // `onTap` is invoked when the dashboard card is
         // tapped. GestureDetector here covers empty regions of the
         // subtree; interactive descendants still consume their own taps.
         return GestureDetector(

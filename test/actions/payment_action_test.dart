@@ -258,8 +258,19 @@ void main() {
       final result = await actions.execute(payment(), context);
 
       expect(result.success, isTrue,
-          reason: 'unknown trust is not untrusted; defaulting it would '
-              'refuse every ordinary document');
+          reason: 'trust is basic until the host sets another; a missing '
+              'permissions block is not untrusted');
+    });
+
+    test('untrusted is refused without a permissions block too', () async {
+      // The level belongs to the host, not to what the document declares.
+      portReturning(PaymentOutcome.success);
+      actions.permissionManager!.trustLevel = TrustLevel.untrusted;
+
+      final result = await actions.execute(payment(), context);
+
+      expect(result.errorCode, 'PAYMENT_UNAVAILABLE');
+      expect(calls, isEmpty);
     });
   });
 

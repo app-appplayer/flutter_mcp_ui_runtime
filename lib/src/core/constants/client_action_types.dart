@@ -175,7 +175,7 @@ abstract final class ClientResourceSchemes {
     final scheme = withoutScheme.substring(0, slashIndex);
     final rawPath = withoutScheme.substring(slashIndex + 1);
 
-    // Reject paths with traversal attempts (§Path Resolution Rules)
+    // Reject paths with traversal attempts
     if (PathValidator.hasTraversalAttempt(rawPath)) {
       return null;
     }

@@ -10,23 +10,23 @@ import '../assets/asset_ref.dart';
 /// own: sound comes out, media decodes, a page loads, a document paginates,
 /// tiles are fetched, a vector animation plays.
 ///
-/// Spec §6.13 — a runtime either performs a declared behaviour or reports that
+/// A runtime either performs a declared behaviour or reports that
 /// it cannot. It never draws a facsimile of the behaviour succeeding. These are
 /// platform powers, so the runtime accepts them from its embedder exactly as it
-/// accepts asset resolution (§6.12), and a host that wires none is still
+/// accepts asset resolution, and a host that wires none is still
 /// conformant: it declares an empty set and every affected widget reports
 /// through its `onError`.
 enum RuntimeCapability {
-  /// `sound.play` / `sound.stop` (§4.9a).
+  /// `sound.play` / `sound.stop`.
   sound,
 
-  /// `mediaPlayer` with `mediaType: audio` (§10.6).
+  /// `mediaPlayer` with `mediaType: audio`.
   audio,
 
-  /// `mediaPlayer` with `mediaType: video` (§10.6).
+  /// `mediaPlayer` with `mediaType: video`.
   video,
 
-  /// `webView` (§10.x).
+  /// `webView`.
   webView,
 
   /// `pdfViewer`.
@@ -38,17 +38,17 @@ enum RuntimeCapability {
   /// `lottieAnimation`.
   lottie,
 
-  /// `payment` (§4.24, Payment Profile).
+  /// `payment`.
   payment,
 
-  /// `location` (§4.25, Location Profile).
+  /// `location`.
   location,
 }
 
-/// What a host reports back for a payment (§4.24.1).
+/// What a host reports back for a payment.
 ///
 /// [success] means the person came back from the payment surface. It is not
-/// proof of payment — §4.24.4 forbids treating it as one — and a host that
+/// proof of payment — it must never be treated as one — and a host that
 /// failed after presenting the surface reports [unknown] rather than a
 /// failure, because it cannot say the money did not move.
 enum PaymentOutcome {
@@ -59,16 +59,16 @@ enum PaymentOutcome {
 
   /// The payment completed, but what was paid for did not reach the party
   /// that has to act on it — a device that never received the authority the
-  /// order bought (platform spec 21 §6.1 step 7). Distinct from every other
+  /// order bought. Distinct from every other
   /// failure because a different party has to put it right: the money moved.
   deliveryFailed,
 }
 
-/// One payment requested by `{"type": "payment"}` (§4.24).
+/// One payment requested by `{"type": "payment"}`.
 ///
 /// Carries what the document declared and nothing else. The payment address,
 /// the surface, the provider choice and the return address are all the host's
-/// (§7.3.5): a runtime that assembled them would be letting a rendered
+/// alone: a runtime that assembled them would be letting a rendered
 /// document choose where money goes.
 class PaymentRequest {
   const PaymentRequest({required this.itemId, this.seller, this.amount});
@@ -80,25 +80,25 @@ class PaymentRequest {
   /// The receiving party where the document named one, and **null where it did
   /// not**. Null is a statement, not a gap: a document served by a device does
   /// not name who is paid, and the host resolves that party by verifying the
-  /// device's identity (§4.24.2). A host that cannot resolve it answers
+  /// device's identity. A host that cannot resolve it answers
   /// [PaymentOutcome.unavailable] — never a default party.
   final String? seller;
 
   /// Set only where the document supplied one, already checked to be a
   /// positive number. Whether this item takes a customer-entered price is the
-  /// payment surface's answer, not the runtime's (§4.24.3); for every other
+  /// payment surface's answer, not the runtime's; for every other
   /// item the surface derives the price and ignores this.
   final num? amount;
 }
 
 /// Takes payment for one item. Presenting the surface — a browser, a custom
 /// tab, or a payment front end the host renders itself — is the host's choice
-/// (§4.24.1), as is minting and matching the per-request return token.
+/// alone, as is minting and matching the per-request return token.
 abstract class PaymentPort {
   Future<PaymentOutcome> checkout(PaymentRequest request);
 }
 
-/// How precise an answer a document needs (§4.25.2).
+/// How precise an answer a document needs.
 ///
 /// A ceiling, not a preference: the host MAY answer coarser and MUST NOT
 /// answer finer. Without that, a document collects precision by asking
@@ -118,7 +118,7 @@ enum LocationPrecision {
 /// Why a position could not be given.
 enum LocationFailure {
   /// The person said no — now, or previously and the platform remembers.
-  /// A normal outcome, not a fault to hide (§4.25.1).
+  /// A normal outcome, not a fault to hide.
   denied,
 
   /// No port, the platform has it switched off, or no fix could be obtained.
@@ -151,7 +151,7 @@ class LocationFix {
   final DateTime at;
 }
 
-/// Answers where this device is, once (§4.25).
+/// Answers where this device is, once.
 ///
 /// The host owns the prompt: whether the person is asked, in what words, and
 /// how the platform records the answer. There is no continuous form — a
@@ -183,7 +183,7 @@ class SoundRequest {
   });
 
   /// Already-resolved reference — the runtime resolves bindings and scheme
-  /// (§6.12.2) before the host is asked to play anything.
+  /// before the host is asked to play anything.
   final AssetRef source;
 
   /// Bytes for the forms a platform player cannot take by URI. A bundled sound
@@ -198,7 +198,7 @@ class SoundRequest {
   final bool loop;
 }
 
-/// Plays short sounds. Overlapping is required by §4.9a: a click during an
+/// Plays short sounds. Overlapping is required: a click during an
 /// alarm is both sounds, not the last one.
 abstract class SoundPort {
   Future<void> play(SoundRequest request);
@@ -226,7 +226,7 @@ abstract class MediaSession {
   Stream<Object> get errors;
 
   /// Amplitude samples for `mediaPlayer.waveform`, or null when this host
-  /// cannot produce them. Null is an answer the widget reports (§6.13.2) —
+  /// cannot produce them. Null is an answer the widget reports —
   /// accepting `waveform: true` and drawing nothing is not.
   Stream<List<double>>? get waveform => null;
 
@@ -239,7 +239,7 @@ abstract class MediaSession {
 }
 
 /// Opens media. Throws to report that this source cannot be played — the
-/// widget turns that into `onError`, never into a rendered message (§6.13.2).
+/// widget turns that into `onError`, never into a rendered message.
 abstract class MediaPort {
   Future<MediaSession> open({
     required AssetRef source,
@@ -306,7 +306,7 @@ typedef SurfaceBuilder = Widget? Function(
 /// The set of behaviours this runtime can actually perform, and the objects
 /// that perform them.
 ///
-/// [declared] is the published capability set (§6.13.2) — what a host embedding
+/// [declared] is the published capability set — what a host embedding
 /// this runtime can read to know what its documents will get. It is derived
 /// from what was wired, so it cannot drift from the truth by being edited.
 class RuntimeCapabilities {
@@ -333,11 +333,11 @@ class RuntimeCapabilities {
   final SurfaceBuilder? mapBuilder;
   final SurfaceBuilder? lottieBuilder;
 
-  /// Takes payment (§4.24). A tier that wires none still renders documents;
+  /// Takes payment. A tier that wires none still renders documents;
   /// every `payment` action reports `PAYMENT_UNAVAILABLE` through `onError`.
   final PaymentPort? payment;
 
-  /// Answers where this device is (§4.25, Location Profile). Absent means the
+  /// Answers where this device is. Absent means the
   /// runtime does not claim the Profile, and `location` fails visibly.
   final LocationPort? location;
 
@@ -364,7 +364,7 @@ class RuntimeCapabilities {
 
 /// Raised when a document asks for a behaviour this runtime does not have.
 /// Carried to the widget's `onError` and the diagnostic channel — never
-/// rendered in place of the content (§6.13.2).
+/// rendered in place of the content.
 class CapabilityUnavailable implements Exception {
   const CapabilityUnavailable(this.capability, {this.detail});
 

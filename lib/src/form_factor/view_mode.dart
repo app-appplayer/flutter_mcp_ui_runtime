@@ -75,7 +75,7 @@ enum ViewMode {
 }
 
 /// Resolves the effective [FormFactor] by walking the priority chain
-/// defined in the responsive-rendering plan §4:
+/// below:
 ///
 /// 1. Per-app pin (`AppConfig.viewMode`)
 /// 2. Global pin (`AppSettings.defaultViewMode`)

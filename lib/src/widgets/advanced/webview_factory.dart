@@ -29,7 +29,7 @@ class WebViewWidgetFactory extends WidgetFactory {
     // Options
     final enableJavaScript = boolOf(properties['enableJavaScript'], context) ?? true;
     final enableZoom = boolOf(properties['enableZoom'], context) ?? true;
-    // `allowNavigation` (§10.18) is decided by the engine, so it travels to
+    // `allowNavigation` is decided by the engine, so it travels to
     // the host surface with the rest of `properties` rather than being read
     // and dropped here.
     final backgroundColor =
@@ -42,7 +42,7 @@ class WebViewWidgetFactory extends WidgetFactory {
         actionOf(properties['onPageFinished'], context);
     final onError = actionOf(properties['onError'], context);
 
-    // §6.13 — a web view either loads pages or says it cannot. The engine is a
+    // A web view either loads pages or says it cannot. The engine is a
     // platform power, so the host supplies the surface; the built-in path never
     // reports a load it did not perform.
     final builder = context.capabilities.webViewBuilder;
@@ -190,7 +190,7 @@ class _WebViewWidgetState extends State<_WebViewWidget> {
       return;
     }
 
-    // No engine was wired, so nothing will load. §6.13.1 — this reports the
+    // No engine was wired, so nothing will load. This reports the
     // absence instead of announcing a page load that never happened. The old
     // path fired `onPageFinished` after 100ms and drew the URL as text, which
     // told the document the page was up.
@@ -251,9 +251,9 @@ class _WebViewWidgetState extends State<_WebViewWidget> {
     }
 
     if (_errorMessage != null) {
-      // §6.13.2 — the failure went to `onError` and the diagnostic channel when
+      // The failure went to `onError` and the diagnostic channel when
       // it happened. Drawing it here would put the runtime's limits in the
-      // user's screen, which §6.12.4 already forbids for assets.
+      // user's screen, which is already forbidden for assets.
       return const SizedBox.shrink();
     }
 
@@ -269,7 +269,7 @@ class _WebViewWidgetState extends State<_WebViewWidget> {
     }
 
     // No engine: nothing to show. The URL preview that used to live here was a
-    // facsimile of a loaded page (§6.13.1) — it even satisfied "render".
+    // facsimile of a loaded page — it even satisfied "render".
     return const SizedBox.shrink();
   }
 }

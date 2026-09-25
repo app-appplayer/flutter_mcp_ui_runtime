@@ -79,7 +79,7 @@ class SystemActionExecutor {
 
         case 'image':
           // Image clipboard requires platform-specific implementation
-          // §6.13.1 — reporting success for something not performed is the
+          // Reporting success for something not performed is the
           // failure this rule exists to stop. `hasContent: false` reads as "the
           // clipboard is empty", which is a different fact from "this runtime
           // cannot look".
@@ -171,7 +171,7 @@ class SystemActionExecutor {
       final severity = action['severity'] as String?;
 
       // No OS notification is posted here, and saying `shown: true` claimed
-      // one had been. §8.2.5 defines `UNSUPPORTED` for exactly this: a
+      // one had been. `UNSUPPORTED` exists for exactly this: a
       // document that asks for a system notification and gets a success it
       // can read as "the user saw it" will not fall back to its in-app
       // `notification` widget, so the message reaches no one.

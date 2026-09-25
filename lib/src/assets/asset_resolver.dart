@@ -1,6 +1,6 @@
 /// One asset resolution path for every slot typed `AssetRef`.
 ///
-/// Spec §6.12: two widgets given the same reference MUST resolve it
+/// Two widgets given the same reference MUST resolve it
 /// identically, and a runtime MUST publish which forms it resolves. Before
 /// this, each factory hand-rolled its own `startsWith` chain and between all
 /// of them only `http(s)`, `assets/`, and `data:` were handled — exactly the
@@ -8,7 +8,7 @@
 /// declared by the spec and implemented nowhere.
 ///
 /// The asynchronous forms live behind [AssetRefImage], so a widget can still
-/// build an `ImageProvider` synchronously (§6.12.5).
+/// build an `ImageProvider` synchronously.
 library asset_resolver;
 
 import 'dart:convert';
@@ -37,7 +37,7 @@ typedef ClientAssetReader = Future<Uint8List?> Function(String uri);
 
 /// Reads a resource uri from a named origin via MCP `resources/read`.
 ///
-/// `origin` is `null` for the ambient origin (§6.12.3) — the origin of the
+/// `origin` is `null` for the ambient origin — the origin of the
 /// definition that declared the asset, never the embedder's.
 typedef OriginAssetReader = Future<Uint8List?> Function(
   String uri,
@@ -64,7 +64,7 @@ class AssetResolver {
   final ClientAssetReader? clientReader;
   final OriginAssetReader? originReader;
 
-  /// The set this runtime resolves, for §6.12.4 / §18.2.12 declaration.
+  /// The set this runtime resolves, for declaring which forms it serves.
   ///
   /// Honest by construction: a form appears only when the reader that serves
   /// it was actually injected, so the published set cannot drift from what
@@ -102,7 +102,7 @@ class AssetResolver {
   ///
   /// Vectors do not go through `ImageProvider` — they are drawn by a picture
   /// widget — so every caller needs the same answer before it picks a path.
-  /// Kept here rather than in the widgets so the two cannot disagree (§6.12:
+  /// Kept here rather than in the widgets so the two cannot disagree (
   /// one resolution path for every `AssetRef` slot).
   static bool isVector(AssetRef ref) {
     final uri = ref.uri;
@@ -146,7 +146,7 @@ class AssetResolver {
   /// An [ImageProvider] for [ref], or `null` when the form is unsupported.
   ///
   /// Returning `null` is how an unresolvable asset reaches the slot's declared
-  /// fallback (§6.12.4) instead of rendering a placeholder that states the
+  /// fallback instead of rendering a placeholder that states the
   /// runtime's limitation on the user's screen.
   ImageProvider? imageProviderFor(AssetRef ref) {
     switch (ref.form) {
@@ -158,7 +158,7 @@ class AssetResolver {
         return _dataImage(ref.uri);
       case AssetForm.file:
         // What a host hands over after resolving `bundle://` itself
-        // (§6.12.7 placement 1). No filesystem, no picture — the declared
+        // (a local path). No filesystem, no picture — the declared
         // fallback, never a placeholder naming the limitation.
         return file_asset.fileAssetsAvailable
             ? file_asset.fileImageFor(ref.uri)
@@ -167,7 +167,7 @@ class AssetResolver {
       case AssetForm.client:
       case AssetForm.origin:
         // Asynchronous reads. The wait lives inside the provider so callers
-        // stay synchronous (§6.12.5).
+        // stay synchronous.
         return supports(ref) ? AssetRefImage(ref, this) : null;
       case AssetForm.unknown:
         return null;
@@ -179,9 +179,9 @@ class AssetResolver {
   ///
   /// Vectors take a picture widget rather than an `ImageProvider`, so this is
   /// the vector half of `imageProviderFor` — same scheme dispatch, same
-  /// `null`-means-fallback contract (§6.12.4). Asynchronous schemes read
+  /// `null`-means-fallback contract. Asynchronous schemes read
   /// through [bytesFor], and a slot awaiting bytes shows its loading state
-  /// rather than its fallback (§6.12.5).
+  /// rather than its fallback.
   Widget? vectorWidgetFor(
     AssetRef ref, {
     double? width,
@@ -290,7 +290,7 @@ class AssetResolver {
 /// Decodes a `data:` URI payload, base64 or percent-encoded.
 ///
 /// Returns `null` on a malformed URI rather than throwing: a bad reference is
-/// an unresolvable asset (§6.12.4), not a crash.
+/// an unresolvable asset, not a crash.
 Uint8List? decodeDataUri(String uri) {
   final comma = uri.indexOf(',');
   if (comma == -1) return null;

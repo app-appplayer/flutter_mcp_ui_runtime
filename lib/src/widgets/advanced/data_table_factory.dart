@@ -14,16 +14,16 @@ class DataTableWidgetFactory extends WidgetFactory {
     final columns = listOf(properties['columns'], context) ?? const [];
     final rowsBinding = properties['rows'];
     final selectable = properties['selectable'] == true;
-    // Spec §10.4 canonical `onRowTap`; `rowClick` kept as legacy alias.
+    // Canonical `onRowTap`; `rowClick` kept as legacy alias.
     final rowClickAction =
         actionOf(properties['onRowTap'] ?? properties['rowClick'], context);
-    // Spec §10.4: `sortColumn` and `sortAscending` are declared `binding`, so
+    // `sortColumn` and `sortAscending` are declared `binding`, so
     // the documented form of both is a `{{...}}` string — reading them without
     // resolving threw on every document that used them as written.
     final sortColumn = stringOf(properties['sortColumn'], context);
     final sortAscending = boolOf(properties['sortAscending'], context) ?? true;
     final onSort = actionOf(properties['onSort'], context);
-    // §10.4 `editable`: in-place cell editing, reported through `onCellEdit`.
+    // `editable`: in-place cell editing, reported through `onCellEdit`.
     // Both were declared and neither was read — a table marked editable had
     // no editable cell, and the action its own description names did not
     // exist in the registry.
@@ -48,7 +48,7 @@ class DataTableWidgetFactory extends WidgetFactory {
     }
 
     // Build DataColumn list. A column marked `sortable` gets a header that
-    // dispatches `onSort` with `event.column` — the shape §10.4's example
+    // dispatches `onSort` with `event.column` — the shape the documented example
     // writes back into `sortColumn` / `sortAscending`.
     final dataColumns = columns.map<DataColumn>((col) {
       final colDef = col as Map<String, dynamic>;
@@ -167,7 +167,7 @@ class DataTableWidgetFactory extends WidgetFactory {
 /// outlives one build — the per-column filter text, the dragged widths, and
 /// the scroll position — so the table itself is stateful rather than each of
 /// the three being approximated statelessly.
-/// Fires a row tap with the row in the event (§10.4 — `event.row` is the row
+/// Fires a row tap with the row in the event (`event.row` is the row
 /// object). Shared so every path that can start a row tap reports the same
 /// thing.
 void tapRow(
@@ -229,7 +229,7 @@ class _DataTableViewState extends State<_DataTableView> {
   String _key(dynamic col) =>
       (col as Map<String, dynamic>)['key']?.toString() ?? '';
 
-  /// Reports an edit. The widget never rewrites `rows` itself — §10.4 says
+  /// Reports an edit. The widget never rewrites `rows` itself — the DSL says
   /// the document decides what an edit means.
   void _commitEdit(
     Map<String, dynamic> row,

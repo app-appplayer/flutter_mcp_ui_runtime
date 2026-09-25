@@ -17,7 +17,7 @@ library host_platform;
 import 'host_platform_io.dart'
     if (dart.library.js_interop) 'host_platform_web.dart' as impl;
 
-/// Identity of the client this runtime is running on (spec §8.5).
+/// Identity of the client this runtime is running on.
 abstract final class HostPlatform {
   static String? _name;
 
@@ -55,7 +55,7 @@ abstract final class HostPlatform {
 
   /// One environment variable, where the host exposes an environment.
   ///
-  /// The allowlist and the `system.info` permission gate (§8.5) stay with the
+  /// The allowlist and the `system.info` permission gate stay with the
   /// caller — this only reads.
   static String? env(String name) => impl.hostEnv(name);
 

@@ -78,7 +78,7 @@ void main() {
       });
       expect(hooks.onReady, hasLength(1));
       expect(hooks.aliasWarnings, isNotEmpty);
-      // §1.5.3 makes this an error; until 0.6.0 the grouped value wins so a
+      // The DSL makes this an error; for now the grouped value wins so a
       // document that used to load still loads.
       expect(hooks.onReady!.single['value'], 'grouped');
     });

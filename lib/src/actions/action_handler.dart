@@ -23,12 +23,13 @@ import '../permissions/permission_manager.dart';
 import '../permissions/trust_level.dart';
 import '../entry/entry_session.dart';
 import 'action_result.dart';
+import 'dispatch_origin.dart';
 
 /// Handles action execution
 /// A callback slot as one action.
 ///
 /// `onSuccess` / `onError` take one action or a list of them; a list is a
-/// `sequence` (§4.6). This mirrors `readActions` / `readAction` in
+/// `sequence`. This mirrors `readActions` / `readAction` in
 /// `widget_factory.dart`, which every widget-side action slot already uses —
 /// the callbacks were the one position still casting straight to a map, so a
 /// list form ran nothing and reported nothing.
@@ -90,9 +91,9 @@ class ActionHandler {
 
     // v1.1 Channel action executors. Canonical dispatch uses the bare
     // subsystem key (`_executors['channel']`); the executor resolves the
-    // sub-operation from `action['action']` per spec §4.13. Dotted-flat
+    // sub-operation from `action['action']`. Dotted-flat
     // keys remain registered as legacy aliases for backward compatibility
-    // (§17.3.4).
+    // only.
     final channelExecutor = ChannelActionExecutor();
     _executors['channel'] = channelExecutor;
     _executors['channel.start'] = channelExecutor;
@@ -110,7 +111,7 @@ class ActionHandler {
     // v1.1 Permission revoke executor
     // Permission actions. Canonical `_executors['permission']` resolves
     // the sub-operation from `action['action']`. Flat legacy
-    // `permission.revoke` key remains for backward compatibility (§17.3.4).
+    // `permission.revoke` key remains for backward compatibility.
     final permissionExecutor = PermissionRevokeActionExecutor();
     _executors['permission'] = permissionExecutor;
     _executors['permission.revoke'] = permissionExecutor;
@@ -126,14 +127,14 @@ class ActionHandler {
 
     _executors['notification'] = NotificationActionExecutor();
 
-    // v1.4 Sound actions (spec §4.9a). Core Profile: a served application and a
+    // v1.4 Sound actions. Core Profile: a served application and a
     // browser-rendered one need to be heard too, and a sound carries none of
     // the user's data. Canonical dotted keys — there is no sub-operation field.
     final soundExecutor = SoundActionExecutor();
     _executors['sound.play'] = soundExecutor;
     _executors['sound.stop'] = soundExecutor;
 
-    // v1.4 media transport (spec §4.9b) — drives a mounted `mediaPlayer` by id
+    // v1.4 media transport — drives a mounted `mediaPlayer` by id
     // so `controls: false` is a design choice rather than a dead end.
     final mediaExecutor = MediaActionExecutor();
     _executors['media.play'] = mediaExecutor;
@@ -144,7 +145,7 @@ class ActionHandler {
     // v1.1 Event bus executor
     _executors['event'] = EventActionExecutor();
 
-    // v1.4 Identity actions (MCP UI DSL 8.9.3). Canonical `_executors['identity']`
+    // v1.4 Identity actions. Canonical `_executors['identity']`
     // resolves the sub-operation from `action['action']`; the dotted-flat keys
     // are the forms the spec's own examples use.
     final identityExecutor = IdentityActionExecutor();
@@ -152,9 +153,9 @@ class ActionHandler {
     _executors[ActionTypes.identityPromote] = identityExecutor;
     _executors[ActionTypes.identityRelease] = identityExecutor;
 
-    // v1.4.2 payment (spec §4.24, Payment Profile). Registered unconditionally
+    // v1.4.2 payment. Registered unconditionally
     // so that a host without a payment port answers `PAYMENT_UNAVAILABLE`
-    // through `onError` (§18.11.3) instead of the generic unknown-type error —
+    // through `onError` instead of the generic unknown-type error —
     // the document learns the runtime cannot take payment, which is a
     // different fact from the action being misspelled.
     _executors[ActionTypes.payment] = PaymentActionExecutor();
@@ -183,9 +184,16 @@ class ActionHandler {
   ///
   /// Replaces the default ClientActionHandler (created with null config)
   /// with one that uses the actual permissions from UIDefinition.
+  ///
+  /// A new configuration is not a new grant: the trust level already set —
+  /// possibly `untrusted` — carries over to the replacement.
   void setPermissionsConfig(PermissionsConfig? config) {
     if (config == null) return;
+    final previousTrust = permissionManager?.trustLevel;
     final clientHandler = ClientActionHandler(config);
+    if (previousTrust != null) {
+      clientHandler.permissionManager.trustLevel = previousTrust;
+    }
     final clientExecutor = ClientActionExecutorWrapper(clientHandler);
     for (final actionType in ClientActionTypes.all) {
       _executors[actionType] = clientExecutor;
@@ -273,18 +281,18 @@ class ActionHandler {
       _logger.debug(
           'Executor returned result: ${result.success} - ${result.data}');
 
-      // Handle success/error callbacks per spec §4.4.2: child context exposes
+      // Handle success/error callbacks: child context exposes
       // the response (or structured error) under the canonical `event` key,
       // making `{{event.<field>}}` resolvable via binding_engine's event.*
       // prefix path.
       //
-      // Spec §4.4.2 response shape table:
+      // Response shape table:
       //   - Map response   → `event.<key>` per top-level key (event itself = full Map).
       //   - Non-Map (list, scalar, null) → full response exposed as `event.value`;
       //     other `event.*` keys resolve to null.
       if (result.success) {
         // Through the shared slot reader: a callback takes one action or a
-        // list of them, and a list is a `sequence` (§4.6). Casting straight to
+        // list of them, and a list is a `sequence`. Casting straight to
         // `Map<String, dynamic>?` dropped the list form — the tool ran, the
         // callback did not, and nothing said so. Every other action slot in the
         // document (lifecycle hooks, watchers, widget slots) already reads
@@ -333,7 +341,6 @@ class ActionHandler {
           'source': 'actionHandler',
           'message': message,
           'actionType': type,
-          'error': message,
         },
       );
 
@@ -408,7 +415,7 @@ class ToolActionExecutor extends ActionExecutor {
   /// payload. Hosts (e.g. AppPlayer's `ToolDispatcher`) typically strip this
   /// envelope before forwarding to the runtime, but when a host wires
   /// `_onToolCall` to forward the raw `CallToolResult.toJson()` shape, the
-  /// runtime must perform the unwrap itself so the downstream §3.10
+  /// runtime must perform the unwrap itself so the downstream
   /// auto-merge logic sees the actual response body. The `isError` bit is
   /// preserved by mapping a true value to an error ActionResult upstream of
   /// auto-merge.
@@ -441,7 +448,7 @@ class ToolActionExecutor extends ActionExecutor {
   /// Runs a `tool` action against the subtree's ambient origin.
   ///
   /// Params resolve in the embedded scope, exactly as they would locally, and
-  /// the result takes the same §3.10 unwrap path — a call is not a different
+  /// the result takes the same unwrap path — a call is not a different
   /// kind of thing because it crossed an origin, only a differently-addressed
   /// one.
   Future<ActionResult> _executeThroughOrigin(
@@ -483,7 +490,7 @@ class ToolActionExecutor extends ActionExecutor {
     _logger.debug('Executing tool action: $tool with action: $action');
 
     // A subtree embedded by `view` runs against the origin it was resolved
-    // from, so its tool calls belong to that device (§1.9.5, §2.13.1, §7.10).
+    // from, so its tool calls belong to that device.
     // Taking the app's own path here is what made a composed screen render
     // correctly and do nothing: the call reached a session with no client for
     // it. A scoped subtree with no host bridge is reported rather than
@@ -633,7 +640,8 @@ class ToolActionExecutor extends ActionExecutor {
           // Execute onTimeout action if defined
           final onTimeout = action['onTimeout'] as Map<String, dynamic>?;
           if (onTimeout != null) {
-            await context.actionHandler.execute(onTimeout, context);
+            await DispatchOrigin.run(DispatchOrigin.timer,
+                () => context.actionHandler.execute(onTimeout, context));
           }
           attempt++;
         } catch (e) {
@@ -680,7 +688,7 @@ class ToolActionExecutor extends ActionExecutor {
 
       _logger.debug('Tool executor returned: $result');
 
-      // Spec §3.10 / §4.4 — tool response handling.
+      // Tool response handling.
       //
       // The runtime accepts response shapes in this order of preference:
       //
@@ -691,7 +699,7 @@ class ToolActionExecutor extends ActionExecutor {
       //      ActionResult.error, and treats the parsed body as the response
       //      for the remaining steps. Spec-compliant.
       //
-      //   2. Plain Map (canonical, spec §3.10) — top-level keys auto-merge
+      //   2. Plain Map (canonical) — top-level keys auto-merge
       //      into page state via `stateManager.mergeState`. Spec-compliant.
       //
       //   3. Envelope `{success: <bool>, result, message?, error?}` — LEGACY,
@@ -699,13 +707,13 @@ class ToolActionExecutor extends ActionExecutor {
       //      tool implementations that wrap responses (older AppPlayer
       //      ToolDispatcher fold, vibe self-host wrapping). The inner
       //      `result` is treated as the response body for auto-merge.
-      //      DEPRECATED: slated for removal in 0.6.0. Tool authors should
+      //      DEPRECATED: slated for removal. Tool authors should
       //      return the response body directly and signal failure via the
       //      MCP wire `isError` flag (CallToolResult.isError).
       //
       // The `tools.<toolName>.result` namespaced mirror written below is
       // also a LEGACY convenience binding outside the spec. DEPRECATED:
-      // slated for removal in 0.6.0. Authors should use explicit
+      // slated for removal. Authors should use explicit
       // `bindResult` or rely on auto-merged top-level keys.
 
       // Step 1: detect and unwrap the MCP wire shape, capturing isError.
@@ -748,7 +756,7 @@ class ToolActionExecutor extends ActionExecutor {
           _warnedEnvelopeUnwrap = true;
           _logger.warning(
               'Tool "$tool" returned legacy envelope shape `{success, result, message}`. '
-              'This shape is DEPRECATED and slated for removal in 0.6.0. '
+              'This shape is DEPRECATED and slated for removal. '
               'Return the response body directly and signal failure via the MCP '
               '`isError` flag (CallToolResult.isError).');
         }
@@ -773,7 +781,7 @@ class ToolActionExecutor extends ActionExecutor {
         if (bindResult != null) {
           context.setValue(bindResult, resultData);
         } else if (isSuccess && resultData is Map<String, dynamic>) {
-          // Spec §3.10: top-level keys of the response auto-merge into
+          // Top-level keys of the response auto-merge into
           // page state. For envelope responses the response body is the
           // envelope's inner `result` field.
           context.stateManager.mergeState(resultData);
@@ -798,7 +806,7 @@ class ToolActionExecutor extends ActionExecutor {
         }
       }
 
-      // Step 4: plain canonical response (spec §3.10).
+      // Step 4: plain canonical response.
       //
       // LEGACY mirror: namespaced `tools.<tool>.result`. See deprecation
       // note above. Behavior preserved for one release.
@@ -810,7 +818,7 @@ class ToolActionExecutor extends ActionExecutor {
       if (bindResult != null) {
         context.setValue(bindResult, result);
       } else if (result is Map<String, dynamic>) {
-        // Spec §3.10: top-level keys auto-merge into page state.
+        // Top-level keys auto-merge into page state.
         context.stateManager.mergeState(result);
       } else if (result is Map) {
         // Accept Map<dynamic, dynamic> from JSON decoders that produce a
@@ -885,7 +893,7 @@ class NavigationActionExecutor extends ActionExecutor {
   static VoidCallback? _onExitCallback;
 
   /// Registers the host onExit callback for the exitApp action and the
-  /// host-inserted close button (spec §2.8.1 / §4.3.2).
+  /// host-inserted close button.
   static void setOnExitCallback(VoidCallback callback) {
     _onExitCallback = callback;
   }
@@ -904,8 +912,8 @@ class NavigationActionExecutor extends ActionExecutor {
     _onExitCallback?.call();
   }
 
-  /// Host-provided handler for the `openApp` navigation sub-action
-  /// (spec §4.3.1). When the runtime is embedded inside a launcher —
+  /// Host-provided handler for the `openApp` navigation sub-action.
+  /// When the runtime is embedded inside a launcher —
   /// e.g. a dashboard slot that lives outside the hosted app's own
   /// `Navigator` — the built-in `Navigator.pushNamedAndRemoveUntil`
   /// cannot reach the launcher's route table. Hosts inject a callback
@@ -923,10 +931,10 @@ class NavigationActionExecutor extends ActionExecutor {
     _onOpenAppCallback = null;
   }
 
-  /// Host-provided handler for the `openUrl` navigation sub-action
-  /// (spec §4.3.3). Opening a URL leaves the runtime entirely — it is the
+  /// Host-provided handler for the `openUrl` navigation sub-action.
+  /// Opening a URL leaves the runtime entirely — it is the
   /// host's browser, mail client, or dialer that performs it — so the
-  /// runtime enforces the scheme policy of §7.3.4 and delegates the act.
+  /// runtime enforces the URL scheme policy and delegates the act.
   ///
   /// Returning `false` (or throwing) means the host could not open it; that
   /// reaches the action's `onError`. A runtime with no callback registered
@@ -946,9 +954,9 @@ class NavigationActionExecutor extends ActionExecutor {
   /// Returns true if a host can open external URLs.
   static bool get hasOnOpenUrl => _onOpenUrlCallback != null;
 
-  /// Performs `{"type":"navigation","action":"openUrl"}` (spec §4.3.3).
+  /// Performs `{"type":"navigation","action":"openUrl"}`.
   ///
-  /// The binding is resolved before the policy check (§7.3.4): a policy
+  /// The binding is resolved before the policy check: a policy
   /// applied to `"{{link}}"` checks a literal, not the value that will open.
   Future<ActionResult> _openUrl(
     Map<String, dynamic> action,
@@ -966,7 +974,7 @@ class NavigationActionExecutor extends ActionExecutor {
     }
     if (_blockedUrlSchemes.contains(uri.scheme.toLowerCase())) {
       return ActionResult.error(
-          'openUrl refused scheme "${uri.scheme}" (spec §7.3.4)');
+          'openUrl refused scheme "${uri.scheme}"');
     }
 
     final target = context.resolve<String?>(action['target']) ?? 'new';
@@ -988,7 +996,7 @@ class NavigationActionExecutor extends ActionExecutor {
     }
   }
 
-  /// Schemes a document may never open (spec §7.3.4).
+  /// Schemes a document may never open.
   ///
   /// `javascript:` executes in whatever context opens it, and `data:` and
   /// `file:` let a document hand the host content it authored as though the
@@ -1023,7 +1031,7 @@ class NavigationActionExecutor extends ActionExecutor {
           'Navigation action: $actionType to $route with params: $params');
     }
 
-    // Spec §4.3.1 openApp / §4.3.2 exitApp must always be routed to the
+    // openApp / exitApp must always be routed to the
     // host callback when one is registered. These actions cross the
     // runtime boundary (dashboard -> full app, app -> launcher) and the
     // host is the only layer that knows how to perform the transition.
@@ -1042,7 +1050,7 @@ class NavigationActionExecutor extends ActionExecutor {
       return ActionResult.success();
     }
 
-    // §4.3.3 — openUrl leaves the application, so it is never a route change:
+    // `openUrl` leaves the application, so it is never a route change:
     // no stack entry, no page lifecycle. Handled before the navigation
     // handlers below so a host handler registered for push/replace cannot
     // swallow it.
@@ -1104,7 +1112,7 @@ class NavigationActionExecutor extends ActionExecutor {
           'NavigationService navigatorKey: ${NavigationService.instance.navigatorKey}');
       MCPLogger('NavigationActionExecutor').debug(
           'NavigationService navigatorKey hashCode: ${NavigationService.instance.navigatorKey.hashCode}');
-      // §6.13's rule applied to an action: perform it, or report that it was
+      // The rule for an action: perform it, or report that it was
       // not performed. This answered SUCCESS for a navigation that never
       // happened — the source comment said "to avoid breaking the app" — so a
       // document could not tell "navigated" from "there was nowhere to go",
@@ -1138,7 +1146,7 @@ class NavigationActionExecutor extends ActionExecutor {
           );
           break;
         case 'openApp':
-          // Spec §4.3.1 — transition from dashboard rendering mode to full
+          // Transition from dashboard rendering mode to full
           // application rendering. When a host callback is registered the
           // launcher handles the transition (e.g. push /app/:id via
           // go_router). Otherwise fall back to the internal Navigator for
@@ -1189,11 +1197,11 @@ class NavigationActionExecutor extends ActionExecutor {
 /// Executes state actions
 ///
 /// All mutations tag the resulting [StateChangeEvent] with source = `'action'`
-/// per spec §3.11 ("User-triggered via a `state` action"). Hosts watching the
+/// ("User-triggered via a `state` action"). Hosts watching the
 /// state change stream can therefore distinguish author-driven mutations
 /// from tool-merge / subscription / system updates.
 class StateActionExecutor extends ActionExecutor {
-  // Spec §3.11 source classification for `state` actions.
+  // Source classification for `state` actions.
   static const String _source = 'action';
 
   @override
@@ -1208,11 +1216,11 @@ class StateActionExecutor extends ActionExecutor {
       // Reported, not thrown. The exception used to travel out of
       // `ActionHandler.execute` into whatever tapped the button, so a document
       // that forgot `binding` took the page down — the harshest possible
-      // answer to a typo, and not one §6.13 asks for.
+      // answer to a typo, and not one the DSL asks for.
       return ActionResult.error('state.$actionType requires `binding`');
     }
 
-    // §8.9.2 — `entry.*` and `identity.*` are read-only. They describe how the
+    // `entry.*` and `identity.*` are read-only. They describe how the
     // viewer arrived and who they are; a document that could assign them could
     // draw itself a steward affordance it was never granted. Rejecting here
     // rather than silently dropping the write keeps the failure visible to the
@@ -1443,7 +1451,7 @@ class ResourceActionExecutor extends ActionExecutor {
 
     // Otherwise, handle subscription-style resource actions
     final actionType = action['action'] as String?;
-    // `uri` is a string field like any other (§3.1): a page that subscribes to
+    // `uri` is a string field like any other: a page that subscribes to
     // its own identifier writes `state://rider/{{rider}}`, and the runtime must
     // subscribe to the resolved address, not the template.
     final uri = context.resolve<String?>(action['uri']);
@@ -1460,7 +1468,7 @@ class ResourceActionExecutor extends ActionExecutor {
     }
 
     // A subtree embedded by `view` watches its OWN origin's resources, not the
-    // app's (§1.9.5, §2.13.1). Routed before the local path because the local
+    // app's. Routed before the local path because the local
     // one silently succeeds against the wrong server: it registers a
     // subscription the app's own session will never receive updates for, and
     // the reading renders empty forever.
@@ -1487,7 +1495,7 @@ class ResourceActionExecutor extends ActionExecutor {
 
           // Call the resource subscribe handler. If the host throws (e.g.
           // connection refused, server returned an error), dispatch the
-          // author-provided `onSubscriptionError` action per spec §4.5 and
+          // author-provided `onSubscriptionError` action and
           // bubble the failure up as an ActionResult.error.
           _logger.debug(
               'Checking onResourceSubscribe handler: ${context.onResourceSubscribe != null}');
@@ -1558,7 +1566,7 @@ class ResourceActionExecutor extends ActionExecutor {
           }
           break;
 
-        case 'read': // Spec §4.5: one-shot fetch — store result at binding
+        case 'read': // One-shot fetch — store result at binding
           final binding = action['binding'] as String? ?? uri;
           _logger.debug(
               'Processing read (one-shot) for URI: $uri -> binding: $binding');
@@ -1586,7 +1594,7 @@ class ResourceActionExecutor extends ActionExecutor {
           }
           break;
 
-        case 'list': // Spec §4.5: directory query — store list at binding
+        case 'list': // Directory query — store list at binding
           final binding = action['binding'] as String? ?? uri;
           _logger.debug(
               'Processing list (collection) for URI: $uri -> binding: $binding');
@@ -1745,14 +1753,14 @@ class DialogActionExecutor extends ActionExecutor {
       return ActionResult.error('Dialog configuration is required');
     }
 
-    // Canonical type names (spec §2.11) with short-form aliases for
+    // Canonical type names with short-form aliases for
     // backwards compatibility.
     final rawType = dialog['type'] as String? ?? 'alert';
     final dialogType = _canonicalDialogType(rawType);
     final title = context.resolve(dialog['title']) as String?;
     // `content` may be either a string (alertDialog / snackBar) or a widget
     // definition (legacy bottomSheet / customDialog). Widget forms are
-    // resolved from `child` first (canonical per §2.11), falling back to a
+    // resolved from `child` first (canonical), falling back to a
     // Map-shaped `content` for backwards compatibility.
     final contentRaw = dialog['content'];
     final content = contentRaw is String
@@ -1765,7 +1773,7 @@ class DialogActionExecutor extends ActionExecutor {
     // answers null, and the alert / simple branches below then report
     // `success: true` for a dialog that was never drawn. Two taps in quick
     // succession, or a batch declaring two dialogs, would leave the document
-    // believing the user had been asked. §6.13 — a capability that could not
+    // believing the user had been asked. A capability that could not
     // be performed is reported.
     if (_dialogService.isShowing && dialogType != 'snackBar') {
       return ActionResult.error(
@@ -1779,7 +1787,7 @@ class DialogActionExecutor extends ActionExecutor {
 
       switch (dialogType) {
         case 'alert':
-          // Convert actions to DialogAction objects. Spec §2.11.1: each entry
+          // Convert actions to DialogAction objects. Each entry
           // uses `onTap` as the canonical handler; legacy authors may pass
           // `action` with the same meaning.
           final dialogActions = actions?.map((actionDef) {
@@ -1872,7 +1880,7 @@ class DialogActionExecutor extends ActionExecutor {
         case 'bottomSheet':
           final childDef = _dialogChild(dialog);
           if (childDef != null) {
-            // Spec §2.11.5: `isDismissible` (Flutter-style canonical for
+            // `isDismissible` (Flutter-style canonical for
             // bottomSheet); `dismissible` accepted as shared dialog alias.
             final sheetDismissible =
                 (dialog['isDismissible'] as bool?) ?? dismissible;
@@ -1952,7 +1960,7 @@ class DialogActionExecutor extends ActionExecutor {
     }
   }
 
-  /// Dialog colors through the one §5.3.4 parser.
+  /// Dialog colors through the one color parser.
   ///
   /// The previous copy read `#RRGGBB` with `int.parse` and no alpha channel,
   /// so a six-digit hex became `0x00RRGGBB` — fully transparent. A dialog
@@ -1964,7 +1972,7 @@ class DialogActionExecutor extends ActionExecutor {
       );
 
   /// Resolves the widget content for `customDialog` / `bottomSheet`.
-  /// Canonical key is `child` per spec §2.11; legacy authors may pass a
+  /// Canonical key is `child`; legacy authors may pass a
   /// widget-shaped `content`.
   Map<String, dynamic>? _dialogChild(Map<String, dynamic> dialog) {
     final child = dialog['child'];
@@ -1974,7 +1982,7 @@ class DialogActionExecutor extends ActionExecutor {
     return null;
   }
 
-  /// Maps canonical dialog widget type names (spec §2.11) to internal
+  /// Maps canonical dialog widget type names to internal
   /// short-form keys used by the switch above.
   String _canonicalDialogType(String raw) {
     switch (raw) {
@@ -2063,8 +2071,8 @@ class ChannelActionExecutor extends ActionExecutor {
       return ActionResult.error('Channel action type is required');
     }
 
-    // Resolve the sub-operation. Spec §4.13 canonical: bare form
-    // `{type: 'channel', action: 'start'}`. §17.3.4 also accepts the
+    // Resolve the sub-operation. Canonical: bare form
+    // `{type: 'channel', action: 'start'}`. Also accepted are the
     // dotted legacy `action: 'channel.start'` and the v1.1 flat
     // `type: 'channel.start'` forms — normalized to bare for dispatch.
     String op;
@@ -2097,7 +2105,7 @@ class ChannelActionExecutor extends ActionExecutor {
       // Reported, not skipped. The log line existed, but the *document* was
       // told the action succeeded: `channel.start` on a channel that was
       // never declared left a page waiting for data that could not arrive,
-      // with `onError` never firing because nothing failed. §8.2.5 has a
+      // with `onError` never firing because nothing failed. There is a
       // result shape for this, and a host that wants to shrug can ignore it.
       _logger.warning('Channel not found: $channelName');
       return ActionResult.error(
@@ -2246,9 +2254,9 @@ class SequenceActionExecutor extends ActionExecutor {
 }
 
 /// Executes notification actions (v1.1)
-/// `sound.play` / `sound.stop` (spec §4.9a).
+/// `sound.play` / `sound.stop`.
 ///
-/// The runtime resolves the binding and the scheme (§6.12.2) and hands the host
+/// The runtime resolves the binding and the scheme and hands the host
 /// a reference; producing the sound is the host's power. With no [SoundPort]
 /// wired the action does NOT quietly succeed — it reports, because a beep that
 /// silently does nothing is indistinguishable from a device with the volume
@@ -2282,7 +2290,7 @@ class SoundActionExecutor extends ActionExecutor {
     final loop = context.resolve<bool>(action['loop'] ?? false);
     final id = context.resolve<String?>(action['id']);
     if (loop && (id == null || id.isEmpty)) {
-      // §4.9a — an unnamed loop cannot be stopped, so it is a document error
+      // An unnamed loop cannot be stopped, so it is a document error
       // rather than a sound that plays until the app closes.
       return ActionResult.error('a looping sound.play requires an id');
     }
@@ -2309,14 +2317,14 @@ class SoundActionExecutor extends ActionExecutor {
       return ActionResult.success();
     } catch (e) {
       // A host refusal — a browser before the first gesture, a muted device, a
-      // policy — is an error the document can see (§4.9a), never a rendering.
+      // policy — is an error the document can see, never a rendering.
       return ActionResult.error(e.toString(), errorCode: 'SOUND_REFUSED');
     }
   }
 
 }
 
-/// `media.play` / `media.pause` / `media.toggle` / `media.seek` (spec §4.9b).
+/// `media.play` / `media.pause` / `media.toggle` / `media.seek`.
 class MediaActionExecutor extends ActionExecutor {
   @override
   Future<ActionResult> execute(
@@ -2512,7 +2520,7 @@ class CancelActionExecutor extends ActionExecutor {
   }
 }
 
-/// Executes identity promotion and release (v1.4, MCP UI DSL 8.9.3).
+/// Executes identity promotion and release.
 ///
 /// Neither operation takes a credential nor returns one — the result says
 /// only whether the transition occurred. A host that wired no promotion
@@ -2597,9 +2605,9 @@ class PermissionRevokeActionExecutor extends ActionExecutor {
     Map<String, dynamic> action,
     RenderContext context,
   ) async {
-    // Validate the sub-operation. Spec §4.14 canonical:
+    // Validate the sub-operation. Canonical:
     // `{type: 'permission', action: 'revoke', permissions: [...]}`.
-    // §17.3.4 legacy: `{type: 'permission.revoke', permissions: [...]}`.
+    // Legacy: `{type: 'permission.revoke', permissions: [...]}`.
     final type = action['type'] as String?;
     final String op;
     if (type == 'permission') {
@@ -2677,16 +2685,16 @@ class EventActionExecutor extends ActionExecutor {
   }
 }
 
-/// Executes `{"type": "payment"}` (spec §4.24, Payment Profile).
+/// Executes `{"type": "payment"}`.
 ///
 /// Everything this class does is bookkeeping around a host call: resolve the
-/// two declared fields, refuse where §7.3.5 says to refuse, hand them over,
-/// and map the outcome onto the §4.17 envelope. It never builds a URL, never
+/// two declared fields, refuse where it must refuse, hand them over,
+/// and map the outcome onto the result envelope. It never builds a URL, never
 /// opens anything, and never decides that a payment happened.
-/// `{"type": "location"}` — where this device is, once (§4.25).
+/// `{"type": "location"}` — where this device is, once.
 ///
 /// Single-shot by construction. There is no continuous form to implement,
-/// because §4.25 does not define one: a document that could follow someone is
+/// because the DSL defines none: a document that could follow someone is
 /// a different power from one that can ask where they are.
 class LocationActionExecutor extends ActionExecutor {
   static final _logger = MCPLogger('LocationActionExecutor');
@@ -2703,12 +2711,32 @@ class LocationActionExecutor extends ActionExecutor {
       return ActionResult.error('Unknown location action: $sub');
     }
 
-    // §7.3.6 — an untrusted document renders and nothing more. Reading where
-    // the person is is not rendering.
+    // Only a person's act may ask. A lifecycle hook, a timer, a watcher or a
+    // channel event asking would read the position of someone who did nothing.
+    final origin = DispatchOrigin.current;
+    if (origin != DispatchOrigin.act) {
+      return ActionResult.error(
+        'location answers only to an act; this dispatch came from '
+        '${origin.name}',
+        errorCode: 'LOCATION_UNAVAILABLE',
+      );
+    }
+
+    // A widget that is no longer mounted is a document no longer being shown.
+    final buildContext = context.buildContext;
+    if (buildContext != null && !buildContext.mounted) {
+      return ActionResult.error(
+        'location is not available while the document is not rendered',
+        errorCode: 'LOCATION_UNAVAILABLE',
+      );
+    }
+
+    // An untrusted document renders and nothing more. Reading where the
+    // person is is not rendering.
     final pm = _actionHandler?.permissionManager;
     if (pm != null && pm.trustLevel == TrustLevel.untrusted) {
       return ActionResult.error(
-        'location is not available at trust level "untrusted" (spec §7.3.6)',
+        'location is not available at trust level "untrusted"',
         errorCode: 'LOCATION_UNAVAILABLE',
       );
     }
@@ -2722,7 +2750,7 @@ class LocationActionExecutor extends ActionExecutor {
 
     final port = context.capabilities.location;
     if (port == null) {
-      // Reported, never a silent no-op (§4.25.1, §18.12.3).
+      // Reported, never a silent no-op.
       return ActionResult.error(
         const CapabilityUnavailable(RuntimeCapability.location,
                 detail: 'this runtime does not claim the Location Profile')
@@ -2762,7 +2790,7 @@ class LocationActionExecutor extends ActionExecutor {
     }
 
     if (answer == LocationFailure.denied) {
-      // A refusal is an answer. The runtime does not re-ask (§4.25.1).
+      // A refusal is an answer. The runtime does not re-ask.
       return ActionResult.error(
         'the person declined to share their location',
         errorCode: 'LOCATION_DENIED',
@@ -2790,15 +2818,15 @@ class PaymentActionExecutor extends ActionExecutor {
       return ActionResult.error('Unknown payment action: $sub');
     }
 
-    // §7.3.5 — an untrusted document renders and nothing more. It names the
-    // seller, so letting it through is letting it collect for a stranger.
-    // Checked only where the level is known: a document with no permissions
-    // block has no PermissionManager, and defaulting that to untrusted would
-    // refuse every ordinary document.
+    // An untrusted document renders and nothing more. It names the seller, so
+    // letting it through is letting it collect for a stranger. The level is
+    // `basic` until the host sets another, whether or not the document
+    // declares a permissions block; the manager is absent only where a host
+    // replaced every client executor.
     final pm = _actionHandler?.permissionManager;
     if (pm != null && pm.trustLevel == TrustLevel.untrusted) {
       return ActionResult.error(
-        'payment is not available at trust level "untrusted" (spec §7.3.5)',
+        'payment is not available at trust level "untrusted"',
         errorCode: 'PAYMENT_UNAVAILABLE',
       );
     }
@@ -2808,7 +2836,7 @@ class PaymentActionExecutor extends ActionExecutor {
       return ActionResult.error('payment requires an itemId');
     }
 
-    // Absent is a declaration, not a gap (§4.24.2): a document served by a
+    // Absent is a declaration, not a gap: a document served by a
     // device does not name who is paid, and the host resolves that party by
     // verifying the device. An empty string is the same statement as absent —
     // a binding that resolved to nothing must not become a party named "".
@@ -2816,7 +2844,7 @@ class PaymentActionExecutor extends ActionExecutor {
     final seller =
         (sellerValue == null || sellerValue.isEmpty) ? null : sellerValue;
 
-    // §4.24.3 — carried only where the item is customer-priced, which the
+    // Carried only where the item is customer-priced, which the
     // surface knows and the runtime does not. What the runtime can refuse is a
     // value that is not a price at all.
     final amountValue = context.resolve<Object?>(action['amount']);
@@ -2833,7 +2861,7 @@ class PaymentActionExecutor extends ActionExecutor {
 
     final port = context.capabilities.payment;
     if (port == null) {
-      // Reported, never a silent no-op (§4.24.1). A payment button that does
+      // Reported, never a silent no-op. A payment button that does
       // nothing is indistinguishable from a broken document.
       return ActionResult.error(
         const CapabilityUnavailable(RuntimeCapability.payment,
@@ -2857,7 +2885,7 @@ class PaymentActionExecutor extends ActionExecutor {
 
     switch (outcome) {
       case PaymentOutcome.success:
-        // Returning from the surface, not a settlement (§4.24.4). Whatever
+        // Returning from the surface, not a settlement. Whatever
         // `onSuccess` releases is confirmed server-side by whoever releases it.
         return ActionResult.success(data: {'status': 'success'});
       case PaymentOutcome.cancel:

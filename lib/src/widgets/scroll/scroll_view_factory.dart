@@ -19,12 +19,12 @@ class ScrollViewFactory extends WidgetFactory {
     final reverse = boolOf(properties['reverse'], context) ?? false;
     final padding = edgeInsetsOf(properties['padding'], context);
     final primary = boolOf(properties['primary'], context);
-    // Spec § scrollView v1.3 — `scrollPhysics` (canonical) replaces
+    // `scrollPhysics` (canonical) replaces
     // the legacy `physics` key. Both accepted for backward compat.
     final physics = _parseScrollPhysics(
         readEnum(properties['scrollPhysics'] ?? properties['physics'], context));
 
-    // Sliver mode (§2.9.1): `slivers` is a distinct layout mode, not a second
+    // Sliver mode: `slivers` is a distinct layout mode, not a second
     // spelling of `children`. It used to be laid out as ordinary children on
     // the grounds that a `SingleChildScrollView` cannot host slivers — which
     // meant a `sliverAppBar` reached the widget registry, found no factory
@@ -95,7 +95,7 @@ class ScrollViewFactory extends WidgetFactory {
     );
   }
 
-  /// Builds the `slivers` form of §2.9.1 into a [CustomScrollView].
+  /// Builds the `slivers` form into a [CustomScrollView].
   ///
   /// A sliver shape the spec does not define is reported in place rather than
   /// dropped.
@@ -205,7 +205,7 @@ class ScrollViewFactory extends WidgetFactory {
 
     // `flexibleSpace` is the whole hero area; `background` is the layer behind
     // the collapsing title. A document may give either, and giving `background`
-    // alone is the common case (§2.9.1's own example does), so it is wrapped
+    // alone is the common case (the documented example does), so it is wrapped
     // in the bar that knows how to collapse it rather than dropped for not
     // being a `flexibleSpace`.
     Widget? flexibleSpace;
@@ -257,7 +257,7 @@ class ScrollViewFactory extends WidgetFactory {
   }
 
   /// The `children` / `items` + `itemTemplate` pair the list widgets already
-  /// take (§2.8), so a section inside a scroll view is written the same way as
+  /// take, so a section inside a scroll view is written the same way as
   /// a standalone list.
   SliverChildDelegate _sliverChildren(
       Map<String, dynamic> def, RenderContext context) {
@@ -276,7 +276,7 @@ class ScrollViewFactory extends WidgetFactory {
 
     // `items` holding widget nodes is drawn the way `children` is; without a
     // template there is nothing else it could mean. Widening, not narrowing
-    // (§1.7.5).
+    // the accepted input.
     if (template == null && items.isNotEmpty) {
       final widgets = <Widget>[
         for (final item in items)

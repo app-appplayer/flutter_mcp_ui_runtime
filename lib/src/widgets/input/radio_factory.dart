@@ -28,7 +28,7 @@ class RadioWidgetFactory extends WidgetFactory {
     // `radio` widget therefore carries its own single-item group so the DSL
     // keeps working unchanged.
     void handleChange(dynamic newValue) {
-      // Spec §2.6.0: canonical `binding`; accept legacy `bindTo`.
+      // Canonical `binding`; accept legacy `bindTo`.
       final path = (stringOf(properties['binding'], context)) ??
           (stringOf(properties['bindTo'], context));
       if (path != null) {

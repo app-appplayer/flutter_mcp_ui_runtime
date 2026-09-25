@@ -9,7 +9,7 @@ class BottomNavigationBarWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Spec §2.8.2 canonical `selectedIndex`; `currentIndex` kept as legacy
+    // Canonical `selectedIndex`; `currentIndex` kept as legacy
     // Flutter-style alias.
     // Tolerant read: a bound path whose state holds the wrong shape used to
     // throw a cast error out of `resolve<num?>`, and the renderer painted a red
@@ -54,7 +54,7 @@ class BottomNavigationBarWidgetFactory extends WidgetFactory {
           activeIcon: item['activeIcon'] != null
               ? _buildIcon(item['activeIcon'], context)
               : null,
-          // §17.3.2: canonical 'label', legacy alias 'title'.
+          // Canonical 'label', legacy alias 'title'.
           label: (item['label'] ?? item['title']) as String?,
           tooltip: item['tooltip'] as String?,
           backgroundColor: parseColor(context.resolve(item['backgroundColor']), context),

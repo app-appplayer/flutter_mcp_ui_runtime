@@ -41,7 +41,7 @@ abstract class WidgetFactory {
       );
     }
 
-    // Handle click — spec 1.3.4 common property §2.2. Wraps any widget in a
+    // Handle click — a common property. Wraps any widget in a
     // gesture surface and dispatches the bound action on tap. Widget-local
     // activation slots (button.onTap, iconButton.onTap, richText.spans[].onTap,
     // ...) remain canonical for those widgets; `click` is the universal
@@ -240,7 +240,7 @@ abstract class WidgetFactory {
 
   /// Parse a DSL color value into a Flutter [Color].
   ///
-  /// Supported forms (spec §5 + FR-THEME-002):
+  /// Supported forms:
   ///   * 6-digit hex `#RRGGBB`
   ///   * 8-digit hex `#AARRGGBB`
   ///   * 3-digit hex shorthand `#RGB`
@@ -265,7 +265,7 @@ abstract class WidgetFactory {
 
     if (value is String) {
       switch (value) {
-        // Spec § Alignment primitive — directional canonical
+        // Alignment primitive — directional canonical
         // (topStart / topEnd / bottomStart / bottomEnd, RTL-aware
         // per Material 3). Visual aliases (topLeft / topRight /
         // bottomLeft / bottomRight) are accepted at runtime for
@@ -337,7 +337,7 @@ abstract class WidgetFactory {
   double? dimensionOf(dynamic raw, RenderContext context) =>
       readDimension(raw, context);
 
-  /// A boolean / number / integer / string slot, resolved (§3).
+  /// A boolean / number / integer / string slot, resolved.
   ///
   /// Every one of these used to be read with a raw cast, so a setting bound to
   /// state either reverted to its default or threw. They sit beside
@@ -393,8 +393,8 @@ abstract class WidgetFactory {
   // value (already past binding resolution) so factories can simply call
   // `parseSpacingToken('md', context)` from a property they expose.
   //
-  // Spec § 5.4 (typography), § 5.5 (spacing), § 5.6 (shape), § 5.7
-  // (elevation). Returning `null` on unknown tokens lets callers fall back
+  // Theme tokens: typography, spacing, shape and
+  // elevation. Returning `null` on unknown tokens lets callers fall back
   // to numeric / object forms without throwing on bad bundle input.
 
   /// Resolve an M3 spacing token (`xxs` / `xs` / `sm` / `md` / `lg` / `xl` /
@@ -481,7 +481,7 @@ double? readDimension(dynamic raw, RenderContext context) {
   return null;
 }
 
-/// A boolean slot, read the way §3 says every value may be written.
+/// A boolean slot, read the way every value may be written.
 ///
 /// `boolOf(properties['showGrid'], context)` was the common spelling, and it answers
 /// null for `"{{state.showGrid}}"` — the setting silently reverts to its
@@ -560,7 +560,7 @@ List<Map<String, dynamic>> readActions(dynamic raw, RenderContext context) {
 }
 
 /// The single-action view of an `Action` slot. A list collapses to a
-/// `sequence`, which is what running them in order means (§4.6) — not to its
+/// `sequence`, which is what running them in order means — not to its
 /// first entry, which would silently drop the rest.
 Map<String, dynamic>? readAction(dynamic raw, RenderContext context) {
   final actions = readActions(raw, context);

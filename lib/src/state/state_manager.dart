@@ -10,13 +10,13 @@ import 'computed_property.dart';
 /// State change event
 ///
 /// Emitted by [StateManager] on every mutation. The [source] field carries
-/// the canonical origin classification defined by spec §3.11:
+/// the canonical origin classification:
 ///
 /// | `source` | Meaning |
 /// |----------|---------|
 /// | `action` | User-triggered via a `state` action |
-/// | `tool` | Tool response auto-merge (§3.10) |
-/// | `subscription` | Resource notification (§4.5) |
+/// | `tool` | Tool response auto-merge |
+/// | `subscription` | Resource notification |
 /// | `system` | Internal runtime update |
 ///
 /// Other values are accepted for backward compatibility but downstream
@@ -27,7 +27,7 @@ class StateChangeEvent {
   final dynamic newValue;
   final DateTime timestamp;
 
-  /// Canonical source identifier per spec §3.11.
+  /// Canonical source identifier.
   /// One of `'action'`, `'tool'`, `'subscription'`, `'system'`. May be null
   /// when the caller did not specify a source (treated as `system`).
   final String? source;
@@ -178,7 +178,7 @@ class StateManager extends ChangeNotifier {
 
   /// Update multiple values at once
   ///
-  /// [source] carries the canonical [StateChangeEvent] source per spec §3.11.
+  /// [source] carries the canonical [StateChangeEvent] source.
   /// Defaults to `'system'` when the caller does not specify (was previously
   /// the non-canonical `'updateAll'`, which is no longer emitted).
   void updateAll(Map<String, dynamic> updates, {String? source}) {
@@ -370,11 +370,11 @@ class StateManager extends ChangeNotifier {
   /// Get all computed property names
   List<String> get computedPropertyNames => _computedProperties.keys.toList();
 
-  /// Merge state from a map (e.g., tool response auto-merge per spec §3.10).
+  /// Merge state from a map (e.g., tool response auto-merge).
   ///
   /// Each top-level key of [data] is set as a state variable using
   /// shallow overwrite semantics — nested objects replace existing values
-  /// without deep merging. The default [source] is `'tool'` per spec §3.11,
+  /// without deep merging. The default [source] is `'tool'`,
   /// reflecting the primary call site (tool response auto-merge). Callers
   /// using `mergeState` from other contexts should pass an explicit source.
   void mergeState(Map<String, dynamic> data, {String source = 'tool'}) {

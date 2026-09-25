@@ -21,7 +21,7 @@ class ConditionalFactory extends WidgetFactory {
       // Neither form declared. A conditional that states no condition is not
       // true: it selects `else` / `default`, and with no branch to select it
       // occupies no space. Not refused in the schema — validation runs at load
-      // and a rejected document does not open at all (§1.7.5).
+      // and a rejected document does not open at all.
       final fallback = definition['orElse'] ??
           definition['else'] ??
           definition['default'];

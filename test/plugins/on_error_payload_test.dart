@@ -38,8 +38,8 @@ class _ThrowingExecutor extends ActionExecutor {
   }
 }
 
-const _rendererKeys = {'source', 'message', 'widgetType', 'error'};
-const _actionKeys = {'source', 'message', 'actionType', 'error'};
+const _rendererKeys = {'source', 'message', 'widgetType'};
+const _actionKeys = {'source', 'message', 'actionType'};
 
 void main() {
   late List<Map<String, dynamic>> reports;
@@ -96,7 +96,7 @@ void main() {
       expect(r['source'], 'renderer');
       expect(r['message'], 'Unknown widget type: nope');
       expect(r['widgetType'], 'nope');
-      expect(r['error'], r['message']);
+      expect(r.containsKey('error'), isFalse);
       expect(errorLogs, hasLength(1));
       expect(errorLogs.single.message, contains('Unknown widget type: nope'));
     });
@@ -119,7 +119,7 @@ void main() {
       expect(r.keys.toSet(), _rendererKeys);
       expect(r['widgetType'], 'broken');
       expect(r['message'], contains('factory broke'));
-      expect(r['error'], r['message']);
+      expect(r.containsKey('error'), isFalse);
       // Logged once too, and with the exception and its stack, which the
       // message alone does not carry.
       expect(errorLogs, hasLength(1));
@@ -160,7 +160,7 @@ void main() {
       expect(r['source'], 'actionHandler');
       expect(r['actionType'], 'custom.broken');
       expect(r['message'], contains('executor broke'));
-      expect(r['error'], r['message']);
+      expect(r.containsKey('error'), isFalse);
     });
   });
 }

@@ -87,7 +87,7 @@ class _ErrorRecoveryWidgetState extends State<_ErrorRecoveryWidget> {
         _errorStack = st.toString();
         _hasError = true;
 
-        // Execute onError action with spec §2.13.12 canonical `event`
+        // Execute onError action with the canonical `event`
         // variable (`event.error` / `event.stack`).
         //
         // Deferred to after the frame: this runs inside build(), and almost

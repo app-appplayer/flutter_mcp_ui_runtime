@@ -146,7 +146,7 @@ class _SignaturePadState extends State<_SignaturePad> {
 
   /// Encodes what was drawn and hands it to the document.
   ///
-  /// §10.19 says the binding holds "base64 PNG or SVG path", and its own
+  /// The binding is documented to hold "base64 PNG or SVG path", and its own
   /// `onSignatureEnd` example writes `{{event.value}}`. Neither existed: the
   /// binding received an internal stroke dump no consumer can render or
   /// submit as an image, the event carried no `value` at all — so the spec's

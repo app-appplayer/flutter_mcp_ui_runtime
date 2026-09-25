@@ -14,9 +14,9 @@ class MarkdownWidgetFactory extends WidgetFactory {
   Widget build(Map<String, dynamic> definition, RenderContext context) {
     final properties = extractProperties(definition);
 
-    // Canonical key is `text` per spec §10.17 (matching text widget per
-    // 17_Naming §17.3.2); `content` is a legacy alias from v1.0 and is
-    // accepted per §18.2.10 (runtimes MUST accept registered aliases).
+    // Canonical key is `text` (matching the text widget);
+    // `content` is a legacy alias from v1.0 and is
+    // accepted (runtimes MUST accept registered aliases).
     final content =
         context.resolve<String?>(properties['text']) ??
             context.resolve<String?>(properties['content']) ??

@@ -18,7 +18,7 @@ class BindingExpression {
   /// Lambda parameter name (e.g., 'item' in `item => item.price > 100`)
   final String? parameterName;
 
-  /// Second lambda parameter, for the accumulator form §3.6.3 writes:
+  /// Second lambda parameter, for the accumulator form:
   /// `reduce(items, (acc, i) => acc + i.price * i.qty, 0)`. Null for the
   /// single-parameter lambdas `filter`/`map` take.
   final String? parameterName2;
@@ -249,7 +249,7 @@ class BindingExpression {
           final precedence = precedenceMap[oneChar]!;
           // `-` and `+` are also the sign of a literal. A sign has nothing on
           // its left to be a binary operator OF, so splitting there produced an
-          // empty left operand: `-1.57 + (value / max) * 6.28` (§10's gauge
+          // empty left operand: `-1.57 + (value / max) * 6.28` (a gauge
           // needle) split at index 0 and answered with the right-hand term
           // alone — a needle drawn at the wrong angle, reported by nothing.
           if (_isSignPosition(baseExpr, i)) {
@@ -310,7 +310,7 @@ class BindingExpression {
     // `rows.length` resolves (the path walk answers it), the same reading of
     // the same list through a call did not, and the difference is invisible —
     // it renders as an empty string. Two consumers wrote the "N of M" form and
-    // both read a blank. §3.6.4 makes the method form equivalent to the
+    // both read a blank. The method form is equivalent to the
     // function form; this makes the receiver an expression rather than only a
     // path.
     final tailMatch =
@@ -523,7 +523,7 @@ class BindingExpression {
   }
 
   /// Whether [expr] has a binary operator at its top level — the same scan the
-  /// parser uses, asked as a question. Arguments need it: §3.2.1's grammar
+  /// parser uses, asked as a question. Arguments need it: the grammar
   /// makes an argument an `Expression`, so `round(price * quantity, 2)` is
   /// legal, and treating it as a path made it a lookup for a variable *named*
   /// `price * quantity`.
@@ -562,7 +562,7 @@ class BindingExpression {
     String? quote;
 
     // Split by comma, respecting nested parentheses *and* quoted strings. A
-    // comma inside a quoted argument used to end the argument: §3.6.1's own
+    // comma inside a quoted argument used to end the argument: the documented
     // example `format(price, '#,##0.00')` arrived as three arguments, so the
     // pattern lost its grouping and its decimals and the number came back
     // rounded to an integer. `split(text, ',')` had the same shape.
@@ -619,7 +619,7 @@ class BindingExpression {
           left: _parse(bodyPart),
         );
       }
-      // `(acc, item) => body` — the accumulator form §3.6.3 writes for
+      // `(acc, item) => body` — the accumulator form written for
       // `reduce`. Only the one-parameter spelling parsed, so the spec's own
       // example fell through to a path lookup and reduce answered with its
       // initial value: a total of 0 that reads like an empty cart.
@@ -651,11 +651,11 @@ class BindingExpression {
       }
     }
 
-    // An argument is an Expression (§3.2.1), so it may be an operation — the
-    // spec's own §3.6.1 example is `round(price * quantity, 2)`. This must be
+    // An argument is an Expression, so it may be an operation — the
+    // documented example is `round(price * quantity, 2)`. This must be
     // asked BEFORE the unary branch below: `-1.57 + 0.5` starts with a sign,
     // and reading it as "unary minus applied to the rest" makes the sign
-    // swallow the whole expression — `-(1.57 + 0.5)`, so §10's gauge angle
+    // swallow the whole expression — `-(1.57 + 0.5)`, so a gauge angle
     // came back with the wrong sign the moment an author wrapped it in
     // `round(…)` to fix the decimals. `_parse` splits on the operator first
     // and treats the leading sign as the sign of its own term.
@@ -746,7 +746,7 @@ class BindingExpression {
     // A nested call is an expression, not a path. Falling through to the path
     // branch turned `length(filter(rows, …))` into a lookup for a variable
     // *named* `filter(rows, …)`, which resolves to null — so the composition
-    // §3.6.1 shows in its own example (`length(filter(items, 'completed'))`)
+    // the documentation shows (`length(filter(items, 'completed'))`)
     // answered 0 for every input.
     if (RegExp(r'^[\w\.]+\(.*\)$').hasMatch(value)) {
       return _parse(value);

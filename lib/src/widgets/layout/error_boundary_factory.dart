@@ -51,7 +51,7 @@ class _ErrorBoundaryWidgetState extends State<_ErrorBoundaryWidget> {
     if (_hasError) {
       // Render fallback widget if provided. The onError action was already
       // dispatched once in the post-frame callback that flipped _hasError
-      // (spec §2.13.11), so it must not fire again on every rebuild.
+      // by design, so it must not fire again on every rebuild.
       if (widget.fallback != null) {
         try {
           // Rethrowing form: the renderer's own inline error card would
@@ -107,7 +107,7 @@ class _ErrorBoundaryWidgetState extends State<_ErrorBoundaryWidget> {
           .renderWidgetRethrowingErrors(widget.child, widget.context);
     } catch (e, st) {
       // Schedule state update on next frame to avoid build-during-build,
-      // and dispatch onError once with the spec §2.13.11 canonical
+      // and dispatch onError once with the canonical
       // `event` variable (`event.error` / `event.stack`).
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;

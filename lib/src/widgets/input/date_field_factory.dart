@@ -13,7 +13,7 @@ class DateFieldFactory extends WidgetFactory {
     final binding = stringOf(properties['binding'], context);
     final errorText = context.resolve(properties['errorText']) as String?;
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
-    // Spec §2.6.13: `format` controls displayed date string; `mode` chooses
+    // `format` controls displayed date string; `mode` chooses
     // between calendar dialog and input, `locale` for localization.
     final formatStr = readEnum(properties['format'], context) ?? 'yyyy-MM-dd';
     final modeStr = readEnum(properties['mode'], context) ?? 'calendar';
@@ -118,7 +118,7 @@ class DateFieldFactory extends WidgetFactory {
   ///   dd / d     — zero-padded / unpadded day
   /// Tokens outside this set are passed through verbatim so authors can
   /// include literal separators. Rich ICU patterns (day names, etc.) are
-  /// not supported; spec §2.6.13 documents only the basic subset.
+  /// not supported; only the basic subset is documented.
   static String _applyDateFormat(String format, DateTime d) {
     final y4 = d.year.toString().padLeft(4, '0');
     final y2 = y4.substring(2);

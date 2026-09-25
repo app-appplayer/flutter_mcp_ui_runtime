@@ -1,6 +1,6 @@
 import 'dart:io';
 
-/// The host this process is running on, as §8.5 names it.
+/// The host this process is running on, as the DSL names it.
 String get hostPlatformName {
   if (Platform.isAndroid) return 'android';
   if (Platform.isIOS) return 'ios';

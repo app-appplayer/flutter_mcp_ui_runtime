@@ -83,7 +83,7 @@ class ClientActionHandler {
     }
 
     // Normalize the action shape before permission checks and
-    // executor dispatch. Spec §6 wraps parameters under a `params`
+    // executor dispatch. The DSL wraps parameters under a `params`
     // map (`{type: 'client.httpRequest', params: {url, method, ...}}`)
     // but most executors historically read keys from the top-level
     // action map. Flatten `params` onto the action so both shapes
@@ -95,8 +95,8 @@ class ClientActionHandler {
     // context this BuildContext came from can be torn down between the action
     // being dispatched and reaching here (a page popped mid-action), so the
     // surface is re-checked before a prompt can be raised on it.
-    // An embedded subtree cannot out-permission its embedder (spec §7.10.1:
-    // the effective set is the INTERSECTION, never the union). A device's own
+    // An embedded subtree cannot out-permission its embedder:
+    // the effective set is the INTERSECTION, never the union. A device's own
     // document is authored by whoever made the device, so a `view` that could
     // prompt for — and receive — a permission the embedding app never held
     // would let any embedded server escalate through the screen it was given.

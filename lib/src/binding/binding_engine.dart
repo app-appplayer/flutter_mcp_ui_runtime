@@ -73,7 +73,7 @@ class BindingEngine {
       '`$path` reads the legacy namespaced tool mirror. It is deprecated and '
       'will be removed; a document that depends on it stops resolving when it '
       'goes. Use `bindResult` to name where the result lands, or read the '
-      "response's top-level keys, which auto-merge (spec §3.10).",
+      "response's top-level keys, which auto-merge.",
     );
   }
 
@@ -635,7 +635,7 @@ class BindingEngine {
     final body = lambdaExpr.left!;
 
     // Create a child context with the lambda parameter bound. The accumulator
-    // form `(acc, item) => …` (§3.6.3) binds both; `secondValue` is ignored
+    // form `(acc, item) => …` binds both; `secondValue` is ignored
     // when the lambda declares one parameter.
     final variables = <String, dynamic>{paramName: paramValue};
     final second = lambdaExpr.parameterName2;
@@ -682,9 +682,9 @@ class BindingEngine {
       return null;
     }
 
-    // Check for entry.* / identity.* prefixes (§8.9.2) - how this definition
+    // Check for entry.* / identity.* prefixes - how this definition
     // was entered, and who the viewer currently is. Both are read-only and
-    // both resolve to null on a host that wired neither (§8.9.6), which is
+    // both resolve to null on a host that wired neither, which is
     // why an unset root falls through to null rather than throwing.
     //
     // `entry.params` is deliberately NOT `route.params`: route parameters say
@@ -1176,7 +1176,7 @@ class BindingEngine {
               return result != null;
             }).toList();
           }
-          // Property shorthand: items.filter('completed') — §3.6.2's truthy
+          // Property shorthand: items.filter('completed') — the truthy
           // form, in the method spelling.
           if (args.length == 1 && args[0] is String) {
             final prop = args[0] as String;
@@ -1192,7 +1192,7 @@ class BindingEngine {
               return false;
             }).toList();
           }
-          // §3.6 defines three shapes for `filter` — a lambda, `'prop'`, and
+          // There are three shapes for `filter` — a lambda, `'prop'`, and
           // `'prop', value` — and all three are above. An object-literal
           // shorthand used to be accepted here as a fourth, but the
           // expression parser cannot build a map in an argument position, so
@@ -1204,7 +1204,7 @@ class BindingEngine {
         if (obj is List) {
           final limit = sandbox.maxIterations;
           final capped = obj.length > limit ? obj.sublist(0, limit) : obj;
-          // Two shapes, both §3.6.3:
+          // Two shapes, both documented:
           //
           //   items.reduce((acc, item) => acc + item.price, 0)  accumulator
           //   items.reduce((item) => item.price, 0)             map-then-sum
@@ -1302,7 +1302,7 @@ class BindingEngine {
     // Handle built-in functions
     switch (expr.methodName) {
       case 'min':
-        // §3.6.1 writes these as `min(a, b, ...)` — the smallest *argument*,
+        // These are written `min(a, b, ...)` — the smallest *argument*,
         // not the smaller of two. A third argument used to make the whole call
         // resolve to null, which reads as "no data" in whatever the document
         // was showing.
@@ -1494,9 +1494,9 @@ class BindingEngine {
             return result != null;
           }).toList();
         }
-        // filter(list, property) — §3.6.2: "filter items whose `active`
+        // filter(list, property) — documented as "filter items whose `active`
         // property is truthy". Only the 3-argument and lambda forms existed,
-        // so §3.6.1's own example `length(filter(items, 'completed'))` fell
+        // so the documented example `length(filter(items, 'completed'))` fell
         // through to null and answered 0 for every input — a count that reads
         // like real data.
         if (args.length == 2 && args[0] is List) {
@@ -1535,7 +1535,7 @@ class BindingEngine {
           dynamic accumulator = initialValue;
           // Two parameters means the lambda REDUCES: it is handed the running
           // accumulator and the item, and its result IS the next accumulator
-          // (§3.6.3's `(acc, i) => acc + i.price * i.qty`). One parameter keeps
+          // (`(acc, i) => acc + i.price * i.qty`). One parameter keeps
           // the mapper meaning: each result is summed.
           if (lambdaExpr.parameterName2 != null) {
             for (final item in capped) {

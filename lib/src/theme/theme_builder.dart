@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart';
 
-/// Convert MCP UI DSL 1.3 [ThemeDefinition] into Flutter [ThemeData].
+/// Convert a [ThemeDefinition] into Flutter [ThemeData].
 ///
-/// Implements `specs/mcp_ui_dsl/05_Theme.md` Material 3 mapping:
+/// Implements the Material 3 mapping:
 /// - 28-role color → Flutter [ColorScheme]
 /// - 15-role typography → Flutter [TextTheme]
 /// - DensityDefinition → [VisualDensity]

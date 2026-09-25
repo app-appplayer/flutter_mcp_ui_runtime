@@ -22,11 +22,11 @@ class TabBarWidgetFactory extends WidgetFactory {
       if (tab is Map<String, dynamic>) {
         // A tab naming neither a label nor an icon is empty, not illegal.
         // Flutter's `Tab` asserts on all-null, so give it an empty label
-        // rather than refusing the document (§1.7.5).
+        // rather than refusing the document.
         final label = (tab['label'] ?? tab['text']) as String?;
         final hasIcon = tab['icon'] != null;
         return Tab(
-          // §17.3.2: canonical 'label', legacy alias 'text'.
+          // Canonical 'label', legacy alias 'text'.
           text: label ?? (hasIcon ? null : ''),
           // Through the shared resolver: the local switch this replaced knew
           // three names and answered `Icons.tab` for everything else, so a
@@ -68,7 +68,7 @@ class TabBarWidgetFactory extends WidgetFactory {
     final enableFeedback = boolOf(properties['enableFeedback'], context);
     final physics = _parseScrollPhysics(properties['physics']);
 
-    // Spec §2.8.3: canonical `selectedIndex` + `onChange`. Accept legacy
+    // Canonical `selectedIndex` + `onChange`. Accept legacy
     // Flutter-style `onTap` / `click` as aliases.
     final selectedIndex = (properties['selectedIndex'] is int)
         ? properties['selectedIndex'] as int

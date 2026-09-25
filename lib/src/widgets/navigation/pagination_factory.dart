@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../renderer/render_context.dart';
 import '../widget_factory.dart';
 
-/// Factory for `pagination` (spec §2.8.12).
+/// Factory for `pagination`.
 ///
 /// The composed version is where off-by-one bugs live: first/last bounds, the
 /// ellipsis window, and disabling prev/next at the ends get re-derived by

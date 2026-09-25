@@ -8,12 +8,16 @@
 /// asserted directly.
 library location_action_test;
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_mcp_ui_runtime/src/actions/action_handler.dart';
+import 'package:flutter_mcp_ui_runtime/src/actions/action_result.dart';
+import 'package:flutter_mcp_ui_runtime/src/actions/dispatch_origin.dart';
+import 'package:flutter_mcp_ui_runtime/src/runtime/lifecycle_runner.dart';
 import 'package:flutter_mcp_ui_runtime/src/binding/binding_engine.dart';
 import 'package:flutter_mcp_ui_runtime/src/capabilities/runtime_capabilities.dart';
 import 'package:flutter_mcp_ui_runtime/src/models/ui_definition.dart'
-    show PermissionsConfig;
+    show LifecycleDefinition, PermissionsConfig;
 import 'package:flutter_mcp_ui_runtime/src/permissions/trust_level.dart';
 import 'package:flutter_mcp_ui_runtime/src/renderer/render_context.dart';
 import 'package:flutter_mcp_ui_runtime/src/renderer/renderer.dart';
@@ -254,6 +258,163 @@ void main() {
 
       expect((await actions.execute(location(), context)).success, isTrue);
       expect(port.asked, hasLength(1));
+    });
+  });
+
+  group('§4.25.3 — only an act asks', () {
+    for (final origin
+        in DispatchOrigin.values.where((o) => o != DispatchOrigin.act)) {
+      test('a dispatch from ${origin.name} is refused before the port',
+          () async {
+        final port = _RecordingPort((_) => _fix());
+        engine.capabilities = RuntimeCapabilities(location: port);
+
+        final r = await DispatchOrigin.run(
+            origin, () => actions.execute(location(), context));
+
+        expect(r.errorCode, 'LOCATION_UNAVAILABLE');
+        expect(port.asked, isEmpty);
+      });
+    }
+
+    test('the refusal follows what the hook awaits', () async {
+      // A hook that runs a `sequence` has not become an act by the second step.
+      final port = _RecordingPort((_) => _fix());
+      engine.capabilities = RuntimeCapabilities(location: port);
+
+      final r = await DispatchOrigin.run(
+        DispatchOrigin.lifecycle,
+        () => actions.execute({
+          'type': 'sequence',
+          'actions': [
+            {'type': 'state', 'action': 'set', 'binding': 'msg', 'value': 'x'},
+            location(onError: {
+              'type': 'state',
+              'action': 'set',
+              'binding': 'where',
+              'value': '{{event.code}}',
+            }),
+          ],
+        }, context),
+      );
+
+      expect(r.success, isFalse);
+      expect(state.get('where'), 'LOCATION_UNAVAILABLE');
+      expect(port.asked, isEmpty);
+    });
+
+    test('an act stays an act through its own callbacks', () async {
+      final port =
+          _RecordingPort((_) => _fix(precision: LocationPrecision.coarse));
+      engine.capabilities = RuntimeCapabilities(location: port);
+
+      await actions.execute({
+        'type': 'state',
+        'action': 'set',
+        'binding': 'msg',
+        'value': 'tapped',
+        'onSuccess': location(),
+      }, context);
+
+      expect(port.asked, hasLength(1));
+    });
+
+    test('a lifecycle hook run by the runner is refused', () async {
+      final port = _RecordingPort((_) => _fix());
+      engine.capabilities = RuntimeCapabilities(location: port);
+      final results = <ActionResult>[];
+      final runner = LifecycleRunner(
+        lifecycle: LifecycleDefinition.fromDefinition({
+          'lifecycle': {
+            'onMount': [location()],
+          },
+        }),
+        execute: (action, hook) async =>
+            results.add(await actions.execute(action, context)),
+      );
+
+      await runner.mount();
+
+      expect(results.single.errorCode, 'LOCATION_UNAVAILABLE');
+      expect(port.asked, isEmpty);
+    });
+
+    test('a watcher is refused', () async {
+      final port = _RecordingPort((_) => _fix());
+      final watched = RuntimeEngine(enableDebugMode: false);
+      await watched.initialize(definition: {
+        'type': 'page',
+        'state': {
+          'initial': {'n': 0, 'code': ''},
+          'watchers': [
+            {
+              'watch': 'n',
+              'actions': [
+                location(onError: {
+                  'type': 'state',
+                  'action': 'set',
+                  'binding': 'code',
+                  'value': '{{event.code}}',
+                }),
+              ],
+            },
+          ],
+        },
+        'content': {'type': 'box'},
+      });
+      watched.capabilities = RuntimeCapabilities(location: port);
+
+      watched.stateManager.set('n', 1);
+      await pumpEventQueue();
+
+      expect(watched.stateManager.get('code'), 'LOCATION_UNAVAILABLE');
+      expect(port.asked, isEmpty);
+      await watched.destroy();
+    });
+
+    testWidgets('a widget that is gone does not ask', (tester) async {
+      late BuildContext gone;
+      await tester.pumpWidget(Builder(builder: (c) {
+        gone = c;
+        return const SizedBox();
+      }));
+      await tester.pumpWidget(const SizedBox(key: ValueKey('replaced')));
+      expect(gone.mounted, isFalse);
+
+      final port = _RecordingPort((_) => _fix());
+      engine.capabilities = RuntimeCapabilities(location: port);
+      final unmounted = RenderContext(
+        renderer: context.renderer,
+        stateManager: state,
+        bindingEngine: context.bindingEngine,
+        actionHandler: actions,
+        themeManager: ThemeManager(),
+        engine: engine,
+        buildContext: gone,
+      );
+
+      final r = await tester.runAsync(
+          () => actions.execute(location(), unmounted));
+
+      expect(r!.errorCode, 'LOCATION_UNAVAILABLE');
+      expect(port.asked, isEmpty);
+    });
+  });
+
+  group('trust survives a new permissions block', () {
+    test('untrusted stays untrusted when the configuration is replaced',
+        () async {
+      final port = _RecordingPort((_) => _fix());
+      engine.capabilities = RuntimeCapabilities(location: port);
+      actions.permissionManager!.trustLevel = TrustLevel.untrusted;
+
+      // A document re-read with its own permissions block is not a new grant.
+      actions.setPermissionsConfig(PermissionsConfig());
+
+      expect(actions.permissionManager!.trustLevel, TrustLevel.untrusted);
+      expect((await actions.execute(location(), context)).errorCode,
+          'LOCATION_UNAVAILABLE');
+      expect(port.asked, isEmpty);
     });
   });
 

@@ -22,13 +22,13 @@ class ChartWidgetFactory extends WidgetFactory {
     // Extract visual properties
     final showGrid = context.resolve<bool>(properties['showGrid'] ?? true);
     final showLabels = context.resolve<bool>(properties['showLabels'] ?? true);
-    // §10: `options.legend.position` — `top` (default) · `bottom` · `left` ·
+    // `options.legend.position` — `top` (default) · `bottom` · `left` ·
     // `right` · `none`. The factory used to read only `showLegend`, a name
     // that appears nowhere in the spec, and defaulted it to false: a chart
     // written the documented way declared its dataset labels and drew no
     // legend at all. `showLegend` stays as a legacy override.
     final options = context.resolve(properties['options']);
-    // §10 `options.animation.duration` (ms, default 1000) and
+    // `options.animation.duration` (ms, default 1000) and
     // `options.responsive` (default true). Both were declared in the registry,
     // documented in the prose example, and read by nobody: a chart asking for
     // a one-second reveal appeared instantly, and `responsive: false` filled
@@ -256,7 +256,7 @@ class ChartWidgetFactory extends WidgetFactory {
               }
             }
           }
-          // Spec §10: `borderColor` is the line, `backgroundColor` is the
+          // `borderColor` is the line, `backgroundColor` is the
           // fill. `color` is neither — it is a legacy spelling this factory
           // invented, kept as a fallback so documents carrying it still draw.
           final legacy = parseColor(dsMap['color'], context);
@@ -970,7 +970,7 @@ class _ChartPainter extends CustomPainter {
       // Draw each dataset polygon
       for (int dsIdx = 0; dsIdx < datasets.length; dsIdx++) {
         final ds = datasets[dsIdx];
-        // `borderColor` first, like every other series type: §10 makes it the
+        // `borderColor` first, like every other series type: it is the
         // LINE colour, and a radar polygon is a line. Reading only
         // `backgroundColor` here meant a document that coloured its series
         // the documented way got the palette default on this one chart type.

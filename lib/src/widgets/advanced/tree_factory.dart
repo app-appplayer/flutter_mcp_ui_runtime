@@ -14,7 +14,7 @@ class TreeWidgetFactory extends WidgetFactory {
     // Extract tree properties. Use nullable resolve so absent `data`
     // returns empty rather than throwing a non-nullable cast.
     final data = (listOf(properties['data'], context)) ?? [];
-    // Spec §10.11 canonical `initiallyExpanded`; `expandAll` kept as legacy.
+    // Canonical `initiallyExpanded`; `expandAll` kept as legacy.
     final expandAll = context.resolve<bool>(
         properties['initiallyExpanded'] ?? properties['expandAll'] ?? false);
     // Both were read and discarded. `childrenKey` meant a tree over data
@@ -24,7 +24,7 @@ class TreeWidgetFactory extends WidgetFactory {
     final childrenKey =
         stringOf(properties['childrenKey'], context) ?? 'children';
     final onNodeTap = actionOf(properties['onNodeTap'], context);
-    // §10.11 `draggable` — declared, and the factory did not read it: a tree
+    // `draggable` — declared, and the factory did not read it: a tree
     // marked draggable could not be dragged, and the `onDrop` its own
     // description names was not in the registry at all.
     final draggable = boolOf(properties['draggable'], context) ?? false;
@@ -35,7 +35,7 @@ class TreeWidgetFactory extends WidgetFactory {
     final height = parseDimension(context.resolve((properties['height'])));
     final indentation =
         (dimensionOf(properties['indentation'], context))?.toDouble() ?? 24.0;
-    // Spec §10.11 `itemPadding`: EdgeInsets applied inside every row so the
+    // `itemPadding`: EdgeInsets applied inside every row so the
     // vertical component drives row height. Falls back to the design-doc
     // default of 4px vertical + 8px right.
     final itemPadding = edgeInsetsOf(properties['itemPadding'], context) ??
@@ -388,7 +388,7 @@ class _TreeViewState extends State<_TreeView> {
         // The row alone is the drag source and drop target — not the
         // subtree under it. Only leaves were wrapped, so a group could not
         // be dragged and nothing could be dropped *into* one: the one case
-        // §10.11 names, reparenting, was unreachable.
+        // the tree documents, reparenting, was unreachable.
         rowWrapper: (row) => _draggableRow(node, row),
         onExpansionChanged: (expanded) {
           final action = expanded ? widget.onExpand : widget.onCollapse;

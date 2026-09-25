@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../renderer/render_context.dart';
 import '../widget_factory.dart';
 
-/// Factory for `multiSelect` (spec §2.6.25).
+/// Factory for `multiSelect`.
 ///
 /// Kept separate from `select` rather than a `multiple` flag on it: the bound
 /// value changes shape — scalar to array — and a flag that silently changes
@@ -130,7 +130,7 @@ class _MultiSelectFieldState extends State<_MultiSelectField> {
       next.remove(option.value);
     } else {
       // Reaching the ceiling disables unselected rows rather than dropping a
-      // pick the user made (spec §2.6.25).
+      // pick the user made.
       if (_atCeiling) return;
       next.add(option.value);
     }

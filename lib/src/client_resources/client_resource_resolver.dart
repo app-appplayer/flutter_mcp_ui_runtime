@@ -16,7 +16,7 @@ import '../platform/host_platform.dart';
 import '../utils/path_validator.dart';
 
 // ---------------------------------------------------------------------------
-// Custom resource provider registry (spec §Custom Resource Providers)
+// Custom resource provider registry
 // ---------------------------------------------------------------------------
 
 /// Handler function signature for custom resource providers.
@@ -53,7 +53,7 @@ class CustomResourceProvider {
 /// Registry for custom client:// resource providers.
 ///
 /// Allows applications to extend the `client://` protocol with custom schemes
-/// accessed as `client://<scheme>/path` (spec §Custom Resource Providers).
+/// accessed as `client://<scheme>/path`.
 class CustomResourceProviderRegistry {
   final Map<String, CustomResourceProvider> _providers = {};
 
@@ -84,7 +84,7 @@ class CustomResourceProviderRegistry {
     } catch (e) {
       // A provider is host code. Letting its failure escape turns a resource
       // read into an unhandled exception at whatever call site asked — the
-      // caller expects a result envelope either way, and §8.2.5 gives it one.
+      // caller expects a result envelope either way, and the error result is that envelope.
       return ResourceResult.error(
           'Resource provider "$scheme" failed for "$path": $e');
     }
@@ -95,7 +95,7 @@ class CustomResourceProviderRegistry {
 }
 
 // ---------------------------------------------------------------------------
-// Binary resource type detection (spec §Binary Resource Handling)
+// Binary resource type detection
 // ---------------------------------------------------------------------------
 
 /// Content type information derived from a file extension or explicit encoding
@@ -176,7 +176,7 @@ class ResourceContentType {
   }
 }
 
-/// Size limit constants matching spec §Binary Resource Handling table
+/// Size limit constants for binary resources
 class ResourceSizeLimits {
   /// 10 MB for text files and workspace resources
   static const int textMaxBytes = 10 * 1024 * 1024;
@@ -204,7 +204,7 @@ class ClientResourceResolver {
 
   SharedPreferences? _prefs;
 
-  /// Registry for custom resource providers (spec §Custom Resource Providers)
+  /// Registry for custom resource providers
   final CustomResourceProviderRegistry customProviders =
       CustomResourceProviderRegistry();
 
@@ -233,7 +233,7 @@ class ClientResourceResolver {
   /// If [fallback] URI is provided and the primary resolution fails,
   /// the fallback URI will be resolved instead. The [fallbackBehavior]
   /// parameter controls handling when both fail: 'placeholder' (default),
-  /// 'hide', or 'error' (spec §1106-1124).
+  /// 'hide', or 'error'.
   Future<ResourceResult> resolve(
     String uri, {
     String? fallback,
@@ -259,7 +259,7 @@ class ClientResourceResolver {
     if (parsed == null) {
       // `parse` refuses for exactly two reasons, and they are not the same
       // problem: a malformed URI is the author's typo, a traversal segment is
-      // the security rule (§8.3.3). Reporting both as "failed to parse" sent
+      // the security rule. Reporting both as "failed to parse" sent
       // an author looking for a syntax error in a URI that had none.
       return ResourceResult.error(
         PathValidator.hasTraversalAttempt(uri)
@@ -280,7 +280,7 @@ class ClientResourceResolver {
       case 'asset':
         return _resolveAsset(parsed.path);
       default:
-        // Dispatch to custom providers (spec §Custom Resource Providers)
+        // Dispatch to custom providers
         if (customProviders.has(parsed.scheme)) {
           return customProviders.resolve(parsed.scheme, parsed.path);
         }
@@ -294,7 +294,7 @@ class ClientResourceResolver {
   }
 
   /// Resolve file:// resource with binary detection, size limits, and
-  /// chunked reading for large binary files (spec §Binary Resource Handling).
+  /// chunked reading for large binary files.
   Future<ResourceResult> _resolveFile(String path,
       {String? encodingHint}) async {
     if (HostPlatform.isWeb) {
@@ -576,7 +576,7 @@ class ClientResourceResolver {
     if (parsed == null) {
       // `parse` refuses for exactly two reasons, and they are not the same
       // problem: a malformed URI is the author's typo, a traversal segment is
-      // the security rule (§8.3.3). Reporting both as "failed to parse" sent
+      // the security rule. Reporting both as "failed to parse" sent
       // an author looking for a syntax error in a URI that had none.
       return ResourceResult.error(
         PathValidator.hasTraversalAttempt(uri)
@@ -753,7 +753,7 @@ class ResourceResult {
   /// The type of resource (file, workspace, temp, cache, asset)
   final String? type;
 
-  /// MIME type derived from file extension (spec §Binary Resource Handling)
+  /// MIME type derived from file extension
   final String? mimeType;
 
   /// Encoding used for content: null/'utf-8' for text, 'base64' for binary

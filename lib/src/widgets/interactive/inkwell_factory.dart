@@ -38,7 +38,7 @@ class InkWellWidgetFactory extends WidgetFactory {
     if (childDef != null) {
       child = context.buildWidget(childDef);
     } else if (childrenDef != null && childrenDef.isNotEmpty) {
-      // `children` is a declared slot (§ schema), and only the FIRST entry
+      // `children` is a declared slot (schema), and only the FIRST entry
       // used to be built — every later one was accepted and dropped, with no
       // error and nothing on screen. Stacked the way `renderPage` stacks a
       // list of children, so the two spellings behave the same.

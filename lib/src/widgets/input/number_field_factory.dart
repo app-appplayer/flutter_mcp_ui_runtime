@@ -38,7 +38,7 @@ class NumberFieldFactory extends WidgetFactory {
       errorText = null;
     }
 
-    // Spec §2.6.0: binding shorthand — read from state path if set.
+    // Binding shorthand — read from state path if set.
     final binding = stringOf(properties['binding'], context);
     final currentValue = binding != null
         ? context.getState(binding)
@@ -172,7 +172,7 @@ class NumberFieldFactory extends WidgetFactory {
           }
         }
 
-        // Spec §2.6.0: write back to binding path.
+        // Write back to binding path.
         if (binding != null) {
           context.setValue(binding, numValue);
         }

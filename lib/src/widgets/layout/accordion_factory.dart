@@ -4,7 +4,7 @@ import '../../renderer/render_context.dart';
 import '../../utils/icon_resolver.dart';
 import '../widget_factory.dart';
 
-/// Factory for `accordion` (spec §2.4.22). Alias: `collapsible`.
+/// Factory for `accordion`. Alias: `collapsible`.
 ///
 /// Composing this from `conditional` + `inkWell` renders correctly and loses
 /// two things the author cannot add back: the expand/collapse transition, and

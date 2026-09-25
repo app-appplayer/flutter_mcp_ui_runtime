@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import '../../renderer/render_context.dart';
 import '../widget_factory.dart';
 
-/// Factory for `combobox` (spec §2.6.26).
+/// Factory for `combobox`.
 ///
 /// The defining property is that a value outside `options` is legal — that is
 /// what separates it from `select`, where the option list is the domain.

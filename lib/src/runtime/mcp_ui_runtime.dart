@@ -465,7 +465,7 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
   @override
   void didChangePlatformBrightness() {
     super.didChangePlatformBrightness();
-    // Spec §5.2 — `system` mode must track host brightness without a
+    // `system` mode must track host brightness without a
     // shell re-render. Forward the platform event to the ThemeManager.
     widget.engine.themeManager.notifyBrightnessChanged();
   }

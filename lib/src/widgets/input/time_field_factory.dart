@@ -15,7 +15,7 @@ class TimeFieldFactory extends WidgetFactory {
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
     final use24HourFormat =
         boolOf(properties['use24HourFormat'], context) ?? false;
-    // Spec §2.6.14: `format` controls displayed string (HH:mm default);
+    // `format` controls displayed string (HH:mm default);
     // `mode` switches picker style.
     final formatStr = readEnum(properties['format'], context) ?? 'HH:mm';
     final modeStr = readEnum(properties['mode'], context) ?? 'spinner';

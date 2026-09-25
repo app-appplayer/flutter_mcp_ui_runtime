@@ -1,4 +1,4 @@
-/// The host this process is running on, as §8.5 names it.
+/// The host this process is running on, as the DSL names it.
 String get hostPlatformName => 'web';
 
 /// A browser reports no OS version of its own.

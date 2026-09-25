@@ -36,7 +36,7 @@ class MediaQueryWidgetFactory extends WidgetFactory {
   /// Breakpoint system used for width-based resolution
   final BreakpointSystem _breakpointSystem = BreakpointSystem();
 
-  /// Ordered breakpoint classes, smallest to largest (§14.1.1).
+  /// Ordered breakpoint classes, smallest to largest.
   ///
   /// These are the names `BreakpointSystem` answers with. The list used to be
   /// `xs`/`sm`/`md`/`lg`/`xl`, which matched nothing it returned — so the
@@ -209,7 +209,7 @@ class MediaQueryWidgetFactory extends WidgetFactory {
         // Try exact match first
         childDef = _declaredFor(breakpoints, currentBp);
 
-        // Fall back to next smaller breakpoint (§14.2.1)
+        // Fall back to next smaller breakpoint
         if (childDef == null) {
           for (int i = bpIndex - 1; i >= 0; i--) {
             childDef = _declaredFor(breakpoints, _breakpointOrder[i]);
@@ -225,7 +225,7 @@ class MediaQueryWidgetFactory extends WidgetFactory {
           }
         }
 
-        // Use the declared default, then `defaultChild` (§14.2.1)
+        // Use the declared default, then `defaultChild`
         childDef ??= breakpoints['default'] as Map<String, dynamic>?;
         childDef ??= defaultChild;
 

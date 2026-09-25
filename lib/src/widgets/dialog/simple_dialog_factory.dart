@@ -40,7 +40,7 @@ class SimpleDialogWidgetFactory extends WidgetFactory {
           if (iconData != null) {
             // Through the shared resolver: the local switch below knew 25
             // names and answered null for the rest, so an option declaring any
-            // other icon lost it silently — the §6.13 rule applied to a slot.
+            // other icon lost it silently — the perform-or-report rule applied to a slot.
             leading = Icon(resolveIconRef(iconData));
           }
 

@@ -50,7 +50,7 @@ class AppBarWidgetFactory extends WidgetFactory {
           .toList();
     }
 
-    // Spec §2.8.1 / §4.3.2: append host close button on the root route when
+    // Append host close button on the root route when
     // `onExit` is registered and `exitButton != false`.
     final exitButtonConfig = properties['exitButton'];
     final exitButtonSuppressed = exitButtonConfig == false;

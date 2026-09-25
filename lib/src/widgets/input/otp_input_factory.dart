@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import '../../renderer/render_context.dart';
 import '../widget_factory.dart';
 
-/// Factory for `otpInput` (spec §2.6.27).
+/// Factory for `otpInput`.
 ///
 /// Exists because the composed version is reliably broken. A row of
 /// `textInput`s loses paste distribution (a pasted code lands entirely in the
@@ -23,7 +23,7 @@ class OtpInputFactory extends WidgetFactory {
     final masked = context.resolve<bool?>(properties['masked']) ?? false;
     final enabled = context.resolve<bool?>(properties['enabled']) ?? true;
     final autofill = context.resolve<bool?>(properties['autofill']) ?? true;
-    // §17.1.4 canonical `onComplete`; `autoSubmit` is the older spelling and
+    // Canonical `onComplete`; `autoSubmit` is the older spelling and
     // still works.
     final autoSubmit = actionOf(
         properties['onComplete'] ?? properties['autoSubmit'], context);

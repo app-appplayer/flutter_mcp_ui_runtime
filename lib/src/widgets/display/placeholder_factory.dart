@@ -16,7 +16,7 @@ class PlaceholderWidgetFactory extends WidgetFactory {
     final fallbackWidth = dimensionOf(properties['fallbackWidth'], context) ?? 400.0;
     final fallbackHeight = dimensionOf(properties['fallbackHeight'], context) ?? 400.0;
 
-    // Spec §2.5.12 canonical `child`. Accept legacy `children[0]`.
+    // Canonical `child`. Accept legacy `children[0]`.
     final childDef = (properties['child'] ?? definition['child'])
         as Map<String, dynamic>?;
     Widget? child;

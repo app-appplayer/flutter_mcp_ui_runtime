@@ -22,7 +22,7 @@ class RouteManager {
   });
 
   /// Route requested by whatever opened this runtime — a scan entry, a deep
-  /// link, an app-to-app open (MCP UI DSL 8.9, platform spec 19 4.3).
+  /// link, an app-to-app open.
   ///
   /// It overrides the document's own `initialRoute`, and only when the
   /// document actually declares it: an entry that names a route the app no
@@ -165,7 +165,7 @@ class RouteManager {
     Navigator.popUntil(context, (route) => route.isFirst);
   }
 
-  /// Load a page definition for any `RouteValue` (spec v1.4 §1.2.1).
+  /// Load a page definition for any `RouteValue`.
   ///
   /// A plain resource URI goes through the host's [pageLoader] as before.
   /// Every other form — inline page, transition wrapper, qualified `$ref` to
@@ -321,7 +321,7 @@ class RouteInfo {
   final Map<String, String> pathParams;
   final Map<String, String> queryParams;
 
-  /// The route's raw `RouteValue` (spec v1.4 §1.2.1). Typed `dynamic` because a
+  /// The route's raw `RouteValue`. Typed `dynamic` because a
   /// route may be a resource URI string, an inline page, a transition wrapper,
   /// a qualified `{ $ref, from }` reference to another origin, or a binding.
   /// Casting this to `String` would throw on every composed route.

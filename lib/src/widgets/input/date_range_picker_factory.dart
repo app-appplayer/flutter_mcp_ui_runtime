@@ -10,7 +10,7 @@ class DateRangePickerFactory extends WidgetFactory {
 
     // Extract properties
     final label = stringOf(properties['label'], context);
-    // Spec §2.6.17: canonical `startDate` / `endDate` are state paths.
+    // Canonical `startDate` / `endDate` are state paths.
     // Legacy `startBinding` / `endBinding` accepted as aliases.
     final startPath = (stringOf(properties['startDate'], context)) ??
         (stringOf(properties['startBinding'], context));
@@ -22,7 +22,7 @@ class DateRangePickerFactory extends WidgetFactory {
     final enabled = context.resolve(properties['enabled'] ?? true) as bool;
     final onChange =
         actionOf(properties['onChange'] ?? properties['change'], context);
-    // Spec §2.6.17: `format` and `locale`. format uses the same token
+    // `format` and `locale`. format uses the same token
     // subset as dateField (`yyyy`, `MM`, `dd`, etc.).
     final formatStr = readEnum(properties['format'], context) ?? 'yyyy-MM-dd';
     final localeStr = stringOf(properties['locale'], context);

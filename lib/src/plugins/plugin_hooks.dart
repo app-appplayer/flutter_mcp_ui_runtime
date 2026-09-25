@@ -29,9 +29,7 @@ enum PluginHookType {
   /// - `source` — `'renderer'` or `'actionHandler'`;
   /// - `message` — the human-readable reason, always a non-empty string;
   /// - `widgetType` (renderer) or `actionType` (action handler) — always
-  ///   present, `null` when the definition named no type;
-  /// - `error` — deprecated alias of `message`, kept for one release. Read
-  ///   `message`.
+  ///   present, `null` when the definition named no type.
   onError,
 }
 

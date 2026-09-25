@@ -14,7 +14,7 @@ class HeatmapWidgetFactory extends WidgetFactory {
     final columns = intOf(properties['columns'], context);
     final cellSize = numberOf(properties['cellSize'], context) ?? 40.0;
     final cellGap = numberOf(properties['cellGap'], context) ?? 2.0;
-    // §10.10 — both are optional, so a document that omits them is still
+    // Both are optional, so a document that omits them is still
     // entitled to a scale. They defaulted to 0..1 while heat data is whatever
     // the domain measures (a defect rate of 1.5..6.2, a temperature, a count),
     // and every value above 1 clamped to the top colour: one flat block that
@@ -28,7 +28,7 @@ class HeatmapWidgetFactory extends WidgetFactory {
     final columnLabels =
         (listOf(properties['columnLabels'], context)) ?? [];
     final colorScheme = stringOf(properties['colorScheme'], context) ?? 'blue';
-    // Spec §10.10 — all three were read into variables and then discarded
+    // All three were read into variables and then discarded
     // behind an `unused_local_variable` ignore: the scale a document declared
     // had no effect, every cell printed its number whatever `showValues` said,
     // and a declared `onCellTap` gave the cell nothing to tap.

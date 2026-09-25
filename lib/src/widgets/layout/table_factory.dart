@@ -11,7 +11,7 @@ class TableWidgetFactory extends WidgetFactory {
 
     // `Table` throws when a row carries no children. Rows that cannot be laid
     // out — `{}`, or the column-keyed shape that belongs to `dataTable` — are
-    // dropped here rather than refused in the schema (§1.7.5).
+    // dropped here rather than refused in the schema.
     final rows = <Map<String, dynamic>>[
       for (final row in declaredRows)
         if (row is Map<String, dynamic> &&
@@ -22,7 +22,7 @@ class TableWidgetFactory extends WidgetFactory {
 
     return Table(
       border: _resolveTableBorder(properties['border'], context),
-      // §10 `columnWidths`: index → width. Declared and never read, so a
+      // `columnWidths`: index → width. Declared and never read, so a
       // table that sized its first column watched every column come out the
       // same width.
       columnWidths: _resolveColumnWidths(properties['columnWidths'], context),
@@ -78,7 +78,7 @@ class TableWidgetFactory extends WidgetFactory {
 
   TableColumnWidth _resolveColumnWidth(dynamic width) {
     // A bare number is the obvious spelling — `columnWidths: {"0": 200}` is
-    // what §10's "map columnIndex → width override" reads as, and it fell
+    // what the documented "map columnIndex → width override" reads as, and it fell
     // through to `flex`, so a table that sized a column got the default.
     if (width is num) return FixedColumnWidth(width.toDouble());
     if (width is String) {

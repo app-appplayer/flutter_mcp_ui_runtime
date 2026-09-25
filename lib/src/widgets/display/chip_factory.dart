@@ -18,7 +18,7 @@ class ChipWidgetFactory extends WidgetFactory {
     // `IconRef` — a name, a `{codepoint}` object, or a binding to either.
     // Reading it `as String?` threw on the object form the registry declares.
     final deleteIcon = context.resolve<dynamic>(properties['deleteIcon']);
-    // Per DDD spec §5.9, canonical name is 'onDelete'
+    // Canonical name is 'onDelete'
     final onDelete = actionOf(properties['onDelete'], context);
     final onDeleteLegacy = actionOf(properties['onDeleted'], context);
     final deleteAlias = properties['delete'] as Map<String, dynamic>?;

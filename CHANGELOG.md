@@ -1,3 +1,34 @@
+## [0.8.0] - 2026-09-15
+
+### Breaking
+- An `onError` hook report no longer carries `error`. It was the old name for
+  `message`, announced for removal in 0.7.11; read `message`.
+- `location` answers only to a person's act. Dispatched from a lifecycle hook,
+  a watcher, a channel event, a `lazy` load, a widget's failure report or a
+  tool call's `onTimeout` — or from anything such a dispatch awaits — it fails
+  with `LOCATION_UNAVAILABLE` before the host's port is asked. A document that
+  asked for a position from `onMount` now gets `onError`. It also refuses when
+  the widget that dispatched it is no longer mounted.
+
+### Added
+- `DispatchOrigin` — what set a dispatch going: `act`, `lifecycle`, `timer`,
+  `binding` or `runtime`. A host that dispatches on its own initiative wraps
+  the call in `DispatchOrigin.run`, so an action that answers only to an act
+  can tell.
+
+### Fixed
+- Replacing the permissions configuration
+  (`ActionHandler.setPermissionsConfig`) reset the trust level to `basic`, so
+  a level the host had lowered to `untrusted` stopped refusing client actions,
+  `payment` and `location`. The level already set now carries over.
+
+### Changed
+- Log and error messages no longer cite specification sections or documents,
+- The package no longer carries `var/folders/…` — temporary files a test once wrote under the package directory and that were committed with it.
+  which ship with neither this package nor its hosts. The lifecycle alias and
+  duplicate-hook warnings no longer promise a change in 0.6.0, and the
+  deprecations that named 0.6.0 now name a future breaking release.
+
 ## [0.7.12] - 2026-09-11
 
 ### Added

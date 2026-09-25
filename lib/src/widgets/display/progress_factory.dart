@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../widget_factory.dart';
 import '../../renderer/render_context.dart';
 
-/// Factory for the `progressBar` family (spec §2.5.14).
+/// Factory for the `progressBar` family.
 ///
 /// One widget, several names, two shapes. The shape comes from three places,
 /// in this order:

@@ -218,7 +218,7 @@ class Renderer {
   }
 
   Widget renderWidget(Map<String, dynamic> definition, RenderContext context) {
-    // Instance-level lifecycle (§6.8.2): a widget's own `lifecycle: {}` block.
+    // Instance-level lifecycle: a widget's own `lifecycle: {}` block.
     // Nothing read it before, so a widget could declare hooks and have them
     // silently dropped. Wrapping happens only when hooks are actually
     // declared, so the tree is unchanged for every other widget.
@@ -283,7 +283,7 @@ class Renderer {
   /// error, no pixels, and every downstream reading ("the surface is never
   /// called", "the capability must be missing") was consistent with it. The
   /// widget cannot render what it does not know about, but it can say that
-  /// something was declared and dropped, which is the §6.13 rule applied to a
+  /// something was declared and dropped, which is the perform-or-report rule applied to a
   /// slot rather than to a capability.
   ///
   /// Reported, never rendered: drawing an error box here would change screens
@@ -458,14 +458,14 @@ class Renderer {
   }
 
   /// Resolver the `view` widget uses to fetch a definition from an origin
-  /// (spec v1.4 §6.11, Composition Profile). Held here rather than on a single
+  /// (Composition Profile). Held here rather than on a single
   /// context because root contexts are created on demand — stamping it in
   /// [createRootContext] is what makes it reach every tree, and
   /// `RenderContext.createChildContext` carries it the rest of the way.
   ///
   /// `null` = this runtime does not implement the Composition Profile; `view`
   /// then fails closed rather than resolving a foreign `\$ref` against the
-  /// host's own origin (§18.7.3).
+  /// host's own origin.
   Future<Map<String, dynamic>> Function(String ref, Map<String, dynamic> origin)?
       definitionResolver;
 
@@ -473,7 +473,7 @@ class Renderer {
   ///
   /// A `view` that names an origin makes that origin ambient for its subtree,
   /// and a tool call from inside it belongs to that device — not to the app's
-  /// own server (§1.9.5, §2.13.1, §7.10). Without this the subtree renders but
+  /// own server. Without this the subtree renders but
   /// nothing in it works: the call takes the app's normal path and lands on a
   /// session with no client for it.
   Future<dynamic> Function(
@@ -561,7 +561,7 @@ class Renderer {
     return renderWidget(bottomBarDef, context);
   }
 
-  /// §5.3.4 through the one parser. This used to be a private copy that
+  /// Colors through the one parser. This used to be a private copy that
   /// took `pink` and `transparent`, knew no scheme slot, and read `#fff` as
   /// near-black — so a page background could not use the spelling the spec
   /// prefers, and the shorthand it allows drew the wrong color.
@@ -748,7 +748,7 @@ class Renderer {
   }
 
   /// Reports a widget that could not be built, and paints the reason only in
-  /// a debug build (§18.2.1). A release build collapses the slot: developer
+  /// a debug build. A release build collapses the slot: developer
   /// text does not belong on an end user's screen. Reporting is
   /// unconditional — a logged error and the plugin `onError` hook.
   Widget _errorWidget(
@@ -807,7 +807,6 @@ class Renderer {
         'source': 'renderer',
         'message': message,
         'widgetType': widgetType,
-        'error': message,
       },
     );
   }

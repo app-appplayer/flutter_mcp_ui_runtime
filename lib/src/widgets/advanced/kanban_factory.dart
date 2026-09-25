@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../renderer/render_context.dart';
 import '../widget_factory.dart';
 
-/// Factory for `kanban` (spec §10.30).
+/// Factory for `kanban`.
 ///
 /// The pieces for a composition exist (`grid` + `draggable` + `dragTarget`),
 /// and that composition is where the work actually is: drop targets are the
@@ -110,7 +110,7 @@ class _Board extends StatefulWidget {
   final bool draggable;
 
   /// Fixed height, when the document says. Otherwise the board fills its
-  /// parent, which must be bounded (§2.15).
+  /// parent, which must be bounded.
   final double? height;
   final bool optimistic;
   final String itemKey;
@@ -200,7 +200,7 @@ class _BoardState extends State<_Board> {
     // The board needs a height to give its columns, and it cannot size to
     // its content — each column scrolls. A `height` prop is the document's
     // say; without one the board fills its parent, which therefore has to
-    // be bounded (§2.15). No default is invented: a made-up height would be
+    // be bounded. No default is invented: a made-up height would be
     // a layout that looks deliberate and is not. Before the prop existed
     // the only fix was wrapping the board, while `tree` and `dataTable`
     // took a `height` in place.
