@@ -1,3 +1,22 @@
+## [0.8.1] - 2026-09-27
+
+### Fixed
+- Line height is read under both names the spec gives it — `lineHeight`
+  (05_Theme §5.4.2: below 16 a multiplier, 16 and above px) and `height` (a
+  multiplier) — in theme typography and in every widget `style` (`text`,
+  `richText` spans, `textField`, `dropdown`, `animatedDefaultTextStyle`),
+  through the core's `lineHeightMultiplier`. Before, the theme read only
+  `lineHeight` and always as px, and widget styles read only `height`, so:
+  a theme written with `height` lost its line heights; `lineHeight: 1.5`
+  rendered at about 0.03; a widget `style.lineHeight` was ignored; and
+  `style: "{{theme.typography.X}}"` did not render the line height
+  `variant: "X"` did.
+- A widget style's px `lineHeight` with no `fontSize` of its own divides by
+  the size of the variant it layers on.
+
+### Changed
+- Requires `flutter_mcp_ui_core` ^0.6.6.
+
 ## [0.8.0] - 2026-09-15
 
 ### Breaking

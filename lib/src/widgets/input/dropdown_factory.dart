@@ -210,7 +210,7 @@ class DropdownWidgetFactory extends WidgetFactory {
       fontStyle: style['italic'] == true ? FontStyle.italic : FontStyle.normal,
       letterSpacing: style['letterSpacing']?.toDouble(),
       wordSpacing: style['wordSpacing']?.toDouble(),
-      height: style['height']?.toDouble(),
+      height: readLineHeight(style, context),
     );
   }
 

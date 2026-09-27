@@ -47,7 +47,8 @@ class TextWidgetFactory extends WidgetFactory {
         context.resolve(properties['variant']) as String?;
     final variantStyle = _resolveVariantStyle(variantValue, context);
     final inlineStyle = _parseTextStyle(
-        properties[core.PropertyKeys.style], context);
+        properties[core.PropertyKeys.style], context,
+        fontSize: variantStyle?.fontSize);
     TextStyle? mergedStyle = variantStyle == null
         ? inlineStyle
         : (inlineStyle == null
@@ -167,7 +168,10 @@ class TextWidgetFactory extends WidgetFactory {
     return context.themeManager.getTextStyleValue(variant);
   }
 
-  TextStyle? _parseTextStyle(dynamic style, RenderContext context) {
+  /// [fontSize] is the size under this style — a px `lineHeight` in a style
+  /// that sets no `fontSize` of its own is divided by it.
+  TextStyle? _parseTextStyle(dynamic style, RenderContext context,
+      {double? fontSize}) {
     if (style == null) return null;
 
     // String form — `style: "{{theme.typography.displayLarge}}"` is a
@@ -197,7 +201,7 @@ class TextWidgetFactory extends WidgetFactory {
         color: parsedColor,
         letterSpacing: parseDimension(context.resolve(style['letterSpacing'])),
         wordSpacing: parseDimension(context.resolve(style['wordSpacing'])),
-        height: parseDimension(context.resolve(style['height'])),
+        height: readLineHeight(style, context, fontSize: fontSize),
         decoration: _parseTextDecoration(context.resolve(style['decoration'])),
         decorationColor: parseColor(context.resolve(style['decorationColor']), context),
         decorationStyle: _parseTextDecorationStyle(

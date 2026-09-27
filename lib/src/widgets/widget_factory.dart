@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_mcp_ui_core/flutter_mcp_ui_core.dart'
+    show lineHeightMultiplier;
 
 import '../renderer/render_context.dart';
 import '../utils/color_parser.dart';
@@ -480,6 +482,25 @@ double? readDimension(dynamic raw, RenderContext context) {
   if (v is Map && v['value'] is num) return (v['value'] as num).toDouble();
   return null;
 }
+
+/// A text style's line height, as the multiplier `TextStyle.height` takes.
+///
+/// A widget `style` is the same `TextStyle` the theme typography uses, so it
+/// carries line height under both names the spec gives it — `lineHeight`
+/// (05_Theme §5.4.2) and `height` — and both are read, through the one rule
+/// in [lineHeightMultiplier]. A px `lineHeight` is divided by the style's own
+/// `fontSize`, or by [fontSize] when the style sets none (the size of the
+/// variant it layers on, say).
+double? readLineHeight(
+  Map<String, dynamic> style,
+  RenderContext context, {
+  double? fontSize,
+}) =>
+    lineHeightMultiplier(
+      lineHeight: readDimension(style['lineHeight'], context),
+      height: readDimension(style['height'], context),
+      fontSize: readDimension(style['fontSize'], context) ?? fontSize,
+    );
 
 /// A boolean slot, read the way every value may be written.
 ///

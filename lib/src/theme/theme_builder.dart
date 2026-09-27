@@ -138,7 +138,6 @@ abstract final class McpUiThemeBuilder {
   static TextStyle? _ts(TextStyleDefinition? s) {
     if (s == null) return null;
     final size = s.fontSize?.toDouble();
-    final lineH = s.lineHeight?.toDouble();
     final family = s.fontFamily;
     final fontFamily = family is String ? family : null;
     final fontFamilyFallback = family is List
@@ -150,9 +149,7 @@ abstract final class McpUiThemeBuilder {
       fontSize: size,
       fontWeight: _weight(s.fontWeight),
       letterSpacing: s.letterSpacing?.toDouble(),
-      height: (size != null && lineH != null && size > 0)
-          ? lineH / size
-          : null,
+      height: s.lineHeightMultiplierValue,
     );
   }
 

@@ -140,7 +140,7 @@ class AnimatedDefaultTextStyleWidgetFactory extends WidgetFactory {
       fontWeight: _parseFontWeight(context.resolve(style['fontWeight'])),
       color: parseColor(context.resolve(style['color']), context),
       letterSpacing: parseDimension(context.resolve(style['letterSpacing'])),
-      height: parseDimension(context.resolve(style['height'])),
+      height: readLineHeight(style, context),
     );
   }
 

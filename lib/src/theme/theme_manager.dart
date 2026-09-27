@@ -619,14 +619,15 @@ class ThemeManager with ChangeNotifier {
   TextStyle? _buildTextStyle(dynamic data) {
     if (data is! Map<String, dynamic>) return null;
     final size = (data['fontSize'] as num?)?.toDouble();
-    final lineH = (data['lineHeight'] as num?)?.toDouble();
     return TextStyle(
       fontSize: size,
       fontWeight: _parseFontWeight(data['fontWeight']),
       letterSpacing: (data['letterSpacing'] as num?)?.toDouble(),
-      height: (size != null && lineH != null && size > 0)
-          ? lineH / size
-          : null,
+      height: lineHeightMultiplier(
+        lineHeight: data['lineHeight'] as num?,
+        height: data['height'] as num?,
+        fontSize: size,
+      ),
     );
   }
 

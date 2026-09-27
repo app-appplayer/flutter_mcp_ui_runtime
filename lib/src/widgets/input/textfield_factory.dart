@@ -109,7 +109,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
         letterSpacing:
             context.resolve<num?>(styleDef['letterSpacing'])?.toDouble(),
         wordSpacing: context.resolve<num?>(styleDef['wordSpacing'])?.toDouble(),
-        height: context.resolve<num?>(styleDef['height'])?.toDouble(),
+        height: readLineHeight(styleDef, context),
       );
     }
 
@@ -286,7 +286,7 @@ class TextFieldWidgetFactory extends WidgetFactory {
         letterSpacing:
             context.resolve<num?>(styleDef['letterSpacing'])?.toDouble(),
         wordSpacing: context.resolve<num?>(styleDef['wordSpacing'])?.toDouble(),
-        height: context.resolve<num?>(styleDef['height'])?.toDouble(),
+        height: readLineHeight(styleDef, context),
       );
     }
 
