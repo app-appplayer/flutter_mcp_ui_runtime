@@ -1,3 +1,15 @@
+## [0.8.2] - 2026-09-28
+
+### Changed
+- Requires `flutter_mcp_ui_core` ^0.6.7: the schemas documents are validated
+  against now declare `TextStyle.lineHeight` as the canonical line height and
+  `height` as its deprecated alias (spec 1.4 §5.4.2, §17.3.2). Rendering is
+  unchanged — both names were already read (0.8.1).
+
+### Note — 0.8.1
+- 0.8.1 also added the public function `readLineHeight` (exported with
+  `widget_factory.dart`), which its entry did not list.
+
 ## [0.8.1] - 2026-09-27
 
 ### Fixed
