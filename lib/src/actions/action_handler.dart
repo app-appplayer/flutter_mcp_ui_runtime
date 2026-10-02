@@ -74,11 +74,6 @@ class ActionHandler {
     final conditionalExecutor = ConditionalActionExecutor();
     conditionalExecutor._actionHandler = this; // Connect the action handler
     _executors['conditional'] = conditionalExecutor;
-    _executors['addRandomWidget'] = TestActionExecutor();
-    _executors['deleteRandomWidget'] = TestActionExecutor();
-    _executors['shuffleWidgets'] = TestActionExecutor();
-    _executors['clearWidgets'] = TestActionExecutor();
-    _executors['addHeavyWidget'] = TestActionExecutor();
     _executors['increment'] =
         StateActionExecutor(); // Alias for state increment
 
@@ -2002,19 +1997,6 @@ class DialogActionExecutor extends ActionExecutor {
       default:
         return raw;
     }
-  }
-}
-
-/// Executes test actions for UI testing scenarios
-class TestActionExecutor extends ActionExecutor {
-  @override
-  Future<ActionResult> execute(
-    Map<String, dynamic> action,
-    RenderContext context,
-  ) async {
-    // For test purposes, just return success
-    // In a real application, these would be actual implementations
-    return ActionResult.success();
   }
 }
 

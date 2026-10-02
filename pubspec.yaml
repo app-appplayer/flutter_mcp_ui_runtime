@@ -1,6 +1,6 @@
 name: flutter_mcp_ui_runtime
 description: Runtime for building dynamic Flutter UIs from JSON with lifecycle management, state handling, and MCP protocol support.
-version: 0.8.2
+version: 0.8.3
 homepage: https://app-appplayer.github.io/makemind
 repository: https://github.com/app-appplayer/flutter_mcp_ui_runtime
 issue_tracker: https://github.com/app-appplayer/flutter_mcp_ui_runtime/issues
@@ -11,12 +11,15 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_mcp_ui_core: ^0.6.7
+  flutter_mcp_ui_core: ^0.6.8
   mcp_bundle: ^0.4.10
   provider: ^6.1.1
   collection: ^1.18.0
   crypto: ^3.0.3
   http: ^1.2.0
+  # `i18n.numberFormat` / `i18n.dateFormat` (§12.4, §12.5) follow ECMA-402
+  # option semantics per locale; intl carries the locale data for both.
+  intl: ^0.20.2
   # Vector assets: the spec ships SVG examples in `icon` and names
   # `data:image/svg+xml` as an ordinary `AssetRef` form (§2.5, §2.6). Web
   # included — the renderer is the same on every platform.

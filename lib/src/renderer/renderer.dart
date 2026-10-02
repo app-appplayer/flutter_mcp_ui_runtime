@@ -1,3 +1,5 @@
+import '../form_factor/form_factor.dart';
+import '../i18n/i18n_manager.dart';
 import 'package:flutter/material.dart';
 import '../widgets/lifecycle_host.dart';
 import 'package:flutter/foundation.dart';
@@ -37,6 +39,10 @@ class Renderer {
   final WidgetCache _widgetCache = WidgetCache.isolated();
   final MCPLogger _logger = MCPLogger('Renderer');
   dynamic engine;
+
+  /// The translations every root context reads — the engine's own manager
+  /// once an engine owns this renderer.
+  I18nManager i18nManager = I18nManager.instance;
   bool Function(String action, String route, Map<String, dynamic> params)?
       navigationHandler;
   Future<dynamic> Function(
@@ -450,6 +456,7 @@ class Renderer {
       bindingEngine: bindingEngine,
       actionHandler: actionHandler,
       themeManager: ThemeManager.instance,
+      i18nManager: i18nManager,
       buildContext: context,
       engine: engine,
       navigationHandler: navigationHandler,
@@ -615,6 +622,13 @@ class Renderer {
       },
       // Include only serializable context variables
       'variables': cleanVariables,
+      // A widget built for one locale holds that locale's text, and one
+      // built at one size holds the responsive values picked for it (§14.2);
+      // neither may answer for the other.
+      'locale': context.i18nManager.currentLocale,
+      'formFactor': context.buildContext == null
+          ? null
+          : FormFactor.of(context.buildContext!).name,
     };
   }
 

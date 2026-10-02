@@ -93,10 +93,17 @@ class _MCPPageWidgetState extends State<MCPPageWidget>
   @override
   void initState() {
     super.initState();
+    // A locale change redraws the page (§12.6): every `{{i18n.*}}` binding
+    // in it is resolved again on the rebuild.
+    widget.runtimeEngine.i18nManager.addListener(_onLocaleChanged);
     // Defer initialization to avoid setState during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializePage();
     });
+  }
+
+  void _onLocaleChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -206,6 +213,7 @@ class _MCPPageWidgetState extends State<MCPPageWidget>
 
   @override
   void dispose() {
+    widget.runtimeEngine.i18nManager.removeListener(_onLocaleChanged);
     NavigationService.instance.routeObserver.unsubscribe(this);
     _active.dispose();
     // The runner fires onUnmount → onDestroy. `onPause` is not part
@@ -230,6 +238,7 @@ class _MCPPageWidgetState extends State<MCPPageWidget>
       bindingEngine: widget.runtimeEngine.bindingEngine,
       actionHandler: widget.runtimeEngine.actionHandler,
       themeManager: widget.runtimeEngine.themeManager,
+      i18nManager: widget.runtimeEngine.i18nManager,
       buildContext: context,
       engine: widget.runtimeEngine,
     );

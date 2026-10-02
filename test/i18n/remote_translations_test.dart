@@ -78,7 +78,7 @@ void main() {
     });
 
     expect(i18n.translate('remote'), 'from the server');
-    expect(i18n.translate('local'), 'local',
+    expect(i18n.translate('local'), '!!local',
         reason: 'the bundle key is GONE for the locale the remote file also '
             'carries — the remote map is assigned over it. Whether that is '
             'right is a spec question; that it happens is measured here so a '

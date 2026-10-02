@@ -1,3 +1,76 @@
+## [0.8.3] - 2026-10-01
+
+### Fixed
+- A `list` or `grid` with `shrinkWrap: true` inside a `scrollView` took the
+  vertical drag, so the page around it could not be scrolled. With no
+  `physics` given, Flutter treats a vertical list or grid without a controller
+  as the primary scroll view and forces always-scrollable physics on it — a
+  view already at its full height still claimed every drag. A shrink-wrapped
+  view with no author `physics` is now not the primary scroll view: at full
+  height it leaves the drag to the enclosing scroll view, and when a bounded
+  parent caps it below its content it still scrolls itself. A view with
+  `physics` set, or without `shrinkWrap`, behaves as before. §2.15 directs
+  authors to `shrinkWrap` in exactly this placement.
+- `list` and `grid` honour the `primary` that `scrollBar` sets on its child,
+  so a scrollbar keeps painting against the view it wraps. They previously
+  ignored it and attached only because Flutter's default happened to agree.
+- An application's `i18n` block (§12) is loaded. No earlier release read it,
+  so every `{{i18n.key}}` rendered as the bare key. Now:
+  - `text`, `pluralization`, `numberFormat`, `dateFormat`, `textDirection`
+    and `locales` load when the document starts. The first locale is the
+    host's language when the document carries it — the same tag, else the
+    same language (`ko` reads `ko-KR`) — and `defaultLocale` otherwise (§12.6).
+  - A key missing from the active locale reads `defaultLocale`; missing there
+    too, it shows as `!!key` and logs one warning per key per locale (§12.7).
+    `I18nManager.translate` and `i18n:` strings follow the same rule; they
+    used to return the bare key.
+  - `{{i18n.key:xx-YY}}` reads that locale (§12.2.3);
+    `{{i18n.itemCount({count: n})}}` selects a plural form by CLDR category,
+    falling back to `other` (an explicit `zero` form answers for 0), and
+    `{{i18n.currency(price)}}` / `{{i18n.shortDate(day)}}` format for the
+    active locale (§12.2.2–§12.5). A binding containing braces is no longer
+    cut at the first `}` inside a sentence.
+  - `MCPUIRuntime.setLocale` / `locale` switch and read the active locale; the
+    page redraws with every binding resolved again (§12.6).
+  - An RTL locale lays the document out right to left, and the document's
+    `textDirection` overrides the script (§12.8). A document without `i18n`
+    leaves direction to its host.
+  - Each runtime has its own `I18nManager` (`I18nManager.scoped()`), so two
+    documents open at once keep their own text and locale.
+    `RenderContext.i18nManager` carries it; `I18nManager.instance` remains for
+    code that renders outside a runtime.
+  - `I18nLoader.loadFromMcpFormat` reads the §12.1 shape (`text`, …). It read
+    a `translations` key that no spec version defines, and it no longer acts
+    on `remoteUrl`, which §12 does not define either —
+    `I18nManager.loadTranslations` still loads a remote file.
+- A responsive object (§14.2.2) is picked for the current form factor on every
+  numeric, string, enum and token slot. Only `grid.columns`, container padding
+  and a few others picked it; elsewhere it read as the default
+  (`itemAspectRatio: {default: 0.95, medium: 1.25}` drew at 1.0 on a desk
+  screen). A scalar read (`resolve<num>`, `resolve<String>`,
+  `resolve<bool>`, and the `read*` helpers through the new `readScalar`)
+  picks; a read that asks for a map or for `dynamic` does not, so a
+  configuration map keyed by size names (`theme.breakpoints`) keeps every
+  entry. Slots that read a dimension without their render context now read it
+  through `readDimension`, which also resolves bindings they used to drop.
+- The widget cache keys on the active locale and form factor. A cached widget
+  built for one language or one window size answered after a switch or a
+  resize.
+
+### Removed
+- The `addRandomWidget`, `deleteRandomWidget`, `shuffleWidgets`,
+  `clearWidgets` and `addHeavyWidget` actions, and `TestActionExecutor`. They
+  are not spec actions and answered success without doing anything; an
+  undefined action type now reports `Unknown action type` (§6.13).
+
+### Changed
+- Requires `flutter_mcp_ui_core` ^0.6.8, whose schemas accept a responsive
+  object wherever §14.2.2 does — a root document using one was refused at
+  load.
+- Adds `intl` ^0.20.2 for `numberFormat` and `dateFormat` (ECMA-402 option
+  semantics per locale). Date symbols for every locale are initialised when a
+  document with an `i18n` block loads.
+
 ## [0.8.2] - 2026-09-28
 
 ### Changed

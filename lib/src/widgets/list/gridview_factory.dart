@@ -14,6 +14,14 @@ class GridViewWidgetFactory extends WidgetFactory {
     final reverse = boolOf(properties['reverse'], context) ?? false;
     final shrinkWrap = boolOf(properties['shrinkWrap'], context) ?? false;
     final physics = _parseScrollPhysics(properties['physics']);
+    // A shrink-wrapped view the author gave no physics is not the primary
+    // scroll view. Flutter would otherwise force always-scrollable physics on
+    // it, so a view already at full height would take vertical drags from the
+    // enclosing scroll view. A view capped below its content still scrolls.
+    // An explicit `primary` wins: `scrollBar` sets it on its child so the
+    // child attaches to the controller the scrollbar paints against.
+    final bool? primary = boolOf(properties['primary'], context) ??
+        (shrinkWrap && physics == null ? false : null);
     final padding = edgeInsetsOf(properties['padding'], context);
 
     // Grid specific properties
@@ -37,17 +45,18 @@ class GridViewWidgetFactory extends WidgetFactory {
     // `spacing` (shared shorthand) accepted.
     final spacing = dimensionOf(properties['spacing'], context);
     final mainAxisSpacing =
-        parseDimension(properties['rowGap'] ?? properties['mainAxisSpacing']) ??
+        readDimension(properties['rowGap'] ?? properties['mainAxisSpacing'], context) ??
             spacing ??
             0.0;
-    final crossAxisSpacing = parseDimension(
-            properties['columnGap'] ?? properties['crossAxisSpacing']) ??
+    final crossAxisSpacing = readDimension(
+            properties['columnGap'] ?? properties['crossAxisSpacing'], context) ??
         spacing ??
         0.0;
     // Canonical `itemAspectRatio`; `childAspectRatio` kept as
     // legacy Flutter-style alias.
-    final childAspectRatio = parseDimension(
-            properties['itemAspectRatio'] ?? properties['childAspectRatio']) ??
+    final childAspectRatio = readDimension(
+            properties['itemAspectRatio'] ?? properties['childAspectRatio'],
+            context) ??
         1.0;
     final mainAxisExtent = dimensionOf(properties['mainAxisExtent'], context);
 
@@ -102,6 +111,7 @@ class GridViewWidgetFactory extends WidgetFactory {
         reverse: reverse,
         shrinkWrap: shrinkWrap,
         physics: physics,
+        primary: primary,
         padding: padding,
         gridDelegate: gridDelegate,
         itemCount: items.length,
@@ -137,6 +147,7 @@ class GridViewWidgetFactory extends WidgetFactory {
         reverse: reverse,
         shrinkWrap: shrinkWrap,
         physics: physics,
+        primary: primary,
         padding: padding,
         gridDelegate: gridDelegate,
         itemCount: items.length,
@@ -156,6 +167,7 @@ class GridViewWidgetFactory extends WidgetFactory {
         reverse: reverse,
         shrinkWrap: shrinkWrap,
         physics: physics,
+        primary: primary,
         padding: padding,
         gridDelegate: gridDelegate,
         children: children,
@@ -165,6 +177,7 @@ class GridViewWidgetFactory extends WidgetFactory {
       gridView = GridView(
         shrinkWrap: shrinkWrap,
         physics: physics,
+        primary: primary,
         padding: padding,
         gridDelegate: gridDelegate,
       );

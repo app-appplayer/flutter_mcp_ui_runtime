@@ -40,7 +40,7 @@ void main() {
       await I18nLoader.loadFromMcpFormat({
         'locales': ['en', 'es'],
         'defaultLocale': 'en',
-        'translations': {
+        'text': {
           'en': {'title': 'My App', 'welcome': 'Welcome {name}'},
           'es': {'title': 'Mi App', 'welcome': 'Bienvenido {name}'},
         },
@@ -52,7 +52,7 @@ void main() {
     test('Normal: loadFromMcpFormat sets fallback locale from defaultLocale', () async {
       await I18nLoader.loadFromMcpFormat({
         'defaultLocale': 'en',
-        'translations': {
+        'text': {
           'en': {'fallbackKey': 'Fallback Value'},
         },
       });
@@ -70,7 +70,7 @@ void main() {
 
     test('Normal: loadFromMcpFormat without defaultLocale defaults to en', () async {
       await I18nLoader.loadFromMcpFormat({
-        'translations': {
+        'text': {
           'en': {'key': 'value'},
         },
       });
@@ -80,7 +80,7 @@ void main() {
 
     test('Boundary: loadFromMap with empty map → no translations loaded', () async {
       await I18nLoader.loadFromMap({});
-      expect(manager.translate('anyKey'), equals('anyKey'));
+      expect(manager.translate('anyKey'), equals('!!anyKey'));
     });
 
     test('Boundary: loadFromMcpFormat with null translations → no error', () async {
@@ -125,7 +125,7 @@ void main() {
     test('Boundary: empty map — no translations loaded', () async {
       await I18nLoader.loadFromMap({});
       expect(manager.getSupportedLocales(), isEmpty);
-      expect(manager.translate('anyKey'), equals('anyKey'));
+      expect(manager.translate('anyKey'), equals('!!anyKey'));
     });
   });
 
@@ -134,7 +134,7 @@ void main() {
     test('Normal: parses full MCP i18n config including defaultLocale and translations', () async {
       await I18nLoader.loadFromMcpFormat({
         'defaultLocale': 'en',
-        'translations': {
+        'text': {
           'en': {'title': 'My App', 'nav': {'home': 'Home'}},
           'es': {'title': 'Mi App', 'nav': {'home': 'Inicio'}},
         },
@@ -148,7 +148,7 @@ void main() {
     test('Normal: defaultLocale set as fallback locale', () async {
       await I18nLoader.loadFromMcpFormat({
         'defaultLocale': 'es',
-        'translations': {
+        'text': {
           'es': {'greeting': 'Hola'},
         },
       });
@@ -159,7 +159,7 @@ void main() {
     test('Boundary: config with only translations (no remoteUrl) — loads inline only', () async {
       await I18nLoader.loadFromMcpFormat({
         'defaultLocale': 'en',
-        'translations': {
+        'text': {
           'en': {'key': 'value'},
         },
         // No remoteUrl field
@@ -198,7 +198,7 @@ void main() {
       await I18nLoader.loadFromAsset('assets/i18n/nonexistent.json');
 
       // No translations should be loaded from a missing asset
-      expect(manager.translate('anyKey'), equals('anyKey'));
+      expect(manager.translate('anyKey'), equals('!!anyKey'));
     });
 
     test('Boundary: empty asset path — error handled gracefully', () async {
@@ -213,7 +213,7 @@ void main() {
       TestWidgetsFlutterBinding.ensureInitialized();
 
       await I18nLoader.loadFromAsset('assets/i18n/does_not_exist.json');
-      expect(manager.translate('greeting'), equals('greeting'));
+      expect(manager.translate('greeting'), equals('!!greeting'));
     });
   });
 
@@ -261,7 +261,7 @@ void main() {
     test('Normal: parses defaultLocale and sets as fallback', () async {
       await I18nLoader.loadFromMcpFormat({
         'defaultLocale': 'es',
-        'translations': {
+        'text': {
           'es': {'greeting': 'Hola'},
         },
       });
@@ -272,7 +272,7 @@ void main() {
     test('Normal: parses translations for multiple locales', () async {
       await I18nLoader.loadFromMcpFormat({
         'defaultLocale': 'en',
-        'translations': {
+        'text': {
           'en': {'title': 'App', 'nav': {'home': 'Home'}},
           'ko': {'title': '앱', 'nav': {'home': '홈'}},
         },
@@ -286,11 +286,13 @@ void main() {
       expect(manager.translate('nav.home'), equals('홈'));
     });
 
-    test('Normal: remoteUrl field is passed through to loadTranslations', () async {
-      // remoteUrl with invalid host — should fail gracefully
+    test('Normal: a field outside §12.1 (remoteUrl) is not acted on', () async {
+      // `remoteUrl` is not part of the spec's i18n block; remote loading
+      // belongs to `I18nManager.loadTranslations`. The document's own text
+      // loads either way.
       await I18nLoader.loadFromMcpFormat({
         'defaultLocale': 'en',
-        'translations': {
+        'text': {
           'en': {'key': 'value'},
         },
         'remoteUrl': 'http://invalid.nonexistent.test/i18n.json',
@@ -300,18 +302,18 @@ void main() {
       expect(manager.translate('key'), equals('value'));
     });
 
-    test('Boundary: missing translations field — no error', () async {
+    test('Boundary: missing text field — no error', () async {
       await I18nLoader.loadFromMcpFormat({
         'defaultLocale': 'en',
       });
 
-      expect(manager.translate('anyKey'), equals('anyKey'));
+      expect(manager.translate('anyKey'), equals('!!anyKey'));
     });
 
     test('Boundary: empty translations map — no translations loaded', () async {
       await I18nLoader.loadFromMcpFormat({
         'defaultLocale': 'en',
-        'translations': <String, dynamic>{},
+        'text': <String, dynamic>{},
       });
 
       expect(manager.getSupportedLocales(), isEmpty);

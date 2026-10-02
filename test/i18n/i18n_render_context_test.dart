@@ -98,7 +98,7 @@ void main() {
 
     test('Boundary: missing i18n key → returns key as fallback', () {
       final result = renderContext.resolve<String>('i18n:nonexistent.key');
-      expect(result, equals('nonexistent.key'));
+      expect(result, equals('!!nonexistent.key'));
     });
 
     test('Error: null value → resolve returns null', () {

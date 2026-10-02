@@ -42,7 +42,7 @@ void main() {
     });
 
     test('returns key when translation not found', () {
-      expect(manager.translate('missing.key'), equals('missing.key'));
+      expect(manager.translate('missing.key'), equals('!!missing.key'));
     });
 
     test('interpolates parameters', () {
@@ -345,7 +345,7 @@ void main() {
     });
 
     test('Boundary: no translations loaded — translate returns key as fallback', () {
-      expect(manager.translate('anything'), equals('anything'));
+      expect(manager.translate('anything'), equals('!!anything'));
     });
 
     test('Boundary: empty supported locales after clear', () {
@@ -380,7 +380,7 @@ void main() {
 
     test('Boundary: non-existent key returns the key string as fallback', () {
       manager.loadLocaleTranslations('en', {'a': 'b'});
-      expect(manager.translate('nonexistent'), equals('nonexistent'));
+      expect(manager.translate('nonexistent'), equals('!!nonexistent'));
     });
 
     test('Boundary: missing parameter in translation — placeholder left as-is', () {
@@ -453,10 +453,10 @@ void main() {
           'other': '{count} notifications',
         },
       });
-      // count=0 looks for 'notifications.zero' which is missing, falls through to key
+      // count=0 looks for 'notifications.zero', which is missing, so the
+      // `other` form answers (§12.3.1).
       final result = manager.plural('notifications', 0);
-      // Key 'notifications.zero' not found, returns key as fallback
-      expect(result, equals('notifications.zero'));
+      expect(result, equals('0 notifications'));
     });
 
     test('Boundary: missing "other" form — returns key as fallback', () {
@@ -466,7 +466,7 @@ void main() {
         },
       });
       // count=5 looks for 'sparse.other' which is missing
-      expect(manager.plural('sparse', 5), equals('sparse.other'));
+      expect(manager.plural('sparse', 5), equals('!!sparse.other'));
     });
 
     test('Boundary: negative count — uses "other" form', () {
@@ -607,7 +607,7 @@ void main() {
       expect(manager.translate('greeting'), equals('Hello'));
 
       manager.clear();
-      expect(manager.translate('greeting'), equals('greeting'));
+      expect(manager.translate('greeting'), equals('!!greeting'));
     });
 
     test('Normal: getSupportedLocales returns empty after clear', () {

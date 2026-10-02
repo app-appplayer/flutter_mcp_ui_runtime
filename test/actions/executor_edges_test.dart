@@ -102,16 +102,20 @@ void main() {
     });
   });
 
-  group('the test executors', () {
-    test('the widget-shuffling actions answer success', () async {
+  group('action types the spec does not define', () {
+    test('are refused, not answered with a success', () async {
       for (final type in const [
         'addRandomWidget',
         'deleteRandomWidget',
         'shuffleWidgets',
+        'clearWidgets',
+        'addHeavyWidget',
       ]) {
-        expect((await run(<String, dynamic>{'type': type})).success, isTrue,
-            reason: '$type exists so a demo document runs; a failure here '
-                'would read as the runtime rejecting the document');
+        final result = await run(<String, dynamic>{'type': type});
+        expect(result.success, isFalse,
+            reason: '$type is not a spec action; a success that did nothing '
+                'lets the document take its next step on a lie (§6.13)');
+        expect(result.error, contains('Unknown action type'));
       }
     });
   });

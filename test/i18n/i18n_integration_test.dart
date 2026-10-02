@@ -18,7 +18,7 @@ void main() {
         () async {
       await I18nLoader.loadFromMcpFormat({
         'defaultLocale': 'en',
-        'translations': {
+        'text': {
           'en': {
             'greeting': 'Hello',
             'nav': {'home': 'Home', 'settings': 'Settings'},
@@ -90,7 +90,7 @@ void main() {
     test('Boundary: switch to locale with no translations — fallback used', () async {
       await I18nLoader.loadFromMcpFormat({
         'defaultLocale': 'en',
-        'translations': {
+        'text': {
           'en': {'greeting': 'Hello'},
         },
       });
@@ -135,7 +135,7 @@ void main() {
         () async {
       final i18nConfig = {
         'defaultLocale': 'en',
-        'translations': {
+        'text': {
           'en': {'greeting': 'Hello', 'farewell': 'Goodbye'},
           'ko': {'greeting': '안녕하세요', 'farewell': '안녕히 가세요'},
           'ja': {'greeting': 'こんにちは', 'farewell': 'さようなら'},
@@ -153,7 +153,7 @@ void main() {
     test('Normal: fallback locale set from config', () async {
       await I18nLoader.loadFromMcpFormat({
         'defaultLocale': 'ko',
-        'translations': {
+        'text': {
           'ko': {'greeting': '안녕하세요'},
         },
       });
@@ -164,7 +164,7 @@ void main() {
     test('Normal: translations accessible after loading from config', () async {
       await I18nLoader.loadFromMcpFormat({
         'defaultLocale': 'en',
-        'translations': {
+        'text': {
           'en': {
             'app': {'title': 'Test App', 'version': '1.0'},
           },
@@ -177,14 +177,14 @@ void main() {
 
     test('Boundary: plugin disabled (no translations) — bindings return keys', () {
       // Simulate no translations loaded (plugin disabled)
-      expect(manager.translate('greeting'), equals('greeting'));
-      expect(manager.resolveI18nString('i18n:title'), equals('title'));
+      expect(manager.translate('greeting'), equals('!!greeting'));
+      expect(manager.resolveI18nString('i18n:title'), equals('!!title'));
     });
 
     test('Normal: setLocale via I18nLoader updates I18nManager', () async {
       await I18nLoader.loadFromMcpFormat({
         'defaultLocale': 'en',
-        'translations': {
+        'text': {
           'en': {'greeting': 'Hello'},
           'ko': {'greeting': '안녕하세요'},
         },
@@ -198,7 +198,7 @@ void main() {
     test('Normal: hasKey works after plugin initialization', () async {
       await I18nLoader.loadFromMcpFormat({
         'defaultLocale': 'en',
-        'translations': {
+        'text': {
           'en': {'greeting': 'Hello', 'nav': {'home': 'Home'}},
         },
       });

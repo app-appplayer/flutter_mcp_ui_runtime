@@ -41,7 +41,7 @@ void main() {
     test('Boundary: resolveI18nString with missing key returns key name', () {
       manager.loadLocaleTranslations('en', {'a': 'b'});
 
-      expect(manager.resolveI18nString('i18n:missing'), equals('missing'));
+      expect(manager.resolveI18nString('i18n:missing'), equals('!!missing'));
     });
 
     test('Boundary: non-i18n-prefixed string returned as-is', () {

@@ -447,7 +447,7 @@ void main() {
 
     test('Boundary: unsupported locale key → returns key itself', () {
       final result = I18nManager.instance.translate('nonexistent.key');
-      expect(result, equals('nonexistent.key'));
+      expect(result, equals('!!nonexistent.key'));
     });
   });
 }

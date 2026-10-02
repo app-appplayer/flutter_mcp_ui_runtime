@@ -17,10 +17,18 @@ class ListViewWidgetFactory extends WidgetFactory {
     // Follow MCP UI DSL v1.0 spec: shrinkWrap defaults to false
     final shrinkWrap = boolOf(properties['shrinkWrap'], context) ?? false;
     final physics = _parseScrollPhysics(properties['physics']);
+    // A shrink-wrapped view the author gave no physics is not the primary
+    // scroll view. Flutter would otherwise force always-scrollable physics on
+    // it, so a view already at full height would take vertical drags from the
+    // enclosing scroll view. A view capped below its content still scrolls.
+    // An explicit `primary` wins: `scrollBar` sets it on its child so the
+    // child attaches to the controller the scrollbar paints against.
+    final bool? primary = boolOf(properties['primary'], context) ??
+        (shrinkWrap && physics == null ? false : null);
     final padding = edgeInsetsOf(properties['padding'], context);
     // spec v1.0: 'spacing', legacy: 'itemSpacing'
-    final itemSpacing = parseDimension(
-        properties['spacing'] ?? properties['itemSpacing']) ?? 0.0;
+    final itemSpacing = readDimension(
+        properties['spacing'] ?? properties['itemSpacing'], context) ?? 0.0;
     final emptyMessage = context.resolve<String?>(properties['emptyMessage']);
     final virtual = boolOf(properties['virtual'], context) ?? false;
     // `cacheExtent` was deprecated in favour of the typed `ScrollCacheExtent`;
@@ -69,6 +77,7 @@ class ListViewWidgetFactory extends WidgetFactory {
         reverse: reverse,
         shrinkWrap: shrinkWrap,
         physics: physics,
+        primary: primary,
         padding: padding,
         scrollCacheExtent: scrollCacheExtent,
         itemCount: itemCount,
@@ -110,6 +119,7 @@ class ListViewWidgetFactory extends WidgetFactory {
           reverse: reverse,
           shrinkWrap: shrinkWrap,
           physics: physics,
+          primary: primary,
           padding: padding,
           scrollCacheExtent: scrollCacheExtent,
           itemExtent: itemExtent,
@@ -134,6 +144,7 @@ class ListViewWidgetFactory extends WidgetFactory {
           reverse: reverse,
           shrinkWrap: shrinkWrap,
           physics: physics,
+          primary: primary,
           padding: padding,
           scrollCacheExtent: scrollCacheExtent,
           itemCount: items.length,
@@ -168,6 +179,7 @@ class ListViewWidgetFactory extends WidgetFactory {
         reverse: reverse,
         shrinkWrap: shrinkWrap,
         physics: physics,
+        primary: primary,
         padding: padding,
         scrollCacheExtent: scrollCacheExtent,
         itemCount: items.length,
@@ -194,6 +206,7 @@ class ListViewWidgetFactory extends WidgetFactory {
           reverse: reverse,
           shrinkWrap: shrinkWrap,
           physics: physics,
+          primary: primary,
           padding: padding,
           scrollCacheExtent: scrollCacheExtent,
           itemCount: children.length,
@@ -210,6 +223,7 @@ class ListViewWidgetFactory extends WidgetFactory {
           reverse: reverse,
           shrinkWrap: shrinkWrap,
           physics: physics,
+          primary: primary,
           padding: padding,
           scrollCacheExtent: scrollCacheExtent,
           itemExtent: itemExtent,
@@ -224,6 +238,7 @@ class ListViewWidgetFactory extends WidgetFactory {
         listView = ListView(
           shrinkWrap: shrinkWrap,
           physics: physics,
+          primary: primary,
           padding: padding,
         );
       }
