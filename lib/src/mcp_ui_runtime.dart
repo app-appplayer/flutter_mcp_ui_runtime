@@ -31,6 +31,7 @@
 /// regardless of the navigation type (drawer/tabs/bottom/routes).
 library mcp_ui_runtime;
 
+import 'runtime/conformance_claim.dart';
 import 'dart:async';
 import 'routing/route_value.dart';
 
@@ -131,6 +132,11 @@ class MCPUIRuntime {
 
   /// The document's active locale, in the document's own spelling.
   String get locale => _engine.locale;
+
+  /// What this runtime claims, in the shape of spec §18.8 — derived from
+  /// what the host wired (resolver, payment and location ports), so it never
+  /// lists a Profile the runtime cannot honour.
+  ConformanceClaim get conformanceClaim => ConformanceClaim.of(_engine);
 
   /// Gets whether the runtime is initialized
   bool get isInitialized => _isInitialized;
@@ -380,6 +386,12 @@ class MCPUIRuntime {
     }
 
     return MCPRuntimeWidget(
+      // One state per engine. Without a key, a host that puts a second
+      // runtime where the first one was gets the first one's state back: its
+      // `initState` never runs for the new engine, so the engine is never
+      // marked ready and its tool and resource handlers are never installed
+      // — the page stays on the progress indicator for good.
+      key: ObjectKey(_engine),
       engine: _engine,
       uiDefinition: uiDefinition,
       initialState: initialState,
@@ -744,7 +756,7 @@ class MCPUIRuntime {
     await NavigationService.instance.onDispose();
 
     // Reset theme manager singleton
-    ThemeManager.instance.reset();
+    _engine.themeManager.reset();
 
     // Clear BindingEngine static caches
     BindingEngine.clearStaticCaches();
@@ -1070,7 +1082,7 @@ class _MCPRuntimeWidgetState extends State<MCPRuntimeWidget>
       stateManager: widget.engine.stateManager,
       bindingEngine: widget.engine.bindingEngine,
       actionHandler: widget.engine.actionHandler,
-      themeManager: ThemeManager(), // Create a basic theme manager
+      themeManager: widget.engine.themeManager,
       i18nManager: widget.engine.i18nManager,
       buildContext: context,
       engine: widget.engine,
@@ -1183,8 +1195,7 @@ class _ApplicationShellState extends State<_ApplicationShell> {
         // scanned or deep-linked target. Open it over the shell once the
         // first frame exists, so back returns to the tab the document names.
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          final navigator =
-              NavigationService.instance.navigatorKey.currentState;
+          final navigator = widget.engine.navigatorKey.currentState;
           navigator?.pushNamed(initialRoute);
         });
       }

@@ -499,7 +499,9 @@ class RuntimeEngine with ChangeNotifier {
       stateManager: _stateManager,
       engine: this,
       widgetWrapper: _widgetWrapper,
-    )..i18nManager = _i18nManager;
+    )
+      ..i18nManager = _i18nManager
+      ..themeManager = _themeManager;
 
     // Register core services
     await _registerCoreServices();
@@ -1453,13 +1455,14 @@ class RuntimeEngine with ChangeNotifier {
 
     _widgetRegistry = WidgetRegistry();
     _bindingEngine = BindingEngine();
-    _actionHandler = ActionHandler();
+    _actionHandler = ActionHandler()..navigatorKey = navigatorKey;
     _stateManager = StateManager();
     _entrySession = EntrySession(stateManager: _stateManager);
-    _themeManager = ThemeManager();
+    _themeManager = ThemeManager.scoped();
     _computedManager = ComputedManager(
       stateManager: _stateManager,
       bindingEngine: _bindingEngine,
+      themeManager: _themeManager,
     );
 
     _channelManager = ChannelManager();

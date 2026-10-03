@@ -16,7 +16,7 @@ class ListViewWidgetFactory extends WidgetFactory {
     final reverse = boolOf(properties['reverse'], context) ?? false;
     // Follow MCP UI DSL v1.0 spec: shrinkWrap defaults to false
     final shrinkWrap = boolOf(properties['shrinkWrap'], context) ?? false;
-    final physics = _parseScrollPhysics(properties['physics']);
+    final physics = readScrollPhysics(properties['physics'], context);
     // A shrink-wrapped view the author gave no physics is not the primary
     // scroll view. Flutter would otherwise force always-scrollable physics on
     // it, so a view already at full height would take vertical drags from the
@@ -25,7 +25,11 @@ class ListViewWidgetFactory extends WidgetFactory {
     // child attaches to the controller the scrollbar paints against.
     final bool? primary = boolOf(properties['primary'], context) ??
         (shrinkWrap && physics == null ? false : null);
-    final padding = edgeInsetsOf(properties['padding'], context);
+    // No `padding` is no padding. Flutter's list and grid fill a missing
+    // padding with the device's safe-area inset, which the document never
+    // asked for — system insets belong to `safeArea` (§2.4.13).
+    final padding =
+        edgeInsetsOf(properties['padding'], context) ?? EdgeInsets.zero;
     // spec v1.0: 'spacing', legacy: 'itemSpacing'
     final itemSpacing = readDimension(
         properties['spacing'] ?? properties['itemSpacing'], context) ?? 0.0;
@@ -314,18 +318,4 @@ class ListViewWidgetFactory extends WidgetFactory {
     }
   }
 
-  ScrollPhysics? _parseScrollPhysics(String? value) {
-    switch (value) {
-      case 'never':
-        return const NeverScrollableScrollPhysics();
-      case 'always':
-        return const AlwaysScrollableScrollPhysics();
-      case 'bouncing':
-        return const BouncingScrollPhysics();
-      case 'clamping':
-        return const ClampingScrollPhysics();
-      default:
-        return null;
-    }
-  }
 }

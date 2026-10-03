@@ -43,6 +43,10 @@ class Renderer {
   /// The translations every root context reads — the engine's own manager
   /// once an engine owns this renderer.
   I18nManager i18nManager = I18nManager.instance;
+
+  /// The theme every root context reads — the engine's own once an engine
+  /// owns this renderer.
+  ThemeManager themeManager = ThemeManager.instance;
   bool Function(String action, String route, Map<String, dynamic> params)?
       navigationHandler;
   Future<dynamic> Function(
@@ -455,7 +459,7 @@ class Renderer {
       stateManager: stateManager,
       bindingEngine: bindingEngine,
       actionHandler: actionHandler,
-      themeManager: ThemeManager.instance,
+      themeManager: themeManager,
       i18nManager: i18nManager,
       buildContext: context,
       engine: engine,
@@ -574,7 +578,7 @@ class Renderer {
   /// prefers, and the shorthand it allows drew the wrong color.
   Color? _resolveColor(dynamic color) => DslColor.parse(
         color,
-        slotResolver: ThemeManager.instance.getColorValue,
+        slotResolver: themeManager.getColorValue,
         where: 'page color',
       );
 

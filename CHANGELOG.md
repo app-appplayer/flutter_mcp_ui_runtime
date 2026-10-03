@@ -1,3 +1,90 @@
+## [0.8.4] - 2026-10-03
+
+### Added
+- `ThemeManager.scoped()`, `navigatorFor(RenderContext)`,
+  `ActionHandler.navigatorKey` / `navigationHandler`,
+  `DialogService.navigatorResolver` — the per-runtime pieces of the fix
+  below.
+- `MCPUIRuntime.conformanceClaim` — the runtime's conformance claim in the
+  shape of spec §18.8 (`ConformanceClaim.toJson()`), listing the Profiles of
+  §18.1 (`DslProfile`). It is derived from what is wired, so it never lists a
+  Profile the runtime cannot honour: Core, Client, Bundle and Template always;
+  Advanced when the §10.1 catalogue is registered and audio, video, web view,
+  map and PDF are wired (§18.5 — chrome without the behaviour is not
+  conformant); Composition with a host definition resolver; Payment and
+  Location with their ports. `runtimePackageVersion`, `advancedCatalog` and
+  `advancedBehaviours` are exported with it.
+
+### Deprecated
+- `ConformanceChecker` and `ConformanceLevel` — the v1.0 core / standard /
+  advanced levels, judged by registered widgets only. Use
+  `conformanceClaim`.
+
+### Changed
+- `physics` is the one name for scroll response on every scrollable, with
+  the values `bouncing`, `clamping`, `never` and `always` (spec §17.3.2,
+  §17.3.1a). `scrollView` and `pageView` read `physics` first and
+  `scrollPhysics` as its legacy name; `pageView` accepted only
+  `neverScrollable` and now takes the full set. The legacy values
+  `neverScrollable`, `alwaysScrollable` and `tabBarView`'s `bounce` / `clamp`
+  are still read. All eight scrollables read the value through one function,
+  `readScrollPhysics`, which resolves bindings and responsive values — six of
+  them read the raw property, so a bound `physics` was ignored.
+- Requires `flutter_mcp_ui_core` ^0.6.9 (schemas declare `physics` on
+  `scrollView` / `pageView`).
+
+### Fixed
+- Two documents on screen at once — two apps side by side, a dashboard, a
+  preview beside its editor — no longer act on each other. Measured before:
+  a navigation action in one app moved the other.
+  - Navigation, dialogs and snack bars act on the runtime's own navigator
+    when it drew one (an application), else on the navigator around the
+    widget that acted (a page inside its host's navigator), else on the
+    process-wide `NavigationService` key (`navigatorFor`). The process-wide
+    key alone answered for whichever runtime attached last.
+  - A shell's route → tab handler is held per runtime
+    (`ActionHandler.navigationHandler`); `registerNavigationHandler` no
+    longer writes the process-wide slot, so the shell registered last no
+    longer takes every runtime's navigation.
+    `NavigationActionExecutor.setGlobalNavigationHandler` stays as the last
+    fallback for hosts that set it directly.
+  - Dialogs go through one `DialogService` per runtime, so a dialog open in
+    one document no longer refuses the next one in another.
+  - Each runtime has its own theme (`ThemeManager.scoped()`): renderer, root
+    contexts, dialog colors and computed values read the engine's theme, and
+    `destroy()` resets that one. Two apps with different palettes drew with
+    whichever was set up last. `ThemeManager.instance` remains the default
+    outside an engine.
+  - A page is told it was covered or uncovered (`onPause` / `onResume`) by
+    its runtime's own route observer, and by the shared one a host may have
+    put on its own navigator.
+- A runtime placed where another one was now starts: `buildUI` keys its
+  widget by engine. The second runtime used to inherit the first one's widget
+  state, was never marked ready, and showed the progress indicator for good.
+- `flow.alignment` (`start` · `center` · `end`) places each run along the
+  main axis. It was stored and never used, so every value drew as `start`.
+- A `flow` with no height limit — in a column inside a scroll view — draws.
+  It was laid out by Flutter's `Flow`, which takes all the space it is given;
+  given an unbounded height it failed the page (a `RangeError` in release,
+  reported from Studio; present in 0.8.3). It is now laid out by `Wrap`, which
+  sizes to its runs, with the same spacing, runs and alignment.
+- A `list` or `grid` with no `padding` no longer takes the device's safe-area
+  inset. Flutter's list and grid fill a missing padding with
+  `MediaQuery.padding` along the scroll axis — inside a card or a scroll view
+  too — so a phone's status bar put its height between a heading and the list
+  under it (47 points on an iPhone-shaped view; reported from a served
+  template). The spec gives `padding` no default and leaves system insets to
+  `safeArea` (§2.4.13); a missing `padding` is now zero, and a written one is
+  used as before. The inner lists of `codeEditor`, `dataTable`,
+  `fileExplorer`, `combobox` and `multiSelect` take no inset either.
+- A `textInput` with both `binding` and `debounce` now follows its binding
+  when the bound value changes from outside — a reset, a cleared draft, a tool
+  answer merged into state (§2.6.0: binding is two-way). It kept the text it
+  was built with until the page was rebuilt from scratch, while the same field
+  without `debounce` already followed. A change that arrives while a keystroke
+  is still waiting on the debounce does not overwrite the typing: state holds
+  the older value at that moment.
+
 ## [0.8.3] - 2026-10-01
 
 ### Fixed

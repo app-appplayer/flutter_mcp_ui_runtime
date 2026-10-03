@@ -605,6 +605,33 @@ Map<String, dynamic>? readAction(dynamic raw, RenderContext context) {
   return <String, dynamic>{'type': 'sequence', 'actions': actions};
 }
 
+/// A `physics` slot — scroll response, read the same way by every scrollable:
+/// `bouncing`, `clamping`, `never`, `always`, plus the legacy values of
+/// §17.3.1a (`neverScrollable`, `alwaysScrollable`, and `tabBarView`'s
+/// `bounce` / `clamp`). Null — no value, or one outside the set — leaves the
+/// widget's own default.
+///
+/// [raw] is the canonical `physics`; a widget that also accepts the legacy
+/// `scrollPhysics` (§17.3.2) passes `properties['physics'] ??
+/// properties['scrollPhysics']`, so the canonical name wins.
+ScrollPhysics? readScrollPhysics(dynamic raw, RenderContext context) {
+  switch (readEnum(raw, context)) {
+    case 'bouncing':
+    case 'bounce':
+      return const BouncingScrollPhysics();
+    case 'clamping':
+    case 'clamp':
+      return const ClampingScrollPhysics();
+    case 'never':
+    case 'neverScrollable':
+      return const NeverScrollableScrollPhysics();
+    case 'always':
+    case 'alwaysScrollable':
+      return const AlwaysScrollableScrollPhysics();
+  }
+  return null;
+}
+
 /// An enum-valued slot: resolve the binding, then take the value only if it
 /// resolved to a string. `context.resolve<String?>` throws when the document
 /// legitimately carries another shape in the same slot (a `button.style`

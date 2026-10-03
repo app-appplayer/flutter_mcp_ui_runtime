@@ -14,7 +14,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mcp_ui_runtime/src/mcp_ui_runtime.dart';
 import 'package:flutter_mcp_ui_runtime/src/permissions/trust_level.dart';
-import 'package:flutter_mcp_ui_runtime/src/theme/theme_manager.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -85,14 +84,14 @@ void main() {
 
       // The override has no getter of its own; what a host observes is the
       // resolved mode, which is what the shell hands to MaterialApp.
-      expect(ThemeManager.instance.flutterThemeMode, ThemeMode.light,
+      expect(runtime.engine.themeManager.flutterThemeMode, ThemeMode.light,
           reason: 'the host owns the light/dark decision when it supplies one; '
               'a runtime reading the platform instead ignores an in-app '
               'toggle');
 
       hostBrightness.value = Brightness.dark;
       await tester.pump();
-      expect(ThemeManager.instance.flutterThemeMode, ThemeMode.dark);
+      expect(runtime.engine.themeManager.flutterThemeMode, ThemeMode.dark);
     });
 
     testWidgets('unmounting hands the decision back', (tester) async {
@@ -104,12 +103,12 @@ void main() {
         'content': {'type': 'text', 'content': 'themed'},
       });
       await mount(tester, hostBrightness: hostBrightness);
-      expect(ThemeManager.instance.flutterThemeMode, ThemeMode.dark);
+      expect(runtime.engine.themeManager.flutterThemeMode, ThemeMode.dark);
 
       await tester.pumpWidget(const MaterialApp(home: SizedBox()));
       await tester.pump();
 
-      expect(ThemeManager.instance.flutterThemeMode, isNot(ThemeMode.dark),
+      expect(runtime.engine.themeManager.flutterThemeMode, isNot(ThemeMode.dark),
           reason: 'a closed document must not keep forcing dark mode on the '
               'shell that outlives it');
     });
@@ -126,22 +125,22 @@ void main() {
         'content': {'type': 'text', 'content': 'themed'},
       });
       await mount(tester, hostBrightness: first);
-      expect(ThemeManager.instance.flutterThemeMode, ThemeMode.light);
+      expect(runtime.engine.themeManager.flutterThemeMode, ThemeMode.light);
 
       await tester.pumpWidget(MaterialApp(
         home: runtime.buildUI(hostBrightness: second),
       ));
       await tester.pump();
-      expect(ThemeManager.instance.flutterThemeMode, ThemeMode.dark);
+      expect(runtime.engine.themeManager.flutterThemeMode, ThemeMode.dark);
 
       // And the old one is no longer listened to.
       first.value = Brightness.dark;
       await tester.pump();
-      expect(ThemeManager.instance.flutterThemeMode, ThemeMode.dark);
+      expect(runtime.engine.themeManager.flutterThemeMode, ThemeMode.dark);
 
       second.value = Brightness.light;
       await tester.pump();
-      expect(ThemeManager.instance.flutterThemeMode, ThemeMode.light,
+      expect(runtime.engine.themeManager.flutterThemeMode, ThemeMode.light,
           reason: 'a stale subscription would let a listenable the host has '
               'moved on from keep overriding the theme');
     });
@@ -156,12 +155,12 @@ void main() {
         'content': {'type': 'text', 'content': 'themed'},
       });
       await mount(tester, hostBrightness: hostBrightness);
-      expect(ThemeManager.instance.flutterThemeMode, ThemeMode.dark);
+      expect(runtime.engine.themeManager.flutterThemeMode, ThemeMode.dark);
 
       await tester.pumpWidget(MaterialApp(home: runtime.buildUI()));
       await tester.pump();
 
-      expect(ThemeManager.instance.flutterThemeMode, isNot(ThemeMode.dark));
+      expect(runtime.engine.themeManager.flutterThemeMode, isNot(ThemeMode.dark));
     });
   });
 
@@ -235,8 +234,8 @@ void main() {
 
       var notified = 0;
       void listener() => notified++;
-      ThemeManager.instance.addListener(listener);
-      addTearDown(() => ThemeManager.instance.removeListener(listener));
+      runtime.engine.themeManager.addListener(listener);
+      addTearDown(() => runtime.engine.themeManager.removeListener(listener));
 
       tester.binding.platformDispatcher.platformBrightnessTestValue =
           Brightness.dark;

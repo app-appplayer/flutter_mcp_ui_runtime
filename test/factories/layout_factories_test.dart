@@ -931,7 +931,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(home: Scaffold(body: runtime.buildUI())));
       await tester.pump();
 
-      expect(find.byType(Flow), findsOneWidget);
+      // Laid out by Wrap, which sizes to its runs (see flow_factory.dart).
+      expect(find.byType(Wrap), findsOneWidget);
     });
 
     testWidgets('Boundary: flow with vertical direction',
@@ -951,7 +952,9 @@ void main() {
       await tester.pumpWidget(MaterialApp(home: Scaffold(body: runtime.buildUI())));
       await tester.pump();
 
-      expect(find.byType(Flow), findsOneWidget);
+      final wrap = tester.widget<Wrap>(find.byType(Wrap));
+      expect(wrap.direction, Axis.vertical);
+      expect(wrap.spacing, 5);
     });
   });
 

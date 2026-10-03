@@ -386,4 +386,47 @@ void main() {
           reason: '`visible: false` is not advice');
     });
   });
+
+  group('a bound value changed from outside (§2.6.0 — binding is two-way)', () {
+    String fieldText(WidgetTester tester) =>
+        tester.widget<TextField>(find.byType(TextField)).controller!.text;
+
+    testWidgets('the field shows the new value', (tester) async {
+      stateManager.set('query', 'first');
+      await pump(tester, field());
+      expect(fieldText(tester), 'first');
+
+      // A "clear" button, a reset, a tool answer merged into state.
+      stateManager.set('query', '');
+      await tester.pumpAndSettle();
+      expect(fieldText(tester), '',
+          reason: 'the plain field follows its binding; the debounced one '
+              'kept the old text until the page was rebuilt from scratch');
+
+      stateManager.set('query', 'from a tool');
+      await tester.pumpAndSettle();
+      expect(fieldText(tester), 'from a tool');
+    });
+
+    testWidgets('a rebuild while the user is still typing keeps the typing',
+        (tester) async {
+      stateManager.set('query', 'old');
+      await pump(tester, field());
+
+      await tester.enterText(find.byType(TextField), 'new text');
+      await tester.pump(const Duration(milliseconds: 100));
+      // Something else on the page changes state before the debounce fires;
+      // `query` itself still holds the old value.
+      stateManager.set('other', 1);
+      await tester.pump();
+      expect(fieldText(tester), 'new text',
+          reason: 'the pending value is the newer one — syncing from state '
+              'here would erase what the user just typed');
+
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(stateManager.get('query'), 'new text');
+      expect(fieldText(tester), 'new text');
+    });
+  });
 }
+

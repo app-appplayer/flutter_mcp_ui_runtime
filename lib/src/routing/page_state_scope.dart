@@ -1,3 +1,4 @@
+import '../services/navigation_service.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -7,7 +8,6 @@ import '../runtime/runtime_engine.dart';
 import '../runtime/lifecycle_manager.dart';
 import '../runtime/lifecycle_runner.dart';
 import '../renderer/render_context.dart';
-import '../services/navigation_service.dart';
 import 'page_activity_scope.dart';
 
 /// Provides a page-specific state scope for multi-page applications
@@ -127,6 +127,11 @@ class _MCPPageWidgetState extends State<MCPPageWidget>
     // second mechanism.
     final route = ModalRoute.of(context);
     if (route is ModalRoute<void>) {
+      // The runtime's own observer watches the navigator it drew; a host that
+      // builds its own navigator around the routes watches with the shared
+      // one. An observer only reports routes in the navigator it watches, so
+      // subscribing to both never doubles a report.
+      widget.runtimeEngine.routeObserver.subscribe(this, route);
       NavigationService.instance.routeObserver.subscribe(this, route);
     }
   }
@@ -214,6 +219,7 @@ class _MCPPageWidgetState extends State<MCPPageWidget>
   @override
   void dispose() {
     widget.runtimeEngine.i18nManager.removeListener(_onLocaleChanged);
+    widget.runtimeEngine.routeObserver.unsubscribe(this);
     NavigationService.instance.routeObserver.unsubscribe(this);
     _active.dispose();
     // The runner fires onUnmount → onDestroy. `onPause` is not part
