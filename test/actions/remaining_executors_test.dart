@@ -300,11 +300,12 @@ void main() {
     Future<ActionResult> run(Map<String, dynamic> action) =>
         handler.execute(action, contextFor(null));
 
-    test('it raises the cancellation flag the target checks', () async {
+    test('it ends the running action it targets', () async {
+      final flight = handler.beginInFlight('upload', cancellable: true);
       final result = await run({'type': 'cancel', 'target': 'upload'});
 
       expect(result.success, isTrue);
-      expect(stateManager.get('_cancellations.upload'), isTrue);
+      expect(flight.isEnded, isTrue);
     });
 
     test('the onCancel callback runs', () async {

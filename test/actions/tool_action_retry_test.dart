@@ -223,7 +223,7 @@ void main() {
       });
     });
 
-    test('onTimeout runs, and the timeout counts as an attempt', () {
+    test('onTimeout runs, and a timed-out call is not issued again', () {
       FakeAsync().run((async) {
         wire((_) async => Completer<dynamic>().future);
         stateManager.set('timedOut', false);
@@ -244,7 +244,9 @@ void main() {
         async.elapse(const Duration(seconds: 1));
         expect(stateManager.get('timedOut'), isTrue,
             reason: 'the document asked to be told');
-        expect(calls.length, 2, reason: 'a timeout is retried like a failure');
+        expect(calls.length, 1,
+            reason: 'the first call may still be running on the host; '
+                'issuing it again would run a write twice');
       });
     });
   });

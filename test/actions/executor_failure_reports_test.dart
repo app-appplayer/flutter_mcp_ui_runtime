@@ -266,6 +266,7 @@ void main() {
       // way that will happen every time) instead of wrapping them in a
       // result — so this is the path where `handleAction` throws.
       actionHandler.registerExecutor('bad', _RaisingExecutor());
+      final flight = actionHandler.beginInFlight('upload', cancellable: true);
 
       final result = await run(<String, dynamic>{
         'type': 'cancel',
@@ -274,7 +275,7 @@ void main() {
       });
 
       expect(result.success, isTrue);
-      expect(stateManager.get('_cancellations.upload'), isTrue,
+      expect(flight.isEnded, isTrue,
           reason: 'the cancel already happened; letting the callback take it '
               'down would leave the target running with nothing watching');
     });

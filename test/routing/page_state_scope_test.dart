@@ -215,6 +215,88 @@ void main() {
       expect(find.byKey(const Key('mcp.page.close')), findsNothing);
     });
 
+    /// A root page with a button that pushes [inner] the way an app's
+    /// `navigation push` does.
+    Future<void> mountAndPush(WidgetTester tester, PageDefinition inner) async {
+      await mount(
+        tester,
+        Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () =>
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) =>
+                    MCPPageWidget(pageDefinition: inner, runtimeEngine: engine),
+              )),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+        'a pushed page gets the automatic back button and no close '
+        'button; back returns one step', (tester) async {
+      NavigationActionExecutor.setOnExitCallback(() {});
+      await mountAndPush(tester, page(title: 'Detail'));
+
+      expect(find.byType(BackButton), findsOneWidget,
+          reason: '§6.6.1 — on inner routes the AppBar leading is the '
+              'automatic back button');
+      expect(find.byKey(const Key('mcp.page.close')), findsNothing,
+          reason: '§4.3.2 — the host close button is for the root route only');
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.text('open'), findsOneWidget,
+          reason: 'back is one step, not leaving the app');
+    });
+
+    testWidgets('an untitled page has no bar, pushed or root, exit or not',
+        (tester) async {
+      NavigationActionExecutor.setOnExitCallback(() {});
+      await mount(
+          tester, MCPPageWidget(pageDefinition: page(), runtimeEngine: engine));
+      expect(find.byType(AppBar), findsNothing,
+          reason: 'a bar on an untitled page pushes the body down in every '
+              'app that relies on having none');
+
+      await tester.pumpWidget(const SizedBox());
+      await mountAndPush(tester, page());
+      expect(find.byType(AppBar), findsNothing);
+    });
+
+    testWidgets(
+        'the page title resolves its bindings and follows the state '
+        'and the locale', (tester) async {
+      await engine.i18nManager.loadDefinition({
+        'defaultLocale': 'en-US',
+        'text': {
+          'en-US': {'jobs': 'Jobs'},
+          'ko-KR': {'jobs': '작업'},
+        },
+      });
+      engine.stateManager.set('who', 'Kim');
+      await mount(
+        tester,
+        MCPPageWidget(
+            pageDefinition: page(title: '{{i18n.jobs}} · {{who}}'),
+            runtimeEngine: engine),
+      );
+      expect(find.text('Jobs · Kim'), findsOneWidget);
+
+      engine.stateManager.set('who', 'Lee');
+      await tester.pumpAndSettle();
+      expect(find.text('Jobs · Lee'), findsOneWidget);
+
+      engine.i18nManager.setLocale('ko-KR');
+      await tester.pumpAndSettle();
+      expect(find.text('작업 · Lee'), findsOneWidget);
+    });
+
     testWidgets('page-scope channels are registered on mount', (tester) async {
       final definition = PageDefinition(
         title: 'Jobs',

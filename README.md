@@ -85,6 +85,7 @@ rather than the app:
 Target web_release_bundle failed: Avoid non-constant invocations of IconData
   flutter_mcp_ui_runtime/lib/src/utils/icon_resolver.dart
   flutter_mcp_ui_runtime/lib/src/widgets/display/icon_factory.dart
+  flutter_mcp_ui_runtime/lib/src/widgets/input/iconbutton_factory.dart
 ```
 
 That is not a defect to report — it is what the DSL asks for. A document names

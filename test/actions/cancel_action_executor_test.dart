@@ -51,14 +51,16 @@ void main() {
       expect(result.success, isFalse);
     });
 
-    test('stores cancellation signal in state for target', () async {
+    test('ends the running action it targets', () async {
+      final flight =
+          actionHandler.beginInFlight('longRunningTask', cancellable: true);
       final result = await actionHandler.execute({
         'type': 'cancel',
         'target': 'longRunningTask',
       }, context);
 
       expect(result.success, isTrue);
-      expect(stateManager.get('_cancellations.longRunningTask'), isTrue);
+      expect(flight.isEnded, isTrue);
     });
   });
 }

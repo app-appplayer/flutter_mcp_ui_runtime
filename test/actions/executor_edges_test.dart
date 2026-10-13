@@ -121,14 +121,15 @@ void main() {
   });
 
   group('cancel', () {
-    test('it raises the signal the target action reads', () async {
+    test('it ends the running action it targets', () async {
+      final flight = actionHandler.beginInFlight('upload', cancellable: true);
       final result = await run(<String, dynamic>{
         'type': 'cancel',
         'target': 'upload',
       });
 
       expect(result.success, isTrue);
-      expect(stateManager.get('_cancellations.upload'), isTrue);
+      expect(flight.isEnded, isTrue);
     });
 
     test('with no target it refuses rather than cancelling everything',
@@ -144,6 +145,7 @@ void main() {
         () async {
       actionHandler.registerExecutor(
           'boom', _ThrowingExecutor(StateError('cleanup failed')));
+      final flight = actionHandler.beginInFlight('upload', cancellable: true);
 
       final result = await run(<String, dynamic>{
         'type': 'cancel',
@@ -155,7 +157,7 @@ void main() {
           reason: 'the cancellation already happened; reporting it as failed '
               'because a callback threw would leave the document thinking the '
               'work is still running');
-      expect(stateManager.get('_cancellations.upload'), isTrue);
+      expect(flight.isEnded, isTrue);
     });
   });
 

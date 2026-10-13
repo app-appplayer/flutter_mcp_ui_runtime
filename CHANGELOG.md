@@ -1,3 +1,23 @@
+## [0.8.5] - 2026-10-12
+
+### Added
+- `ToolCallSignal.current` — inside a tool executor, completes with
+  `cancelled` · `timeout` · `pageRemoved` when the runtime stops waiting for
+  the call, so the host can cancel it (`RequestOptions(cancel: …)`).
+
+### Changed
+- App title, page titles and navigation item labels resolve bindings
+  (`{{i18n.*}}`, state) and follow the locale and the state.
+- Pushed pages show the back button; the host close button is on the root
+  page.
+
+### Fixed
+- `tool` actions: `cancel` ends a `cancellable` action's wait (`onCancel`,
+  error code `CANCELLED`, `onError` skipped), removing the page ends the
+  waits started from it, `timeout: 0` waits without limit on both the local
+  and the origin path, a timeout reports `TIMEOUT` and is never retried, and
+  a late result is dropped (spec §4.15 · §4.16).
+
 ## [0.8.4] - 2026-10-03
 
 ### Added
