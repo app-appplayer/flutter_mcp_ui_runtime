@@ -1,3 +1,16 @@
+## [0.8.6] - 2026-10-13
+
+### Fixed
+- Icon names: every Material icon resolves — all `Icons` names
+  (`fact_check`, `groups`, `home_outlined`, …) and the font's own names where
+  they differ (`10k`, `class`, `3d_rotation`), from a table generated from
+  the Flutter SDK (`tool/generate_material_icons.dart`). Short legacy names
+  still resolve; an unknown name still draws `help_outline`.
+- Five short legacy names that are also Material icon names now draw that
+  Material icon (spec §2.5.4): `cut`, `paste`, `tag`, `wallet`, `water`
+  (were `content_cut`, `content_paste`, `label`, `account_balance_wallet`,
+  `water_drop`).
+
 ## [0.8.5] - 2026-10-12
 
 ### Added

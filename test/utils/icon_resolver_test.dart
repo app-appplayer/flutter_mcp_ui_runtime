@@ -35,7 +35,16 @@ void main() {
       expect(resolveIconData('cafe'), Icons.local_cafe);
       expect(resolveIconData('calendar'), Icons.calendar_today);
       expect(resolveIconData('walk'), Icons.directions_walk);
-      expect(resolveIconData('wallet'), Icons.account_balance_wallet);
+    });
+
+    test('yield to a Material icon of the same name (spec §2.5.4)', () {
+      // These short forms predate the full Material table; each is now the
+      // name of a Material icon of its own, which is what §2.5.4 requires.
+      expect(resolveIconData('wallet').codePoint, Icons.wallet.codePoint);
+      expect(resolveIconData('water').codePoint, Icons.water.codePoint);
+      expect(resolveIconData('tag').codePoint, Icons.tag.codePoint);
+      expect(resolveIconData('cut').codePoint, Icons.cut.codePoint);
+      expect(resolveIconData('paste').codePoint, Icons.paste.codePoint);
     });
 
     test('do not shadow a canonical name of the same spelling', () {
